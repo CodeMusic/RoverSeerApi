@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RoverSeer Status</title>
+    <style>
+        body { font-family: Arial; background: #f4f4f4; color: #333; margin: 20px; }
+        .topbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .status-container { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
+        .status-section { display: flex; flex-wrap: wrap; align-items: center; }
+        .status-item { margin-right: 10px; }
+        .status-link { color: #87CEEB; text-decoration: underline; }
+        .status-link:hover { color: #ADD8E6; text-decoration: underline; }
+        .sensor-data { background: #444; padding: 8px 12px; border-radius: 5px; display: flex; gap: 15px; }
+        .sensor-item { display: flex; align-items: center; gap: 5px; }
+        .refresh { cursor: pointer; font-size: 20px; }
+        .chatbox { background: white; padding: 15px; border-radius: 8px; margin-top: 20px; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
+        textarea, input, select { width: 100%; padding: 8px; margin: 5px 0; }
+        button { padding: 10px 15px; margin: 5px 0; }
+        .history { background: #eef; padding: 10px; margin-top: 20px; border-radius: 8px; }
+        .clear-button { background: #dc3545; color: white; border: none; cursor: pointer; }
+        .clear-button:hover { background: #c82333; }
+    </style>
+    <script>
+        function refreshPage() {
+            window.location.reload();
+        }
+    </script>
+</head>
+<body>
+    <div class="topbar">
+        <div><strong>RoverSeer TCP Status</strong></div>
+        <div class="status-container">
+            <div class="status-section">
+                {% for name, info in statuses.items() %}
+                    <span class="status-item">
+                        {% if name == "Ollama" %}
+                            <a href="http://roverseer.local:{{ info.port }}/api/tags" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
+                                {{ info.status }} {{ name }} ({{ info.port }})
+                            </a>
+                        {% else %}
+                            <a href="http://roverseer.local:{{ info.port }}" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
+                                {{ info.status }} {{ name }} ({{ info.port }})
+                            </a>
+                        {% endif %}
+                    </span>
+                {% endfor %}
+            </div>
+            <div class="sensor-data">
+                <span class="sensor-item">🌡️ HAT: {{ sensor_data.hat_temperature }}</span>
+                <span class="sensor-item">🖥️ CPU: {{ sensor_data.cpu_temperature }}</span>
+                <span class="sensor-item">🌊 {{ sensor_data.pressure }}</span>
+                <span class="sensor-item">🏔️ {{ sensor_data.altitude }}</span>
+                <span class="sensor-item">🌬️ Fan: {{ sensor_data.fan_state }}</span>
+            </div>
+            <span class="refresh" onclick="refreshPage()">🔄</span>
+        </div>
+    </div>
+
+    <div class="chatbox">
+        <h2>RoverSeer Quick Dialog</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div></div>
+            <button onclick="window.open('/logs', '_blank')" style="background: #4169e1; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">
+                📊 View Logs
+            </button>
+        </div>
+        <form method="post" id="chat_form">
+            <input type="hidden" name="action" value="chat">
+            
+            <label>Output Type:</label>
+            <select name="output_type">
+                <option value="speak">RoverSeer</option>
+                <option value="audio_file">Local Audio</option>
+                <option value="text">Local Text</option>
+            </select>
+            
+            <label>System Message:</label>
+            <input type="text" id="system_input" name="system" value="You are RoverSeer, a helpful assistant." />
+            
+            <label>Model:</label>
+            <select id="model_select" name="model">
+                {% for tag in models %}
+                    <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
+                        {{ tag.display_name }}
+                    </option>
+                {% endfor %}
+            </select>
+            
+            <label>Voice (if used):</label>
+            <select name="voice">
+                {% for v in voices %}
+                    <option value="{{ v }}" {% if v == selected_voice %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+            </select>
+            
+            <label>Your Message:</label>
+            <textarea name="user_input">Tell me a fun science fact.</textarea>
+            
+            <button type="submit">Send</button>
+        </form>
+        
+        <form method="post" style="display: inline;">
+            <input type="hidden" name="action" value="clear_context">
+            <button type="submit" class="clear-button">🗑️ Clear Context</button>
+        </form>
+        
+        <h3>Response:</h3>
+        <p>{{ reply_text }}</p>
+        {% if audio_url %}
+        <audio controls autoplay>
+            <source src="{{ audio_url }}" type="audio/wav">
+            Your browser does not support the audio element.
+        </audio>
+        {% endif %}
+
+        <div class="history">
+            <h3>Conversation History:</h3>
+            {% for user, reply, model in history %}
+                <p><strong>You:</strong> {{ user }}</p>
+                <p><strong>{{ model }}:</strong> {{ reply }}</p>
+                <hr>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html> 

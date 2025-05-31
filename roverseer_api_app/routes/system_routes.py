@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file, redirect, render_template_string, url_for
+from flask import Blueprint, request, jsonify, send_file, redirect, render_template, url_for
 import requests
 import json
 
@@ -106,150 +106,57 @@ def home():
             except Exception as e:
                 reply_text = f"Request failed: {e}"
 
-    html = '''
-    <html>
-    <head>
-        <title>RoverSeer Status</title>
-        <style>
-            body { font-family: Arial; background: #f4f4f4; color: #333; margin: 20px; }
-            .topbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-            .status-container { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
-            .status-section { display: flex; flex-wrap: wrap; align-items: center; }
-            .status-item { margin-right: 10px; }
-            .status-link { color: #87CEEB; text-decoration: underline; }
-            .status-link:hover { color: #ADD8E6; text-decoration: underline; }
-            .sensor-data { background: #444; padding: 8px 12px; border-radius: 5px; display: flex; gap: 15px; }
-            .sensor-item { display: flex; align-items: center; gap: 5px; }
-            .refresh { cursor: pointer; font-size: 20px; }
-            .chatbox { background: white; padding: 15px; border-radius: 8px; margin-top: 20px; box-shadow: 0 0 8px rgba(0,0,0,0.1); }
-            textarea, input, select { width: 100%; padding: 8px; margin: 5px 0; }
-            button { padding: 10px 15px; margin: 5px 0; }
-            .history { background: #eef; padding: 10px; margin-top: 20px; border-radius: 8px; }
-            .clear-button { background: #dc3545; color: white; border: none; cursor: pointer; }
-            .clear-button:hover { background: #c82333; }
-        </style>
-        <script>
-            function refreshPage() {
-                window.location.reload();
-            }
-        </script>
-    </head>
-    <body>
-        <div class="topbar">
-            <div><strong>RoverSeer TCP Status</strong></div>
-            <div class="status-container">
-                <div class="status-section">
-                    {% for name, info in statuses.items() %}
-                        <span class="status-item">
-                            {% if name == "Ollama" %}
-                                <a href="http://roverseer.local:{{ info.port }}/api/tags" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
-                                    {{ info.status }} {{ name }} ({{ info.port }})
-                                </a>
-                            {% else %}
-                                <a href="http://roverseer.local:{{ info.port }}" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
-                                    {{ info.status }} {{ name }} ({{ info.port }})
-                                </a>
-                            {% endif %}
-                        </span>
-                    {% endfor %}
-                </div>
-                <div class="sensor-data">
-                    <span class="sensor-item">🌡️ HAT: {{ sensor_data.hat_temperature }}</span>
-                    <span class="sensor-item">🖥️ CPU: {{ sensor_data.cpu_temperature }}</span>
-                    <span class="sensor-item">🌊 {{ sensor_data.pressure }}</span>
-                    <span class="sensor-item">🏔️ {{ sensor_data.altitude }}</span>
-                    <span class="sensor-item">🌬️ Fan: {{ sensor_data.fan_state }}</span>
-                </div>
-                <span class="refresh" onclick="refreshPage()">🔄</span>
-            </div>
-        </div>
-
-        <div class="chatbox">
-            <h2>RoverSeer Quick Dialog</h2>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <div></div>
-                <button onclick="window.open('/logs', '_blank')" style="background: #4169e1; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">
-                    📊 View Logs
-                </button>
-            </div>
-            <form method="post" id="chat_form">
-                <input type="hidden" name="action" value="chat">
-                
-                <label>Output Type:</label>
-                <select name="output_type">
-                    <option value="speak">RoverSeer</option>
-                    <option value="audio_file">Local Audio</option>
-                    <option value="text">Local Text</option>
-                </select>
-                
-                <label>System Message:</label>
-                <input type="text" id="system_input" name="system" value="You are RoverSeer, a helpful assistant." />
-                
-                <label>Model:</label>
-                <select id="model_select" name="model">
-                    {% for tag in models_with_display_names %}
-                        <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
-                            {{ tag.display_name }}
-                        </option>
-                    {% endfor %}
-                </select>
-                
-                <label>Voice (if used):</label>
-                <select name="voice">
-                    {% for v in voices %}
-                        <option value="{{ v }}" {% if v == selected_voice %}selected{% endif %}>{{ v }}</option>
-                    {% endfor %}
-                </select>
-                
-                <label>Your Message:</label>
-                <textarea name="user_input">Tell me a fun science fact.</textarea>
-                
-                <button type="submit">Send</button>
-            </form>
-            
-            <form method="post" style="display: inline;">
-                <input type="hidden" name="action" value="clear_context">
-                <button type="submit" class="clear-button">🗑️ Clear Context</button>
-            </form>
-            
-            <h3>Response:</h3>
-            <p>{{ reply_text }}</p>
-            {% if audio_url %}
-            <audio controls autoplay>
-                <source src="{{ audio_url }}" type="audio/wav">
-                Your browser does not support the audio element.
-            </audio>
-            {% endif %}
-
-            <div class="history">
-                <h3>Conversation History:</h3>
-                {% for user, reply, model in history %}
-                    <p><strong>You:</strong> {{ user }}</p>
-                    <p><strong>{{ model }}:</strong> {{ reply }}</p>
-                    <hr>
-                {% endfor %}
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-    return render_template_string(html, statuses=statuses, reply_text=reply_text, 
-                                 audio_url=audio_url, history=history, models=models_with_display_names, 
-                                 selected_model=selected_model, voices=voices, 
-                                 selected_voice=selected_voice, sensor_data=sensor_data, 
-                                 model_stats=model_stats)
+    return render_template('home.html', 
+                          statuses=statuses, 
+                          reply_text=reply_text, 
+                          audio_url=audio_url, 
+                          history=history, 
+                          models=models_with_display_names, 
+                          selected_model=selected_model, 
+                          voices=voices, 
+                          selected_voice=selected_voice, 
+                          sensor_data=sensor_data, 
+                          model_stats=model_stats)
 
 
 @bp.route('/logs')
 def logs():
-    """Display logs page with top performing models and log viewer"""
+    """Display logs page with top performing models and log viewer, plus model information"""
     selected_log_type = request.args.get('log_type', None)
     selected_date = request.args.get('date', None)
     sort_by = request.args.get('sort_by', 'fastest')  # 'fastest' or 'usage'
+    view_mode = request.args.get('view', 'logs')  # 'logs', 'models', or 'model_detail'
+    model_name = request.args.get('model', None)  # For individual model details
+    
     log_entries = []
     available_dates = []
+    all_models_data = None
+    model_detail = None
     
-    if selected_log_type:
+    # Handle different view modes
+    if view_mode == 'models':
+        # Get comprehensive model data for "see all models" view
+        try:
+            res = requests.get("http://roverseer.local:5000/models")
+            if res.ok:
+                all_models_data = res.json().get('models', [])
+        except Exception as e:
+            print(f"Error fetching models data: {e}")
+            all_models_data = []
+    
+    elif view_mode == 'model_detail' and model_name:
+        # Get detailed info for specific model
+        try:
+            res = requests.get("http://roverseer.local:5000/models")
+            if res.ok:
+                models_data = res.json().get('models', [])
+                model_detail = next((m for m in models_data if m['name'] == model_name), None)
+        except Exception as e:
+            print(f"Error fetching model details: {e}")
+            model_detail = None
+    
+    elif view_mode == 'logs' and selected_log_type:
+        # Original log viewing functionality
         available_dates = get_available_log_dates(selected_log_type)
         
         if not selected_date and available_dates:
@@ -258,7 +165,7 @@ def logs():
         if selected_date:
             log_entries = parse_log_file(selected_log_type, date=selected_date)
     
-    # Get top performing models from stats with different sorting options
+    # Get top performing models from stats (always needed for sidebar)
     model_stats = load_model_stats()
     top_models = []
     for model, stats in model_stats.items():
@@ -292,158 +199,26 @@ def logs():
         {"id": "penphin_mind", "name": "PenphinMind", "icon": "🧠"}
     ]
     
-    html = '''
-    <html>
-    <head>
-        <title>RoverSeer Logs</title>
-        <style>
-            body { font-family: Arial; background: #f4f4f4; color: #333; margin: 20px; }
-            .header { background: #333; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-            .container { display: flex; gap: 20px; margin-top: 20px; }
-            .sidebar { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1); flex: 0 0 300px; }
-            .main-content { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.1); flex: 1; }
-            .log-type { background: #f0f0f0; padding: 10px 15px; margin: 5px 0; border-radius: 5px; cursor: pointer; text-decoration: none; color: #333; display: block; transition: background 0.3s; }
-            .log-type:hover { background: #e0e0e0; }
-            .log-type.active { background: #4169e1; color: white; }
-            .top-models { margin-bottom: 30px; }
-            .model-item { background: #f8f8f8; padding: 8px; margin: 3px 0; border-radius: 3px; display: flex; justify-content: space-between; }
-            .log-entry { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 12px; }
-            .refresh-btn { background: #4CAF50; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; }
-            .refresh-btn:hover { background: #45a049; }
-            .rank { font-weight: bold; color: #666; margin-right: 10px; }
-            .no-logs { color: #999; font-style: italic; text-align: center; padding: 20px; }
-            .date-selector { margin: 15px 0; }
-            .date-selector select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
-            .log-info { background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 14px; }
-            .sort-controls { margin-bottom: 15px; }
-            .sort-btn { background: #f0f0f0; border: 1px solid #ddd; padding: 6px 12px; margin-right: 5px; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; }
-            .sort-btn.active { background: #4169e1; color: white; border-color: #4169e1; }
-            .sort-btn:hover { background: #e0e0e0; }
-            .sort-btn.active:hover { background: #3558d1; }
-            .model-stats { display: flex; gap: 10px; align-items: center; font-size: 11px; color: #666; }
-        </style>
-        <script>
-            function refreshPage() {
-                window.location.reload();
-            }
-            function changeDate(logType) {
-                var select = document.getElementById('date-select');
-                var date = select.value;
-                var url = '/logs?log_type=' + logType + '&date=' + date;
-                {% if sort_by %}
-                url += '&sort_by={{ sort_by }}';
-                {% endif %}
-                window.location.href = url;
-            }
-        </script>
-    </head>
-    <body>
-        <div class="header">
-            <h1>🗄️ RoverSeer Logs</h1>
-            <button class="refresh-btn" onclick="refreshPage()">🔄 Refresh</button>
-        </div>
-        
-        <div class="container">
-            <div class="sidebar">
-                <div class="top-models">
-                    <h3>🏆 Top 10 {{ sort_label }}</h3>
-                    <div class="sort-controls">
-                        <a href="/logs?sort_by=fastest{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
-                           class="sort-btn {% if sort_by == 'fastest' %}active{% endif %}">
-                           ⚡ Fastest
-                        </a>
-                        <a href="/logs?sort_by=usage{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
-                           class="sort-btn {% if sort_by == 'usage' %}active{% endif %}">
-                           📊 Most Used
-                        </a>
-                    </div>
-                    {% if top_models %}
-                        {% for model, short_name, avg_time, run_count in top_models %}
-                            <div class="model-item">
-                                <span><span class="rank">#{{ loop.index }}</span>{{ short_name }}</span>
-                                <div class="model-stats">
-                                    {% if sort_by == 'usage' %}
-                                        <span><strong>{{ run_count }}</strong> uses</span>
-                                        <span>{{ "%.2f"|format(avg_time) }}s avg</span>
-                                    {% else %}
-                                        <span><strong>{{ "%.2f"|format(avg_time) }}s</strong></span>
-                                        <span>{{ run_count }} uses</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <p class="no-logs">No performance data yet</p>
-                    {% endif %}
-                </div>
-                
-                <h3>📁 Log Types</h3>
-                {% for log_type in log_types %}
-                    <a href="/logs?log_type={{ log_type.id }}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" 
-                       class="log-type {% if selected_log_type == log_type.id %}active{% endif %}">
-                        {{ log_type.icon }} {{ log_type.name }}
-                    </a>
-                {% endfor %}
-            </div>
-            
-            <div class="main-content">
-                {% if selected_log_type %}
-                    <h2>{{ selected_log_type|replace("_", " ")|title }} Logs</h2>
-                    
-                    {% if selected_log_type == 'penphin_mind' %}
-                        <div class="log-info">
-                            ℹ️ PenphinMind logs show the complete 3-mind (2 minds + convergence) processing flow. 
-                            Individual mind calls are not logged separately to keep logs clean.
-                        </div>
-                    {% endif %}
-                    
-                    {% if available_dates %}
-                        <div class="date-selector">
-                            <label>Select Date:</label>
-                            <select id="date-select" onchange="changeDate('{{ selected_log_type }}')">
-                                {% for date in available_dates %}
-                                    <option value="{{ date }}" {% if date == selected_date %}selected{% endif %}>
-                                        {{ date }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    {% endif %}
-                    
-                    {% if log_entries %}
-                        <div class="log-entries">
-                            {% for entry in log_entries %}
-                                <div class="log-entry">{{ entry }}</div>
-                            {% endfor %}
-                        </div>
-                    {% else %}
-                        <p class="no-logs">No log entries found for {{ selected_log_type|replace("_", " ") }}{% if selected_date %} on {{ selected_date }}{% endif %}</p>
-                    {% endif %}
-                {% else %}
-                    <h2>Select a Log Type</h2>
-                    <p>Click on a log type in the sidebar to view its entries.</p>
-                {% endif %}
-            </div>
-        </div>
-    </body>
-    </html>
-    '''
-    
-    return render_template_string(html, 
-                                 top_models=top_models, 
-                                 log_types=log_types, 
-                                 selected_log_type=selected_log_type,
-                                 selected_date=selected_date,
-                                 available_dates=available_dates,
-                                 log_entries=log_entries,
-                                 sort_by=sort_by,
-                                 sort_label=sort_label,
-                                 sort_metric=sort_metric)
+    return render_template('logs.html', 
+                          top_models=top_models, 
+                          log_types=log_types, 
+                          selected_log_type=selected_log_type,
+                          selected_date=selected_date,
+                          available_dates=available_dates,
+                          log_entries=log_entries,
+                          sort_by=sort_by,
+                          sort_label=sort_label,
+                          sort_metric=sort_metric,
+                          view_mode=view_mode,
+                          all_models_data=all_models_data,
+                          model_detail=model_detail,
+                          model_name=model_name,
+                          extract_short_model_name=extract_short_model_name)
 
 
 @bp.route('/models', methods=['GET'])
 def list_models():
-    """List available Ollama models with parameter counts, sorted by size"""
+    """List available Ollama models with comprehensive metadata from Ollama API"""
     try:
         # Get models from Ollama
         res = requests.get("http://roverseer.local:11434/api/tags")
@@ -459,7 +234,7 @@ def list_models():
             model_size_bytes = model.get("size", 0)
             details = model.get("details", {})
             
-            # Get actual parameter size from API
+            # Get all available metadata from Ollama API
             param_size = details.get("parameter_size", "unknown")
             quantization = details.get("quantization_level", "unknown")
             
@@ -478,14 +253,25 @@ def list_models():
             # Add model size in GB if available
             size_gb = model_size_bytes / (1024 * 1024 * 1024) if model_size_bytes > 0 else 0
             
-            models_info.append({
+            # Extract all metadata from Ollama API
+            model_info = {
                 "name": model_name,
+                "model": model_name,  # Same as name for compatibility
                 "size": param_size,
                 "parameters": friendly_size,
+                "parameter_size": param_size,
                 "quantization": quantization,
+                "quantization_level": quantization,
                 "size_gb": round(size_gb, 2),
-                "last_modified": model.get("modified_at", "")
-            })
+                "modified_at": model.get("modified_at", ""),
+                "last_modified": model.get("modified_at", ""),  # Alias for compatibility
+                "parent_model": details.get("parent_model", ""),
+                "format": details.get("format", ""),
+                "family": details.get("family", ""),
+                "families": details.get("families", [])
+            }
+            
+            models_info.append(model_info)
         
         # Load runtime statistics
         model_stats = load_model_stats()
@@ -513,10 +299,22 @@ def list_models():
             if name == "PenphinMind" and not any(m["name"] == "PenphinMind" for m in models_info):
                 sorted_models.append({
                     "name": "PenphinMind",
+                    "model": "PenphinMind",
                     "size": "Bicameral",
                     "parameters": "3 specialized models",
+                    "parameter_size": "Bicameral",
+                    "quantization": "Multiple",
+                    "quantization_level": "Multiple",
                     "size_gb": 0,
-                    "last_modified": ""
+                    "modified_at": "",
+                    "last_modified": "",
+                    "parent_model": "",
+                    "format": "Bicameral",
+                    "family": "Bicameral",
+                    "families": ["Bicameral"],
+                    "average_runtime": None,
+                    "run_count": 0,
+                    "last_runtime": None
                 })
             else:
                 for model in models_info:
