@@ -106,4 +106,31 @@ def sanitize_for_speech(text):
     text = text.strip()
     text = re.sub(r'\s+', ' ', text)
     
-    return text 
+    return text
+
+
+def extract_short_model_name(full_model_name):
+    """
+    Extract the short model name for display purposes.
+    
+    Examples:
+    - "ALIENTELLIGENCE/gooddoctor:latest" -> "gooddoctor:latest"
+    - "organization/model:tag" -> "model:tag"  
+    - "simplemodel:latest" -> "simplemodel:latest" (unchanged)
+    - "PenphinMind" -> "PenphinMind" (unchanged)
+    
+    Args:
+        full_model_name (str): The full model name potentially with organization prefix
+        
+    Returns:
+        str: The model name without organization prefix
+    """
+    if not full_model_name:
+        return full_model_name
+    
+    # If there's a slash, take everything after the last slash
+    if '/' in full_model_name:
+        return full_model_name.split('/')[-1]
+    
+    # Otherwise return as-is
+    return full_model_name 

@@ -57,7 +57,7 @@ def setup_button_handlers():
     from cognition.bicameral_mind import bicameral_chat_direct
     from expression.text_to_speech import find_voice_files, play_voice_intro, generate_tts_audio
     from perception.speech_recognition import transcribe_audio
-    from utilities.text_processing import sanitize_for_speech
+    from utilities.text_processing import sanitize_for_speech, extract_short_model_name
     
     # Track which buttons are currently pressed
     buttons_pressed = {'A': False, 'B': False, 'C': False}
@@ -252,12 +252,15 @@ def setup_button_handlers():
     def show_current_model_info():
         """Display current model name and runtime info"""
         # Display model name (scroll_text_on_display manages its own threading)
-        model_name = config.available_models[config.selected_model_index].split(':')[0]
+        full_model_name = config.available_models[config.selected_model_index]
+        short_model_name = extract_short_model_name(full_model_name)
+        model_name = short_model_name.split(':')[0]  # Remove version tag for display
+        
         if model_name.lower() == "penphinmind":
             scroll_text_on_display("PenphinMind", scroll_speed=0.2)
         else:
             # Get runtime info
-            avg_runtime = get_model_runtime(config.available_models[config.selected_model_index])
+            avg_runtime = get_model_runtime(full_model_name)  # Use full name for stats lookup
             if avg_runtime:
                 display_text = f"{model_name} {avg_runtime:.1f}s"
             else:
@@ -425,7 +428,8 @@ def setup_button_handlers():
                 # Add conversation history (including which model said what)
                 for hist_user, hist_reply, hist_model in config.button_history[-config.MAX_BUTTON_HISTORY:]:
                     # Include model name in assistant messages for context
-                    model_prefix = f"[{hist_model.split(':')[0]}]: " if hist_model != selected_model else ""
+                    short_hist_model = extract_short_model_name(hist_model)
+                    model_prefix = f"[{short_hist_model.split(':')[0]}]: " if hist_model != selected_model else ""
                     messages.append({"role": "user", "content": hist_user})
                     messages.append({"role": "assistant", "content": model_prefix + hist_reply})
                 
@@ -433,9 +437,10 @@ def setup_button_handlers():
                 messages.append({"role": "user", "content": transcript})
                 
                 # System message that includes model switching context
+                short_selected_model = extract_short_model_name(selected_model)
                 system_message = (
                     "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational. "
-                    f"You are currently running as model '{selected_model.split(':')[0]}'. "
+                    f"You are currently running as model '{short_selected_model.split(':')[0]}'. "
                     "Previous responses may be from different models, indicated by [model_name]: prefix. "
                     "You can reference what other models said if asked."
                 )

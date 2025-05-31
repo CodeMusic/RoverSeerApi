@@ -10,6 +10,7 @@ from cognition.llm_interface import run_chat_completion
 from expression.text_to_speech import list_voice_ids
 from memory.usage_logger import (load_model_stats, get_available_log_dates, 
                                 parse_log_file)
+from utilities.text_processing import extract_short_model_name
 
 bp = Blueprint('system', __name__)
 
@@ -32,6 +33,15 @@ def home():
     models = sort_models_by_size(models)
     voices = list_voice_ids()
     model_stats = load_model_stats()
+    
+    # Process models to include short names for display
+    models_with_display_names = []
+    for model in models:
+        short_name = extract_short_model_name(model)
+        models_with_display_names.append({
+            'full_name': model,
+            'display_name': short_name
+        })
     
     sensor_data = get_sensor_data()
     selected_model = DEFAULT_MODEL
@@ -177,11 +187,9 @@ def home():
                 
                 <label>Model:</label>
                 <select id="model_select" name="model">
-                    {% for tag in models %}
-                        {% set model_info = model_stats.get(tag, {}) %}
-                        {% set avg_time = model_info.get('average_runtime', None) %}
-                        <option value="{{ tag }}" {% if tag == selected_model %}selected{% endif %}>
-                            {{ tag }} {% if avg_time %}(Avg: {{ "%.1f"|format(avg_time) }}s){% else %}(no data yet){% endif %}
+                    {% for tag in models_with_display_names %}
+                        <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
+                            {{ tag.display_name }}
                         </option>
                     {% endfor %}
                 </select>
@@ -226,7 +234,7 @@ def home():
     </html>
     '''
     return render_template_string(html, statuses=statuses, reply_text=reply_text, 
-                                 audio_url=audio_url, history=history, models=models, 
+                                 audio_url=audio_url, history=history, models=models_with_display_names, 
                                  selected_model=selected_model, voices=voices, 
                                  selected_voice=selected_voice, sensor_data=sensor_data, 
                                  model_stats=model_stats)
@@ -255,19 +263,22 @@ def logs():
     top_models = []
     for model, stats in model_stats.items():
         if stats.get('run_count', 0) > 0:
+            # Extract short model name for display
+            short_name = extract_short_model_name(model)
             top_models.append((
-                model, 
+                model,  # Keep full name for data
+                short_name,  # Short name for display
                 stats['average_runtime'], 
                 stats['run_count']
             ))
     
     # Sort based on selected criteria
     if sort_by == 'usage':
-        top_models.sort(key=lambda x: x[2], reverse=True)  # Sort by run_count (most used first)
+        top_models.sort(key=lambda x: x[3], reverse=True)  # Sort by run_count (most used first)
         sort_label = "Most Used Models"
         sort_metric = "uses"
     else:  # fastest
-        top_models.sort(key=lambda x: x[1])  # Sort by runtime (fastest first)
+        top_models.sort(key=lambda x: x[2])  # Sort by runtime (fastest first)
         sort_label = "Fastest Models" 
         sort_metric = "time"
     
@@ -347,9 +358,9 @@ def logs():
                         </a>
                     </div>
                     {% if top_models %}
-                        {% for model, avg_time, run_count in top_models %}
+                        {% for model, short_name, avg_time, run_count in top_models %}
                             <div class="model-item">
-                                <span><span class="rank">#{{ loop.index }}</span>{{ model }}</span>
+                                <span><span class="rank">#{{ loop.index }}</span>{{ short_name }}</span>
                                 <div class="model-stats">
                                     {% if sort_by == 'usage' %}
                                         <span><strong>{{ run_count }}</strong> uses</span>
