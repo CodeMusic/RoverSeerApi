@@ -74,6 +74,9 @@ current_audio_process = None
 # -------- SOUND CONFIGURATION -------- #
 TICK_TYPE = "music"  # "clock" or "music"
 
+# -------- TEXT PROCESSING CONFIGURATION -------- #
+STRIP_THINK_TAGS = True  # Remove <think></think> tags from speech for model privacy
+
 # -------- LOGGING CONFIGURATION -------- #
 LOG_DIR = Path.home() / "roverseer_api_logs"
 STATS_FILE = LOG_DIR / "model_stats.json"

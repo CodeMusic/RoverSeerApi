@@ -1,11 +1,38 @@
 import re
+from config import STRIP_THINK_TAGS
+
+
+def strip_think_tags(text):
+    """
+    Remove <think></think> tags and their content from text for model privacy.
+    
+    This gives models privacy by not speaking their internal reasoning process.
+    """
+    if not STRIP_THINK_TAGS:
+        return text
+    
+    # Remove <think>...</think> blocks (case insensitive, multiline)
+    cleaned_text = re.sub(r'<think>.*?</think>', '', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # Clean up any extra whitespace left behind
+    cleaned_text = re.sub(r'\n\s*\n', '\n', cleaned_text)  # Remove multiple newlines
+    cleaned_text = cleaned_text.strip()
+    
+    return cleaned_text
 
 
 def sanitize_for_speech(text):
-    """Sanitize text for natural speech output by converting symbols to spoken words"""
+    """
+    Clean up text for text-to-speech by removing problematic characters
+    and optionally stripping think tags for model privacy.
+    """
+    if not text:
+        return ""
     
-    # First handle markdown headers - convert to spoken form
-    # Do these before other replacements to preserve structure
+    # First, strip think tags if configured
+    text = strip_think_tags(text)
+    
+    # Handle markdown headers - convert to spoken form
     text = re.sub(r'^###\s+(.+)$', r'Section: \1.', text, flags=re.MULTILINE)
     text = re.sub(r'^##\s+(.+)$', r'Heading: \1.', text, flags=re.MULTILINE)  
     text = re.sub(r'^#\s+(.+)$', r'Title: \1.', text, flags=re.MULTILINE)
@@ -15,15 +42,14 @@ def sanitize_for_speech(text):
     text = re.sub(r'##\s+(.+)', r'Heading: \1.', text)
     text = re.sub(r'#\s+(.+)', r'Title: \1.', text)
     
-    # Common symbol replacements
+    # Remove markdown formatting
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # **bold** -> bold
+    text = re.sub(r'\*(.*?)\*', r'\1', text)      # *italic* -> italic
+    text = re.sub(r'`(.*?)`', r'\1', text)        # `code` -> code
+    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)  # Remove code blocks
+    
+    # Common symbol replacements for natural speech
     replacements = {
-        '*': '',  # Remove asterisks completely
-        '**': '',  # Remove bold markdown
-        '***': '',  # Remove bold italic markdown
-        '_': ' ',  # Replace underscores with spaces
-        '__': '',  # Remove italic markdown
-        '`': '',  # Remove code backticks
-        '```': '',  # Remove code blocks
         '&': ' and ',
         '@': ' at ',
         '%': ' percent',
@@ -55,30 +81,29 @@ def sanitize_for_speech(text):
     }
     
     # Apply replacements
-    result = text
     for symbol, replacement in replacements.items():
-        result = result.replace(symbol, replacement)
-    
-    # Clean up multiple spaces and punctuation
-    result = re.sub(r'\s+', ' ', result)  # Multiple spaces to single
-    result = re.sub(r'\.+', '.', result)  # Multiple periods to single
-    result = re.sub(r',+', ',', result)  # Multiple commas to single
-    result = re.sub(r'\s+([.,!?])', r'\1', result)  # Remove space before punctuation
-    result = re.sub(r'([.,!?])\s*([.,!?])', r'\1', result)  # Remove duplicate punctuation
+        text = text.replace(symbol, replacement)
     
     # Remove URLs (they're hard to speak naturally)
-    result = re.sub(r'https?://\S+', ' web link ', result)
-    result = re.sub(r'www\.\S+', ' web link ', result)
+    text = re.sub(r'https?://\S+', ' web link ', text)
+    text = re.sub(r'www\.\S+', ' web link ', text)
     
     # Convert numbers with special formatting
-    result = re.sub(r'(\d+)x(\d+)', r'\1 by \2', result)  # 1920x1080 -> 1920 by 1080
-    result = re.sub(r'(\d+):(\d+)', r'\1 colon \2', result)  # 3:45 -> 3 colon 45
+    text = re.sub(r'(\d+)x(\d+)', r'\1 by \2', text)  # 1920x1080 -> 1920 by 1080
+    text = re.sub(r'(\d+):(\d+)', r'\1 colon \2', text)  # 3:45 -> 3 colon 45
+    
+    # Clean up punctuation and spacing
+    text = re.sub(r'\s+', ' ', text)  # Multiple spaces to single
+    text = re.sub(r'\.+', '.', text)  # Multiple periods to single
+    text = re.sub(r',+', ',', text)  # Multiple commas to single
+    text = re.sub(r'\s+([.,!?])', r'\1', text)  # Remove space before punctuation
+    text = re.sub(r'([.,!?])\s*([.,!?])', r'\1', text)  # Remove duplicate punctuation
     
     # Clean up any remaining odd characters
-    result = ''.join(char if char.isalnum() or char in ' .,!?;:\'-' else ' ' for char in result)
+    text = ''.join(char if char.isalnum() or char in ' .,!?;:\'-' else ' ' for char in text)
     
     # Final cleanup
-    result = result.strip()
-    result = re.sub(r'\s+', ' ', result)
+    text = text.strip()
+    text = re.sub(r'\s+', ' ', text)
     
-    return result 
+    return text 

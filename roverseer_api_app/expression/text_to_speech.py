@@ -43,7 +43,7 @@ def generate_tts_audio(text, voice_id=DEFAULT_VOICE, output_file=None):
     # Play TTS tune
     play_sound_async(play_tts_tune, voice_id)
     
-    # Sanitize text for speech
+    # Sanitize text for speech (but keep original for logging)
     clean_text = sanitize_for_speech(text)
     
     # Find voice files
@@ -54,7 +54,7 @@ def generate_tts_audio(text, voice_id=DEFAULT_VOICE, output_file=None):
         import uuid
         output_file = f"/tmp/{uuid.uuid4().hex}.wav"
     
-    # Run Piper TTS
+    # Run Piper TTS with cleaned text
     tts_start_time = time.time()
     result = subprocess.run(
         ["/home/codemusic/roverseer_venv/bin/piper",
@@ -71,8 +71,8 @@ def generate_tts_audio(text, voice_id=DEFAULT_VOICE, output_file=None):
         error_msg = result.stderr.decode() if result.stderr else "Unknown TTS error"
         raise Exception(f"Piper TTS failed: {error_msg}")
     
-    # Log TTS usage
-    log_tts_usage(voice_id, clean_text, output_file, tts_processing_time)
+    # Log TTS usage with ORIGINAL text (preserving think tags in logs)
+    log_tts_usage(voice_id, text, output_file, tts_processing_time)
     
     return output_file, tts_processing_time
 

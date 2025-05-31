@@ -66,6 +66,44 @@ def play_sound_async(sound_function, *args, **kwargs):
 
 
 # -------- TUNE FUNCTIONS -------- #
+def play_startup_tune():
+    """Play an ascending startup tune when the system initializes - welcoming and optimistic"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer'):
+        try:
+            tune_playing.set()
+            
+            # Ascending startup melody - welcoming and energetic
+            # Uses pentatonic scale for pleasant harmony
+            notes = [
+                Tone("C4"),   # Start low and friendly
+                Tone("D4"),   # Step up
+                Tone("E4"),   # Continue ascending
+                Tone("G4"),   # Skip to perfect fifth - sounds confident
+                Tone("A4"),   # Keep rising
+                Tone("C5"),   # Octave - feeling of completion
+                Tone("D5"),   # A bit higher 
+                Tone("G5")    # End on triumphant high note
+            ]
+            
+            # Accelerating rhythm - starts slow, gets more excited
+            durations = [0.2, 0.18, 0.16, 0.14, 0.12, 0.15, 0.12, 0.35]
+            
+            # Play the ascending startup melody
+            for note, duration in zip(notes, durations):
+                rainbow.buzzer.play(note)
+                time.sleep(duration)
+                rainbow.buzzer.stop()
+                time.sleep(0.03)  # Brief pause between notes
+                
+        except Exception as e:
+            print(f"Error playing startup tune: {e}")
+        finally:
+            tune_playing.clear()
+
+
 def play_ollama_tune(model_name=None):
     """Play a curious ascending tune when starting Ollama requests - uses model name to guide composition"""
     from embodiment.rainbow_interface import get_rainbow_driver

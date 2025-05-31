@@ -8,37 +8,86 @@ from embodiment.rainbow_interface import get_rainbow_driver
 # Global state for display coordination
 current_display_value = None  # Track what's currently on display
 isScrolling = False
+scroll_interrupt = False  # Flag to interrupt scrolling
+current_scroll_thread = None  # Track the current scroll thread
+
+
+def interrupt_scrolling():
+    """Signal to interrupt any current scrolling"""
+    global scroll_interrupt
+    scroll_interrupt = True
 
 
 def scroll_text_on_display(text, scroll_speed=0.3):
-    """Scroll text across the 4-digit display"""
-    global current_display_value, isScrolling
-    rainbow = get_rainbow_driver()
+    """Scroll text across the 4-digit display - immediate replacement"""
+    global current_display_value, isScrolling, scroll_interrupt, current_scroll_thread
     
-    if rainbow:
-        try:
-            import fourletterphat as flp
-            # Add spaces for smooth scrolling
-            padded_text = "    " + text.upper() + "    "
-            isScrolling = True
-            for i in range(len(padded_text) - 3):
-                flp.clear()
-                display_text = padded_text[i:i+4]
-                flp.print_str(display_text)
-                flp.show()
-                current_display_value = display_text  # Track what's on display
-                time.sleep(scroll_speed)
-            
-            # Leave the last 4 characters on display
-            final_text = padded_text[-8:-4] if len(padded_text) > 8 else padded_text[:4]
-            flp.clear()
-            flp.print_str(final_text)
-            flp.show()
-            current_display_value = final_text
-        except Exception as e:
-            print(f"Error scrolling text: {e}")
-        finally:
-            isScrolling = False
+    # If there's already a scroll thread, interrupt it and wait for it to finish
+    if current_scroll_thread and current_scroll_thread.is_alive():
+        print(f"Stopping current scroll thread to start '{text}'")
+        scroll_interrupt = True
+        current_scroll_thread.join(timeout=0.5)  # Wait max 0.5 seconds
+    
+    # Start new scroll in a separate thread
+    def do_scroll():
+        global current_display_value, isScrolling, scroll_interrupt
+        
+        rainbow = get_rainbow_driver()
+        
+        if rainbow:
+            try:
+                import fourletterphat as flp
+                # Reset interrupt flag for this new scroll
+                scroll_interrupt = False
+                
+                # Add spaces for smooth scrolling
+                padded_text = "    " + text.upper() + "    "
+                isScrolling = True
+                print(f"Starting scroll: '{text}'")
+                
+                for i in range(len(padded_text) - 3):
+                    # Check for interrupt signal
+                    if scroll_interrupt:
+                        print(f"Scrolling '{text}' interrupted")
+                        break
+                        
+                    flp.clear()
+                    display_text = padded_text[i:i+4]
+                    flp.print_str(display_text)
+                    flp.show()
+                    current_display_value = display_text  # Track what's on display
+                    
+                    # Sleep in smaller chunks to be more responsive to interrupts
+                    sleep_chunks = max(1, int(scroll_speed / 0.02))  # 20ms chunks for faster response
+                    for _ in range(sleep_chunks):
+                        if scroll_interrupt:
+                            print(f"Scrolling '{text}' interrupted during sleep")
+                            break
+                        time.sleep(min(0.02, scroll_speed / sleep_chunks))
+                    
+                    # Final check after sleep
+                    if scroll_interrupt:
+                        break
+                
+                # If not interrupted, leave the last 4 characters on display
+                if not scroll_interrupt:
+                    final_text = padded_text[-8:-4] if len(padded_text) > 8 else padded_text[:4]
+                    flp.clear()
+                    flp.print_str(final_text)
+                    flp.show()
+                    current_display_value = final_text
+                    print(f"Scrolling '{text}' completed normally")
+                
+            except Exception as e:
+                print(f"Error scrolling text '{text}': {e}")
+            finally:
+                isScrolling = False
+                scroll_interrupt = False  # Reset interrupt flag
+    
+    # Start the new scroll thread
+    current_scroll_thread = threading.Thread(target=do_scroll)
+    current_scroll_thread.daemon = True
+    current_scroll_thread.start()
 
 
 def display_timer(start_time, stop_event, sound_fx=False):

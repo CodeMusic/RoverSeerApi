@@ -237,6 +237,7 @@ def logs():
     """Display logs page with top performing models and log viewer"""
     selected_log_type = request.args.get('log_type', None)
     selected_date = request.args.get('date', None)
+    sort_by = request.args.get('sort_by', 'fastest')  # 'fastest' or 'usage'
     log_entries = []
     available_dates = []
     
@@ -249,13 +250,27 @@ def logs():
         if selected_date:
             log_entries = parse_log_file(selected_log_type, date=selected_date)
     
-    # Get top performing models from stats
+    # Get top performing models from stats with different sorting options
     model_stats = load_model_stats()
     top_models = []
     for model, stats in model_stats.items():
         if stats.get('run_count', 0) > 0:
-            top_models.append((model, stats['average_runtime']))
-    top_models.sort(key=lambda x: x[1])  # Sort by runtime (fastest first)
+            top_models.append((
+                model, 
+                stats['average_runtime'], 
+                stats['run_count']
+            ))
+    
+    # Sort based on selected criteria
+    if sort_by == 'usage':
+        top_models.sort(key=lambda x: x[2], reverse=True)  # Sort by run_count (most used first)
+        sort_label = "Most Used Models"
+        sort_metric = "uses"
+    else:  # fastest
+        top_models.sort(key=lambda x: x[1])  # Sort by runtime (fastest first)
+        sort_label = "Fastest Models" 
+        sort_metric = "time"
+    
     top_models = top_models[:10]  # Top 10
     
     # Available log types
@@ -289,6 +304,12 @@ def logs():
             .date-selector { margin: 15px 0; }
             .date-selector select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
             .log-info { background: #e7f3ff; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 14px; }
+            .sort-controls { margin-bottom: 15px; }
+            .sort-btn { background: #f0f0f0; border: 1px solid #ddd; padding: 6px 12px; margin-right: 5px; border-radius: 4px; text-decoration: none; color: #333; font-size: 12px; }
+            .sort-btn.active { background: #4169e1; color: white; border-color: #4169e1; }
+            .sort-btn:hover { background: #e0e0e0; }
+            .sort-btn.active:hover { background: #3558d1; }
+            .model-stats { display: flex; gap: 10px; align-items: center; font-size: 11px; color: #666; }
         </style>
         <script>
             function refreshPage() {
@@ -297,7 +318,11 @@ def logs():
             function changeDate(logType) {
                 var select = document.getElementById('date-select');
                 var date = select.value;
-                window.location.href = '/logs?log_type=' + logType + '&date=' + date;
+                var url = '/logs?log_type=' + logType + '&date=' + date;
+                {% if sort_by %}
+                url += '&sort_by={{ sort_by }}';
+                {% endif %}
+                window.location.href = url;
             }
         </script>
     </head>
@@ -310,12 +335,30 @@ def logs():
         <div class="container">
             <div class="sidebar">
                 <div class="top-models">
-                    <h3>🏆 Top 10 Fastest Models</h3>
+                    <h3>🏆 Top 10 {{ sort_label }}</h3>
+                    <div class="sort-controls">
+                        <a href="/logs?sort_by=fastest{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
+                           class="sort-btn {% if sort_by == 'fastest' %}active{% endif %}">
+                           ⚡ Fastest
+                        </a>
+                        <a href="/logs?sort_by=usage{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
+                           class="sort-btn {% if sort_by == 'usage' %}active{% endif %}">
+                           📊 Most Used
+                        </a>
+                    </div>
                     {% if top_models %}
-                        {% for model, avg_time in top_models %}
+                        {% for model, avg_time, run_count in top_models %}
                             <div class="model-item">
                                 <span><span class="rank">#{{ loop.index }}</span>{{ model }}</span>
-                                <span>{{ "%.2f"|format(avg_time) }}s</span>
+                                <div class="model-stats">
+                                    {% if sort_by == 'usage' %}
+                                        <span><strong>{{ run_count }}</strong> uses</span>
+                                        <span>{{ "%.2f"|format(avg_time) }}s avg</span>
+                                    {% else %}
+                                        <span><strong>{{ "%.2f"|format(avg_time) }}s</strong></span>
+                                        <span>{{ run_count }} uses</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         {% endfor %}
                     {% else %}
@@ -325,7 +368,7 @@ def logs():
                 
                 <h3>📁 Log Types</h3>
                 {% for log_type in log_types %}
-                    <a href="/logs?log_type={{ log_type.id }}" 
+                    <a href="/logs?log_type={{ log_type.id }}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" 
                        class="log-type {% if selected_log_type == log_type.id %}active{% endif %}">
                         {{ log_type.icon }} {{ log_type.name }}
                     </a>
@@ -381,7 +424,10 @@ def logs():
                                  selected_log_type=selected_log_type,
                                  selected_date=selected_date,
                                  available_dates=available_dates,
-                                 log_entries=log_entries)
+                                 log_entries=log_entries,
+                                 sort_by=sort_by,
+                                 sort_label=sort_label,
+                                 sort_metric=sort_metric)
 
 
 @bp.route('/models', methods=['GET'])

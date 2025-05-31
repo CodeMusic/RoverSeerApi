@@ -3,6 +3,12 @@ rainbow_driver = None
 
 # Import config module directly to allow modification of its variables
 import config
+import time
+import threading
+import subprocess
+import uuid
+import os
+import random
 
 def get_rainbow_driver():
     """Get the global rainbow driver instance"""
@@ -22,6 +28,11 @@ def initialize_hardware():
         rainbow_driver = RainbowDriver(num_leds=7, brightness=2)
         setup_button_handlers()
         print("✅ Rainbow HAT initialized successfully")
+        
+        # Play welcoming startup tune to indicate system is ready
+        from expression.sound_orchestration import play_sound_async, play_startup_tune
+        play_sound_async(play_startup_tune)
+        
         return True
         
     except Exception as e:
@@ -40,19 +51,13 @@ def setup_button_handlers():
     from expression.sound_orchestration import (play_toggle_left_sound, play_toggle_right_sound,
                                                play_toggle_left_echo, play_toggle_right_echo,
                                                play_confirmation_sound, play_recording_complete_sound)
-    from embodiment.display_manager import scroll_text_on_display, isScrolling
+    from embodiment.display_manager import scroll_text_on_display, isScrolling, interrupt_scrolling, clear_display
     from memory.usage_logger import get_model_runtime
     from cognition.llm_interface import run_chat_completion
     from cognition.bicameral_mind import bicameral_chat_direct
     from expression.text_to_speech import find_voice_files, play_voice_intro, generate_tts_audio
     from perception.speech_recognition import transcribe_audio
     from utilities.text_processing import sanitize_for_speech
-    import threading
-    import time
-    import subprocess
-    import uuid
-    import os
-    import random
     
     # Track which buttons are currently pressed
     buttons_pressed = {'A': False, 'B': False, 'C': False}
@@ -155,31 +160,25 @@ def setup_button_handlers():
             # Cycle to previous model
             config.selected_model_index = (config.selected_model_index - 1) % len(config.available_models)
             
-            # Display model name briefly
-            model_name = config.available_models[config.selected_model_index].split(':')[0]
-            if model_name.lower() == "penphinmind":
-                scroll_text_on_display("PenphinMind", scroll_speed=0.2)
-            else:
-                # Get runtime info
-                avg_runtime = get_model_runtime(config.available_models[config.selected_model_index])
-                if avg_runtime:
-                    display_text = f"{model_name} {avg_runtime:.1f}s"
-                else:
-                    display_text = model_name
-                scroll_text_on_display(display_text, scroll_speed=0.2)
+            # Interrupt any current scrolling
+            if isScrolling:
+                print("Interrupting scrolling for button A")
+                interrupt_scrolling()
             
-            # Show model index after scrolling
-            while isScrolling:
-                time.sleep(0.1)
-            
+            # Clear display and show model index immediately
+            clear_display()
             rainbow_driver.display_number(config.selected_model_index)
     
     def handle_button_a_release():
-        """Handle button A release"""
+        """Handle button A release - show model name immediately"""
         buttons_pressed['A'] = False
         if not config.recording_in_progress and not any(buttons_pressed.values()):
             rainbow_driver.button_leds['A'].off()  # LED off when released
             play_sound_async(play_toggle_left_echo)
+            
+            # Start model info scroll immediately (no delay, no extra threading)
+            if not buttons_pressed['A'] and not buttons_pressed['C']:  # Not pressing other buttons
+                show_current_model_info()
     
     def handle_button_c():
         """Toggle to next model"""
@@ -202,31 +201,25 @@ def setup_button_handlers():
             # Cycle to next model
             config.selected_model_index = (config.selected_model_index + 1) % len(config.available_models)
             
-            # Display model name briefly
-            model_name = config.available_models[config.selected_model_index].split(':')[0]
-            if model_name.lower() == "penphinmind":
-                scroll_text_on_display("PenphinMind", scroll_speed=0.2)
-            else:
-                # Get runtime info
-                avg_runtime = get_model_runtime(config.available_models[config.selected_model_index])
-                if avg_runtime:
-                    display_text = f"{model_name} {avg_runtime:.1f}s"
-                else:
-                    display_text = model_name
-                scroll_text_on_display(display_text, scroll_speed=0.2)
+            # Interrupt any current scrolling
+            if isScrolling:
+                print("Interrupting scrolling for button C")
+                interrupt_scrolling()
             
-            # Show model index after scrolling
-            while isScrolling:
-                time.sleep(0.1)
-            
+            # Clear display and show model index immediately
+            clear_display()
             rainbow_driver.display_number(config.selected_model_index)
     
     def handle_button_c_release():
-        """Handle button C release"""
+        """Handle button C release - show model name immediately"""
         buttons_pressed['C'] = False
         if not config.recording_in_progress and not any(buttons_pressed.values()):
             rainbow_driver.button_leds['C'].off()  # LED off when released
             play_sound_async(play_toggle_right_echo)
+            
+            # Start model info scroll immediately (no delay, no extra threading)
+            if not buttons_pressed['A'] and not buttons_pressed['C']:  # Not pressing other buttons
+                show_current_model_info()
     
     def handle_button_b():
         """Start recording on button press - LED solid while held"""
@@ -255,6 +248,21 @@ def setup_button_handlers():
         recording_thread = threading.Thread(target=recording_pipeline)
         recording_thread.daemon = True
         recording_thread.start()
+    
+    def show_current_model_info():
+        """Display current model name and runtime info"""
+        # Display model name (scroll_text_on_display manages its own threading)
+        model_name = config.available_models[config.selected_model_index].split(':')[0]
+        if model_name.lower() == "penphinmind":
+            scroll_text_on_display("PenphinMind", scroll_speed=0.2)
+        else:
+            # Get runtime info
+            avg_runtime = get_model_runtime(config.available_models[config.selected_model_index])
+            if avg_runtime:
+                display_text = f"{model_name} {avg_runtime:.1f}s"
+            else:
+                display_text = model_name
+            scroll_text_on_display(display_text, scroll_speed=0.2)
     
     def recording_pipeline():
         """Handle the complete recording -> transcription -> LLM -> TTS pipeline"""
@@ -521,77 +529,168 @@ def setup_button_handlers():
 
 
 # -------- LED PIPELINE MANAGEMENT -------- #
+
+# Global LED blinking control
+led_blink_threads = {'A': None, 'B': None, 'C': None}
+led_blink_events = {'A': None, 'B': None, 'C': None}
+
+def blink_led(led_name):
+    """Blink a specific LED while its event is not set"""
+    if not rainbow_driver:
+        return
+        
+    event = led_blink_events[led_name]
+    while not event.is_set():
+        rainbow_driver.button_leds[led_name].on()
+        time.sleep(0.3)
+        if not event.is_set():
+            rainbow_driver.button_leds[led_name].off()
+        time.sleep(0.3)
+
+def blink_all_leds():
+    """Blink all LEDs during audio playback"""
+    if not rainbow_driver:
+        return
+        
+    event = led_blink_events['aplay']
+    while not event.is_set():
+        # Turn all LEDs on
+        for led in ['A', 'B', 'C']:
+            rainbow_driver.button_leds[led].on()
+        time.sleep(0.2)
+        if not event.is_set():
+            # Turn all LEDs off
+            for led in ['A', 'B', 'C']:
+                rainbow_driver.button_leds[led].off()
+        time.sleep(0.2)
+
 def update_pipeline_leds():
     """Update LEDs based on current pipeline stage states"""
     if not rainbow_driver:
         return
     
-    # Determine LED states based on pipeline progress
+    # If audio playback is active, all LEDs should be blinking (handled by blink_all_leds)
     if config.pipeline_stages['aplay_active']:
-        # Audio playback: all LEDs should blink (handled by blink thread)
         return
     
-    # Set solid LEDs based on completed stages
-    if config.pipeline_stages['asr_complete']:
-        rainbow_driver.button_leds['A'].on()  # Red solid
-    else:
+    # Set solid LEDs based on completed stages (but not active ones - those blink)
+    if config.pipeline_stages['asr_complete'] and not config.pipeline_stages['asr_active']:
+        rainbow_driver.button_leds['A'].on()  # Red solid when ASR complete
+    elif not config.pipeline_stages['asr_active']:
         rainbow_driver.button_leds['A'].off()
         
-    if config.pipeline_stages['llm_complete']:
-        rainbow_driver.button_leds['B'].on()  # Green solid
-    else:
+    if config.pipeline_stages['llm_complete'] and not config.pipeline_stages['llm_active']:
+        rainbow_driver.button_leds['B'].on()  # Green solid when LLM complete
+    elif not config.pipeline_stages['llm_active']:
         rainbow_driver.button_leds['B'].off()
         
-    if config.pipeline_stages['tts_complete']:
-        rainbow_driver.button_leds['C'].on()  # Blue solid
-    else:
+    if config.pipeline_stages['tts_complete'] and not config.pipeline_stages['tts_active']:
+        rainbow_driver.button_leds['C'].on()  # Blue solid when TTS complete
+    elif not config.pipeline_stages['tts_active']:
         rainbow_driver.button_leds['C'].off()
 
 
 def reset_pipeline_stages():
     """Reset all pipeline stages to inactive"""
+    # Stop any blinking LEDs
+    for led_name in ['A', 'B', 'C']:
+        if led_blink_events[led_name]:
+            led_blink_events[led_name].set()
+        if led_blink_threads[led_name] and led_blink_threads[led_name].is_alive():
+            led_blink_threads[led_name].join(timeout=1)
+        led_blink_events[led_name] = None
+        led_blink_threads[led_name] = None
+    
+    # Stop audio playback blinking
+    if led_blink_events.get('aplay'):
+        led_blink_events['aplay'].set()
+        led_blink_events['aplay'] = None
+    
+    # Reset pipeline flags
     for key in config.pipeline_stages:
         config.pipeline_stages[key] = False
+        
     # Turn off all LEDs
     if rainbow_driver:
         for led in ['A', 'B', 'C']:
             rainbow_driver.button_leds[led].off()
 
 
-def blink_processing_led(led_color='B'):
-    """Blink the appropriate LED during processing"""
-    # This will be called from a processing module
-    # Implementation details moved to separate processing state management
-    pass
-
-
 def start_system_processing(led_color='B'):
     """Start the current blinking LED and mark stage as active"""
     # Mark current active stage as active
-    if led_color == 'A':
+    if led_color == 'A':  # ASR stage
         config.pipeline_stages['asr_active'] = True
-    elif led_color == 'B':
+        # Start blinking red LED
+        if led_blink_events['A']:
+            led_blink_events['A'].set()  # Stop any existing blink
+        led_blink_events['A'] = threading.Event()
+        led_blink_threads['A'] = threading.Thread(target=blink_led, args=('A',))
+        led_blink_threads['A'].daemon = True
+        led_blink_threads['A'].start()
+        
+    elif led_color == 'B':  # LLM stage
         config.pipeline_stages['llm_active'] = True
-    elif led_color == 'C':
+        # Start blinking green LED
+        if led_blink_events['B']:
+            led_blink_events['B'].set()  # Stop any existing blink
+        led_blink_events['B'] = threading.Event()
+        led_blink_threads['B'] = threading.Thread(target=blink_led, args=('B',))
+        led_blink_threads['B'].daemon = True
+        led_blink_threads['B'].start()
+        
+    elif led_color == 'C':  # TTS stage
         config.pipeline_stages['tts_active'] = True
-    elif led_color == 'aplay':
+        # Start blinking blue LED
+        if led_blink_events['C']:
+            led_blink_events['C'].set()  # Stop any existing blink
+        led_blink_events['C'] = threading.Event()
+        led_blink_threads['C'] = threading.Thread(target=blink_led, args=('C',))
+        led_blink_threads['C'].daemon = True
+        led_blink_threads['C'].start()
+        
+    elif led_color == 'aplay':  # Audio playback stage
         config.pipeline_stages['aplay_active'] = True
-    
-    # System processing flag will be managed by calling module
-    
+        # Start blinking all LEDs
+        led_blink_events['aplay'] = threading.Event()
+        aplay_thread = threading.Thread(target=blink_all_leds)
+        aplay_thread.daemon = True
+        aplay_thread.start()
+
 
 def stop_system_processing():
     """Stop the current blinking LED and mark stage as complete"""
-    # Mark current active stage as complete
+    # Mark current active stage as complete and stop blinking
     if config.pipeline_stages['asr_active']:
         config.pipeline_stages['asr_active'] = False
         config.pipeline_stages['asr_complete'] = True
+        # Stop ASR LED blinking and make it solid
+        if led_blink_events['A']:
+            led_blink_events['A'].set()
+        time.sleep(0.1)  # Brief pause to ensure blink stops
+        if rainbow_driver:
+            rainbow_driver.button_leds['A'].on()  # Solid red
+            
     elif config.pipeline_stages['llm_active']:
         config.pipeline_stages['llm_active'] = False
         config.pipeline_stages['llm_complete'] = True
+        # Stop LLM LED blinking and make it solid
+        if led_blink_events['B']:
+            led_blink_events['B'].set()
+        time.sleep(0.1)  # Brief pause to ensure blink stops
+        if rainbow_driver:
+            rainbow_driver.button_leds['B'].on()  # Solid green
+            
     elif config.pipeline_stages['tts_active']:
         config.pipeline_stages['tts_active'] = False
         config.pipeline_stages['tts_complete'] = True
+        # Stop TTS LED blinking and make it solid
+        if led_blink_events['C']:
+            led_blink_events['C'].set()
+        time.sleep(0.1)  # Brief pause to ensure blink stops
+        if rainbow_driver:
+            rainbow_driver.button_leds['C'].on()  # Solid blue
+            
     elif config.pipeline_stages['aplay_active']:
         # End of pipeline - reset everything
         reset_pipeline_stages()
