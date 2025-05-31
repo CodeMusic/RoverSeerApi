@@ -117,4 +117,23 @@ pipeline_stages = {
     'tts_active': False,
     'tts_complete': False,
     'aplay_active': False
-} 
+}
+
+# -------- INITIALIZATION FUNCTION -------- #
+def initialize_config():
+    """Initialize configuration and ensure required directories exist"""
+    global LOG_DIR, INTROS_DIR
+    
+    # Ensure log directory exists
+    LOG_DIR.mkdir(exist_ok=True)
+    print(f"✅ Log directory: {LOG_DIR}")
+    
+    # Ensure voice intros directory exists
+    INTROS_DIR.mkdir(exist_ok=True)
+    print(f"✅ Voice intros directory: {INTROS_DIR}")
+    
+    # Print detected devices
+    print(f"🎤 Microphone device: {MIC_DEVICE}")
+    print(f"🔊 Audio device: {AUDIO_DEVICE}")
+    print(f"🗣️ Default voice: {DEFAULT_VOICE}")
+    print(f"🤖 Default model: {DEFAULT_MODEL}") 
