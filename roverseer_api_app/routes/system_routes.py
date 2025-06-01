@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file, redirect, render_template, url_for
 import requests
 import json
+import subprocess
 
 from config import history, MAX_HISTORY, DEFAULT_MODEL, DEFAULT_VOICE
 from embodiment.sensors import get_sensor_data, check_tcp_ports
@@ -93,7 +94,7 @@ def home():
                     output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
                     
                     audio_url = url_for('system.serve_static', filename=tmp_audio)
-                    reply_text = "(Audio response returned)"
+                    reply_text = reply  # Store the actual text, not a placeholder
                         
                 else:  # speak
                     from expression.text_to_speech import speak_text
@@ -119,9 +120,9 @@ def home():
                           model_stats=model_stats)
 
 
-@bp.route('/logs')
-def logs():
-    """Display logs page with top performing models and log viewer, plus model information"""
+@bp.route('/system')
+def system():
+    """Display system page with top performing models and system viewer, plus model information"""
     selected_log_type = request.args.get('log_type', None)
     selected_date = request.args.get('date', None)
     sort_by = request.args.get('sort_by', 'fastest')  # 'fastest' or 'usage'
@@ -199,7 +200,7 @@ def logs():
         {"id": "penphin_mind", "name": "PenphinMind", "icon": "🧠"}
     ]
     
-    return render_template('logs.html', 
+    return render_template('system.html', 
                           top_models=top_models, 
                           log_types=log_types, 
                           selected_log_type=selected_log_type,
@@ -329,3 +330,37 @@ def list_models():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500 
+
+
+@bp.route('/system/command', methods=['POST'])
+def system_command():
+    """Handle system commands like restarting services and containers"""
+    command_type = request.form.get('type')
+    target = request.form.get('target')
+    
+    if command_type == 'service':
+        try:
+            subprocess.run(['sudo', 'systemctl', 'restart', target], check=True)
+            return jsonify({"status": "success", "message": f"Service {target} restarted successfully"})
+        except subprocess.CalledProcessError as e:
+            return jsonify({"status": "error", "message": f"Failed to restart service: {str(e)}"}), 500
+            
+    elif command_type == 'container':
+        try:
+            subprocess.run(['docker', 'restart', target], check=True)
+            return jsonify({"status": "success", "message": f"Container {target} restarted successfully"})
+        except subprocess.CalledProcessError as e:
+            return jsonify({"status": "error", "message": f"Failed to restart container: {str(e)}"}), 500
+    
+    return jsonify({"status": "error", "message": "Invalid command type"}), 400
+
+@bp.route('/system/containers', methods=['GET'])
+def list_containers():
+    """Get list of running Docker containers"""
+    try:
+        result = subprocess.run(['docker', 'ps', '--format', '{{.Names}}'], 
+                              capture_output=True, text=True, check=True)
+        containers = result.stdout.strip().split('\n')
+        return jsonify({"status": "success", "containers": containers})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "error", "message": f"Failed to list containers: {str(e)}"}), 500 

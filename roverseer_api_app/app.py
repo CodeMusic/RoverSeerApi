@@ -7,7 +7,6 @@ import atexit
 from config import initialize_config
 from embodiment.rainbow_interface import initialize_hardware
 from cognition.model_management import initialize_model_list
-from expression.sound_orchestration import start_sound_queue_worker, stop_sound_queue_worker
 
 # Import route blueprints
 from routes.system_routes import bp as system_bp
@@ -68,10 +67,6 @@ def initialize_application():
     else:
         print("⚠️  Running without hardware (development mode)")
     
-    # Start sound queue worker
-    start_sound_queue_worker()
-    print("✅ Sound orchestration system started")
-    
     # Initialize model management
     model_success = initialize_model_list()
     if model_success:
@@ -86,22 +81,17 @@ def cleanup_application():
     """Cleanup function called on application shutdown"""
     print("🧹 Cleaning up RoverSeer API...")
     
-    # Stop sound queue worker
-    stop_sound_queue_worker()
-    print("✅ Sound orchestration stopped")
-    
     # Turn off all LEDs and clear display
     from embodiment.rainbow_interface import get_rainbow_driver
-    from embodiment.display_manager import clear_display
     
     rainbow = get_rainbow_driver()
     if rainbow:
         try:
-            # Turn off all LEDs
-            for led in ['A', 'B', 'C']:
-                rainbow.button_leds[led].off()
+            # Use LED manager to stop all LEDs
+            if hasattr(rainbow, 'led_manager'):
+                rainbow.led_manager.stop_all_leds()
             # Clear display
-            clear_display()
+            rainbow.clear_display()
             print("✅ Hardware cleanup complete")
         except Exception as e:
             print(f"⚠️  Hardware cleanup error: {e}")

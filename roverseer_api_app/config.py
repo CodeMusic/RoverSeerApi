@@ -74,6 +74,9 @@ current_audio_process = None
 # -------- SOUND CONFIGURATION -------- #
 TICK_TYPE = "music"  # "clock" or "music"
 
+# -------- EXPERIMENTAL FEATURES -------- #
+USE_EXPERIMENTAL_RAINBOW_STRIP = False  # Enable APA102 7-LED strip features (experimental on Pi 5)
+
 # -------- TEXT PROCESSING CONFIGURATION -------- #
 STRIP_THINK_TAGS = True  # Remove <think></think> tags from speech for model privacy
 

@@ -118,19 +118,25 @@ def extract_short_model_name(full_model_name):
     - "organization/model:tag" -> "model:tag"  
     - "simplemodel:latest" -> "simplemodel:latest" (unchanged)
     - "PenphinMind" -> "PenphinMind" (unchanged)
+    - "llama1.1b 37 25" -> "llama1.1b"
+    - "model 123" -> "model"
     
     Args:
         full_model_name (str): The full model name potentially with organization prefix
         
     Returns:
-        str: The model name without organization prefix
+        str: The model name without organization prefix and trailing numbers
     """
     if not full_model_name:
         return full_model_name
     
     # If there's a slash, take everything after the last slash
     if '/' in full_model_name:
-        return full_model_name.split('/')[-1]
+        name = full_model_name.split('/')[-1]
+    else:
+        name = full_model_name
     
-    # Otherwise return as-is
-    return full_model_name 
+    # Remove trailing numbers and spaces
+    name = re.sub(r'\s+\d+(?:\s+\d+)*$', '', name)
+    
+    return name 

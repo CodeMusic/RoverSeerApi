@@ -25,7 +25,12 @@ def initialize_hardware():
         sys.path.insert(0, "/home/codemusic/custom_drivers")
         from rainbow_driver import RainbowDriver
         
-        rainbow_driver = RainbowDriver(num_leds=7, brightness=2)
+        # Pass experimental features flag from config
+        rainbow_driver = RainbowDriver(
+            num_leds=7, 
+            brightness=2, 
+            use_experimental_strip=config.USE_EXPERIMENTAL_RAINBOW_STRIP
+        )
         setup_button_handlers()
         print("✅ Rainbow HAT initialized successfully")
         
@@ -47,7 +52,7 @@ def setup_button_handlers():
         return
     
     from cognition.model_management import refresh_available_models
-    from expression.sound_orchestration import play_sound_async, sound_queue
+    from expression.sound_orchestration import play_sound_async
     from expression.sound_orchestration import (play_toggle_left_sound, play_toggle_right_sound,
                                                play_toggle_left_echo, play_toggle_right_echo,
                                                play_confirmation_sound, play_recording_complete_sound)
@@ -79,7 +84,7 @@ def setup_button_handlers():
                         print("Button chat history cleared!")
                         
                         # Play confirmation sound - random 7-note tune
-                        if rainbow_driver and hasattr(rainbow_driver, 'buzzer'):
+                        if rainbow_driver and hasattr(rainbow_driver, 'buzzer_manager'):
                             from gpiozero.tones import Tone
                             # Available notes for random selection
                             available_notes = [
@@ -89,25 +94,12 @@ def setup_button_handlers():
                             ]
                             # Generate random 7-note sequence
                             random_notes = [random.choice(available_notes) for _ in range(7)]
+                            random_durations = [random.uniform(0.08, 0.15) for _ in range(7)]
                             
-                            # Play the random tune
-                            for note in random_notes:
-                                rainbow_driver.buzzer.play(note)
-                                time.sleep(random.uniform(0.08, 0.15))  # Vary timing too
-                                rainbow_driver.buzzer.stop()
-                                time.sleep(0.02)
-                        
-                        # Flash all LEDs
-                        for _ in range(3):
-                            for led in ['A', 'B', 'C']:
-                                rainbow_driver.button_leds[led].on()
-                            time.sleep(0.2)
-                            for led in ['A', 'B', 'C']:
-                                rainbow_driver.button_leds[led].off()
-                            time.sleep(0.2)
+                            # Play the random tune using buzzer manager
+                            rainbow_driver.buzzer_manager.play_sequence_async(random_notes, random_durations, gaps=0.02)
                 
-                clear_history_timer = threading.Thread(target=clear_after_delay)
-                clear_history_timer.daemon = True
+                clear_history_timer = threading.Timer(3.0, clear_after_delay)
                 clear_history_timer.start()
     
     def interrupt_audio_playback():
@@ -126,13 +118,6 @@ def setup_button_handlers():
             # Reset pipeline since we interrupted
             reset_pipeline_stages()
             
-            # Clear the sound queue to prevent queued sounds from playing
-            while not sound_queue.empty():
-                try:
-                    sound_queue.get_nowait()
-                except:
-                    break
-            
             print("Audio playback interrupted")
             return True
         
@@ -150,7 +135,8 @@ def setup_button_handlers():
         
         if not config.recording_in_progress and not all(buttons_pressed.values()):
             print(f"Button A pressed, recording_in_progress={config.recording_in_progress}")
-            rainbow_driver.button_leds['A'].on()  # LED on when pressed
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.set_led('A', True)  # LED on when pressed
             play_sound_async(play_toggle_left_sound)
             
             # Refresh models if we only have the default
@@ -173,7 +159,8 @@ def setup_button_handlers():
         """Handle button A release - show model name immediately"""
         buttons_pressed['A'] = False
         if not config.recording_in_progress and not any(buttons_pressed.values()):
-            rainbow_driver.button_leds['A'].off()  # LED off when released
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.set_led('A', False)  # LED off when released
             play_sound_async(play_toggle_left_echo)
             
             # Start model info scroll immediately (no delay, no extra threading)
@@ -191,7 +178,8 @@ def setup_button_handlers():
         check_clear_history()
         
         if not config.recording_in_progress and not all(buttons_pressed.values()):
-            rainbow_driver.button_leds['C'].on()  # LED on when pressed
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.set_led('C', True)  # LED on when pressed
             play_sound_async(play_toggle_right_sound)
             
             # Refresh models if we only have the default
@@ -214,7 +202,8 @@ def setup_button_handlers():
         """Handle button C release - show model name immediately"""
         buttons_pressed['C'] = False
         if not config.recording_in_progress and not any(buttons_pressed.values()):
-            rainbow_driver.button_leds['C'].off()  # LED off when released
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.set_led('C', False)  # LED off when released
             play_sound_async(play_toggle_right_echo)
             
             # Start model info scroll immediately (no delay, no extra threading)
@@ -235,7 +224,8 @@ def setup_button_handlers():
             return  # Ignore if already recording or clearing history
         
         # LED solid on while button is held
-        rainbow_driver.button_leds['B'].on()
+        if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+            rainbow_driver.led_manager.set_led('B', True)
     
     def handle_button_b_release():
         """Start the recording pipeline on button release"""
@@ -284,29 +274,14 @@ def setup_button_handlers():
             # Record audio for 10 seconds
             temp_recording = f"/tmp/recording_{uuid.uuid4().hex}.wav"
             
-            # Start LED blinking for recording (Button B)
-            recording_led_blink = threading.Event()
+            # Start LED blinking for recording using LED manager
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.blink_led('B')
             
-            def blink_recording_led():
-                """Blink button B LED during recording"""
-                while not recording_led_blink.is_set():
-                    if rainbow_driver:
-                        rainbow_driver.button_leds['B'].on()
-                    time.sleep(0.3)
-                    if not recording_led_blink.is_set() and rainbow_driver:
-                        rainbow_driver.button_leds['B'].off()
-                    time.sleep(0.3)
-            
-            blink_thread = threading.Thread(target=blink_recording_led)
-            blink_thread.daemon = True
-            blink_thread.start()
-            
-            # Display countdown during recording
+            # Display countdown during recording  
             def show_countdown():
-                for i in range(10, 0, -1):
-                    if rainbow_driver:
-                        rainbow_driver.display_number(i)
-                    time.sleep(1)
+                if rainbow_driver:
+                    rainbow_driver.show_countdown(10)
             
             # Start recording with arecord
             record_cmd = [
@@ -342,12 +317,8 @@ def setup_button_handlers():
             countdown_thread.join()
             
             # Stop LED blinking
-            recording_led_blink.set()
-            blink_thread.join(timeout=1)
-            
-            # Turn off button B LED
             if rainbow_driver:
-                rainbow_driver.button_leds['B'].off()
+                rainbow_driver.led_manager.stop_led('B')
             
             # Check if recording was successful
             if return_code != 0:
@@ -355,24 +326,16 @@ def setup_button_handlers():
                 if stderr:
                     print(f"Recording error: {stderr.decode()}")
                 
-                # Clear display and show error
+                # Show error using new method
                 if rainbow_driver:
-                    from embodiment.display_manager import clear_display
-                    clear_display()
-                    scroll_text_on_display("REC ERR", scroll_speed=0.3)
-                    time.sleep(2)
-                    clear_display()
+                    rainbow_driver.show_error("REC ERR")
                 return
             
             # Check if recording file exists and has content
             if not os.path.exists(temp_recording):
                 print(f"Recording file {temp_recording} was not created")
                 if rainbow_driver:
-                    from embodiment.display_manager import clear_display
-                    clear_display()
-                    scroll_text_on_display("NO FILE", scroll_speed=0.3)
-                    time.sleep(2)
-                    clear_display()
+                    rainbow_driver.show_error("NO FILE")
                 return
             
             file_size = os.path.getsize(temp_recording)
@@ -380,11 +343,7 @@ def setup_button_handlers():
             if file_size < 1000:  # Less than 1KB suggests no audio
                 print("Recording file is too small, likely no audio captured")
                 if rainbow_driver:
-                    from embodiment.display_manager import clear_display
-                    clear_display()
-                    scroll_text_on_display("EMPTY", scroll_speed=0.3)
-                    time.sleep(2)
-                    clear_display()
+                    rainbow_driver.show_error("EMPTY")
                 os.remove(temp_recording)
                 return
             
@@ -449,7 +408,11 @@ def setup_button_handlers():
             
             # Save to button history
             config.button_history.append((transcript, reply, selected_model))
-            if len(config.button_history) > config.MAX_BUTTON_HISTORY * 2:  # Keep some buffer
+            
+            # Keep only MAX_BUTTON_HISTORY * 2 exchanges as a buffer
+            # This allows us to use the last MAX_BUTTON_HISTORY for context
+            # while keeping some extra for reference
+            while len(config.button_history) > config.MAX_BUTTON_HISTORY * 2:
                 config.button_history.pop(0)
             
             print(f"Button chat history: {len(config.button_history)} exchanges")
@@ -498,29 +461,18 @@ def setup_button_handlers():
             reset_pipeline_stages()
             # Show error on display
             if rainbow_driver:
-                from embodiment.display_manager import clear_display
-                clear_display()
-                scroll_text_on_display("ERROR", scroll_speed=0.3)
-                time.sleep(2)
-                clear_display()
+                rainbow_driver.show_error("ERROR")
         finally:
             # Reset recording flag
             config.recording_in_progress = False
             
-            # Make sure LED blinking is stopped
-            if 'recording_led_blink' in locals():
-                recording_led_blink.set()
-            if 'blink_thread' in locals() and blink_thread.is_alive():
-                blink_thread.join(timeout=1)
-            
-            # Turn off button B LED
-            if rainbow_driver:
-                rainbow_driver.button_leds['B'].off()
+            # Stop any LED animations
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.stop_led('B')
             
             # Clear display
             if rainbow_driver:
-                from embodiment.display_manager import clear_display
-                clear_display()
+                rainbow_driver.clear_display()
             
             print("Recording pipeline complete, buttons re-enabled")
     
@@ -535,170 +487,120 @@ def setup_button_handlers():
 
 # -------- LED PIPELINE MANAGEMENT -------- #
 
-# Global LED blinking control
-led_blink_threads = {'A': None, 'B': None, 'C': None}
-led_blink_events = {'A': None, 'B': None, 'C': None}
-
-def blink_led(led_name):
-    """Blink a specific LED while its event is not set"""
-    if not rainbow_driver:
-        return
-        
-    event = led_blink_events[led_name]
-    while not event.is_set():
-        rainbow_driver.button_leds[led_name].on()
-        time.sleep(0.3)
-        if not event.is_set():
-            rainbow_driver.button_leds[led_name].off()
-        time.sleep(0.3)
-
-def blink_all_leds():
-    """Blink all LEDs during audio playback"""
-    if not rainbow_driver:
-        return
-        
-    event = led_blink_events['aplay']
-    while not event.is_set():
-        # Turn all LEDs on
-        for led in ['A', 'B', 'C']:
-            rainbow_driver.button_leds[led].on()
-        time.sleep(0.2)
-        if not event.is_set():
-            # Turn all LEDs off
-            for led in ['A', 'B', 'C']:
-                rainbow_driver.button_leds[led].off()
-        time.sleep(0.2)
-
-def update_pipeline_leds():
-    """Update LEDs based on current pipeline stage states"""
-    if not rainbow_driver:
-        return
-    
-    # If audio playback is active, all LEDs should be blinking (handled by blink_all_leds)
-    if config.pipeline_stages['aplay_active']:
-        return
-    
-    # Set solid LEDs based on completed stages (but not active ones - those blink)
-    if config.pipeline_stages['asr_complete'] and not config.pipeline_stages['asr_active']:
-        rainbow_driver.button_leds['A'].on()  # Red solid when ASR complete
-    elif not config.pipeline_stages['asr_active']:
-        rainbow_driver.button_leds['A'].off()
-        
-    if config.pipeline_stages['llm_complete'] and not config.pipeline_stages['llm_active']:
-        rainbow_driver.button_leds['B'].on()  # Green solid when LLM complete
-    elif not config.pipeline_stages['llm_active']:
-        rainbow_driver.button_leds['B'].off()
-        
-    if config.pipeline_stages['tts_complete'] and not config.pipeline_stages['tts_active']:
-        rainbow_driver.button_leds['C'].on()  # Blue solid when TTS complete
-    elif not config.pipeline_stages['tts_active']:
-        rainbow_driver.button_leds['C'].off()
-
-
 def reset_pipeline_stages():
     """Reset all pipeline stages to inactive"""
-    # Stop any blinking LEDs
-    for led_name in ['A', 'B', 'C']:
-        if led_blink_events[led_name]:
-            led_blink_events[led_name].set()
-        if led_blink_threads[led_name] and led_blink_threads[led_name].is_alive():
-            led_blink_threads[led_name].join(timeout=1)
-        led_blink_events[led_name] = None
-        led_blink_threads[led_name] = None
-    
-    # Stop audio playback blinking
-    if led_blink_events.get('aplay'):
-        led_blink_events['aplay'].set()
-        led_blink_events['aplay'] = None
-    
     # Reset pipeline flags
     for key in config.pipeline_stages:
         config.pipeline_stages[key] = False
         
-    # Turn off all LEDs
-    if rainbow_driver:
-        for led in ['A', 'B', 'C']:
-            rainbow_driver.button_leds[led].off()
+    # Use LED manager to stop all LEDs
+    if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+        rainbow_driver.led_manager.stop_all_leds()
 
 
 def start_system_processing(led_color='B'):
     """Start the current blinking LED and mark stage as active"""
+    if not rainbow_driver or not hasattr(rainbow_driver, 'led_manager'):
+        return
+        
+    # Map old led_color to new stage names
+    stage_map = {
+        'A': 'asr',
+        'B': 'llm', 
+        'C': 'tts',
+        'aplay': 'playing'
+    }
+    
     # Mark current active stage as active
     if led_color == 'A':  # ASR stage
         config.pipeline_stages['asr_active'] = True
-        # Start blinking red LED
-        if led_blink_events['A']:
-            led_blink_events['A'].set()  # Stop any existing blink
-        led_blink_events['A'] = threading.Event()
-        led_blink_threads['A'] = threading.Thread(target=blink_led, args=('A',))
-        led_blink_threads['A'].daemon = True
-        led_blink_threads['A'].start()
+        rainbow_driver.led_manager.show_progress('asr')
         
     elif led_color == 'B':  # LLM stage
         config.pipeline_stages['llm_active'] = True
-        # Start blinking green LED
-        if led_blink_events['B']:
-            led_blink_events['B'].set()  # Stop any existing blink
-        led_blink_events['B'] = threading.Event()
-        led_blink_threads['B'] = threading.Thread(target=blink_led, args=('B',))
-        led_blink_threads['B'].daemon = True
-        led_blink_threads['B'].start()
+        rainbow_driver.led_manager.show_progress('llm')
         
     elif led_color == 'C':  # TTS stage
         config.pipeline_stages['tts_active'] = True
-        # Start blinking blue LED
-        if led_blink_events['C']:
-            led_blink_events['C'].set()  # Stop any existing blink
-        led_blink_events['C'] = threading.Event()
-        led_blink_threads['C'] = threading.Thread(target=blink_led, args=('C',))
-        led_blink_threads['C'].daemon = True
-        led_blink_threads['C'].start()
+        rainbow_driver.led_manager.show_progress('tts')
         
     elif led_color == 'aplay':  # Audio playback stage
         config.pipeline_stages['aplay_active'] = True
-        # Start blinking all LEDs
-        led_blink_events['aplay'] = threading.Event()
-        aplay_thread = threading.Thread(target=blink_all_leds)
-        aplay_thread.daemon = True
-        aplay_thread.start()
+        rainbow_driver.led_manager.show_progress('playing')
 
 
 def stop_system_processing():
     """Stop the current blinking LED and mark stage as complete"""
-    # Mark current active stage as complete and stop blinking
+    if not rainbow_driver or not hasattr(rainbow_driver, 'led_manager'):
+        return
+        
+    # Mark current active stage as complete and update display
     if config.pipeline_stages['asr_active']:
         config.pipeline_stages['asr_active'] = False
         config.pipeline_stages['asr_complete'] = True
-        # Stop ASR LED blinking and make it solid
-        if led_blink_events['A']:
-            led_blink_events['A'].set()
-        time.sleep(0.1)  # Brief pause to ensure blink stops
-        if rainbow_driver:
-            rainbow_driver.button_leds['A'].on()  # Solid red
+        rainbow_driver.led_manager.show_progress('asr_complete')
             
     elif config.pipeline_stages['llm_active']:
         config.pipeline_stages['llm_active'] = False
         config.pipeline_stages['llm_complete'] = True
-        # Stop LLM LED blinking and make it solid
-        if led_blink_events['B']:
-            led_blink_events['B'].set()
-        time.sleep(0.1)  # Brief pause to ensure blink stops
-        if rainbow_driver:
-            rainbow_driver.button_leds['B'].on()  # Solid green
+        rainbow_driver.led_manager.show_progress('llm_complete')
             
     elif config.pipeline_stages['tts_active']:
         config.pipeline_stages['tts_active'] = False
         config.pipeline_stages['tts_complete'] = True
-        # Stop TTS LED blinking and make it solid
-        if led_blink_events['C']:
-            led_blink_events['C'].set()
-        time.sleep(0.1)  # Brief pause to ensure blink stops
-        if rainbow_driver:
-            rainbow_driver.button_leds['C'].on()  # Solid blue
+        rainbow_driver.led_manager.show_progress('tts_complete')
             
     elif config.pipeline_stages['aplay_active']:
         # End of pipeline - reset everything
         reset_pipeline_stages()
-        
-    # Update LEDs to show current state
-    update_pipeline_leds() 
+        rainbow_driver.led_manager.show_progress('idle') 
+
+# -------- EXPERIMENTAL RAINBOW STRIP HELPERS -------- #
+# These functions provide direct access to rainbow strip features
+# The driver will only execute them if use_experimental_strip=True
+
+def show_rainbow_progress(progress, color=(0, 255, 0)):
+    """Show progress bar on rainbow strip (requires experimental features)
+    
+    Args:
+        progress: Float from 0.0 to 1.0
+        color: RGB tuple for progress bar color
+    """
+    if rainbow_driver and rainbow_driver.use_experimental_strip:
+        rainbow_driver.rainbow_strip_manager.show_progress_bar(progress, color)
+
+
+def start_rainbow_cycle(speed=0.1):
+    """Start rainbow animation (requires experimental features)
+    
+    Args:
+        speed: Animation speed (seconds between updates)
+    """
+    if rainbow_driver and rainbow_driver.use_experimental_strip:
+        rainbow_driver.rainbow_strip_manager.rainbow_cycle(speed)
+
+
+def pulse_rainbow_color(color, speed=0.05):
+    """Pulse all rainbow LEDs with a color (requires experimental features)
+    
+    Args:
+        color: RGB tuple
+        speed: Pulse speed
+    """
+    if rainbow_driver and rainbow_driver.use_experimental_strip:
+        rainbow_driver.rainbow_strip_manager.pulse_color(color, speed)
+
+
+def stop_rainbow_animation():
+    """Stop any running rainbow animation (requires experimental features)"""
+    if rainbow_driver and rainbow_driver.use_experimental_strip:
+        rainbow_driver.rainbow_strip_manager.stop_animation()
+
+
+def celebrate_with_rainbow():
+    """Alternative celebration with only rainbow effects (requires experimental features)"""
+    if rainbow_driver and rainbow_driver.use_experimental_strip:
+        # Just the rainbow effect without display/button LEDs
+        rainbow_driver.rainbow_strip_manager.rainbow_cycle(speed=0.05)
+        time.sleep(2)
+        rainbow_driver.rainbow_strip_manager.clear() 

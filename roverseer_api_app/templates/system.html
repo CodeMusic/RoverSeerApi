@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>RoverSeer Logs</title>
+    <title>RoverSeer System</title>
     <style>
         body { font-family: Arial; background: #f4f4f4; color: #333; margin: 20px; }
         .header { background: #333; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -46,6 +46,75 @@
         .model-detail-item .value { font-size: 16px; color: #333; margin-top: 5px; }
         .clickable-model { cursor: pointer; transition: background 0.3s; }
         .clickable-model:hover { background: #e3f2fd !important; }
+        .back-arrow { 
+            color: white; 
+            text-decoration: none; 
+            font-size: 24px; 
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .back-arrow:hover {
+            color: #e0e0e0;
+        }
+        .commands-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .command-group {
+            margin-bottom: 20px;
+        }
+        .command-group h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .command-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .command-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .command-item button {
+            background: #4169e1;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .command-item button:hover {
+            background: #3558d1;
+        }
+        .command-item button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
     </style>
     <script>
         function refreshPage() {
@@ -54,18 +123,73 @@
         function changeDate(logType) {
             var select = document.getElementById('date-select');
             var date = select.value;
-            var url = '/logs?log_type=' + logType + '&date=' + date;
+            var url = '/system?log_type=' + logType + '&date=' + date;
             var sortBy = '{{ sort_by }}';
             if (sortBy) {
                 url += '&sort_by=' + sortBy;
             }
             window.location.href = url;
         }
+        function executeCommand(type, target) {
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Restarting...';
+            
+            fetch('/system/command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `type=${type}&target=${encodeURIComponent(target)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = data.message;
+                statusDiv.className = `status-message ${data.status}`;
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = 'Error executing command: ' + error;
+                statusDiv.className = 'status-message error';
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = originalText;
+            });
+        }
+        function loadContainers() {
+            fetch('/system/containers')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const containerList = document.getElementById('container-list');
+                        containerList.innerHTML = data.containers.map(container => `
+                            <div class="command-item">
+                                <span>${container}</span>
+                                <button onclick="executeCommand('container', '${container}')">Restart</button>
+                            </div>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading containers:', error);
+                });
+        }
+        // Load containers when page loads
+        document.addEventListener('DOMContentLoaded', loadContainers);
     </script>
 </head>
 <body>
     <div class="header">
-        <h1>🗄️ RoverSeer Logs</h1>
+        <div style="display: flex; align-items: center;">
+            <a href="/" class="back-arrow">←</a>
+            <h1>🗄️ RoverSeer System</h1>
+        </div>
         <button class="refresh-btn" onclick="refreshPage()">🔄 Refresh</button>
     </div>
     
@@ -74,18 +198,18 @@
             <div class="top-models">
                 <h3>🏆 Top 10 {{ sort_label }}</h3>
                 <div class="sort-controls">
-                    <a href="/logs?sort_by=fastest{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
+                    <a href="/system?sort_by=fastest{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
                        class="sort-btn {% if sort_by == 'fastest' %}active{% endif %}">
                        ⚡ Fastest
                     </a>
-                    <a href="/logs?sort_by=usage{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
+                    <a href="/system?sort_by=usage{% if selected_log_type %}&log_type={{ selected_log_type }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}" 
                        class="sort-btn {% if sort_by == 'usage' %}active{% endif %}">
                        📊 Most Used
                     </a>
                 </div>
                 {% if top_models %}
                     {% for model, short_name, avg_time, run_count in top_models %}
-                        <div class="model-item clickable-model" onclick="window.location.href='/logs?view=model_detail&model={{ model }}&sort_by={{ sort_by }}'">
+                        <div class="model-item clickable-model" onclick="window.location.href='/system?view=model_detail&model={{ model }}&sort_by={{ sort_by }}'">
                             <span><span class="rank">#{{ loop.index }}</span>{{ short_name }}</span>
                             <div class="model-stats">
                                 {% if sort_by == 'usage' %}
@@ -103,21 +227,51 @@
                 {% endif %}
                 
                 <div class="see-all-models">
-                    <a href="/logs?view=models&sort_by={{ sort_by }}">📋 See All Models</a>
+                    <a href="/system?view=models&sort_by={{ sort_by }}">📋 See All Models</a>
                 </div>
             </div>
             
             <h3>📁 Log Types</h3>
             {% for log_type in log_types %}
-                <a href="/logs?log_type={{ log_type.id }}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" 
+                <a href="/system?log_type={{ log_type.id }}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" 
                    class="log-type {% if selected_log_type == log_type.id %}active{% endif %}">
                     {{ log_type.icon }} {{ log_type.name }}
                 </a>
             {% endfor %}
+            
+            <h3 style="margin-top: 20px;">⚙️ System</h3>
+            <a href="/system?view=commands" 
+               class="log-type {% if view_mode == 'commands' %}active{% endif %}">
+               🛠️ Commands
+            </a>
         </div>
         
         <div class="main-content">
-            {% if view_mode == 'models' %}
+            {% if view_mode == 'commands' %}
+                <h2>🛠️ System Commands</h2>
+                
+                <div class="commands-section">
+                    <div class="command-group">
+                        <h3>Services</h3>
+                        <div class="command-list">
+                            <div class="command-item">
+                                <span>roverseer.service</span>
+                                <button onclick="executeCommand('service', 'roverseer.service')">Restart</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="command-group">
+                        <h3>Docker Containers</h3>
+                        <div id="container-list" class="command-list">
+                            <!-- Containers will be loaded dynamically -->
+                        </div>
+                    </div>
+                    
+                    <div id="status-message" class="status-message"></div>
+                </div>
+                
+            {% elif view_mode == 'models' %}
                 <h2>🤖 All Models</h2>
                 <p>Click on any model to view detailed information.</p>
                 
@@ -135,7 +289,7 @@
                         </thead>
                         <tbody>
                             {% for model in all_models_data %}
-                                <tr class="clickable-model" onclick="window.location.href='/logs?view=model_detail&model={{ model.name }}&sort_by={{ sort_by }}'">
+                                <tr class="clickable-model" onclick="window.location.href='/system?view=model_detail&model={{ model.name }}&sort_by={{ sort_by }}'">
                                     <td><strong>{{ extract_short_model_name(model.name) }}</strong></td>
                                     <td>{{ model.parameters }}</td>
                                     <td>{{ model.size_gb }} GB</td>
@@ -244,12 +398,12 @@
                     {% endif %}
                 </div>
                 
-                <p><a href="/logs?view=models&sort_by={{ sort_by }}">&larr; Back to All Models</a></p>
+                <p><a href="/system?view=models&sort_by={{ sort_by }}">&larr; Back to All Models</a></p>
                 
             {% elif view_mode == 'model_detail' and not model_detail %}
                 <h2>❌ Model Not Found</h2>
                 <p>The requested model "{{ model_name }}" could not be found.</p>
-                <p><a href="/logs?view=models&sort_by={{ sort_by }}">&larr; Back to All Models</a></p>
+                <p><a href="/system?view=models&sort_by={{ sort_by }}">&larr; Back to All Models</a></p>
                 
             {% elif selected_log_type %}
                 <h2>{{ selected_log_type|replace("_", " ")|title }} Logs</h2>
@@ -283,15 +437,15 @@
                 {% else %}
                     <p class="no-logs">No log entries found for {{ selected_log_type|replace("_", " ") }}{% if selected_date %} on {{ selected_date }}{% endif %}</p>
                 {% endif %}
-            {% else %}
-                <h2>RoverSeer System Logs</h2>
+            
+                <h2>RoverSeer System</h2>
                 <p>Select a log type from the sidebar to view entries, or explore model information.</p>
                 <div style="margin-top: 30px;">
                     <h3>📊 Quick Actions</h3>
                     <ul style="list-style: none; padding: 0;">
-                        <li style="margin: 10px 0;"><a href="/logs?view=models&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🤖 View All Models</a></li>
-                        <li style="margin: 10px 0;"><a href="/logs?log_type=llm_usage&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🤖 View LLM Usage Logs</a></li>
-                        <li style="margin: 10px 0;"><a href="/logs?log_type=penphin_mind&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🧠 View PenphinMind Logs</a></li>
+                        <li style="margin: 10px 0;"><a href="/system?view=models&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🤖 View All Models</a></li>
+                        <li style="margin: 10px 0;"><a href="/system?log_type=llm_usage&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🤖 View LLM Usage Logs</a></li>
+                        <li style="margin: 10px 0;"><a href="/system?log_type=penphin_mind&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🧠 View PenphinMind Logs</a></li>
                     </ul>
                 </div>
             {% endif %}

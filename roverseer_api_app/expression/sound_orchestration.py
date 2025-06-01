@@ -1,68 +1,13 @@
-import queue
-import threading
 import time
 import random
 import hashlib
+import threading
 from gpiozero.tones import Tone
 
 from config import TICK_TYPE
 
-
-# -------- SOUND QUEUE SYSTEM -------- #
-sound_queue = queue.Queue()
-sound_worker_thread = None
-sound_worker_running = False
+# Threading event to track when tunes are playing
 tune_playing = threading.Event()
-
-
-def sound_queue_worker():
-    """Worker thread that processes sounds from the queue sequentially"""
-    global sound_worker_running
-    while sound_worker_running:
-        try:
-            # Wait for a sound task with timeout
-            sound_task = sound_queue.get(timeout=0.5)
-            if sound_task is None:  
-                break
-                
-            # Execute the sound function
-            func, args, kwargs = sound_task
-            try:
-                func(*args, **kwargs)
-            except Exception as e:
-                print(f"Error playing queued sound: {e}")
-            finally:
-                sound_queue.task_done()
-                
-        except queue.Empty:
-            continue
-
-
-def start_sound_queue_worker():
-    """Start the sound queue worker thread"""
-    global sound_worker_thread, sound_worker_running
-    if not sound_worker_running:
-        sound_worker_running = True
-        sound_worker_thread = threading.Thread(target=sound_queue_worker)
-        sound_worker_thread.daemon = True
-        sound_worker_thread.start()
-        print("Sound queue worker started")
-
-
-def stop_sound_queue_worker():
-    """Stop the sound queue worker thread"""
-    global sound_worker_running
-    if sound_worker_running:
-        sound_worker_running = False
-        sound_queue.put(None)  # Poison pill
-        if sound_worker_thread:
-            sound_worker_thread.join(timeout=2)
-        print("Sound queue worker stopped")
-
-
-def play_sound_async(sound_function, *args, **kwargs):
-    """Queue a sound function to be played sequentially"""
-    sound_queue.put((sound_function, args, kwargs))
 
 
 # -------- TUNE FUNCTIONS -------- #
@@ -71,10 +16,8 @@ def play_startup_tune():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
-            tune_playing.set()
-            
             # Ascending startup melody - welcoming and energetic
             # Uses pentatonic scale for pleasant harmony
             notes = [
@@ -92,16 +35,10 @@ def play_startup_tune():
             durations = [0.2, 0.18, 0.16, 0.14, 0.12, 0.15, 0.12, 0.35]
             
             # Play the ascending startup melody
-            for note, duration in zip(notes, durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.03)  # Brief pause between notes
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.03)
                 
         except Exception as e:
             print(f"Error playing startup tune: {e}")
-        finally:
-            tune_playing.clear()
 
 
 def play_ollama_tune(model_name=None):
@@ -109,10 +46,8 @@ def play_ollama_tune(model_name=None):
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
-            tune_playing.set()
-            
             # Base notes palette
             base_notes = [
                 Tone("C4"), Tone("D4"), Tone("E4"), Tone("F4"),
@@ -155,16 +90,10 @@ def play_ollama_tune(model_name=None):
                 durations = [0.1, 0.1, 0.1, 0.2]
             
             # Play the generated tune
-            for note, duration in zip(notes, durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.02)
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
                 
         except Exception as e:
             print(f"Error playing Ollama tune: {e}")
-        finally:
-            tune_playing.clear()
 
 
 def play_ollama_complete_tune():
@@ -172,21 +101,14 @@ def play_ollama_complete_tune():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
-            tune_playing.set()
             # Victorious fanfare - major chord arpeggio ending high
             notes = [Tone("C4"), Tone("E4"), Tone("G4"), Tone("C5"), Tone("E5"), Tone("G5")]
             durations = [0.1, 0.1, 0.1, 0.15, 0.15, 0.3]
-            for note, duration in zip(notes, durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.02)
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
         except Exception as e:
             print(f"Error playing victory tune: {e}")
-        finally:
-            tune_playing.clear()
 
 
 def play_transcribe_tune():
@@ -194,21 +116,14 @@ def play_transcribe_tune():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
-            tune_playing.set()
             # Puzzle-solving tune - thoughtful, searching pattern
             notes = [Tone("D4"), Tone("G4"), Tone("F4"), Tone("A4"), Tone("G4")]
             durations = [0.2, 0.15, 0.15, 0.2, 0.25]
-            for note, duration in zip(notes, durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.08)
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.08)
         except Exception as e:
             print(f"Error playing transcribe tune: {e}")
-        finally:
-            tune_playing.clear()
 
 
 def play_tts_tune(voice_name=None):
@@ -216,14 +131,8 @@ def play_tts_tune(voice_name=None):
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
-            # Wait for any previous tune to finish
-            while tune_playing.is_set():
-                time.sleep(0.05)
-            
-            tune_playing.set()
-            
             # Base announcing notes palette
             base_notes = [
                 Tone("C5"), Tone("D5"), Tone("E5"), Tone("F5"),
@@ -287,16 +196,10 @@ def play_tts_tune(voice_name=None):
             time.sleep(0.1)  # Small pause to separate from previous tune
             
             # Play the generated fanfare
-            for note, duration in zip(notes, durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.03)
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.03)
                 
         except Exception as e:
             print(f"Error playing TTS tune: {e}")
-        finally:
-            tune_playing.clear()
 
 
 def play_bicameral_connection_tune():
@@ -304,10 +207,8 @@ def play_bicameral_connection_tune():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
-            tune_playing.set()
-            
             # Three-part tune representing:
             # 1. Left hemisphere (logical) - precise intervals
             # 2. Right hemisphere (creative) - flowing melody
@@ -329,34 +230,20 @@ def play_bicameral_connection_tune():
             
             # Play the three parts
             # Logical mind
-            for note, duration in zip(logical_notes, logical_durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.02)
+            rainbow.buzzer_manager.play_sequence_async(logical_notes, logical_durations, gaps=0.02)
             
             time.sleep(0.1)  # Brief pause between sections
             
             # Creative mind
-            for note, duration in zip(creative_notes, creative_durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.02)
+            rainbow.buzzer_manager.play_sequence_async(creative_notes, creative_durations, gaps=0.02)
             
             time.sleep(0.1)  # Brief pause before convergence
             
             # Convergence - final harmony
-            for note, duration in zip(convergence_notes, convergence_durations):
-                rainbow.buzzer.play(note)
-                time.sleep(duration)
-                rainbow.buzzer.stop()
-                time.sleep(0.02)
+            rainbow.buzzer_manager.play_sequence_async(convergence_notes, convergence_durations, gaps=0.02)
                 
         except Exception as e:
             print(f"Error playing bicameral connection tune: {e}")
-        finally:
-            tune_playing.clear()
 
 
 # -------- BUTTON SOUND EFFECTS -------- #
@@ -365,13 +252,10 @@ def play_toggle_left_sound():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
             notes = [Tone("E5"), Tone("C5")]
-            for note in notes:
-                rainbow.buzzer.play(note)
-                time.sleep(0.1)
-                rainbow.buzzer.stop()
+            rainbow.buzzer_manager.play_sequence_async(notes, [0.1]*2, gaps=0.05)
         except Exception as e:
             print(f"Error playing toggle left sound: {e}")
 
@@ -381,13 +265,10 @@ def play_toggle_right_sound():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
             notes = [Tone("C5"), Tone("E5")]
-            for note in notes:
-                rainbow.buzzer.play(note)
-                time.sleep(0.1)
-                rainbow.buzzer.stop()
+            rainbow.buzzer_manager.play_sequence_async(notes, [0.1]*2, gaps=0.05)
         except Exception as e:
             print(f"Error playing toggle right sound: {e}")
 
@@ -397,14 +278,11 @@ def play_confirmation_sound():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
             # Two quick high beeps
             for _ in range(2):
-                rainbow.buzzer.play(Tone("A5"))
-                time.sleep(0.08)
-                rainbow.buzzer.stop()
-                time.sleep(0.05)
+                rainbow.buzzer_manager.play_sequence_async([Tone("A5")], [0.08]*2, gaps=0.05)
         except Exception as e:
             print(f"Error playing confirmation sound: {e}")
 
@@ -414,14 +292,11 @@ def play_recording_complete_sound():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
             # Descending completion sound
             notes = [Tone("G5"), Tone("E5"), Tone("C5")]
-            for note in notes:
-                rainbow.buzzer.play(note)
-                time.sleep(0.08)
-                rainbow.buzzer.stop()
+            rainbow.buzzer_manager.play_sequence_async(notes, [0.08]*3, gaps=0.05)
         except Exception as e:
             print(f"Error playing recording complete sound: {e}")
 
@@ -431,13 +306,10 @@ def play_toggle_left_echo():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
             notes = [Tone("E4")]  # One octave lower for echo
-            for note in notes:
-                rainbow.buzzer.play(note)
-                time.sleep(0.05)  # Shorter duration
-                rainbow.buzzer.stop()
+            rainbow.buzzer_manager.play_sequence_async(notes, [0.05]*len(notes), gaps=0.05)
         except Exception as e:
             print(f"Error playing toggle left echo: {e}")
 
@@ -447,12 +319,20 @@ def play_toggle_right_echo():
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
-    if rainbow and hasattr(rainbow, 'buzzer'):
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
         try:
             notes = [Tone("C4")]  # One octave lower for echo
-            for note in notes:
-                rainbow.buzzer.play(note)
-                time.sleep(0.05)  # Shorter duration
-                rainbow.buzzer.stop()
+            rainbow.buzzer_manager.play_sequence_async(notes, [0.05]*len(notes), gaps=0.05)
         except Exception as e:
-            print(f"Error playing toggle right echo: {e}") 
+            print(f"Error playing toggle right echo: {e}")
+
+
+# -------- SOUND PLAYBACK HELPER -------- #
+def play_sound_async(sound_function, *args, **kwargs):
+    """Queue a sound function to play asynchronously"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        # Queue the function to run on the buzzer thread
+        rainbow.buzzer_manager.queue_function(sound_function, *args, **kwargs) 
