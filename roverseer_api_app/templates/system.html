@@ -13,7 +13,15 @@
         .log-type.active { background: #4169e1; color: white; }
         .top-models { margin-bottom: 30px; }
         .model-item { background: #f8f8f8; padding: 8px; margin: 3px 0; border-radius: 3px; display: flex; justify-content: space-between; }
-        .log-entry { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 12px; }
+        .log-entry { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; cursor: pointer; transition: all 0.3s; }
+        .log-entry:hover { background: #e8e8e8; }
+        .log-entry-summary { display: flex; justify-content: space-between; align-items: center; }
+        .log-entry-details { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-family: monospace; font-size: 12px; }
+        .log-entry.expanded .log-entry-details { display: block; }
+        .log-entry-meta { font-size: 12px; color: #666; }
+        .play-button { background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; margin-left: 10px; }
+        .play-button:hover { background: #45a049; }
+        .play-button:disabled { background: #ccc; cursor: not-allowed; }
         .refresh-btn { background: #4CAF50; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; }
         .refresh-btn:hover { background: #45a049; }
         .rank { font-weight: bold; color: #666; margin-right: 10px; }
@@ -169,6 +177,104 @@
             color: #666;
             font-style: italic;
             margin-left: 10px;
+        }
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 5px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .log-entry-preview {
+            font-size: 13px;
+            color: #555;
+            margin-top: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 600px;
+        }
+        .think-tag {
+            background-color: #f0f0f0;
+            border-left: 3px solid #999;
+            padding: 10px;
+            margin: 10px 0;
+            font-style: italic;
+            color: #666;
+        }
+        .think-tag-collapsed {
+            cursor: pointer;
+            background-color: #f8f8f8;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            display: inline-block;
+            font-size: 12px;
+            color: #666;
+        }
+        .think-tag-collapsed:hover {
+            background-color: #e8e8e8;
+        }
+        .log-detail-view {
+            display: none;
+        }
+        .log-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+        .back-button {
+            background: #4169e1;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .back-button:hover {
+            background: #3558d1;
+        }
+        .log-detail-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .log-detail-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .log-detail-section h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .log-detail-section pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .status-display {
+            background: #f0f0f0;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .status-display .status-indicator {
+            font-size: 16px;
+            margin-right: 5px;
         }
     </style>
     <script>
@@ -364,11 +470,350 @@
             updateSetting('concurrent_requests', value);
         }
         
+        function toggleLogEntry(entryId) {
+            const entry = document.getElementById('log-'+entryId);
+            if (entry) {
+                entry.classList.toggle('expanded');
+            }
+        }
+        
+        function playLogEntry(event, entryId) {
+            // Prevent event bubbling more aggressively
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            
+            const button = event ? event.target : document.querySelector(`#log-${entryId} .play-button`);
+            const text = button.getAttribute('data-text');
+            const voice = button.getAttribute('data-voice');
+            
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = 'Playing<span class="loading"></span>';
+            
+            // Use the existing /tts endpoint
+            fetch('/tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text,
+                    voice: voice || 'en_US-GlaDOS',
+                    speak: false  // We want the file returned
+                })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const audio = new Audio(URL.createObjectURL(blob));
+                audio.play();
+                button.innerHTML = 'Playing...';
+                audio.addEventListener('ended', () => {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                });
+                audio.addEventListener('error', () => {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    alert('Error playing audio');
+                });
+            })
+            .catch(error => {
+                console.error('Error playing TTS:', error);
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                alert('Error generating audio: ' + error);
+            });
+            
+            return false;  // Extra prevention of event bubbling
+        }
+        
+        function processThinkTags(text) {
+            // Process <think> tags to make them collapsible
+            return text.replace(/<think>([\s\S]*?)<\/think>/g, function(match, content) {
+                const id = 'think-' + Math.random().toString(36).substr(2, 9);
+                return `
+                    <span class="think-tag-collapsed" onclick="toggleThink('${id}')">[Click to show AI thinking]</span>
+                    <div id="${id}" class="think-tag" style="display: none;">
+                        ${content}
+                    </div>
+                `;
+            });
+        }
+        
+        function toggleThink(id) {
+            const element = document.getElementById(id);
+            const toggle = element.previousElementSibling;
+            if (element.style.display === 'none') {
+                element.style.display = 'block';
+                toggle.textContent = '[Click to hide AI thinking]';
+            } else {
+                element.style.display = 'none';
+                toggle.textContent = '[Click to show AI thinking]';
+            }
+        }
+        
+        function showLogDetailById(entryElement) {
+            // Get all the data from the log entry element
+            const entryDiv = entryElement.closest('.log-entry');
+            if (!entryDiv) {
+                console.error('Could not find log entry div');
+                return;
+            }
+            
+            const entryType = entryDiv.getAttribute('data-type');
+            const entryId = entryDiv.id.replace('log-', '');
+            
+            // Build entry object from DOM data
+            const entry = {
+                type: entryType,
+                id: entryId
+            };
+            
+            try {
+                // Extract common data
+                const metaElement = entryDiv.querySelector('.log-entry-meta');
+                if (metaElement) {
+                    const metaText = metaElement.textContent;
+                    entry.timestamp = metaText.split(' - ')[0];
+                    const runtimeMatch = metaText.match(/([\d.]+)s/);
+                    if (runtimeMatch) {
+                        entry.runtime = parseFloat(runtimeMatch[1]);
+                        entry.processing_time = entry.runtime;
+                        entry.total_time = entry.runtime;
+                    }
+                }
+                
+                // Extract data based on entry type
+                if (entryType === 'llm_usage') {
+                    const detailsDiv = entryDiv.querySelector('.log-entry-details');
+                    entry.model = entryDiv.querySelector('.log-entry-summary strong').textContent;
+                    const personalitySpan = entryDiv.querySelector('.log-entry-summary span[style*="color: #666"]');
+                    if (personalitySpan) {
+                        entry.personality = personalitySpan.textContent.replace(/[()]/g, '');
+                    }
+                    
+                    // Get text content from paragraphs
+                    const paragraphs = detailsDiv.querySelectorAll('p');
+                    paragraphs.forEach(p => {
+                        const text = p.textContent;
+                        if (text.startsWith('User:')) {
+                            entry.user_prompt = text.substring(6).trim();
+                        } else if (text.startsWith('System:')) {
+                            entry.system_message = text.substring(8).trim();
+                        } else if (text.startsWith('Reply:')) {
+                            const replySpan = p.querySelector('span');
+                            entry.llm_reply = replySpan ? replySpan.textContent : text.substring(7).trim();
+                        } else if (text.startsWith('Voice:')) {
+                            entry.voice_id = text.substring(7).trim();
+                        }
+                    });
+                } else if (entryType === 'tts_usage') {
+                    entry.voice_id = entryDiv.querySelector('.log-entry-summary strong').textContent.replace('TTS: ', '');
+                    const textP = entryDiv.querySelector('.log-entry-details p');
+                    if (textP) {
+                        entry.text = textP.textContent.replace('Text: ', '');
+                    }
+                } else if (entryType === 'asr_usage') {
+                    const textP = entryDiv.querySelector('.log-entry-details p');
+                    if (textP) {
+                        entry.text = textP.textContent.replace('Text: ', '');
+                    }
+                } else if (entryType === 'penphin_mind') {
+                    const paragraphs = entryDiv.querySelectorAll('.log-entry-details p');
+                    paragraphs.forEach(p => {
+                        const text = p.textContent;
+                        if (text.startsWith('Prompt:')) {
+                            entry.original_prompt = text.substring(8).trim();
+                        } else if (text.startsWith('Logical:')) {
+                            entry.logical_response = text.substring(9).trim();
+                        } else if (text.startsWith('Creative:')) {
+                            entry.creative_response = text.substring(10).trim();
+                        } else if (text.startsWith('Final:')) {
+                            entry.final_synthesis = text.substring(7).trim();
+                        }
+                    });
+                } else if (entryType === 'errors') {
+                    const errorTypeElement = entryDiv.querySelector('.log-entry-summary strong');
+                    if (errorTypeElement) {
+                        entry.error_type = errorTypeElement.textContent.replace('Error: ', '');
+                    }
+                    
+                    const paragraphs = entryDiv.querySelectorAll('.log-entry-details p');
+                    entry.context = {};
+                    paragraphs.forEach(p => {
+                        const text = p.textContent;
+                        if (text.startsWith('Message:')) {
+                            entry.message = text.substring(9).trim();
+                        } else if (text.includes(':') && !text.startsWith('Context:')) {
+                            const [key, value] = text.split(':', 2);
+                            entry.context[key.trim()] = value.trim();
+                        }
+                    });
+                }
+                
+                // Show the detail view
+                showLogDetail(entry);
+            } catch (error) {
+                console.error('Error extracting log data:', error);
+                alert('Error displaying log details. Check console for details.');
+            }
+        }
+        
+        function showLogDetail(entry) {
+            // Save current main content
+            const mainContent = document.querySelector('.main-content');
+            if (!mainContent.hasAttribute('data-original-content')) {
+                mainContent.setAttribute('data-original-content', mainContent.innerHTML);
+            }
+            
+            let html = '';
+            
+            if (entry.type === 'llm_usage') {
+                html = `
+                    <div class="log-detail-header">
+                        <h2>LLM Usage Log Entry</h2>
+                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Metadata</h4>
+                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
+                        <p><strong>Model:</strong> ${entry.model}</p>
+                        <p><strong>Personality:</strong> ${entry.personality}</p>
+                        <p><strong>Runtime:</strong> ${entry.runtime.toFixed(2)} seconds</p>
+                        ${entry.voice_id ? `<p><strong>Voice:</strong> ${entry.voice_id}</p>` : ''}
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>User Prompt</h4>
+                        <pre>${entry.user_prompt}</pre>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>System Message</h4>
+                        <pre>${entry.system_message}</pre>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>AI Reply</h4>
+                        <div id="processed-reply">${processThinkTags(entry.llm_reply)}</div>
+                    </div>
+                `;
+            } else if (entry.type === 'tts_usage') {
+                html = `
+                    <div class="log-detail-header">
+                        <h2>TTS Usage Log Entry</h2>
+                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Metadata</h4>
+                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
+                        <p><strong>Voice:</strong> ${entry.voice_id}</p>
+                        <p><strong>Processing Time:</strong> ${entry.processing_time.toFixed(2)} seconds</p>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Text</h4>
+                        <pre>${entry.text}</pre>
+                    </div>
+                `;
+            } else if (entry.type === 'asr_usage') {
+                html = `
+                    <div class="log-detail-header">
+                        <h2>ASR Usage Log Entry</h2>
+                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Metadata</h4>
+                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
+                        <p><strong>Processing Time:</strong> ${entry.processing_time.toFixed(2)} seconds</p>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Transcription</h4>
+                        <pre>${entry.text}</pre>
+                    </div>
+                `;
+            } else if (entry.type === 'penphin_mind') {
+                html = `
+                    <div class="log-detail-header">
+                        <h2>PenphinMind Log Entry</h2>
+                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Metadata</h4>
+                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
+                        <p><strong>Total Time:</strong> ${entry.total_time.toFixed(2)} seconds</p>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Original Prompt</h4>
+                        <pre>${entry.original_prompt}</pre>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Logical Response</h4>
+                        <pre>${entry.logical_response}</pre>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Creative Response</h4>
+                        <pre>${entry.creative_response}</pre>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Final Synthesis</h4>
+                        <div>${processThinkTags(entry.final_synthesis)}</div>
+                    </div>
+                `;
+            }
+            
+            // Replace main content with detail view
+            mainContent.innerHTML = html;
+        }
+        
+        function hideLogDetail() {
+            const mainContent = document.querySelector('.main-content');
+            const originalContent = mainContent.getAttribute('data-original-content');
+            if (originalContent) {
+                mainContent.innerHTML = originalContent;
+                mainContent.removeAttribute('data-original-content');
+            }
+        }
+        
+        function refreshStatus() {
+            fetch('/status_only')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ai_pipeline) {
+                        const statusSpan = document.getElementById('roverseer-status');
+                        let statusHtml = `<span class="status-indicator">${data.ai_pipeline.status}</span>`;
+                        statusHtml += 'RoverSeer';
+                        
+                        if (data.ai_pipeline.activity !== 'idle') {
+                            statusHtml += ` - ${data.ai_pipeline.activity}`;
+                        }
+                        
+                        if (data.ai_pipeline.detail) {
+                            statusHtml += ` (${data.ai_pipeline.detail})`;
+                        }
+                        
+                        if (data.ai_pipeline.requests) {
+                            statusHtml += ` [${data.ai_pipeline.requests}]`;
+                        }
+                        
+                        statusSpan.innerHTML = statusHtml;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing status:', error);
+                    document.getElementById('roverseer-status').innerHTML = '⚠️ Status unavailable';
+                });
+        }
+        
         // Load containers when page loads
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('container-list')) {
                 loadContainers();
             }
+            
+            // Initial status load
+            refreshStatus();
+            
+            // Auto-refresh status every 5 seconds
+            setInterval(refreshStatus, 5000);
         });
     </script>
 </head>
@@ -378,7 +823,12 @@
             <a href="/" class="back-arrow">←</a>
             <h1>🗄️ RoverSeer System</h1>
         </div>
-        <button class="refresh-btn" onclick="refreshPage()">🔄 Refresh</button>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div class="status-display">
+                <span id="roverseer-status">Loading...</span>
+            </div>
+            <button class="refresh-btn" onclick="refreshPage()">🔄 Refresh</button>
+        </div>
     </div>
     
     <div class="container">
@@ -623,7 +1073,118 @@
                 {% if log_entries %}
                     <div class="log-entries">
                         {% for entry in log_entries %}
-                            <div class="log-entry">{{ entry }}</div>
+                            {% if entry.type == 'llm_usage' %}
+                                <div class="log-entry" id="log-{{ entry.id }}" data-type="llm_usage" onclick="toggleLogEntry('{{ entry.id }}')">
+                                    <div class="log-entry-summary">
+                                        <div style="flex: 1;">
+                                            <div>
+                                                <strong>{{ entry.model }}</strong> 
+                                                <span style="color: #666;">({{ entry.personality }})</span>
+                                                <span class="log-entry-meta">{{ entry.timestamp }} - {{ "%.2f"|format(entry.runtime) }}s</span>
+                                            </div>
+                                            <div class="log-entry-preview">
+                                                User: "{{ entry.user_prompt[:100] }}{% if entry.user_prompt|length > 100 %}...{% endif %}"
+                                            </div>
+                                        </div>
+                                        <button class="play-button" data-text="{{ entry.llm_reply }}" data-voice="{{ (entry.voice_id if entry.voice_id else 'null') }}" onclick="playLogEntry(event, '{{ entry.id }}'); return false;">Play</button>
+                                    </div>
+                                    <div class="log-entry-details">
+                                        <p><strong>User:</strong> {{ entry.user_prompt }}</p>
+                                        <p><strong>System:</strong> {{ entry.system_message }}</p>
+                                        <p><strong>Reply:</strong> <span id="reply-{{ entry.id }}">{{ entry.llm_reply }}</span></p>
+                                        {% if entry.voice_id %}
+                                        <p><strong>Voice:</strong> {{ entry.voice_id }}</p>
+                                        {% endif %}
+                                        <p><a href="#" onclick="event.preventDefault(); showLogDetailById(this); return false;">View Full Details →</a></p>
+                                        <script>
+                                            // Process think tags for this entry
+                                            document.getElementById('reply-{{ entry.id }}').innerHTML = processThinkTags(document.getElementById('reply-{{ entry.id }}').innerHTML);
+                                        </script>
+                                    </div>
+                                </div>
+                            {% elif entry.type == 'tts_usage' %}
+                                <div class="log-entry" id="log-{{ entry.id }}" data-type="tts_usage" onclick="toggleLogEntry('{{ entry.id }}')">
+                                    <div class="log-entry-summary">
+                                        <div style="flex: 1;">
+                                            <div>
+                                                <strong>TTS: {{ entry.voice_id }}</strong>
+                                                <span class="log-entry-meta">{{ entry.timestamp }} - {{ "%.2f"|format(entry.processing_time) }}s</span>
+                                            </div>
+                                            <div class="log-entry-preview">
+                                                "{{ entry.text[:100] }}{% if entry.text|length > 100 %}...{% endif %}"
+                                            </div>
+                                        </div>
+                                        <button class="play-button" data-text="{{ entry.text }}" data-voice="{{ (entry.voice_id if entry.voice_id else 'null') }}" onclick="playLogEntry(event, '{{ entry.id }}'); return false;">Play</button>
+                                    </div>
+                                    <div class="log-entry-details">
+                                        <p><strong>Text:</strong> {{ entry.text }}</p>
+                                        <p><a href="#" onclick="event.preventDefault(); showLogDetailById(this); return false;">View Full Details →</a></p>
+                                    </div>
+                                </div>
+                            {% elif entry.type == 'asr_usage' %}
+                                <div class="log-entry" id="log-{{ entry.id }}" data-type="asr_usage" onclick="toggleLogEntry('{{ entry.id }}')">
+                                    <div class="log-entry-summary">
+                                        <div style="flex: 1;">
+                                            <div>
+                                                <strong>ASR Transcription</strong>
+                                                <span class="log-entry-meta">{{ entry.timestamp }} - {{ "%.2f"|format(entry.processing_time) }}s</span>
+                                            </div>
+                                            <div class="log-entry-preview">
+                                                "{{ entry.text[:100] }}{% if entry.text|length > 100 %}...{% endif %}"
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="log-entry-details">
+                                        <p><strong>Text:</strong> {{ entry.text }}</p>
+                                        <p><a href="#" onclick="event.preventDefault(); showLogDetailById(this); return false;">View Full Details →</a></p>
+                                    </div>
+                                </div>
+                            {% elif entry.type == 'penphin_mind' %}
+                                <div class="log-entry" id="log-{{ entry.id }}" data-type="penphin_mind" onclick="toggleLogEntry('{{ entry.id }}')">
+                                    <div class="log-entry-summary">
+                                        <div style="flex: 1;">
+                                            <div>
+                                                <strong>PenphinMind</strong>
+                                                <span class="log-entry-meta">{{ entry.timestamp }} - {{ "%.2f"|format(entry.total_time) }}s</span>
+                                            </div>
+                                            <div class="log-entry-preview">
+                                                "{{ entry.original_prompt[:100] }}{% if entry.original_prompt|length > 100 %}...{% endif %}"
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="log-entry-details">
+                                        <p><strong>Prompt:</strong> {{ entry.original_prompt }}</p>
+                                        <p><strong>Logical:</strong> {{ entry.logical_response }}</p>
+                                        <p><strong>Creative:</strong> {{ entry.creative_response }}</p>
+                                        <p><strong>Final:</strong> {{ entry.final_synthesis }}</p>
+                                        <p><a href="#" onclick="event.preventDefault(); showLogDetailById(this); return false;">View Full Details →</a></p>
+                                    </div>
+                                </div>
+                            {% elif entry.type == 'errors' %}
+                                <div class="log-entry" id="log-{{ entry.id }}" data-type="errors" onclick="toggleLogEntry('{{ entry.id }}')">
+                                    <div class="log-entry-summary">
+                                        <div style="flex: 1;">
+                                            <div>
+                                                <strong>Error: {{ entry.error_type }}</strong>
+                                                <span class="log-entry-meta">{{ entry.timestamp }}</span>
+                                            </div>
+                                            <div class="log-entry-preview">
+                                                {{ entry.message[:100] }}{% if entry.message|length > 100 %}...{% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="log-entry-details">
+                                        <p><strong>Message:</strong> {{ entry.message }}</p>
+                                        {% if entry.context %}
+                                            <p><strong>Context:</strong></p>
+                                            {% for key, value in entry.context.items() %}
+                                                <p>{{ key }}: {{ value }}</p>
+                                            {% endfor %}
+                                        {% endif %}
+                                        <p><a href="#" onclick="event.preventDefault(); showLogDetailById(this); return false;">View Full Details →</a></p>
+                                    </div>
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 {% else %}

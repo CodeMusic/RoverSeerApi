@@ -3,6 +3,7 @@ import requests
 import json
 import subprocess
 import config
+import os
 
 from config import history, MAX_HISTORY, DEFAULT_MODEL, DEFAULT_VOICE
 from embodiment.sensors import get_sensor_data, check_tcp_ports, get_ai_pipeline_status

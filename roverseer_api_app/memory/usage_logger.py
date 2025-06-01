@@ -73,18 +73,29 @@ def log_llm_usage(model_name, system_message, user_prompt, response, processing_
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    # Infer personality from voice_id
+    personality = "default"
+    if voice_id:
+        # Import config to check if it's a voice with special personality
+        from config import VOICE_PERSONALITIES
+        if voice_id in VOICE_PERSONALITIES:
+            # Extract personality name from voice_id (e.g., "en_US-GlaDOS" -> "GlaDOS")
+            parts = voice_id.split('-')
+            if len(parts) >= 2:
+                personality = parts[-1]  # Get the last part (GlaDOS, jarvis, amy, etc.)
+        else:
+            personality = "device"  # Default device personality for other voices
+    
     log_entry = {
         "timestamp": timestamp,
         "model": model_name,
+        "personality": personality,
+        "voice_id": voice_id,
         "system_message": system_message,
         "user_prompt": user_prompt,
         "llm_reply": response,
         "runtime": processing_time or 0
     }
-    
-    # Add voice if provided
-    if voice_id:
-        log_entry["voice"] = voice_id
     
     with open(get_log_filename("llm_usage"), "a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
@@ -154,7 +165,7 @@ def log_tts_usage(voice_model, text, output_file=None, processing_time=None):
 
 
 def parse_log_file(log_type, date=None):
-    """Parse a specific log file and return formatted entries"""
+    """Parse a specific log file and return structured entries for expandable display"""
     if date is None:
         date = datetime.now().strftime('%Y-%m-%d')
     
@@ -175,46 +186,60 @@ def parse_log_file(log_type, date=None):
                     entry = json.loads(line.strip())
                     
                     if log_type == 'llm_usage':
-                        formatted = f"[{entry['timestamp']}] Model: {entry['model']}\n"
-                        if entry.get('voice'):
-                            formatted += f"Voice: {entry['voice']}\n"
-                        formatted += f"Runtime: {entry['runtime']:.2f}s\n"
-                        formatted += f"System: {entry['system_message'][:100]}...\n"
-                        formatted += f"User: {entry['user_prompt'][:200]}...\n"
-                        formatted += f"Reply: {entry['llm_reply'][:200]}...\n"
-                        entries.append(formatted)
+                        # Return structured data for expandable view
+                        entries.append({
+                            'type': 'llm_usage',
+                            'timestamp': entry['timestamp'],
+                            'model': entry['model'],
+                            'personality': entry.get('personality', 'default'),
+                            'voice_id': entry.get('voice_id'),
+                            'runtime': entry['runtime'],
+                            'system_message': entry['system_message'],
+                            'user_prompt': entry['user_prompt'],
+                            'llm_reply': entry['llm_reply'],
+                            'id': f"{entry['timestamp']}_{entry['model']}"  # Unique ID for expansion
+                        })
                         
                     elif log_type == 'asr_usage':
-                        formatted = f"[{entry['timestamp']}] Transcription\n"
-                        formatted += f"Processing time: {entry['processing_time']:.2f}s\n"
-                        formatted += f"Text: {entry['text']}\n"
-                        entries.append(formatted)
+                        entries.append({
+                            'type': 'asr_usage',
+                            'timestamp': entry['timestamp'],
+                            'processing_time': entry['processing_time'],
+                            'text': entry['text'],
+                            'id': f"{entry['timestamp']}_asr"
+                        })
                         
                     elif log_type == 'tts_usage':
-                        formatted = f"[{entry['timestamp']}] TTS Generation\n"
-                        formatted += f"Voice: {entry['voice_id']}\n"
-                        formatted += f"Processing time: {entry['processing_time']:.2f}s\n"
-                        formatted += f"Text: {entry['text'][:200]}...\n"
-                        entries.append(formatted)
+                        entries.append({
+                            'type': 'tts_usage',
+                            'timestamp': entry['timestamp'],
+                            'voice_id': entry['voice_id'],
+                            'processing_time': entry['processing_time'],
+                            'text': entry['text'],
+                            'id': f"{entry['timestamp']}_{entry['voice_id']}"
+                        })
                         
                     elif log_type == 'penphin_mind':
-                        formatted = f"[{entry['timestamp']}] PenphinMind Convergence\n"
-                        formatted += f"Total processing time: {entry['total_time']:.2f}s\n"
-                        formatted += f"Original prompt: {entry['original_prompt'][:200]}...\n"
-                        formatted += f"Final synthesis: {entry['final_synthesis'][:300]}...\n"
-                        entries.append(formatted)
+                        entries.append({
+                            'type': 'penphin_mind',
+                            'timestamp': entry['timestamp'],
+                            'total_time': entry['total_time'],
+                            'original_prompt': entry['original_prompt'],
+                            'final_synthesis': entry['final_synthesis'],
+                            'logical_response': entry.get('logical_response', ''),
+                            'creative_response': entry.get('creative_response', ''),
+                            'id': f"{entry['timestamp']}_penphin"
+                        })
                         
                     elif log_type == 'errors':
-                        formatted = f"[{entry['timestamp']}] Error: {entry['type']}\n"
-                        formatted += f"Message: {entry['message']}\n"
-                        if entry.get('context'):
-                            formatted += f"Context:\n"
-                            for key, value in entry['context'].items():
-                                if key == 'traceback':
-                                    formatted += f"  Traceback:\n{value}\n"
-                                else:
-                                    formatted += f"  {key}: {value}\n"
-                        entries.append(formatted)
+                        entries.append({
+                            'type': 'errors',
+                            'timestamp': entry['timestamp'],
+                            'error_type': entry['type'],
+                            'message': entry['message'],
+                            'context': entry.get('context', {}),
+                            'id': f"{entry['timestamp']}_error"
+                        })
                         
                 except json.JSONDecodeError:
                     continue
@@ -223,7 +248,8 @@ def parse_log_file(log_type, date=None):
         print(f"Error parsing {log_type} log: {e}")
         return []
     
-    return entries
+    # Return entries in reverse order (newest first)
+    return entries[::-1]
 
 
 def get_available_log_dates(log_type):

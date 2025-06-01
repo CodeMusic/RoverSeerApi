@@ -463,11 +463,25 @@ class LEDManager:
             'idle': {'A': 'off', 'B': 'off', 'C': 'off'}            # Idle state
         }
         
+        # Rainbow strip patterns for each stage (if experimental features enabled)
+        rainbow_patterns = {
+            'recording': ('pulse', (255, 0, 0)),       # Red pulse
+            'asr': ('pulse', (255, 165, 0)),          # Orange pulse
+            'asr_complete': ('solid', (255, 165, 0)),  # Orange solid
+            'llm': ('pulse', (0, 255, 0)),            # Green pulse
+            'llm_complete': ('solid', (0, 255, 0)),    # Green solid
+            'tts': ('pulse', (0, 100, 255)),          # Blue pulse
+            'tts_complete': ('solid', (0, 100, 255)),  # Blue solid
+            'playing': ('rainbow', None),              # Rainbow animation
+            'idle': ('clear', None)                    # Clear
+        }
+        
         if stage not in stages:
             return
         
         config = stages[stage]
         
+        # Update button LEDs
         if config == 'blink_all':
             self.blink_all_leds()
         else:
@@ -478,6 +492,26 @@ class LEDManager:
                     self.set_led(led, True)
                 elif state == 'off':
                     self.set_led(led, False)
+        
+        # Update rainbow strip if experimental features enabled
+        if self.rainbow_driver.use_experimental_strip and stage in rainbow_patterns:
+            pattern, color = rainbow_patterns[stage]
+            
+            if pattern == 'pulse':
+                self.rainbow_driver.rainbow_strip_manager.pulse_color(color, speed=0.05)
+            elif pattern == 'solid':
+                # Set all LEDs to solid color
+                self.rainbow_driver.rainbow_strip_manager.stop_animation()
+                for i in range(self.rainbow_driver.NUM_LEDS):
+                    self.rainbow_driver.set_led(i, *color)
+            elif pattern == 'rainbow':
+                self.rainbow_driver.rainbow_strip_manager.rainbow_cycle(speed=0.1)
+            elif pattern == 'clear':
+                self.rainbow_driver.rainbow_strip_manager.clear()
+        
+        # Always clear rainbow strip when going to idle
+        if stage == 'idle' and self.rainbow_driver.use_experimental_strip:
+            self.rainbow_driver.rainbow_strip_manager.clear()
 
 
 # ------- RAINBOW STRIP MANAGER -------
@@ -496,6 +530,8 @@ class RainbowStripManager:
             self.stop_animation()
             num_leds_on = int(self.rainbow_driver.NUM_LEDS * progress)
             for i in range(self.rainbow_driver.NUM_LEDS):
+                # Since physical LED 6 is leftmost and LED 0 is rightmost,
+                # we want to light up from left to right as progress increases
                 if i < num_leds_on:
                     self.rainbow_driver.set_led(i, *color)
                 else:
@@ -641,8 +677,11 @@ class RainbowDriver:
             logging.error(f"Invalid LED index: {index}")
             return
             
-        logging.info(f"[EXPERIMENTAL] Setting LED {index} to RGB({r},{g},{b})")
-        self.led_states[index] = (r, g, b)
+        # Reverse the index since LED 6 is on the far left and LED 0 is on the far right
+        reversed_index = (self.NUM_LEDS - 1) - index
+        
+        logging.info(f"[EXPERIMENTAL] Setting LED {index} (physical {reversed_index}) to RGB({r},{g},{b})")
+        self.led_states[reversed_index] = (r, g, b)
         self._apply_leds()
 
     def _apply_leds(self):

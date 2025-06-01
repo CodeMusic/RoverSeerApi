@@ -122,6 +122,8 @@ def text_to_speech():
 
             return jsonify({"status": "success", "message": f"Spoken with {voice_id}: {text}"})
         else:
+            # Stop system processing after TTS generation when returning file
+            stop_system_processing()
             return send_file(tmp_wav, mimetype="audio/wav", as_attachment=True, download_name="tts.wav")
             
     except Exception as e:
@@ -219,7 +221,7 @@ def transcribe_chat_voice():
         start_system_processing('B')
         messages = [{"role": "user", "content": transcript}]
         system_message = "You are RoverSeer, a helpful voice assistant."
-        reply = run_chat_completion(model, messages, system_message)
+        reply = run_chat_completion(model, messages, system_message, voice_id=voice)
 
         # Play voice intro before TTS (only when speaking)
         if speak:
@@ -312,7 +314,7 @@ def transcribe_and_chat():
         messages = [{"role": "user", "content": transcript}]
         system_message = "You are RoverSeer, a helpful assistant responding to transcribed audio."
 
-        reply = run_chat_completion(model, messages, system_message)
+        reply = run_chat_completion(model, messages, system_message, voice_id=voice)
 
         return jsonify({
             "transcript": transcript,

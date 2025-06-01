@@ -80,7 +80,7 @@ def chat_unified():
     try:
         # Start LLM processing LED
         start_system_processing('B')
-        reply = run_chat_completion(model, messages, system_message)
+        reply = run_chat_completion(model, messages, system_message, voice_id=DEFAULT_VOICE)
         
         # For text-only response, stop LEDs
         if output_type == "text":
@@ -421,7 +421,7 @@ def openai_compatible_chat():
     
     # Use default system message if none provided
     if not system_message:
-        system_message = "You are RoverSeer, a helpful assistant."
+        system_message = "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational."
 
     try:
         # Start LLM processing LED if this is from the recording pipeline
@@ -429,7 +429,7 @@ def openai_compatible_chat():
         if not any(stage for stage in pipeline_stages.values() if stage):
             start_system_processing('B')
         
-        reply = run_chat_completion(model, filtered_messages, system_message)
+        reply = run_chat_completion(model, filtered_messages, system_message, voice_id=DEFAULT_VOICE)
         
         # Stop LED processing if we started it
         if pipeline_stages.get('llm_active'):
