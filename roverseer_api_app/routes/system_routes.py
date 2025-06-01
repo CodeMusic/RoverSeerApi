@@ -2,9 +2,10 @@ from flask import Blueprint, request, jsonify, send_file, redirect, render_templ
 import requests
 import json
 import subprocess
+import config
 
 from config import history, MAX_HISTORY, DEFAULT_MODEL, DEFAULT_VOICE
-from embodiment.sensors import get_sensor_data, check_tcp_ports
+from embodiment.sensors import get_sensor_data, check_tcp_ports, get_ai_pipeline_status
 from cognition.llm_interface import get_available_models, sort_models_by_size
 from cognition.bicameral_mind import bicameral_chat_direct
 from cognition.llm_interface import run_chat_completion
@@ -12,6 +13,7 @@ from expression.text_to_speech import list_voice_ids
 from memory.usage_logger import (load_model_stats, get_available_log_dates, 
                                 parse_log_file)
 from utilities.text_processing import extract_short_model_name
+from embodiment.rainbow_interface import start_system_processing, stop_system_processing
 
 bp = Blueprint('system', __name__)
 
@@ -55,14 +57,23 @@ def home():
         history.clear()
         return redirect('/')
     
-    if request.method == 'POST' and request.form.get('action') != 'clear_context':
+    if request.method == 'POST' and request.form.get('action') == 'chat':
         output_type = request.form.get('output_type')
         voice = request.form.get('voice')
+        
+        # Validate voice - use default if empty
+        if not voice:
+            voice = DEFAULT_VOICE
+            print(f"Warning: Empty voice provided, using default: {voice}")
+            
         selected_voice = voice
         system = request.form.get('system')
         user_input = request.form.get('user_input')
         model = request.form.get('model')
         selected_model = model
+        
+        # Debug logging
+        print(f"Chat request - User: {user_input}, Model: {model}, Output: {output_type}")
 
         # Check if PenphinMind is selected
         if model.lower() == "penphinmind":
@@ -81,26 +92,48 @@ def home():
 
             try:
                 if output_type == 'text':
-                    reply = run_chat_completion(model, messages, system)
+                    # For text-only, use web personality
+                    personality = config.get_personality_for_voice(voice, context="web")
+                    reply = run_chat_completion(model, messages, personality, voice_id=voice)
                     reply_text = reply
+                    # Stop LED for text-only output
+                    stop_system_processing()
                     
                 elif output_type == 'audio_file':
                     from expression.text_to_speech import generate_tts_audio
                     import uuid
                     
-                    reply = run_chat_completion(model, messages, system)
+                    # For audio output, use voice-specific personality
+                    personality = config.get_personality_for_voice(voice, context="device")
+                    reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                    
+                    # Transition to TTS stage
+                    stop_system_processing()
+                    start_system_processing('C')
                     
                     tmp_audio = f"{uuid.uuid4().hex}.wav"
                     output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
                     
+                    # Stop LED after TTS
+                    stop_system_processing()
+                    
                     audio_url = url_for('system.serve_static', filename=tmp_audio)
-                    reply_text = reply  # Store the actual text, not a placeholder
+                    reply_text = reply
                         
                 else:  # speak
                     from expression.text_to_speech import speak_text
                     
-                    reply = run_chat_completion(model, messages, system)
+                    # For spoken output, use voice-specific personality
+                    personality = config.get_personality_for_voice(voice, context="device")
+                    reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                    
+                    # Transition to TTS stage
+                    stop_system_processing()
+                    start_system_processing('C')
+                    
                     speak_text(reply, voice)
+                    
+                    # Note: speak_text handles the aplay stage internally
                     reply_text = reply
 
                 history.append((user_input, reply_text, model))
@@ -117,7 +150,147 @@ def home():
                           voices=voices, 
                           selected_voice=selected_voice, 
                           sensor_data=sensor_data, 
-                          model_stats=model_stats)
+                          model_stats=model_stats,
+                          ai_pipeline=get_ai_pipeline_status())
+
+
+@bp.route("/status_only", methods=['GET'])
+def status_only():
+    """Return just the status data as JSON for AJAX updates"""
+    return jsonify({
+        "tcp_status": check_tcp_ports(),
+        "sensor_data": get_sensor_data(),
+        "ai_pipeline": get_ai_pipeline_status()
+    })
+
+
+@bp.route("/chat_ajax", methods=['POST'])
+def chat_ajax():
+    """AJAX endpoint for chat requests that returns JSON"""
+    # Check if we've reached the max concurrent requests
+    
+    # Count active requests (including button recording)
+    active_count = config.active_request_count
+    if config.recording_in_progress:
+        active_count += 1
+    
+    if active_count >= config.MAX_CONCURRENT_REQUESTS:
+        return jsonify({
+            "error": f"RoverSeer has reached the maximum concurrent requests limit ({config.MAX_CONCURRENT_REQUESTS}). Please wait a moment and try again.",
+            "ai_pipeline": get_ai_pipeline_status()
+        }), 429  # 429 Too Many Requests
+    
+    # Increment active request count
+    config.active_request_count += 1
+    
+    output_type = request.form.get('output_type')
+    voice = request.form.get('voice')
+    system = request.form.get('system')  # May be None now
+    user_input = request.form.get('user_input')
+    model = request.form.get('model')
+    
+    # Validate voice - use default if empty
+    if not voice:
+        voice = DEFAULT_VOICE
+        print(f"Warning: Empty voice provided, using default: {voice}")
+    
+    if not user_input:
+        config.active_request_count -= 1  # Decrement on early return
+        return jsonify({"error": "No input provided"}), 400
+    
+    # Debug logging
+    print(f"AJAX Chat request - User: {user_input}, Model: {model}, Output: {output_type}")
+    
+    reply_text = ""
+    audio_url = None
+    error = None
+    
+    try:
+        # Start LLM processing LED
+        start_system_processing('B')
+        
+        # Check if PenphinMind is selected
+        if model.lower() == "penphinmind":
+            # PenphinMind uses its own system messages, pass user's system if provided
+            reply_text = bicameral_chat_direct(user_input, system)
+            history.append((user_input, reply_text, "PenphinMind"))
+        else:
+            # Normal flow
+            messages = []
+            for user_msg, ai_reply, _ in history[-MAX_HISTORY:]:
+                messages.append({"role": "user", "content": user_msg})
+                messages.append({"role": "assistant", "content": ai_reply})
+            messages.append({"role": "user", "content": user_input})
+
+            if output_type == 'text':
+                # For text-only, use web personality
+                personality = config.get_personality_for_voice(voice, context="web")
+                reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                reply_text = reply
+                # Stop LED for text-only output
+                stop_system_processing()
+                
+            elif output_type == 'audio_file':
+                from expression.text_to_speech import generate_tts_audio
+                import uuid
+                
+                # For audio output, use voice-specific personality
+                personality = config.get_personality_for_voice(voice, context="device")
+                reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                
+                # Transition to TTS stage
+                stop_system_processing()
+                start_system_processing('C')
+                
+                tmp_audio = f"{uuid.uuid4().hex}.wav"
+                output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
+                
+                # Stop LED after TTS
+                stop_system_processing()
+                
+                audio_url = url_for('system.serve_static', filename=tmp_audio)
+                reply_text = reply
+                    
+            else:  # speak
+                from expression.text_to_speech import speak_text
+                
+                # For spoken output, use voice-specific personality
+                personality = config.get_personality_for_voice(voice, context="device")
+                reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                
+                # Transition to TTS stage
+                stop_system_processing()
+                start_system_processing('C')
+                
+                speak_text(reply, voice)
+                
+                # Note: speak_text handles the aplay stage internally
+                reply_text = reply
+
+            history.append((user_input, reply_text, model))
+            
+    except Exception as e:
+        error = str(e)
+        reply_text = f"Request failed: {e}"
+        # Make sure to stop LED on error
+        try:
+            stop_system_processing()
+        except:
+            pass
+    finally:
+        # Always decrement active request count
+        config.active_request_count -= 1
+    
+    # Get updated AI pipeline status
+    ai_pipeline = get_ai_pipeline_status()
+    
+    return jsonify({
+        "reply": reply_text,
+        "audio_url": audio_url,
+        "model": model,
+        "error": error,
+        "ai_pipeline": ai_pipeline
+    })
 
 
 @bp.route('/system')
@@ -126,13 +299,18 @@ def system():
     selected_log_type = request.args.get('log_type', None)
     selected_date = request.args.get('date', None)
     sort_by = request.args.get('sort_by', 'fastest')  # 'fastest' or 'usage'
-    view_mode = request.args.get('view', 'logs')  # 'logs', 'models', or 'model_detail'
+    view_mode = request.args.get('view', 'logs')  # 'logs', 'models', 'model_detail', 'commands', or 'settings'
     model_name = request.args.get('model', None)  # For individual model details
     
     log_entries = []
     available_dates = []
     all_models_data = None
     model_detail = None
+    
+    # Get voices and current settings for settings view
+    voices = list_voice_ids()
+    current_voice = DEFAULT_VOICE
+    current_concurrent = config.MAX_CONCURRENT_REQUESTS
     
     # Handle different view modes
     if view_mode == 'models':
@@ -197,7 +375,8 @@ def system():
         {"id": "llm_usage", "name": "LLM Usage", "icon": "🤖"},
         {"id": "asr_usage", "name": "ASR Usage", "icon": "🎤"},
         {"id": "tts_usage", "name": "TTS Usage", "icon": "🔊"},
-        {"id": "penphin_mind", "name": "PenphinMind", "icon": "🧠"}
+        {"id": "penphin_mind", "name": "PenphinMind", "icon": "🧠"},
+        {"id": "errors", "name": "Error Logs", "icon": "⚠️"}
     ]
     
     return render_template('system.html', 
@@ -214,7 +393,10 @@ def system():
                           all_models_data=all_models_data,
                           model_detail=model_detail,
                           model_name=model_name,
-                          extract_short_model_name=extract_short_model_name)
+                          extract_short_model_name=extract_short_model_name,
+                          voices=voices,
+                          current_voice=current_voice,
+                          current_concurrent=current_concurrent)
 
 
 @bp.route('/models', methods=['GET'])
@@ -364,3 +546,94 @@ def list_containers():
         return jsonify({"status": "success", "containers": containers})
     except subprocess.CalledProcessError as e:
         return jsonify({"status": "error", "message": f"Failed to list containers: {str(e)}"}), 500 
+
+@bp.route('/system/settings', methods=['POST'])
+def update_settings():
+    """Update system settings like default voice"""
+    setting_type = request.form.get('type')
+    
+    if setting_type == 'voice':
+        new_voice = request.form.get('value')
+        if new_voice:
+            from config import update_default_voice
+            if update_default_voice(new_voice):
+                return jsonify({"status": "success", "message": f"Default voice updated to {new_voice}"})
+            else:
+                return jsonify({"status": "error", "message": "Failed to update voice"}), 500
+                
+    elif setting_type == 'concurrent_requests':
+        try:
+            max_requests = int(request.form.get('value'))
+            if max_requests < 1 or max_requests > 10:
+                return jsonify({"status": "error", "message": "Value must be between 1 and 10"}), 400
+                
+            from config import update_max_concurrent_requests
+            if update_max_concurrent_requests(max_requests):
+                return jsonify({"status": "success", "message": f"Maximum concurrent requests updated to {max_requests}"})
+            else:
+                return jsonify({"status": "error", "message": "Failed to update concurrent requests"}), 500
+        except ValueError:
+            return jsonify({"status": "error", "message": "Invalid number"}), 400
+    
+    return jsonify({"status": "error", "message": "Invalid setting type"}), 400
+
+
+@bp.route('/system/personality', methods=['GET'])
+def get_personality():
+    """Get personality text for a specific type"""
+    personality_type = request.args.get('type')
+    
+    if not personality_type:
+        return jsonify({"status": "error", "message": "No personality type specified"}), 400
+    
+    # Import config functions
+    import config
+    
+    # Handle different personality types
+    if personality_type == 'default':
+        personality = config.DEFAULT_PERSONALITY
+    elif personality_type == 'web':
+        personality = config.WEB_PERSONALITY
+    elif personality_type == 'device':
+        personality = config.DEVICE_PERSONALITY
+    elif personality_type.startswith('voice:'):
+        voice_id = personality_type[6:]  # Remove 'voice:' prefix
+        personality = config.VOICE_PERSONALITIES.get(voice_id, "")
+    else:
+        return jsonify({"status": "error", "message": "Invalid personality type"}), 400
+    
+    return jsonify({"status": "success", "personality": personality})
+
+
+@bp.route('/system/personality', methods=['POST'])
+def update_personality():
+    """Update personality text for a specific type"""
+    personality_type = request.form.get('type')
+    personality_text = request.form.get('personality')
+    
+    if not personality_type or not personality_text:
+        return jsonify({"status": "error", "message": "Missing type or personality text"}), 400
+    
+    # Import config functions
+    import config
+    
+    # Handle different personality types
+    if personality_type == 'default':
+        if config.update_personality('default', personality_text):
+            config.DEFAULT_PERSONALITY = personality_text
+            return jsonify({"status": "success", "message": "Default personality updated"})
+    elif personality_type == 'web':
+        if config.update_personality('web', personality_text):
+            config.WEB_PERSONALITY = personality_text
+            return jsonify({"status": "success", "message": "Web personality updated"})
+    elif personality_type == 'device':
+        if config.update_personality('device', personality_text):
+            config.DEVICE_PERSONALITY = personality_text
+            return jsonify({"status": "success", "message": "Device personality updated"})
+    elif personality_type.startswith('voice:'):
+        # Voice personalities are hardcoded and cannot be edited
+        return jsonify({"status": "error", "message": "Voice-specific personalities cannot be edited"}), 400
+    else:
+        return jsonify({"status": "error", "message": "Invalid personality type"}), 400
+    
+    return jsonify({"status": "error", "message": "Failed to update personality"}), 500 

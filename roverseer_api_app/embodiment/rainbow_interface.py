@@ -68,6 +68,23 @@ def setup_button_handlers():
     buttons_pressed = {'A': False, 'B': False, 'C': False}
     clear_history_timer = None
     
+    def is_system_busy():
+        """Check if any pipeline stage is active"""
+        # Check all active pipeline stages
+        for stage, active in config.pipeline_stages.items():
+            if active and stage.endswith('_active'):
+                return True
+        
+        # Also check if recording is in progress
+        if config.recording_in_progress:
+            return True
+            
+        # Check if any active request is being processed
+        if config.active_request_count > 0:
+            return True
+            
+        return False
+    
     def check_clear_history():
         """Check if all buttons are pressed to clear history"""
         nonlocal clear_history_timer
@@ -127,6 +144,11 @@ def setup_button_handlers():
         """Toggle to previous model"""
         buttons_pressed['A'] = True
         
+        # Check if system is busy - ignore button press if so
+        if is_system_busy():
+            print("Button A ignored - system is busy")
+            return
+        
         # Check if we should interrupt audio
         if interrupt_audio_playback():
             return  # Just interrupt, don't do normal action
@@ -158,6 +180,11 @@ def setup_button_handlers():
     def handle_button_a_release():
         """Handle button A release - show model name immediately"""
         buttons_pressed['A'] = False
+        
+        # Check if system is busy - don't show model info if so
+        if is_system_busy():
+            return
+            
         if not config.recording_in_progress and not any(buttons_pressed.values()):
             if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
                 rainbow_driver.led_manager.set_led('A', False)  # LED off when released
@@ -170,6 +197,11 @@ def setup_button_handlers():
     def handle_button_c():
         """Toggle to next model"""
         buttons_pressed['C'] = True
+        
+        # Check if system is busy - ignore button press if so
+        if is_system_busy():
+            print("Button C ignored - system is busy")
+            return
         
         # Check if we should interrupt audio
         if interrupt_audio_playback():
@@ -201,6 +233,11 @@ def setup_button_handlers():
     def handle_button_c_release():
         """Handle button C release - show model name immediately"""
         buttons_pressed['C'] = False
+        
+        # Check if system is busy - don't show model info if so
+        if is_system_busy():
+            return
+            
         if not config.recording_in_progress and not any(buttons_pressed.values()):
             if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
                 rainbow_driver.led_manager.set_led('C', False)  # LED off when released
@@ -213,6 +250,11 @@ def setup_button_handlers():
     def handle_button_b():
         """Start recording on button press - LED solid while held"""
         buttons_pressed['B'] = True
+        
+        # Check if system is busy - ignore button press if so
+        if is_system_busy():
+            print("Button B ignored - system is busy")
+            return
         
         # Check if we should interrupt audio
         if interrupt_audio_playback():
@@ -231,6 +273,13 @@ def setup_button_handlers():
         """Start the recording pipeline on button release"""
         buttons_pressed['B'] = False
         
+        # Check if system is busy - don't start recording if so
+        if is_system_busy():
+            # Turn off LED if it was on
+            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                rainbow_driver.led_manager.set_led('B', False)
+            return
+        
         if config.recording_in_progress or all(buttons_pressed.values()):
             return  # Ignore if already recording or clearing history
         
@@ -240,7 +289,7 @@ def setup_button_handlers():
         recording_thread.start()
     
     def show_current_model_info():
-        """Display current model name and runtime info"""
+        """Display current model name"""
         # Display model name (scroll_text_on_display manages its own threading)
         full_model_name = config.available_models[config.selected_model_index]
         short_model_name = extract_short_model_name(full_model_name)
@@ -249,13 +298,8 @@ def setup_button_handlers():
         if model_name.lower() == "penphinmind":
             scroll_text_on_display("PenphinMind", scroll_speed=0.2)
         else:
-            # Get runtime info
-            avg_runtime = get_model_runtime(full_model_name)  # Use full name for stats lookup
-            if avg_runtime:
-                display_text = f"{model_name} {avg_runtime:.1f}s"
-            else:
-                display_text = model_name
-            scroll_text_on_display(display_text, scroll_speed=0.2)
+            # Just display the model name without stats
+            scroll_text_on_display(model_name, scroll_speed=0.2)
     
     def recording_pipeline():
         """Handle the complete recording -> transcription -> LLM -> TTS pipeline"""
@@ -397,8 +441,13 @@ def setup_button_handlers():
                 
                 # System message that includes model switching context
                 short_selected_model = extract_short_model_name(selected_model)
+                
+                # Get personality based on voice
+                personality = config.get_personality_for_voice(voice, context="device")
+                
+                # Add model context to personality
                 system_message = (
-                    "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational. "
+                    f"{personality} "
                     f"You are currently running as model '{short_selected_model.split(':')[0]}'. "
                     "Previous responses may be from different models, indicated by [model_name]: prefix. "
                     "You can reference what other models said if asked."
@@ -457,6 +506,15 @@ def setup_button_handlers():
             print(f"Error in recording pipeline: {e}")
             import traceback
             traceback.print_exc()
+            
+            # Log the error
+            from memory.usage_logger import log_error
+            log_error("recording_pipeline", str(e), {
+                "voice": config.DEFAULT_VOICE,
+                "model": config.available_models[config.selected_model_index] if config.available_models else "none",
+                "traceback": traceback.format_exc()
+            })
+            
             # On error, reset everything
             reset_pipeline_stages()
             # Show error on display

@@ -9,8 +9,12 @@ from expression.sound_orchestration import play_sound_async, play_ollama_tune, p
 from embodiment.display_manager import scroll_text_on_display, display_timer, blink_number, clear_display
 
 
-def run_chat_completion(model, messages, system_message=None, skip_logging=False):
+def run_chat_completion(model, messages, system_message=None, skip_logging=False, voice_id=None):
     """Run a chat completion request against Ollama with display and sound feedback"""
+    
+    # Set the active model
+    import config
+    config.active_model = model
     
     # Play tune and set up display
     play_sound_async(play_ollama_tune, model)
@@ -91,7 +95,7 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
         # Only log if not part of PenphinMind
         if not skip_logging:
             # Log LLM usage
-            log_llm_usage(model, system_message or "Default system message", user_prompt, result, elapsed_time)
+            log_llm_usage(model, system_message or "Default system message", user_prompt, result, elapsed_time, voice_id)
             
             # Update model runtime statistics
             update_model_runtime(model, elapsed_time)
@@ -107,12 +111,18 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
         blink_thread.daemon = True
         blink_thread.start()
         
+        # Clear active model when done
+        config.active_model = None
+        
         return result
         
     except Exception as e:
         stop_timer.set()
         # Clear display on error
         clear_display()
+        # Clear active model on error
+        import config
+        config.active_model = None
         raise e
 
 

@@ -2,6 +2,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
+import os
 
 from config import LOG_DIR, STATS_FILE
 
@@ -67,18 +68,26 @@ def get_model_runtime(model_name):
     return None
 
 
-def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None):
-    """Log LLM usage to daily file"""
+def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None):
+    """Log LLM usage to daily file in JSON format"""
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    log_entry = {
+        "timestamp": timestamp,
+        "model": model_name,
+        "system_message": system_message,
+        "user_prompt": user_prompt,
+        "llm_reply": response,
+        "runtime": processing_time or 0
+    }
+    
+    # Add voice if provided
+    if voice_id:
+        log_entry["voice"] = voice_id
+    
     with open(get_log_filename("llm_usage"), "a", encoding="utf-8") as f:
-        f.write(f"[ {model_name} - {timestamp}, {system_message}\n")
-        f.write(f"  User: {user_prompt}\n")
-        f.write(f"  {model_name}: {response}")
-        if processing_time:
-            f.write(f" [{processing_time:.2f}s]")
-        f.write("\n--\n\n")
+        f.write(json.dumps(log_entry) + "\n")
 
 
 def log_penphin_mind_usage(logical_model, creative_model, convergence_model, 
@@ -86,98 +95,208 @@ def log_penphin_mind_usage(logical_model, creative_model, convergence_model,
                           logical_response, logical_time,
                           creative_response, creative_time,
                           convergence_response, convergence_time):
-    """Log PenphinMind bicameral flow to daily file"""
+    """Log PenphinMind bicameral flow to daily file in JSON format"""
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     total_time = logical_time + creative_time + convergence_time
     
+    log_entry = {
+        "timestamp": timestamp,
+        "logical_model": logical_model,
+        "creative_model": creative_model,
+        "convergence_model": convergence_model,
+        "system_message": system_message,
+        "original_prompt": user_prompt,
+        "logical_response": logical_response,
+        "logical_time": logical_time,
+        "creative_response": creative_response,
+        "creative_time": creative_time,
+        "final_synthesis": convergence_response,
+        "convergence_time": convergence_time,
+        "total_time": total_time
+    }
+    
     with open(get_log_filename("penphin_mind"), "a", encoding="utf-8") as f:
-        f.write(f"[ Logical: {logical_model}, Creative: {creative_model}, Convergence: {convergence_model}\n")
-        f.write(f"  {timestamp}, {system_message}\n")
-        f.write(f"  User: {user_prompt}\n")
-        f.write(f"  \n\nLogical Agent's Reply: {logical_response} [{logical_time:.2f}s]\n")
-        f.write(f"  \n\nCreative Agent's Reply: {creative_response} [{creative_time:.2f}s]\n")
-        f.write(f"  \n\nConvergence Reply: {convergence_response} [{convergence_time:.2f}s]\n")
-        f.write(f"  \n")
-        f.write(f"  Total processing time = {total_time:.2f}s\n")
-        f.write("]\n\n")
+        f.write(json.dumps(log_entry) + "\n")
 
 
 def log_asr_usage(audio_file, transcript, processing_time=None):
-    """Log ASR (Automatic Speech Recognition) usage to daily file"""
+    """Log ASR (Automatic Speech Recognition) usage to daily file in JSON format"""
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    log_entry = {
+        "timestamp": timestamp,
+        "audio_file": audio_file,
+        "text": transcript,
+        "processing_time": processing_time or 0
+    }
+    
     with open(get_log_filename("asr_usage"), "a", encoding="utf-8") as f:
-        f.write(f"[ ASR - {timestamp}\n")
-        f.write(f"  Audio: {audio_file}\n")
-        f.write(f"  Transcript: {transcript}")
-        if processing_time:
-            f.write(f" [{processing_time:.2f}s]")
-        f.write("\n--\n\n")
+        f.write(json.dumps(log_entry) + "\n")
 
 
 def log_tts_usage(voice_model, text, output_file=None, processing_time=None):
-    """Log TTS (Text-to-Speech) usage to daily file"""
+    """Log TTS (Text-to-Speech) usage to daily file in JSON format"""
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    log_entry = {
+        "timestamp": timestamp,
+        "voice_id": voice_model,
+        "text": text,
+        "output_file": output_file,
+        "processing_time": processing_time or 0
+    }
+    
     with open(get_log_filename("tts_usage"), "a", encoding="utf-8") as f:
-        f.write(f"[ TTS - {timestamp}\n")
-        f.write(f"  Voice: {voice_model}\n")
-        f.write(f"  Text: {text}\n")
-        if output_file:
-            f.write(f"  Output: {output_file}\n")
-        if processing_time:
-            f.write(f"  Processing time: {processing_time:.2f}s\n")
-        f.write("--\n\n")
+        f.write(json.dumps(log_entry) + "\n")
+
+
+def parse_log_file(log_type, date=None):
+    """Parse a specific log file and return formatted entries"""
+    if date is None:
+        date = datetime.now().strftime('%Y-%m-%d')
+    
+    # Handle error logs specially
+    if log_type == 'errors':
+        log_file = LOG_DIR / f"errors_{date}.log"
+    else:
+        log_file = LOG_DIR / f"{log_type}_{date}.log"
+    
+    if not log_file.exists():
+        return []
+    
+    entries = []
+    try:
+        with open(log_file, 'r') as f:
+            for line in f:
+                try:
+                    entry = json.loads(line.strip())
+                    
+                    if log_type == 'llm_usage':
+                        formatted = f"[{entry['timestamp']}] Model: {entry['model']}\n"
+                        if entry.get('voice'):
+                            formatted += f"Voice: {entry['voice']}\n"
+                        formatted += f"Runtime: {entry['runtime']:.2f}s\n"
+                        formatted += f"System: {entry['system_message'][:100]}...\n"
+                        formatted += f"User: {entry['user_prompt'][:200]}...\n"
+                        formatted += f"Reply: {entry['llm_reply'][:200]}...\n"
+                        entries.append(formatted)
+                        
+                    elif log_type == 'asr_usage':
+                        formatted = f"[{entry['timestamp']}] Transcription\n"
+                        formatted += f"Processing time: {entry['processing_time']:.2f}s\n"
+                        formatted += f"Text: {entry['text']}\n"
+                        entries.append(formatted)
+                        
+                    elif log_type == 'tts_usage':
+                        formatted = f"[{entry['timestamp']}] TTS Generation\n"
+                        formatted += f"Voice: {entry['voice_id']}\n"
+                        formatted += f"Processing time: {entry['processing_time']:.2f}s\n"
+                        formatted += f"Text: {entry['text'][:200]}...\n"
+                        entries.append(formatted)
+                        
+                    elif log_type == 'penphin_mind':
+                        formatted = f"[{entry['timestamp']}] PenphinMind Convergence\n"
+                        formatted += f"Total processing time: {entry['total_time']:.2f}s\n"
+                        formatted += f"Original prompt: {entry['original_prompt'][:200]}...\n"
+                        formatted += f"Final synthesis: {entry['final_synthesis'][:300]}...\n"
+                        entries.append(formatted)
+                        
+                    elif log_type == 'errors':
+                        formatted = f"[{entry['timestamp']}] Error: {entry['type']}\n"
+                        formatted += f"Message: {entry['message']}\n"
+                        if entry.get('context'):
+                            formatted += f"Context:\n"
+                            for key, value in entry['context'].items():
+                                if key == 'traceback':
+                                    formatted += f"  Traceback:\n{value}\n"
+                                else:
+                                    formatted += f"  {key}: {value}\n"
+                        entries.append(formatted)
+                        
+                except json.JSONDecodeError:
+                    continue
+                    
+    except Exception as e:
+        print(f"Error parsing {log_type} log: {e}")
+        return []
+    
+    return entries
 
 
 def get_available_log_dates(log_type):
     """Get list of available dates for a specific log type"""
-    ensure_log_dir()
     dates = []
     
-    # Look for files matching pattern: {log_type}_{date}.log
-    pattern = f"{log_type}_*.log"
+    # Handle error logs specially
+    if log_type == 'errors':
+        pattern = f"errors_*.log"
+    else:
+        pattern = f"{log_type}_*.log"
+    
     for file in LOG_DIR.glob(pattern):
         # Extract date from filename
-        match = re.search(r'(\d{4}-\d{2}-\d{2})\.log$', file.name)
+        if log_type == 'errors':
+            match = re.match(r'errors_(\d{4}-\d{2}-\d{2})\.log', file.name)
+        else:
+            # Build the pattern dynamically without f-string
+            pattern = log_type + r'_(\d{4}-\d{2}-\d{2})\.log'
+            match = re.match(pattern, file.name)
+        
         if match:
             dates.append(match.group(1))
     
-    # Sort dates in reverse order (most recent first)
-    dates.sort(reverse=True)
-    return dates
+    return sorted(dates, reverse=True)  # Most recent first
 
 
-def parse_log_file(log_type, limit=50, date=None):
-    """Parse a log file and return recent entries"""
-    if date:
-        log_file = LOG_DIR / f"{log_type}_{date}.log"
-    else:
-        log_file = get_log_filename(log_type)
-        
-    if not log_file.exists():
-        return []
+# -------- ERROR LOGGING -------- #
+def log_error(error_type, error_message, context=None):
+    """Log an error to a dedicated error log file"""
+    error_file = LOG_DIR / f"errors_{datetime.now().strftime('%Y-%m-%d')}.log"
+    
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_entry = {
+        "timestamp": timestamp,
+        "type": error_type,
+        "message": error_message,
+        "context": context or {}
+    }
     
     try:
-        with open(log_file, "r", encoding="utf-8") as f:
-            content = f.read()
-        
-        # Split entries based on log type
-        if log_type == "penphin_mind":
-            entries = content.split("]\n\n")
-        else:
-            entries = content.split("\n--\n")
-        
-        # Process entries
-        parsed_entries = []
-        for entry in entries[-limit:]:  # Get last 'limit' entries
-            if entry.strip():
-                parsed_entries.append(entry.strip())
-        
-        return list(reversed(parsed_entries))  # Most recent first
+        # Append to error log file
+        with open(error_file, 'a') as f:
+            f.write(json.dumps(log_entry) + '\n')
     except Exception as e:
-        print(f"Error parsing {log_type} log: {e}")
-        return [] 
+        print(f"Failed to log error: {e}")
+
+
+def get_recent_errors(limit=50):
+    """Get the most recent errors from today's log"""
+    error_file = LOG_DIR / f"errors_{datetime.now().strftime('%Y-%m-%d')}.log"
+    errors = []
+    
+    if error_file.exists():
+        try:
+            with open(error_file, 'r') as f:
+                for line in f:
+                    try:
+                        errors.append(json.loads(line.strip()))
+                    except:
+                        pass
+        except Exception as e:
+            print(f"Error reading error log: {e}")
+    
+    # Return most recent errors first
+    return errors[-limit:][::-1]
+
+
+def get_error_log_dates():
+    """Get list of dates that have error logs"""
+    dates = []
+    for file in LOG_DIR.glob("errors_*.log"):
+        match = re.match(r'errors_(\d{4}-\d{2}-\d{2})\.log', file.name)
+        if match:
+            dates.append(match.group(1))
+    return sorted(dates, reverse=True)  # Most recent first 

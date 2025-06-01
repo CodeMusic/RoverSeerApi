@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from config import VOICES_DIR, DEFAULT_VOICE, INTROS_DIR, AUDIO_DEVICE
-from memory.usage_logger import log_tts_usage
+from memory.usage_logger import log_tts_usage, log_error
 from expression.sound_orchestration import play_sound_async, play_tts_tune
 from utilities.text_processing import sanitize_for_speech
 
@@ -22,9 +22,21 @@ def list_voice_ids():
 
 def find_voice_files(base_voice_id):
     """Find the model and config files for a voice ID"""
-    pattern_prefix = f"{base_voice_id}-"
+    pattern_prefix = f"{base_voice_id}"
     model_file = None
     config_file = None
+    
+    # Debug logging
+    print(f"Looking for voice files with prefix: {pattern_prefix}")
+    print(f"In directory: {VOICES_DIR}")
+    
+    try:
+        files_in_dir = os.listdir(VOICES_DIR)
+        matching_files = [f for f in files_in_dir if f.startswith(pattern_prefix)]
+        print(f"Files starting with {pattern_prefix}: {matching_files}")
+    except Exception as e:
+        print(f"Error listing directory: {e}")
+    
     for fname in os.listdir(VOICES_DIR):
         if fname.startswith(pattern_prefix):
             if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
@@ -33,21 +45,66 @@ def find_voice_files(base_voice_id):
                 config_file = os.path.join(VOICES_DIR, fname)
         if model_file and config_file:
             break
+    
     if not model_file or not config_file:
+        # More detailed error message
+        print(f"Missing files for voice {base_voice_id}:")
+        print(f"  Model file (.onnx): {model_file}")
+        print(f"  Config file (.onnx.json): {config_file}")
         raise FileNotFoundError(f"Missing model or config for voice: {base_voice_id}")
+    
+    print(f"Found voice files: {model_file}, {config_file}")
     return model_file, config_file
 
 
 def generate_tts_audio(text, voice_id=DEFAULT_VOICE, output_file=None):
     """Generate TTS audio using Piper"""
+    # Validate voice_id - use default if empty
+    if not voice_id:
+        print(f"Warning: Empty voice_id provided, using default: {DEFAULT_VOICE}")
+        voice_id = DEFAULT_VOICE
+    
+    # Set the active voice
+    import config
+    config.active_voice = voice_id
+    
     # Play TTS tune
     play_sound_async(play_tts_tune, voice_id)
     
     # Sanitize text for speech (but keep original for logging)
     clean_text = sanitize_for_speech(text)
     
-    # Find voice files
-    model_path, config_path = find_voice_files(voice_id)
+    try:
+        # Find voice files
+        model_path, config_path = find_voice_files(voice_id)
+    except FileNotFoundError as e:
+        # Log the error
+        log_error("tts_voice_not_found", str(e), {
+            "voice_id": voice_id,
+            "available_voices": list_voice_ids()
+        })
+        
+        # Try to fall back to a default voice
+        print(f"Voice {voice_id} not found, trying fallback...")
+        try:
+            # Try without the quality suffix (e.g., "en_GB-GlaDOS" instead of "en_GB-GlaDOS-medium")
+            if '-' in voice_id and voice_id.count('-') >= 3:
+                fallback_id = '-'.join(voice_id.split('-')[:-1])
+                print(f"Trying fallback voice: {fallback_id}")
+                model_path, config_path = find_voice_files(fallback_id)
+                voice_id = fallback_id  # Update voice_id for logging
+            else:
+                raise e
+        except:
+            # If that fails too, use first available voice
+            available = list_voice_ids()
+            if available:
+                print(f"Using first available voice: {available[0]}")
+                model_path, config_path = find_voice_files(available[0])
+                voice_id = available[0]
+            else:
+                config.active_voice = None
+                raise Exception("No voices available")
     
     # Generate output filename if not provided
     if not output_file:
@@ -69,29 +126,61 @@ def generate_tts_audio(text, voice_id=DEFAULT_VOICE, output_file=None):
     
     if result.returncode != 0:
         error_msg = result.stderr.decode() if result.stderr else "Unknown TTS error"
+        # Log the error
+        log_error("tts_generation_failed", error_msg, {
+            "voice_id": voice_id,
+            "return_code": result.returncode,
+            "model_path": model_path,
+            "config_path": config_path
+        })
+        # Clear active voice on error
+        config.active_voice = None
         raise Exception(f"Piper TTS failed: {error_msg}")
     
     # Log TTS usage with ORIGINAL text (preserving think tags in logs)
     log_tts_usage(voice_id, text, output_file, tts_processing_time)
+    
+    # Clear active voice when done
+    config.active_voice = None
     
     return output_file, tts_processing_time
 
 
 def speak_text(text, voice_id=DEFAULT_VOICE):
     """Generate TTS and play it on the device"""
-    output_file, _ = generate_tts_audio(text, voice_id)
+    # Validate voice_id - use default if empty
+    if not voice_id:
+        print(f"Warning: Empty voice_id provided in speak_text, using default: {DEFAULT_VOICE}")
+        voice_id = DEFAULT_VOICE
+        
+    # Set active voice for the entire speak operation
+    import config
+    config.active_voice = voice_id
     
     try:
+        output_file, _ = generate_tts_audio(text, voice_id)
+        
+        # Transition to audio playback stage (voice is still active)
+        from embodiment.rainbow_interface import start_system_processing, stop_system_processing
+        stop_system_processing()  # Stop TTS stage
+        start_system_processing('aplay')  # Start audio playback
+        
         # Play audio on device
         subprocess.run(["aplay", "-D", AUDIO_DEVICE, output_file], check=True)
+        
+        # Stop all processing when done
+        stop_system_processing()
+        
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error playing audio: {e}")
         return False
     finally:
         # Clean up temp file
-        if os.path.exists(output_file):
+        if 'output_file' in locals() and os.path.exists(output_file):
             os.remove(output_file)
+        # Clear active voice
+        config.active_voice = None
 
 
 # -------- VOICE INTRO SYSTEM -------- #
@@ -110,19 +199,11 @@ def generate_voice_intro(voice_id):
     """Generate and save an intro for a specific voice"""
     intro_path = get_intro_path(voice_id)
     
-    # Voice-specific intro messages
-    intro_messages = {
-        "en_GB-jarvis": "Ahh yes, hmm... let me gather my thoughts on this before I reply.",
-        "en_US-amy": "Hello! Just a moment while I think about that.",
-        "en_GB-northern_english": "Right then, let me have a think about that.",
-        "en_US-danny": "Hey there! Give me a second to process that.",
-        "en_GB-alba": "Curiouser, and Curiouser. Let me ponder on that for a minute.",
-        "en_US-ryan": "Hi! I'm processing your query now.",
-    }
+    # Import voice intros from config
+    from config import VOICE_INTROS, DEFAULT_VOICE_INTRO
     
-    # Default intro if voice not in predefined messages
-    default_intro = "Curious, let me think about that."
-    intro_text = intro_messages.get(voice_id, default_intro)
+    # Get intro text for this voice
+    intro_text = VOICE_INTROS.get(voice_id, DEFAULT_VOICE_INTRO)
     
     try:
         model_path, config_path = find_voice_files(voice_id)
@@ -170,9 +251,49 @@ def play_voice_intro(voice_id):
         return False
 
 
+def debug_list_voices():
+    """Debug function to list all voice files with their exact names"""
+    print(f"\n=== Voice Files Debug ===")
+    print(f"Looking in: {VOICES_DIR}")
+    
+    try:
+        all_files = sorted(os.listdir(VOICES_DIR))
+        print(f"Total files: {len(all_files)}")
+        
+        # Group by base name
+        voice_groups = {}
+        for fname in all_files:
+            if fname.endswith('.onnx') or fname.endswith('.onnx.json'):
+                # Extract base name (everything before the last dash)
+                parts = fname.rsplit('-', 1)
+                if len(parts) >= 2:
+                    base_name = parts[0]
+                    if base_name not in voice_groups:
+                        voice_groups[base_name] = []
+                    voice_groups[base_name].append(fname)
+        
+        print(f"\nFound {len(voice_groups)} voice groups:")
+        for base, files in sorted(voice_groups.items()):
+            print(f"\n{base}:")
+            for f in files:
+                print(f"  - {f}")
+        
+        # Also list what list_voice_ids returns
+        print(f"\nlist_voice_ids() returns: {list_voice_ids()}")
+        
+    except Exception as e:
+        print(f"Error listing voices: {e}")
+    
+    print("=== End Debug ===\n")
+
+
 def get_voice_info():
     """Get information about available voices"""
     voices = list_voice_ids()
+    
+    # Run debug on first call
+    debug_list_voices()
+    
     return {
         "available_voices": voices,
         "default_voice": DEFAULT_VOICE,

@@ -14,6 +14,32 @@
         .sensor-item { display: flex; align-items: center; gap: 5px; }
         .refresh { cursor: pointer; font-size: 20px; }
         
+        /* AI Pipeline Status */
+        .ai-pipeline-status {
+            background: #555;
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: flex;
+            gap: 15px;
+            margin-left: 10px;
+        }
+        
+        .pipeline-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .pipeline-item .status-indicator {
+            font-size: 12px;
+        }
+        
+        .pipeline-item .detail {
+            font-size: 11px;
+            color: #ccc;
+        }
+        
         /* iPhone Messages Style */
         .chatbox { background: white; padding: 0; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; height: 600px; display: flex; flex-direction: column; }
         
@@ -97,7 +123,6 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            max-width: calc(100% - 80px); /* Leave space for send button */
         }
         
         .chat-controls {
@@ -141,10 +166,22 @@
             cursor: pointer;
             font-weight: 500;
             white-space: nowrap;
+            flex-shrink: 0;
+            height: 40px;
         }
         
         .send-button:hover {
             background: #0051D5;
+        }
+        
+        .send-button:disabled {
+            background: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+        }
+        
+        .send-button:disabled:hover {
+            background: #cccccc;
         }
         
         .action-buttons {
@@ -252,11 +289,20 @@
                 transform: translateY(-10px);
             }
         }
+        
+        /* Flash animation for status indicator */
+        @keyframes flash {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
     </style>
     <script>
-        function refreshPage() {
-            window.location.reload();
-        }
+        // Configuration
+        var STATUS_REFRESH_INTERVAL = 5000; // 5 seconds
         
         function escapeHtml(text) {
             var div = document.createElement('div');
@@ -333,6 +379,9 @@
                 bubble.innerHTML = processThinkTags(text) + audioHtml;
                 bubble.classList.remove('needs-processing');
             });
+            
+            // Start auto-refresh of status every 5 seconds
+            setInterval(refreshStatus, STATUS_REFRESH_INTERVAL);
         }
         
         // Auto-resize textarea
@@ -341,38 +390,331 @@
             textarea.style.height = textarea.scrollHeight + 'px';
         }
         
+        // Store current form selections
+        var currentSelections = {
+            outputType: 'speak',
+            model: '{{ selected_model }}',
+            voice: '{{ selected_voice }}'
+        };
+        
+        // Track if request is in progress
+        var requestInProgress = false;
+        
+        // Update selections when changed
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('[name="output_type"]').addEventListener('change', function(e) {
+                currentSelections.outputType = e.target.value;
+            });
+            document.querySelector('[name="model"]').addEventListener('change', function(e) {
+                currentSelections.model = e.target.value;
+            });
+            document.querySelector('[name="voice"]').addEventListener('change', function(e) {
+                currentSelections.voice = e.target.value;
+            });
+            
+            // Set initial values from the form elements
+            currentSelections.outputType = document.querySelector('[name="output_type"]').value;
+            currentSelections.model = document.querySelector('[name="model"]').value;
+            currentSelections.voice = document.querySelector('[name="voice"]').value;
+        });
+        
+        function refreshStatus() {
+            // Only refresh status, not reload the page
+            fetch('/status_only')
+                .then(response => response.json())
+                .then(data => {
+                    // Update sensor data
+                    if (data.sensor_data) {
+                        document.querySelector('.sensor-data').innerHTML = `
+                            <span class="sensor-item">🌡️ HAT: ${data.sensor_data.hat_temperature}</span>
+                            <span class="sensor-item">🖥️ CPU: ${data.sensor_data.cpu_temperature}</span>
+                            <span class="sensor-item">🌊 ${data.sensor_data.pressure}</span>
+                            <span class="sensor-item">🏔️ ${data.sensor_data.altitude}</span>
+                            <span class="sensor-item">🌬️ Fan: ${data.sensor_data.fan_state}</span>
+                        `;
+                    }
+                    
+                    // Update TCP status
+                    if (data.tcp_status) {
+                        var statusHtml = '';
+                        for (const [name, info] of Object.entries(data.tcp_status)) {
+                            if (name === "Ollama") {
+                                statusHtml += `<span class="status-item">
+                                    <a href="http://roverseer.local:${info.port}/api/tags" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
+                                        ${info.status} ${name} (${info.port})
+                                    </a>
+                                </span>`;
+                            } else {
+                                statusHtml += `<span class="status-item">
+                                    <a href="http://roverseer.local:${info.port}" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
+                                        ${info.status} ${name} (${info.port})
+                                    </a>
+                                </span>`;
+                            }
+                        }
+                        document.querySelector('.status-section').innerHTML = statusHtml;
+                    }
+                    
+                    // Update AI pipeline status
+                    if (data.ai_pipeline) {
+                        updateAIPipelineStatus(data.ai_pipeline);
+                    }
+                })
+                .catch(error => console.error('Error refreshing status:', error));
+        }
+        
+        function updateAIPipelineStatus(pipeline) {
+            var pipelineDiv = document.querySelector('.ai-pipeline-status');
+            if (pipelineDiv) {
+                var statusHtml = `
+                    <div class="pipeline-item">
+                        <span class="status-indicator">${pipeline.status}</span>
+                        <span>RoverSeer</span>
+                        ${pipeline.activity !== 'idle' ? `<span class="detail">${pipeline.activity}</span>` : ''}
+                        ${pipeline.detail ? `<span class="detail">(${pipeline.detail})</span>` : ''}
+                        ${pipeline.requests ? `<span class="detail">[${pipeline.requests}]</span>` : ''}
+                    </div>
+                `;
+                pipelineDiv.innerHTML = statusHtml;
+            }
+        }
+        
         // Handle form submission
         function handleSubmit(event) {
+            event.preventDefault(); // Prevent default form submission
+            
+            // Immediately disable submit button and check if already in progress
+            var submitButton = event.target.querySelector('[type="submit"]');
+            if (submitButton.disabled || requestInProgress) {
+                return; // Already processing
+            }
+            
+            // Check if RoverSeer is already busy by fetching current status
+            fetch('/status_only')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ai_pipeline && data.ai_pipeline.status !== '🔵') {
+                        // RoverSeer is busy
+                        var messagesContainer = document.getElementById('messages-container');
+                        var typingIndicator = document.getElementById('typing-indicator');
+                        
+                        var errorDiv = document.createElement('div');
+                        errorDiv.className = 'message assistant';
+                        errorDiv.innerHTML = `
+                            <div class="message-bubble">RoverSeer is currently busy processing another request. Please wait a moment and try again.</div>
+                            <div class="message-info">System</div>
+                        `;
+                        messagesContainer.insertBefore(errorDiv, typingIndicator);
+                        
+                        // Scroll to bottom
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        
+                        // Flash the status indicator
+                        var statusIndicator = document.querySelector('.ai-pipeline-status .status-indicator');
+                        if (statusIndicator) {
+                            statusIndicator.style.animation = 'flash 0.5s ease-in-out 3';
+                            setTimeout(() => {
+                                statusIndicator.style.animation = '';
+                            }, 1500);
+                        }
+                        
+                        return; // Don't proceed with submission
+                    }
+                    
+                    // RoverSeer is idle, proceed with submission
+                    proceedWithSubmission(event);
+                })
+                .catch(error => {
+                    // If status check fails, proceed anyway
+                    console.error('Failed to check status:', error);
+                    proceedWithSubmission(event);
+                });
+        }
+        
+        function proceedWithSubmission(event) {
+            var submitButton = event.target.querySelector('[type="submit"]');
+            
+            // Set request in progress and disable button
+            requestInProgress = true;
+            submitButton.disabled = true;
+            
             // Get form values
-            var userInput = document.querySelector('[name="user_input"]').value;
+            var userInput = document.querySelector('[name="user_input"]').value.trim();
             var model = document.querySelector('[name="model"]').value;
             var modelDisplay = document.querySelector('[name="model"] option:checked').text;
+            var voice = document.querySelector('[name="voice"]').value;
+            var outputType = document.querySelector('[name="output_type"]').value;
+            
+            // Validate voice selection - use default if empty
+            if (!voice) {
+                voice = '{{ selected_voice }}' || 'en_US-amy-medium';
+                console.warn('No voice selected, using default:', voice);
+            }
+            
+            if (!userInput) {
+                // Re-enable if no input
+                requestInProgress = false;
+                submitButton.disabled = false;
+                return;
+            }
             
             // Add user message immediately
             var messagesContainer = document.getElementById('messages-container');
-            var userMessage = document.createElement('div');
-            userMessage.className = 'message user';
-            userMessage.innerHTML = `
+            var typingIndicator = document.getElementById('typing-indicator');
+            
+            var userDiv = document.createElement('div');
+            userDiv.className = 'message user';
+            userDiv.innerHTML = `
                 <div class="message-bubble">${escapeHtml(userInput)}</div>
                 <div class="message-info">You</div>
             `;
+            messagesContainer.insertBefore(userDiv, typingIndicator);
             
-            // Insert before typing indicator
-            var typingIndicator = document.getElementById('typing-indicator');
-            messagesContainer.insertBefore(userMessage, typingIndicator);
+            // Clear input and reset height
+            document.querySelector('[name="user_input"]').value = '';
+            document.querySelector('[name="user_input"]').style.height = 'auto';
             
             // Show typing indicator
             typingIndicator.style.display = 'block';
             
-            // Clear input
-            document.querySelector('[name="user_input"]').value = '';
+            // Update status to show activity immediately
+            updateAIPipelineStatus({
+                status: '🟢',
+                activity: '🤔 thinking',
+                detail: modelDisplay.split(' ')[0]
+            });
             
-            // Scroll to bottom to show new message and typing indicator
-            setTimeout(() => {
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Submit via AJAX
+            var formData = new FormData();
+            formData.append('action', 'chat');
+            formData.append('user_input', userInput);
+            formData.append('model', model);
+            formData.append('voice', voice);
+            formData.append('output_type', outputType);
+            
+            fetch('/chat_ajax', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // Check if we got a 429 (Too Many Requests) status
+                if (response.status === 429) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'RoverSeer is busy');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                if (data.error) {
+                    // Show error message
+                    var errorDiv = document.createElement('div');
+                    errorDiv.className = 'message assistant';
+                    errorDiv.innerHTML = `
+                        <div class="message-bubble">Error: ${escapeHtml(data.error)}</div>
+                        <div class="message-info">System</div>
+                    `;
+                    messagesContainer.insertBefore(errorDiv, typingIndicator);
+                } else {
+                    // Add assistant message
+                    var assistantDiv = document.createElement('div');
+                    assistantDiv.className = 'message assistant';
+                    
+                    var messageContent = processThinkTags(data.reply);
+                    
+                    if (data.audio_url) {
+                        messageContent += `<audio controls autoplay>
+                            <source src="${data.audio_url}" type="audio/wav">
+                            Your browser does not support the audio element.
+                        </audio>`;
+                    }
+                    
+                    assistantDiv.innerHTML = `
+                        <div class="message-bubble">${messageContent}</div>
+                        <div class="message-info">${escapeHtml(modelDisplay)}</div>
+                    `;
+                    messagesContainer.insertBefore(assistantDiv, typingIndicator);
+                }
+                
+                // Update AI pipeline status
+                if (data.ai_pipeline) {
+                    updateAIPipelineStatus(data.ai_pipeline);
+                }
+                
+                // Scroll to bottom
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 100);
+                
+                // Re-enable submit button
+                submitButton.disabled = false;
+                
+                // Restore form selections
+                document.querySelector('[name="output_type"]').value = currentSelections.outputType;
+                document.querySelector('[name="model"]').value = currentSelections.model;
+                
+                // Safely restore voice selection
+                var voiceSelect = document.querySelector('[name="voice"]');
+                if (voiceSelect && currentSelections.voice) {
+                    // Check if the voice option exists
+                    var voiceExists = false;
+                    for (var i = 0; i < voiceSelect.options.length; i++) {
+                        if (voiceSelect.options[i].value === currentSelections.voice) {
+                            voiceExists = true;
+                            break;
+                        }
+                    }
+                    
+                    if (voiceExists) {
+                        voiceSelect.value = currentSelections.voice;
+                    } else {
+                        console.warn('Voice option not found:', currentSelections.voice);
+                        // Let it use the default selected option
+                    }
+                }
+                
+                // Clear request flag
+                requestInProgress = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                typingIndicator.style.display = 'none';
+                
+                // Add error message
+                var errorDiv = document.createElement('div');
+                errorDiv.className = 'message assistant';
+                errorDiv.innerHTML = `
+                    <div class="message-bubble">Sorry, an error occurred: ${escapeHtml(error.toString())}</div>
+                    <div class="message-info">System</div>
+                `;
+                messagesContainer.insertBefore(errorDiv, typingIndicator);
+                
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Re-enable submit button
+                submitButton.disabled = false;
+                
+                // Update status back to idle
+                updateAIPipelineStatus({
+                    status: '🔵',
+                    activity: 'idle',
+                    detail: ''
+                });
+                
+                // Clear request flag
+                requestInProgress = false;
+            });
         }
     </script>
+    
+    {% if reply_text %}
+    <!-- Messages are already rendered server-side, no need for JavaScript -->
+    {% endif %}
 </head>
 <body>
     <div class="topbar">
@@ -400,7 +742,19 @@
                 <span class="sensor-item">🏔️ {{ sensor_data.altitude }}</span>
                 <span class="sensor-item">🌬️ Fan: {{ sensor_data.fan_state }}</span>
             </div>
-            <span class="refresh" onclick="refreshPage()">🔄</span>
+            <div class="ai-pipeline-status">
+                <div class="pipeline-item">
+                    <span class="status-indicator">{{ ai_pipeline.status }}</span>
+                    <span>RoverSeer</span>
+                    {% if ai_pipeline.activity != 'idle' %}
+                    <span class="detail">{{ ai_pipeline.activity }}</span>
+                    {% endif %}
+                    {% if ai_pipeline.detail %}
+                    <span class="detail">({{ ai_pipeline.detail }})</span>
+                    {% endif %}
+                </div>
+            </div>
+            <span class="refresh" onclick="refreshStatus()">🔄</span>
         </div>
     </div>
 
@@ -412,7 +766,7 @@
                     <input type="hidden" name="action" value="clear_context">
                     <button type="submit" class="clear-button">🗑️ Clear</button>
                 </form>
-                <button onclick="window.open('/system', '_blank')" class="logs-button">📊 System</button>
+                <button onclick="window.location.href='/system'" class="logs-button">📊 System</button>
             </div>
         </div>
         
@@ -428,25 +782,6 @@
                 </div>
             {% endfor %}
             
-            {% if reply_text %}
-                <div class="message user">
-                    <div class="message-bubble">{{ request.form.get('user_input', '') }}</div>
-                    <div class="message-info">You</div>
-                </div>
-                <div class="message assistant">
-                    <div class="message-bubble needs-processing" data-text="{{ reply_text }}">
-                        {{ reply_text }}
-                        {% if audio_url %}
-                        <audio controls autoplay>
-                            <source src="{{ audio_url }}" type="audio/wav">
-                            Your browser does not support the audio element.
-                        </audio>
-                        {% endif %}
-                    </div>
-                    <div class="message-info">{{ selected_model }}</div>
-                </div>
-            {% endif %}
-            
             <div class="typing-indicator" id="typing-indicator">
                 <span></span>
                 <span></span>
@@ -456,30 +791,33 @@
         
         <div class="chat-input-container">
             <form method="post" id="chat_form" class="chat-input-form" onsubmit="handleSubmit(event)">
-                <input type="hidden" name="action" value="chat">
-                <input type="hidden" name="system" value="You are RoverSeer, a helpful assistant." />
-                
+            <input type="hidden" name="action" value="chat">
+            
                 <div class="chat-input-wrapper">
                     <div class="chat-controls">
                         <select name="output_type" title="Output Type">
                             <option value="speak">🔊 RoverSeer</option>
                             <option value="audio_file">🎵 Local Audio</option>
                             <option value="text">📝 Text Only</option>
-                        </select>
-                        
+            </select>
+            
                         <select name="model" title="AI Model">
-                            {% for tag in models %}
-                                <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
-                                    {{ tag.display_name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        
+                {% for tag in models %}
+                    <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
+                        {{ tag.display_name }}
+                    </option>
+                {% endfor %}
+            </select>
+            
                         <select name="voice" title="Voice">
-                            {% for v in voices %}
-                                <option value="{{ v }}" {% if v == selected_voice %}selected{% endif %}>{{ v }}</option>
-                            {% endfor %}
-                        </select>
+                            {% if voices %}
+                {% for v in voices %}
+                    <option value="{{ v }}" {% if v == selected_voice %}selected{% endif %}>{{ v }}</option>
+                {% endfor %}
+                            {% else %}
+                                <option value="{{ selected_voice }}">{{ selected_voice }}</option>
+                            {% endif %}
+            </select>
                     </div>
                     
                     <textarea 
@@ -487,12 +825,12 @@
                         class="chat-textarea" 
                         placeholder="Type a message..."
                         oninput="autoResize(this)"
-                        onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); this.form.submit(); }"
-                    >Tell me a fun science fact.</textarea>
+                        onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey || !event.shiftKey)) { event.preventDefault(); document.getElementById('chat_form').requestSubmit(); }"
+                    ></textarea>
                 </div>
                 
                 <button type="submit" class="send-button">Send</button>
-            </form>
+        </form>
         </div>
     </div>
 </body>

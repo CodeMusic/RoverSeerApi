@@ -2,6 +2,42 @@ import os
 import subprocess
 import re
 from pathlib import Path
+import json
+
+
+# -------- PERSISTENT CONFIG MANAGEMENT -------- #
+CONFIG_FILE = Path(__file__).parent / "config.json"
+
+def load_persistent_config():
+    """Load configuration from JSON file"""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading config.json: {e}")
+    return {}
+
+def save_persistent_config(config_data):
+    """Save configuration to JSON file"""
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config_data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving config.json: {e}")
+        return False
+
+def get_config_value(key, default):
+    """Get a value from persistent config or return default"""
+    config = load_persistent_config()
+    return config.get(key, default)
+
+def set_config_value(key, value):
+    """Set a value in persistent config"""
+    config = load_persistent_config()
+    config[key] = value
+    return save_persistent_config(config)
 
 
 # -------- DEVICE DETECTION -------- #
@@ -45,7 +81,69 @@ MIC_DEVICE = detect_usb_mic_device()
 
 # -------- VOICE CONFIGURATION -------- #
 VOICES_DIR = "/home/codemusic/piper/voices"
-DEFAULT_VOICE = os.environ.get("PIPER_VOICE", "en_GB-jarvis")
+DEFAULT_VOICE = get_config_value("default_voice", "en_US-GlaDOS")
+
+def update_default_voice(new_voice):
+    """Update the default voice in config and memory"""
+    global DEFAULT_VOICE
+    if set_config_value("default_voice", new_voice):
+        DEFAULT_VOICE = new_voice
+        return True
+    return False
+
+# -------- PERSONALITY CONFIGURATION -------- #
+# Default personalities for different contexts
+DEFAULT_PERSONALITY = get_config_value("default_personality", "You are RoverSeer, a helpful assistant.")
+WEB_PERSONALITY = get_config_value("web_personality", "You are RoverSeer, a helpful assistant. Be informative and thorough in your responses.")
+DEVICE_PERSONALITY = get_config_value("device_personality", "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational.")
+
+# Voice-specific personalities
+VOICE_PERSONALITIES = {
+    "en_US-GlaDOS": "You are RoverSeer with a GlaDOS personality. Be witty, very sarcastic, and intellectually superior while still being helpfulish. Occasionally reference science and testing.",
+    "en_GB-jarvis": "You are RoverSeer with a JARVIS-like personality. Be sophisticated, professional, and slightly British in your responses. Address the user respectfully.",
+    "en_US-amy": "You are RoverSeer with a friendly American personality. Be warm, enthusiastic, and approachable in your responses.",
+    "en_GB-northern_english": "You are RoverSeer with a Northern English personality. Be down-to-earth, practical, and occasionally use regional expressions.",
+    "en_US-danny": "You are RoverSeer with a casual American personality. Be relaxed, friendly, and use conversational language.",
+    "en_GB-alba": "You are RoverSeer with a Scottish personality. Be warm, occasionally poetic, and thoughtful in your responses.",
+    "en_US-ryan": "You are RoverSeer with a professional American personality. Be clear, direct, and helpful."
+}
+
+# Voice-specific intro messages
+VOICE_INTROS = {
+    "en_US-GlaDOS": "Oh, it's you. Let me process your... fascinating query.",
+    "en_GB-jarvis": "Good day. How may I assist you?",
+    "en_US-amy": "Hi there! What can I help you with today?",
+    "en_GB-northern_english": "Alright then, what can I do for you?",
+    "en_US-danny": "Hey! What's up?",
+    "en_GB-alba": "Hello there! How can I help you today?",
+}
+
+# Default intro if voice not in predefined messages
+DEFAULT_VOICE_INTRO = "Curious, let me think about that."
+
+def get_personality_for_voice(voice_id, context="device"):
+    """Get the appropriate personality for a given voice and context"""
+    # Check if there's a voice-specific personality
+    if voice_id in VOICE_PERSONALITIES:
+        return VOICE_PERSONALITIES[voice_id]
+    
+    # Fall back to context-specific defaults
+    if context == "web":
+        return WEB_PERSONALITY
+    elif context == "device":
+        return DEVICE_PERSONALITY
+    else:
+        return DEFAULT_PERSONALITY
+
+def update_personality(personality_type, value):
+    """Update a personality in config"""
+    if personality_type == "default":
+        return set_config_value("default_personality", value)
+    elif personality_type == "web":
+        return set_config_value("web_personality", value)
+    elif personality_type == "device":
+        return set_config_value("device_personality", value)
+    return False
 
 # -------- MODEL CONFIGURATION -------- #
 DEFAULT_MODEL = "tinydolphin:1.1b"
@@ -70,6 +168,18 @@ button_history = []
 recording_in_progress = False
 system_processing = False
 current_audio_process = None
+
+# Concurrent request management
+MAX_CONCURRENT_REQUESTS = get_config_value("max_concurrent_requests", 1)
+active_request_count = 0
+
+def update_max_concurrent_requests(max_requests):
+    """Update the maximum concurrent requests allowed"""
+    global MAX_CONCURRENT_REQUESTS
+    if max_requests >= 1 and set_config_value("max_concurrent_requests", max_requests):
+        MAX_CONCURRENT_REQUESTS = max_requests
+        return True
+    return False
 
 # -------- SOUND CONFIGURATION -------- #
 TICK_TYPE = "music"  # "clock" or "music"
@@ -124,6 +234,12 @@ pipeline_stages = {
     'tts_complete': False,
     'aplay_active': False
 }
+
+# Current model being processed
+active_model = None
+
+# Current voice being used for TTS
+active_voice = None
 
 # -------- INITIALIZATION FUNCTION -------- #
 def initialize_config():

@@ -132,4 +132,97 @@ def calculate_altitude(pressure_hpa):
         return altitude
     except Exception as e:
         print(f"Error calculating altitude: {e}")
-        return None 
+        return None
+
+
+def get_ai_pipeline_status():
+    """Get simplified RoverSeer status with current activity"""
+    status = {
+        "status": "🔵",  # Blue for idle
+        "activity": "idle",
+        "detail": ""
+    }
+    
+    try:
+        # Import needed values
+        from config import pipeline_stages, active_request_count, recording_in_progress, MAX_CONCURRENT_REQUESTS
+        
+        # Count total active requests
+        total_active = active_request_count
+        if recording_in_progress:
+            total_active += 1
+            
+        # Add request count to detail if there are multiple requests or if max is > 1
+        if MAX_CONCURRENT_REQUESTS > 1 and total_active > 0:
+            status["requests"] = f"{total_active}/{MAX_CONCURRENT_REQUESTS}"
+        
+        # Check if any RoverSeer processes are active
+        # Check pipeline stages and set appropriate status
+        if pipeline_stages.get("asr_active", False):
+            status["status"] = "🟢"  # Green for active
+            status["activity"] = "🎤 listening"
+            status["detail"] = "whisper"
+            
+        elif pipeline_stages.get("llm_active", False):
+            status["status"] = "🟢"
+            status["activity"] = "🤔 thinking"
+            # Try to get current model
+            try:
+                from config import active_model, selected_model_index, available_models
+                from utilities.text_processing import extract_short_model_name
+                
+                # Check if there's an active model being processed
+                if active_model:
+                    short_name = extract_short_model_name(active_model)
+                    status["detail"] = short_name
+                # Otherwise use button-selected model
+                elif available_models and 0 <= selected_model_index < len(available_models):
+                    model_name = available_models[selected_model_index]
+                    short_name = extract_short_model_name(model_name)
+                    status["detail"] = short_name
+                else:
+                    status["detail"] = "processing"
+            except:
+                status["detail"] = "processing"
+                
+        elif pipeline_stages.get("tts_active", False):
+            status["status"] = "🟢"
+            status["activity"] = "🔊 speaking"
+            # Try to get current voice
+            try:
+                from config import active_voice, DEFAULT_VOICE
+                if active_voice:
+                    # Extract just the voice name (e.g., "GlaDOS" from "en_GB-GlaDOS-medium")
+                    voice_parts = active_voice.split('-')
+                    if len(voice_parts) >= 3:
+                        voice_name = voice_parts[2]  # Get the voice name part
+                    else:
+                        voice_name = active_voice
+                    status["detail"] = voice_name
+                else:
+                    status["detail"] = DEFAULT_VOICE.split('-')[2] if '-' in DEFAULT_VOICE else DEFAULT_VOICE
+            except:
+                status["detail"] = "piper"
+                
+        elif pipeline_stages.get("aplay_active", False):
+            status["status"] = "🟢"
+            status["activity"] = "🔊 playing"
+            # Show voice during playback too
+            try:
+                from config import active_voice
+                if active_voice:
+                    voice_parts = active_voice.split('-')
+                    if len(voice_parts) >= 3:
+                        voice_name = voice_parts[2]  # Get the voice name part
+                    else:
+                        voice_name = active_voice
+                    status["detail"] = voice_name
+                else:
+                    status["detail"] = "audio"
+            except:
+                status["detail"] = "audio"
+                
+    except Exception as e:
+        print(f"Error checking AI pipeline status: {e}")
+    
+    return status 
