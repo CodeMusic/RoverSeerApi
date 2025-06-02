@@ -410,6 +410,43 @@
             });
             document.querySelector('[name="voice"]').addEventListener('change', function(e) {
                 currentSelections.voice = e.target.value;
+                
+                // Get the selected option's personality data
+                var selectedOption = e.target.options[e.target.selectedIndex];
+                var personalityName = selectedOption.getAttribute('data-personality');
+                
+                if (personalityName) {
+                    // Fetch personality details to get model preference
+                    fetch('/system/personalities')
+                        .then(response => response.json())
+                        .then(data => {
+                            var personality = data.personalities.find(p => p.name === personalityName);
+                            if (personality && personality.model_preference) {
+                                // Update model selection if personality has a preference
+                                var modelSelect = document.querySelector('[name="model"]');
+                                
+                                // Check if model exists in dropdown
+                                var modelExists = false;
+                                for (var i = 0; i < modelSelect.options.length; i++) {
+                                    if (modelSelect.options[i].value === personality.model_preference) {
+                                        modelExists = true;
+                                        break;
+                                    }
+                                }
+                                
+                                if (modelExists) {
+                                    modelSelect.value = personality.model_preference;
+                                    currentSelections.model = personality.model_preference;
+                                    console.log('Updated model to personality preference:', personality.model_preference);
+                                } else {
+                                    console.warn('Personality preferred model not available:', personality.model_preference);
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching personality details:', error);
+                        });
+                }
             });
             
             // Set initial values from the form elements

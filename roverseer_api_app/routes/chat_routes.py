@@ -474,6 +474,13 @@ def openai_compatible_chat():
     from cognition.personality import get_personality_manager
     manager = get_personality_manager()
     
+    # Debug logging
+    if manager.current_personality:
+        print(f"DEBUG openai_compatible_chat: Current personality is {manager.current_personality.name}")
+        print(f"DEBUG openai_compatible_chat: Personality type: {type(manager.current_personality).__name__}")
+    else:
+        print("DEBUG openai_compatible_chat: No current personality set")
+    
     # Get system message from personality if not provided
     system_message = None
     filtered_messages = []
@@ -486,7 +493,16 @@ def openai_compatible_chat():
     
     # Use default system message if none provided
     if not system_message:
-        system_message = "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational."
+        if manager.current_personality:
+            # Generate context-aware system message from personality
+            context = {
+                "time_of_day": "day",  # Could be enhanced with actual time
+                "user_name": None,  # Could be enhanced if we track users
+            }
+            system_message = manager.current_personality.generate_system_message(context)
+            print(f"DEBUG openai_compatible_chat: Using personality system message for {manager.current_personality.name}")
+        else:
+            system_message = "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational."
 
     # Use personality's voice if not specified
     voice = data.get("voice")

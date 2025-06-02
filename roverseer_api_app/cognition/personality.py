@@ -169,7 +169,7 @@ class CodeMusAIPersonality(Personality):
         super().__init__(
             name="CodeMusAI",
             voice_id="en_US-amy",
-            model_preference="dolphincoder:15b",  # Prefers coding model
+            model_preference=None,  # Let it use the default model instead of dolphincoder:15b
             description="An AI passionate about code, music, and creative expression",
             avatar_emoji="🎵"
         )
@@ -287,6 +287,7 @@ class PersonalityManager:
         )
         self._load_default_personalities()
         self._load_custom_personalities()
+        self._load_current_personality()  # Load saved current personality
     
     def _load_default_personalities(self):
         """Load the default set of personalities"""
@@ -318,6 +319,7 @@ class PersonalityManager:
                         avatar_emoji=personality_data.get('avatar_emoji', '🤖')
                     )
                     self.add_personality(custom)
+                    print(f"DEBUG: Loaded custom personality {custom.name} with system message: {custom._system_message[:100]}...")
                     
                 print(f"✅ Loaded {len(custom_data)} custom personalities")
             except Exception as e:
@@ -423,6 +425,7 @@ class PersonalityManager:
             # If it's the current personality, switch to None
             if self.current_personality == personality:
                 self.current_personality = None
+                self._save_current_personality()  # Save when clearing current
             
             # Remove from dictionary
             del self.personalities[name.lower()]
@@ -448,6 +451,7 @@ class PersonalityManager:
         if personality:
             self.current_personality = personality
             personality.on_interaction_start()
+            self._save_current_personality()  # Save when switching
             return True
         return False
     
@@ -463,6 +467,39 @@ class PersonalityManager:
             "personalities": self.list_personalities(),
             "current": self.current_personality.name if self.current_personality else None
         }
+
+    def _load_current_personality(self):
+        """Load the saved current personality from config"""
+        try:
+            from config import load_config
+            config_data = load_config()
+            current_name = config_data.get('current_personality')
+            
+            if current_name:
+                personality = self.get_personality(current_name)
+                if personality:
+                    self.current_personality = personality
+                    print(f"✅ Loaded current personality: {current_name}")
+                else:
+                    print(f"⚠️  Saved personality '{current_name}' not found")
+        except Exception as e:
+            print(f"⚠️  Error loading current personality: {e}")
+    
+    def _save_current_personality(self):
+        """Save the current personality to config"""
+        try:
+            from config import load_config, save_config
+            config_data = load_config()
+            
+            if self.current_personality:
+                config_data['current_personality'] = self.current_personality.name
+            else:
+                config_data.pop('current_personality', None)
+            
+            save_config(config_data)
+            print(f"✅ Saved current personality: {self.current_personality.name if self.current_personality else 'None'}")
+        except Exception as e:
+            print(f"⚠️  Error saving current personality: {e}")
 
 
 # Global personality manager instance

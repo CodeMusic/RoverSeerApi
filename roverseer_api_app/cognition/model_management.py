@@ -7,8 +7,24 @@ def refresh_available_models():
     global available_models
     models = get_available_models()
     if models:  # Only update if we got models
-        available_models[:] = sort_models_by_size(models)  # Update in-place
-        print(f"Refreshed model list: {len(available_models)} models found (including PenphinMind)")
+        # Get personalities from personality manager
+        from cognition.personality import get_personality_manager
+        personality_manager = get_personality_manager()
+        
+        # Build list: personalities first, then models
+        new_list = []
+        
+        # Add all personalities as entries
+        for personality in personality_manager.personalities.values():
+            # Add personality entries with a special prefix
+            new_list.append(f"PERSONALITY:{personality.name}")
+        
+        # Then add all models
+        sorted_models = sort_models_by_size(models)
+        new_list.extend(sorted_models)
+        
+        available_models[:] = new_list  # Update in-place
+        print(f"Refreshed list: {len([m for m in available_models if m.startswith('PERSONALITY:')])} personalities, {len(sorted_models)} models (including PenphinMind)")
         return True
     return False
 

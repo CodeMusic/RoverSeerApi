@@ -74,6 +74,34 @@ def initialize_application():
     else:
         print("⚠️  Model management using defaults")
     
+    # Initialize personality system and sync model selection
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    if personality_manager.current_personality:
+        print(f"✅ Current personality: {personality_manager.current_personality.name}")
+        
+        # Find the personality in the available models list
+        personality_entry = f"PERSONALITY:{personality_manager.current_personality.name}"
+        try:
+            import config
+            personality_index = config.available_models.index(personality_entry)
+            config.selected_model_index = personality_index
+            print(f"✅ Device set to personality {personality_manager.current_personality.name} (index {personality_index})")
+        except ValueError:
+            print(f"⚠️  Personality {personality_manager.current_personality.name} not found in device list")
+            
+            # If personality has a model preference, try to find that
+            if personality_manager.current_personality.model_preference:
+                try:
+                    model_index = config.available_models.index(personality_manager.current_personality.model_preference)
+                    config.selected_model_index = model_index
+                    print(f"✅ Device set to personality's preferred model {personality_manager.current_personality.model_preference} (index {model_index})")
+                except ValueError:
+                    print(f"⚠️  Personality's preferred model {personality_manager.current_personality.model_preference} not available")
+    else:
+        print("ℹ️  No personality selected")
+    
     print("🎯 RoverSeer API is ready!")
 
 

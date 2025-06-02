@@ -122,9 +122,11 @@ def home():
                         "user_name": None,  # Could be enhanced if we track users
                     }
                     system_message = personality_manager.current_personality.generate_system_message(context)
+                    print(f"DEBUG: Using personality system message for {personality_manager.current_personality.name}: {system_message[:100]}...")
                 else:
                     # Use provided system message or default
                     system_message = system or "You are RoverSeer, a helpful assistant."
+                    print(f"DEBUG: Using {'provided' if system else 'default'} system message: {system_message[:100]}...")
 
                 if output_type == 'text':
                     # For text-only
@@ -233,14 +235,21 @@ def chat_ajax():
     
     # Find personality by voice and switch if needed
     if voice:
+        print(f"DEBUG: Looking for personality with voice {voice}")
         for personality in personality_manager.personalities.values():
             if personality.voice_id == voice:
+                print(f"DEBUG: Found personality {personality.name} for voice {voice}")
                 if not personality_manager.current_personality or personality_manager.current_personality.name != personality.name:
+                    print(f"DEBUG: Switching to personality {personality.name}")
                     personality_manager.switch_to(personality.name)
                     # Update DEFAULT_VOICE to match
                     from config import update_default_voice
                     update_default_voice(voice)
+                else:
+                    print(f"DEBUG: Already using personality {personality.name}")
                 break
+        else:
+            print(f"DEBUG: No personality found for voice {voice}")
     
     # Validate voice - use default if empty
     if not voice:
@@ -288,9 +297,11 @@ def chat_ajax():
                         "user_name": None,  # Could be enhanced if we track users
                     }
                     system_message = personality_manager.current_personality.generate_system_message(context)
+                    print(f"DEBUG: Using personality system message for {personality_manager.current_personality.name}: {system_message[:100]}...")
                 else:
                     # Use provided system message or default
                     system_message = system or "You are RoverSeer, a helpful assistant."
+                    print(f"DEBUG: Using {'provided' if system else 'default'} system message: {system_message[:100]}...")
 
                 if output_type == 'text':
                     # For text-only
@@ -689,6 +700,16 @@ def switch_personality():
         if personality.voice_id:
             from config import update_default_voice
             update_default_voice(personality.voice_id)
+        
+        # Update the device's selected model index if personality has a model preference
+        if personality.model_preference:
+            # Find the index of this model in available models
+            try:
+                model_index = config.available_models.index(personality.model_preference)
+                config.selected_model_index = model_index
+                print(f"Updated device model index to {model_index} for model {personality.model_preference}")
+            except ValueError:
+                print(f"Personality's preferred model {personality.model_preference} not found in available models")
         
         return jsonify({
             "status": "success",

@@ -38,6 +38,47 @@ def initialize_hardware():
         from expression.sound_orchestration import play_sound_async, play_startup_tune
         play_sound_async(play_startup_tune)
         
+        # Show current selection on startup
+        from embodiment.display_manager import scroll_text_on_display
+        from utilities.text_processing import extract_short_model_name
+        
+        # Small delay for startup tune to play
+        time.sleep(0.5)
+        
+        # Display current selection
+        if config.available_models and 0 <= config.selected_model_index < len(config.available_models):
+            current_selection = config.available_models[config.selected_model_index]
+            
+            if current_selection.startswith("PERSONALITY:"):
+                # It's a personality - show with emoji
+                personality_name = current_selection[12:]
+                
+                # Get the personality to access emoji
+                from cognition.personality import get_personality_manager
+                manager = get_personality_manager()
+                personality = manager.get_personality(personality_name)
+                
+                if personality:
+                    # Show emoji and name
+                    display_text = f"{personality.avatar_emoji} {personality.name}"
+                    print(f"🎯 Showing default personality on startup: {display_text}")
+                    scroll_text_on_display(display_text, scroll_speed=0.15)
+                else:
+                    print(f"🎯 Showing default selection on startup: {personality_name}")
+                    scroll_text_on_display(personality_name, scroll_speed=0.15)
+            else:
+                # It's a regular model
+                short_model_name = extract_short_model_name(current_selection)
+                model_name = short_model_name.split(':')[0]
+                
+                if model_name.lower() == "penphinmind":
+                    display_text = "PenphinMind"
+                else:
+                    display_text = model_name
+                
+                print(f"🎯 Showing default model on startup: {display_text}")
+                scroll_text_on_display(display_text, scroll_speed=0.15)
+        
         return True
         
     except Exception as e:
@@ -289,17 +330,35 @@ def setup_button_handlers():
         recording_thread.start()
     
     def show_current_model_info():
-        """Display current model name"""
+        """Display current model or personality name"""
         # Display model name (scroll_text_on_display manages its own threading)
-        full_model_name = config.available_models[config.selected_model_index]
-        short_model_name = extract_short_model_name(full_model_name)
-        model_name = short_model_name.split(':')[0]  # Remove version tag for display
+        current_selection = config.available_models[config.selected_model_index]
         
-        if model_name.lower() == "penphinmind":
-            scroll_text_on_display("PenphinMind", scroll_speed=0.2)
+        if current_selection.startswith("PERSONALITY:"):
+            # It's a personality - show the name with emoji
+            personality_name = current_selection[12:]  # Remove "PERSONALITY:" prefix
+            
+            # Get the personality to access emoji
+            from cognition.personality import get_personality_manager
+            manager = get_personality_manager()
+            personality = manager.get_personality(personality_name)
+            
+            if personality:
+                # Show emoji and name
+                display_text = f"{personality.avatar_emoji} {personality.name}"
+                scroll_text_on_display(display_text, scroll_speed=0.2)
+            else:
+                scroll_text_on_display(personality_name, scroll_speed=0.2)
         else:
-            # Just display the model name without stats
-            scroll_text_on_display(model_name, scroll_speed=0.2)
+            # It's a regular model
+            short_model_name = extract_short_model_name(current_selection)
+            model_name = short_model_name.split(':')[0]  # Remove version tag for display
+            
+            if model_name.lower() == "penphinmind":
+                scroll_text_on_display("PenphinMind", scroll_speed=0.2)
+            else:
+                # Just display the model name without stats
+                scroll_text_on_display(model_name, scroll_speed=0.2)
     
     def recording_pipeline():
         """Handle the complete recording -> transcription -> LLM -> TTS pipeline"""
@@ -409,28 +468,55 @@ def setup_button_handlers():
             stop_system_processing()  # This marks ASR complete
             start_system_processing('B')  # Start LLM stage
             
-            # Play voice intro before LLM processing
+            # Get personality manager and determine voice/model
             from cognition.personality import get_personality_manager
             manager = get_personality_manager()
             
-            # Use personality's voice if available, otherwise use default
-            if manager.current_personality and manager.current_personality.voice_id:
-                voice = manager.current_personality.voice_id
-            else:
-                voice = config.DEFAULT_VOICE
+            # Check what's selected
+            current_selection = config.available_models[config.selected_model_index]
+            
+            if current_selection.startswith("PERSONALITY:"):
+                # A personality is selected - switch to it
+                personality_name = current_selection[12:]  # Remove prefix
                 
+                if manager.switch_to(personality_name):
+                    print(f"Device switched to personality: {personality_name}")
+                    
+                    # Update DEFAULT_VOICE to match
+                    from config import update_default_voice
+                    if manager.current_personality and manager.current_personality.voice_id:
+                        update_default_voice(manager.current_personality.voice_id)
+                    
+                    # Use personality's voice and model
+                    voice = manager.current_personality.voice_id
+                    selected_model = manager.current_personality.model_preference or config.DEFAULT_MODEL
+                    
+                    # Verify the model exists in available models (not counting personality entries)
+                    actual_models = [m for m in config.available_models if not m.startswith("PERSONALITY:")]
+                    if selected_model not in actual_models:
+                        print(f"⚠️  Personality's preferred model {selected_model} not available, using default")
+                        selected_model = config.DEFAULT_MODEL
+                    
+                    print(f"Using personality voice: {voice}, model: {selected_model}")
+                else:
+                    print(f"Failed to switch to personality: {personality_name}")
+                    voice = config.DEFAULT_VOICE
+                    selected_model = config.DEFAULT_MODEL
+            else:
+                # A regular model is selected
+                selected_model = current_selection
+                
+                # Use current personality's voice if available
+                if manager.current_personality:
+                    voice = manager.current_personality.voice_id
+                    print(f"Using current personality's voice: {voice}")
+                else:
+                    voice = config.DEFAULT_VOICE
+                    print("No current personality, using default voice")
+            
             play_sound_async(play_voice_intro, voice)
             
             # 2. Run LLM with selected model (will keep LED blinking)
-            selected_model = config.available_models[config.selected_model_index]
-            
-            # Check if personality has a model preference
-            if manager.current_personality and manager.current_personality.model_preference:
-                # Check if the personality's preferred model is available
-                if manager.current_personality.model_preference in config.available_models:
-                    selected_model = manager.current_personality.model_preference
-                    print(f"Using personality's preferred model: {selected_model}")
-            
             # Check if PenphinMind is selected
             if selected_model.lower() == "penphinmind":
                 # Use bicameral_chat_direct function
@@ -454,19 +540,26 @@ def setup_button_handlers():
                 # Add current user message
                 messages.append({"role": "user", "content": transcript})
                 
-                # System message that includes model switching context
+                # Get system message from personality manager
+                # Generate system message with context
                 short_selected_model = extract_short_model_name(selected_model)
                 
-                # Get personality based on voice
-                personality = config.get_personality_for_voice(voice, context="device")
-                
-                # Add model context to personality
-                system_message = (
-                    f"{personality} "
-                    f"You are currently running as model '{short_selected_model.split(':')[0]}'. "
-                    "Previous responses may be from different models, indicated by [model_name]: prefix. "
-                    "You can reference what other models said if asked."
-                )
+                if manager.current_personality:
+                    # Use personality's system message
+                    context = {
+                        "time_of_day": "day",  # Could be enhanced with actual time
+                        "user_name": None,
+                    }
+                    system_message = manager.current_personality.generate_system_message(context)
+                    print(f"Using system message from personality: {manager.current_personality.name}")
+                else:
+                    # Fallback to default
+                    system_message = (
+                        f"You are RoverSeer, a helpful voice assistant. "
+                        f"You are currently running as model '{short_selected_model.split(':')[0]}'. "
+                        "Previous responses may be from different models, indicated by [model_name]: prefix. "
+                        "You can reference what other models said if asked."
+                    )
                 
                 reply = run_chat_completion(selected_model, messages, system_message)
             
