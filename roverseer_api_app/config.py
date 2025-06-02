@@ -276,17 +276,8 @@ FAN_HYSTERESIS = get_config_value("fan_hysteresis", 5.0)
 # Debug logging
 DEBUG_LOGGING = get_config_value("debug_logging", False)
 
-def DebugLog(message, *args):
-    """Print debug message if DEBUG_LOGGING is enabled
-    
-    Args:
-        message: The message to print (can include {} placeholders)
-        *args: Arguments to format into the message
-    """
-    if DEBUG_LOGGING:
-        if args:
-            print(f"DEBUG: {message.format(*args)}")
-        else:
-            print(f"DEBUG: {message}")
+# Import the DebugLog function from LoggingHelper to maintain compatibility
+from helpers.logging_helper import LoggingHelper
+DebugLog = LoggingHelper.debug_log
 
 # Active request tracking 

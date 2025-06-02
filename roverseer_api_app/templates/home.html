@@ -1,43 +1,375 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>RoverSeer Status</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; background: #f4f4f4; color: #333; margin: 20px; }
-        .topbar { background: #333; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .status-container { display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
-        .status-section { display: flex; flex-wrap: wrap; align-items: center; }
-        .status-item { margin-right: 10px; }
-        .status-link { color: #87CEEB; text-decoration: underline; }
-        .status-link:hover { color: #ADD8E6; text-decoration: underline; }
-        .sensor-data { background: #444; padding: 8px 12px; border-radius: 5px; display: flex; gap: 15px; }
-        .sensor-item { display: flex; align-items: center; gap: 5px; }
-        .refresh { cursor: pointer; font-size: 20px; }
+        body 
+        {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #f4f4f4; 
+            color: #333; 
+            margin: 20px;
+            -webkit-text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
+        }
         
-        /* AI Pipeline Status */
+        /* Mobile-first responsive design */
+        @media (max-width: 768px) {
+            body {
+                margin: 0;
+                padding: 0;
+                background: #000000; /* Black background like iPhone */
+            }
+            
+            .topbar {
+                background: #1c1c1e;
+                color: white;
+                padding: 8px 10px; /* Reduced padding */
+                padding-top: max(8px, env(safe-area-inset-top)); /* Reduced top padding */
+                flex-direction: column;
+                gap: 8px; /* Reduced gap */
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            
+            .status-container {
+                justify-content: center;
+                text-align: center;
+                flex-direction: column;
+                gap: 6px; /* Reduced gap */
+                width: 100%;
+            }
+            
+            /* Mobile status toggle */
+            .mobile-status-toggle {
+                background: #333;
+                color: #87CEEB;
+                border: 1px solid #555;
+                padding: 4px 8px; /* Reduced padding */
+                border-radius: 4px; /* Smaller radius */
+                font-size: 11px; /* Smaller font */
+                cursor: pointer;
+                margin-bottom: 4px; /* Reduced margin */
+                transition: all 0.3s ease;
+            }
+            
+            .mobile-status-toggle:hover {
+                background: #444;
+                color: #ADD8E6;
+            }
+            
+            /* Hide site status by default on mobile */
+            .status-section {
+                display: none;
+                flex-wrap: wrap;
+                justify-content: center;
+                margin-top: 6px; /* Reduced margin */
+                animation: slideDown 0.3s ease-out;
+                gap: 8px; /* Add gap for better spacing */
+            }
+            
+            .status-section.mobile-expanded {
+                display: flex;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    max-height: 0;
+                }
+                to {
+                    opacity: 1;
+                    max-height: 300px; /* Increased for sensor data */
+                }
+            }
+            
+            /* Always show AI pipeline only */
+            .essential-status {
+                display: flex;
+                flex-direction: column;
+                gap: 4px; /* Reduced gap */
+                align-items: center;
+            }
+            
+            .sensor-data {
+                font-size: 11px; /* Smaller font */
+                padding: 4px 6px; /* Reduced padding */
+                gap: 6px; /* Reduced gap */
+                border-radius: 6px; /* Smaller radius */
+                max-width: 100%;
+                overflow-x: auto;
+                white-space: nowrap;
+                background: #2c5f2d;
+                color: #ffffff;
+                margin-bottom: 4px; /* Add spacing when in collapsed section */
+            }
+            
+            .ai-pipeline-status {
+                background: #1e3a8a;
+                color: #ffffff;
+                margin-left: 0;
+                font-size: 11px; /* Smaller font */
+                padding: 4px 6px; /* Reduced padding */
+                gap: 6px; /* Reduced gap */
+                border-radius: 6px; /* Smaller radius */
+                max-width: 100%;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            .sensor-item {
+                font-size: 10px; /* Smaller font */
+                margin-right: 8px; /* Reduced margin */
+            }
+            
+            .pipeline-item {
+                font-size: 11px; /* Smaller font */
+                gap: 4px; /* Reduced gap */
+            }
+            
+            .status-item {
+                margin: 0 3px 3px 0; /* Reduced margins */
+                font-size: 10px; /* Smaller font */
+            }
+            
+            .refresh {
+                font-size: 14px; /* Smaller refresh icon */
+                margin-top: 4px; /* Add some spacing */
+            }
+            
+            .chatbox {
+                margin: 0;
+                border-radius: 0;
+                height: calc(100vh - env(safe-area-inset-top) - 80px); /* Adjusted for smaller topbar */
+                max-height: calc(100vh - env(safe-area-inset-top) - 80px);
+                box-shadow: none;
+            }
+            
+            .chat-header {
+                padding: 10px 15px;
+                border-top-left-radius: 0;
+                border-top-right-radius: 0;
+            }
+            
+            .chat-header h2 {
+                font-size: 16px;
+            }
+            
+            .action-buttons {
+                gap: 5px;
+            }
+            
+            .action-buttons button {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+            
+            .messages-container {
+                padding: 15px 10px;
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            
+            .message {
+                max-width: 85%; /* Wider on mobile like iMessage */
+                margin-bottom: 8px;
+            }
+            
+            .message-bubble {
+                padding: 8px 12px;
+                border-radius: 16px;
+                font-size: 16px; /* Larger text on mobile */
+                line-height: 1.4;
+            }
+            
+            .message-info {
+                font-size: 10px;
+                margin-top: 2px;
+                padding: 0 8px;
+            }
+            
+            .chat-input-container {
+                padding: 10px;
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+                background: #f6f6f6;
+            }
+            
+            .chat-controls {
+                gap: 5px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 5px;
+            }
+            
+            .chat-controls select, .chat-controls input {
+                font-size: 14px;
+                padding: 8px 10px;
+                white-space: nowrap;
+                min-width: fit-content;
+            }
+            
+            .chat-controls label {
+                white-space: nowrap;
+                font-size: 14px;
+            }
+            
+            .chat-input-form {
+                gap: 8px;
+            }
+            
+            .chat-textarea {
+                font-size: 16px; /* Prevent zoom on iOS */
+                min-height: 44px; /* iOS touch target minimum */
+                border-radius: 22px;
+                padding: 12px 16px;
+            }
+            
+            .send-button {
+                min-width: 44px; /* iOS touch target minimum */
+                height: 44px;
+                border-radius: 22px;
+                font-size: 16px;
+                padding: 0 20px;
+            }
+            
+            /* Custom system message textarea on mobile */
+            #custom-system-group textarea {
+                font-size: 14px;
+                padding: 8px 12px;
+                border-radius: 12px;
+            }
+            
+            /* Hide less important status items on very small screens */
+            @media (max-width: 480px) {
+                .sensor-data {
+                    flex-wrap: wrap;
+                    justify-content: center;
+                }
+                
+                .sensor-item {
+                    margin-bottom: 2px;
+                }
+                
+                .chat-controls {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                
+                .chat-controls > * {
+                    width: 100%;
+                }
+            }
+        }
+        
+        .topbar 
+        { 
+            background: #333; 
+            color: white; 
+            padding: 8px 10px; /* Reduced padding */
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap; 
+        }
+        .status-container 
+        { 
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            gap: 10px; /* Reduced gap */
+        }
+        /* Desktop status section */
+        @media (min-width: 769px) {
+            .status-section 
+            { 
+                display: flex; 
+                flex-wrap: wrap; 
+                align-items: center; 
+                gap: 10px; /* Add gap for better spacing */
+            }
+        }
+        
+        .status-item 
+        { 
+            margin-right: 8px; /* Reduced margin */
+        }
+        .status-link 
+        { 
+            color: #87CEEB; 
+            text-decoration: underline; 
+        }
+        .status-link:hover 
+        { 
+            color: #ADD8E6; 
+            text-decoration: underline; 
+        }
+        .sensor-data 
+        { 
+            background: #444; 
+            padding: 6px 10px; /* Reduced padding */
+            border-radius: 4px; /* Smaller radius */
+            display: flex; 
+            gap: 12px; /* Reduced gap */
+            margin-bottom: 8px; /* Add spacing when in collapsed section */
+        }
+        .sensor-item 
+        { 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; /* Reduced gap */
+        }
+        .refresh 
+        { 
+            cursor: pointer; 
+            font-size: 16px; /* Smaller refresh icon */
+            margin-top: 4px; /* Add some spacing */
+        }
+        
+        /* AI Pipeline Status - keep minimal */
         .ai-pipeline-status {
             background: #555;
-            padding: 8px 12px;
-            border-radius: 5px;
+            padding: 6px 10px; /* Reduced padding */
+            border-radius: 4px; /* Smaller radius */
             display: flex;
-            gap: 15px;
-            margin-left: 10px;
+            gap: 12px; /* Reduced gap */
+            margin-left: 0; /* Remove left margin */
         }
         
         .pipeline-item {
             display: flex;
             align-items: center;
-            gap: 5px;
-            font-size: 14px;
+            gap: 4px; /* Reduced gap */
+            font-size: 13px; /* Slightly smaller font */
         }
         
         .pipeline-item .status-indicator {
-            font-size: 12px;
+            font-size: 11px; /* Smaller indicator */
         }
         
         .pipeline-item .detail {
-            font-size: 11px;
+            font-size: 10px; /* Smaller detail text */
             color: #ccc;
+        }
+        
+        /* Better select styling for visibility */
+        select option {
+            background-color: white;
+            color: black;
+            padding: 4px;
+        }
+        
+        select option:hover,
+        select option:focus,
+        select option:checked {
+            background-color: #007AFF;
+            color: white;
+        }
+        
+        /* Ensure personality emojis show properly */
+        #voice-select option {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
         }
         
         /* iPhone Messages Style */
@@ -799,10 +1131,10 @@
                     
                     // Get current personality info for display
                     var personalityDisplay = '';
-                    if (roverseerData.currentPersonality) 
+                    if (data.personality) 
                     {
-                        personalityDisplay = roverseerData.currentPersonality.avatar_emoji + ' ' + 
-                                           roverseerData.currentPersonality.name;
+                        personalityDisplay = data.personality.avatar_emoji + ' ' + 
+                                           data.personality.name;
                     }
                     if (!personalityDisplay.trim()) 
                     {
@@ -890,6 +1222,35 @@
                 requestInProgress = false;
             });
         }
+        
+        // Mobile status toggle functionality
+        function toggleMobileStatus() {
+            var statusSection = document.querySelector('.status-section');
+            var toggleButton = document.querySelector('.mobile-status-toggle');
+            
+            if (statusSection.classList.contains('mobile-expanded')) {
+                statusSection.classList.remove('mobile-expanded');
+                toggleButton.textContent = '📡 Show Status';
+            } else {
+                statusSection.classList.add('mobile-expanded');
+                toggleButton.textContent = '📡 Hide Status';
+            }
+        }
+        
+        // Show mobile toggle button only on mobile
+        function setupMobileUI() {
+            if (window.innerWidth <= 768) {
+                document.querySelector('.mobile-status-toggle').style.display = 'block';
+            } else {
+                document.querySelector('.mobile-status-toggle').style.display = 'none';
+                // Ensure status section is visible on desktop
+                document.querySelector('.status-section').classList.add('mobile-expanded');
+            }
+        }
+        
+        // Setup mobile UI on load and resize
+        window.addEventListener('load', setupMobileUI);
+        window.addEventListener('resize', setupMobileUI);
     </script>
     
     {% if reply_text %}
@@ -898,9 +1259,16 @@
 </head>
 <body>
     <div class="topbar">
-        <div><strong>RoverSeer TCP Status</strong></div>
+        <div><strong>RoverSeer</strong></div>
         <div class="status-container">
+            <!-- Mobile toggle button for expanded status -->
+            <button class="mobile-status-toggle" onclick="toggleMobileStatus()" style="display: none;">
+                📡 Show Status
+            </button>
+            
+            <!-- Collapsible status section - includes TCP services, sensor data, and refresh -->
             <div class="status-section">
+                <!-- TCP Services -->
                 {% for name, info in statuses.items() %}
                     <span class="status-item">
                         {% if name == "Ollama" %}
@@ -914,27 +1282,35 @@
                         {% endif %}
                     </span>
                 {% endfor %}
+                
+                <!-- Sensor Data (moved from essential-status) -->
+                <div class="sensor-data">
+                    <span class="sensor-item">🌡️ HAT: {{ sensor_data.hat_temperature }}</span>
+                    <span class="sensor-item">🖥️ CPU: {{ sensor_data.cpu_temperature }}</span>
+                    <span class="sensor-item">🌊 {{ sensor_data.pressure }}</span>
+                    <span class="sensor-item">🏔️ {{ sensor_data.altitude }}</span>
+                    <span class="sensor-item">🌬️ Fan: {{ sensor_data.fan_state }}</span>
+                </div>
+                
+                <!-- Refresh button (moved from outside) -->
+                <span class="refresh" onclick="refreshStatus()">🔄</span>
             </div>
-            <div class="sensor-data">
-                <span class="sensor-item">🌡️ HAT: {{ sensor_data.hat_temperature }}</span>
-                <span class="sensor-item">🖥️ CPU: {{ sensor_data.cpu_temperature }}</span>
-                <span class="sensor-item">🌊 {{ sensor_data.pressure }}</span>
-                <span class="sensor-item">🏔️ {{ sensor_data.altitude }}</span>
-                <span class="sensor-item">🌬️ Fan: {{ sensor_data.fan_state }}</span>
-            </div>
-            <div class="ai-pipeline-status">
-                <div class="pipeline-item">
-                    <span class="status-indicator">{{ ai_pipeline.status }}</span>
-                    <span>RoverSeer</span>
-                    {% if ai_pipeline.activity != 'idle' %}
-                    <span class="detail">{{ ai_pipeline.activity }}</span>
-                    {% endif %}
-                    {% if ai_pipeline.detail %}
-                    <span class="detail">({{ ai_pipeline.detail }})</span>
-                    {% endif %}
+            
+            <!-- Essential status - only AI pipeline always visible -->
+            <div class="essential-status">
+                <div class="ai-pipeline-status">
+                    <div class="pipeline-item">
+                        <span class="status-indicator">{{ ai_pipeline.status }}</span>
+                        <span>RoverSeer</span>
+                        {% if ai_pipeline.activity != 'idle' %}
+                        <span class="detail">{{ ai_pipeline.activity }}</span>
+                        {% endif %}
+                        {% if ai_pipeline.detail %}
+                        <span class="detail">({{ ai_pipeline.detail }})</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-            <span class="refresh" onclick="refreshStatus()">🔄</span>
         </div>
     </div>
 

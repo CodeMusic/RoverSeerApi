@@ -256,17 +256,17 @@ def get_ai_pipeline_status():
             # Try to get current model
             try:
                 from config import active_model, selected_model_index, available_models
-                from utilities.text_processing import extract_short_model_name
+                from helpers.text_processing_helper import TextProcessingHelper
                 
                 # Check if there's an active model being processed
                 if active_model:
-                    short_name = extract_short_model_name(active_model)
-                    status["detail"] = short_name
+                    short_name = TextProcessingHelper.extract_short_model_name(active_model)
+                    status["detail"] = short_name.split(':')[0]
                 # Otherwise use button-selected model
                 elif available_models and 0 <= selected_model_index < len(available_models):
                     model_name = available_models[selected_model_index]
-                    short_name = extract_short_model_name(model_name)
-                    status["detail"] = short_name
+                    short_name = TextProcessingHelper.extract_short_model_name(model_name)
+                    status["detail"] = short_name.split(':')[0]
                 else:
                     status["detail"] = "processing"
             except:

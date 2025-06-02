@@ -478,17 +478,14 @@ class PersonalityManager:
                     print(f"✅ Loaded current personality: {current_name}")
                 else:
                     print(f"⚠️  Saved personality '{current_name}' not found")
+                    self.current_personality = None
             else:
-                # If no personality is set, default to Trump
-                trump_personality = self.get_personality("Donald Trump")
-                if trump_personality:
-                    self.current_personality = trump_personality
-                    self._save_current_personality()  # Save it as current
-                    print(f"✅ Set default personality to: Donald Trump")
-                else:
-                    print("ℹ️  No current personality set and Trump not found")
+                # No automatic fallback to any personality - let user choose
+                self.current_personality = None
+                print("ℹ️  No current personality set - using system default")
         except Exception as e:
             print(f"⚠️  Error loading current personality: {e}")
+            self.current_personality = None
     
     def _save_current_personality(self):
         """Save the current personality to config"""

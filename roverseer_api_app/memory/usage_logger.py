@@ -5,17 +5,16 @@ from pathlib import Path
 import os
 
 from config import LOG_DIR, STATS_FILE
+from helpers.logging_helper import LoggingHelper
 
-
-def ensure_log_dir():
-    """Create the log directory if it doesn't exist"""
-    LOG_DIR.mkdir(exist_ok=True)
-
-
-def get_log_filename(log_type):
-    """Get the log filename for today's date"""
-    today = datetime.now().strftime("%Y-%m-%d")
-    return LOG_DIR / f"{log_type}_{today}.log"
+# Re-export logging functions from LoggingHelper for backward compatibility
+ensure_log_dir = LoggingHelper.ensure_log_dir
+get_log_filename = LoggingHelper.get_log_filename
+log_error = LoggingHelper.log_error
+log_llm_usage = LoggingHelper.log_llm_usage
+log_asr_usage = LoggingHelper.log_asr_usage
+log_tts_usage = LoggingHelper.log_tts_usage
+log_penphin_mind_usage = LoggingHelper.log_penphin_mind_usage
 
 
 def load_model_stats():
@@ -66,103 +65,6 @@ def get_model_runtime(model_name):
     if model_name in stats:
         return stats[model_name].get("average_runtime", None)
     return None
-
-
-def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None, personality=None):
-    """Log LLM usage to daily file in JSON format"""
-    ensure_log_dir()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    # If personality not provided, try to get it from the current personality manager
-    if not personality:
-        try:
-            from cognition.personality import get_personality_manager
-            manager = get_personality_manager()
-            if manager.current_personality:
-                personality = manager.current_personality.name
-            else:
-                personality = "default"
-        except:
-            personality = "default"
-    
-    log_entry = {
-        "timestamp": timestamp,
-        "model": model_name,
-        "personality": personality,
-        "voice_id": voice_id,
-        "system_message": system_message,
-        "user_prompt": user_prompt,
-        "llm_reply": response,
-        "runtime": processing_time or 0
-    }
-    
-    with open(get_log_filename("llm_usage"), "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry) + "\n")
-
-
-def log_penphin_mind_usage(logical_model, creative_model, convergence_model, 
-                          system_message, user_prompt, 
-                          logical_response, logical_time,
-                          creative_response, creative_time,
-                          convergence_response, convergence_time,
-                          voice_id=None):
-    """Log PenphinMind bicameral flow to daily file in JSON format"""
-    ensure_log_dir()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    total_time = logical_time + creative_time + convergence_time
-    
-    log_entry = {
-        "timestamp": timestamp,
-        "logical_model": logical_model,
-        "creative_model": creative_model,
-        "convergence_model": convergence_model,
-        "system_message": system_message,
-        "original_prompt": user_prompt,
-        "logical_response": logical_response,
-        "logical_time": logical_time,
-        "creative_response": creative_response,
-        "creative_time": creative_time,
-        "final_synthesis": convergence_response,
-        "convergence_time": convergence_time,
-        "total_time": total_time,
-        "voice_id": voice_id
-    }
-    
-    with open(get_log_filename("penphin_mind"), "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry) + "\n")
-
-
-def log_asr_usage(audio_file, transcript, processing_time=None):
-    """Log ASR (Automatic Speech Recognition) usage to daily file in JSON format"""
-    ensure_log_dir()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    log_entry = {
-        "timestamp": timestamp,
-        "audio_file": audio_file,
-        "text": transcript,
-        "processing_time": processing_time or 0
-    }
-    
-    with open(get_log_filename("asr_usage"), "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry) + "\n")
-
-
-def log_tts_usage(voice_model, text, output_file=None, processing_time=None):
-    """Log TTS (Text-to-Speech) usage to daily file in JSON format"""
-    ensure_log_dir()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    log_entry = {
-        "timestamp": timestamp,
-        "voice_id": voice_model,
-        "text": text,
-        "output_file": output_file,
-        "processing_time": processing_time or 0
-    }
-    
-    with open(get_log_filename("tts_usage"), "a", encoding="utf-8") as f:
-        f.write(json.dumps(log_entry) + "\n")
 
 
 def parse_log_file(log_type, date=None):
@@ -279,26 +181,6 @@ def get_available_log_dates(log_type):
 
 
 # -------- ERROR LOGGING -------- #
-def log_error(error_type, error_message, context=None):
-    """Log an error to a dedicated error log file"""
-    error_file = LOG_DIR / f"errors_{datetime.now().strftime('%Y-%m-%d')}.log"
-    
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_entry = {
-        "timestamp": timestamp,
-        "type": error_type,
-        "message": error_message,
-        "context": context or {}
-    }
-    
-    try:
-        # Append to error log file
-        with open(error_file, 'a') as f:
-            f.write(json.dumps(log_entry) + '\n')
-    except Exception as e:
-        print(f"Failed to log error: {e}")
-
-
 def get_recent_errors(limit=50):
     """Get the most recent errors from today's log"""
     error_file = LOG_DIR / f"errors_{datetime.now().strftime('%Y-%m-%d')}.log"

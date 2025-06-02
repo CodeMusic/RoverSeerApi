@@ -109,8 +109,8 @@ def chat_unified():
         output_type = "text"
     
     try:
-        # Start LLM processing LED
-        start_system_processing('B')
+        # Start LLM processing LED - this is always text input since it's a web request
+        start_system_processing('B', is_text_input=True, has_voice_output=(output_type in ["audio_file", "speak"]))
         reply = run_chat_completion(model, messages, system_message, voice_id=voice)
         
         # For text-only response, stop LEDs
@@ -143,15 +143,15 @@ def chat_unified():
             # Generate WAV with Piper
             tmp_wav = f"/tmp/{uuid.uuid4().hex}.wav"
             
-            # Transition to TTS stage
-            start_system_processing('C')
+            # Transition to TTS stage - voice output is happening
+            start_system_processing('C', is_text_input=True, has_voice_output=True)
             
             output_file, tts_processing_time = generate_tts_audio(reply, voice, tmp_wav)
 
             if output_type == "speak":
                 # Speak on rover
                 # Transition to audio playback
-                start_system_processing('aplay')
+                start_system_processing('aplay', is_text_input=True, has_voice_output=True)
                 
                 # Speak on rover using Popen for interruptibility
                 import subprocess
@@ -312,8 +312,8 @@ def bicameral_chat():
         return jsonify({"status": "error", "message": "No prompt provided"}), 400
 
     try:
-        # Start LLM processing indicator
-        start_system_processing('B')
+        # Start LLM processing indicator - this is text input with voice output
+        start_system_processing('B', is_text_input=True, has_voice_output=True)
         
         # Use bicameral_chat_direct function
         final_response = bicameral_chat_direct(prompt, system, voice)
@@ -321,8 +321,8 @@ def bicameral_chat():
         # Generate TTS for final response
         tmp_wav = f"/tmp/{uuid.uuid4().hex}.wav"
         
-        # Transition to TTS stage
-        start_system_processing('C')
+        # Transition to TTS stage - voice output is happening
+        start_system_processing('C', is_text_input=True, has_voice_output=True)
         
         output_file, tts_processing_time = generate_tts_audio(final_response, voice, tmp_wav)
         
@@ -332,7 +332,7 @@ def bicameral_chat():
             play_sound_async(play_voice_intro, voice)
             
             # Transition to audio playback
-            start_system_processing('aplay')
+            start_system_processing('aplay', is_text_input=True, has_voice_output=True)
             
             # Speak on rover
             import subprocess

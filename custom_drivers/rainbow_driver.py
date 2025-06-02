@@ -22,6 +22,37 @@ logging.basicConfig(
 )
 
 
+# ------- APA102 PIXEL INTERFACE -------
+class APA102PixelInterface:
+    """Provides a pixel-like interface for APA102 strip to support ActivityLEDManager"""
+    
+    def __init__(self, strip):
+        self.strip = strip
+        self._pixel_data = [(0, 0, 0)] * strip.num_led
+    
+    def __setitem__(self, index, color):
+        """Set a pixel color"""
+        if 0 <= index < len(self._pixel_data):
+            self._pixel_data[index] = color
+            r, g, b = color
+            self.strip.set_pixel(index, r, g, b)
+    
+    def __getitem__(self, index):
+        """Get a pixel color"""
+        if 0 <= index < len(self._pixel_data):
+            return self._pixel_data[index]
+        return (0, 0, 0)
+    
+    def show(self):
+        """Update the strip display"""
+        self.strip.show()
+    
+    def fill(self, color):
+        """Fill all pixels with a color"""
+        for i in range(len(self._pixel_data)):
+            self[i] = color
+
+
 # ------- BUZZER MANAGER CLASS -------
 class BuzzerManager:
     """
@@ -680,6 +711,251 @@ class RainbowStripManager:
                 self.rainbow_driver.set_led(i, 0, 0, 0)
 
 
+# ------- ACTIVITY LED MANAGER CLASS -------
+class ActivityLEDManager:
+    """Manages activity-based LED colors for pipeline stages using rainbow strip pixels
+    
+    ARCHITECTURE NOTE: This manager provides semantic pipeline visualization using the first 3 LEDs
+    of the rainbow strip (pixels 0, 1, 2) as dedicated activity indicators:
+    
+    - Red LED (pixel 0): ASR/Whisper activity (blink when active, solid when finished, off when no cycle)
+    - Green LED (pixel 1): LLM activity (blink when active, solid when finished, off when no cycle)  
+    - Blue LED (pixel 2): TTS/Speech activity (blink when active, solid when finished, off when no cycle)
+    
+    Special behavior: When a full cycle completes, all active LEDs blink together then turn off.
+    
+    HARDWARE REQUIREMENTS: Only functions when experimental_features_enabled=True. When disabled,
+    methods run but have no visual effect, allowing the system to remain functional.
+    
+    INTEGRATION: Works alongside LEDManager which handles button LEDs for user interaction feedback.
+    This creates a clean separation between user interface (buttons) and system status (pipeline).
+    """
+    
+    def __init__(self, rainbow_driver, experimental_features_enabled=False):
+        self.rainbow_driver = rainbow_driver
+        self.experimental_features_enabled = experimental_features_enabled
+        self.activity_states = {
+            'red': {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None},  # ASR
+            'green': {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None},  # LLM  
+            'blue': {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None}   # TTS
+        }
+        self.cycle_complete_event = None
+        self.cycle_complete_thread = None
+        
+        # Initialize all LEDs to off state
+        self.set_all_leds_off()
+    
+    def set_all_leds_off(self):
+        """Turn off all activity LEDs and stop any blinking"""
+        for color in ['red', 'green', 'blue']:
+            self._stop_led_activity(color)
+            self._set_led_direct(color, False)
+        self.activity_states = {
+            'red': {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None},
+            'green': {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None},
+            'blue': {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None}
+        }
+    
+    def _set_led_direct(self, color, state):
+        """Directly set LED state without affecting activity tracking"""
+        # Only use rainbow strip if experimental features are enabled
+        if not self.experimental_features_enabled:
+            return
+            
+        try:
+            # Map colors to rainbow driver pixel indices
+            color_map = {'red': 0, 'green': 1, 'blue': 2}
+            if color in color_map and hasattr(self.rainbow_driver, 'pixels'):
+                pixel_index = color_map[color]
+                if state:
+                    if color == 'red':
+                        self.rainbow_driver.pixels[pixel_index] = (255, 0, 0)
+                    elif color == 'green':
+                        self.rainbow_driver.pixels[pixel_index] = (0, 255, 0)
+                    elif color == 'blue':
+                        self.rainbow_driver.pixels[pixel_index] = (0, 0, 255)
+                else:
+                    self.rainbow_driver.pixels[pixel_index] = (0, 0, 0)
+                self.rainbow_driver.pixels.show()
+        except Exception as e:
+            print(f"Error setting {color} LED: {e}")
+    
+    def _stop_led_activity(self, color):
+        """Stop any blinking activity for a specific LED"""
+        state = self.activity_states[color]
+        if state['blink_event']:
+            state['blink_event'].set()
+        if state['blink_thread'] and state['blink_thread'].is_alive():
+            state['blink_thread'].join(timeout=0.5)
+        state['blink_event'] = None
+        state['blink_thread'] = None
+    
+    def _start_led_blink(self, color, blink_rate=0.3):
+        """Start blinking a specific LED"""
+        self._stop_led_activity(color)
+        
+        state = self.activity_states[color]
+        state['blink_event'] = threading.Event()
+        
+        def _blink():
+            while not state['blink_event'].is_set():
+                self._set_led_direct(color, True)
+                time.sleep(blink_rate)
+                if not state['blink_event'].is_set():
+                    self._set_led_direct(color, False)
+                    time.sleep(blink_rate)
+        
+        state['blink_thread'] = threading.Thread(target=_blink, daemon=True)
+        state['blink_thread'].start()
+    
+    def set_asr_active(self, is_text_input=False):
+        """Set ASR (red LED) as active - blinks during activity
+        If is_text_input=True, ASR is not used so LED stays off"""
+        if is_text_input:
+            # Text input - no ASR needed, turn off red LED
+            self._stop_led_activity('red')
+            self._set_led_direct('red', False)
+            self.activity_states['red'] = {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None}
+        else:
+            # Voice input - ASR is active
+            self.activity_states['red']['active'] = True
+            self.activity_states['red']['finished'] = False
+            self._start_led_blink('red')
+    
+    def set_asr_finished(self):
+        """Set ASR as finished - solid red LED"""
+        state = self.activity_states['red']
+        if state['active']:  # Only if it was active
+            self._stop_led_activity('red')
+            self._set_led_direct('red', True)  # Solid on
+            state['active'] = False
+            state['finished'] = True
+    
+    def set_llm_active(self):
+        """Set LLM (green LED) as active - blinks during thinking"""
+        self.activity_states['green']['active'] = True
+        self.activity_states['green']['finished'] = False
+        self._start_led_blink('green')
+    
+    def set_llm_finished(self):
+        """Set LLM as finished - solid green LED"""
+        state = self.activity_states['green']
+        if state['active']:  # Only if it was active
+            self._stop_led_activity('green')
+            self._set_led_direct('green', True)  # Solid on
+            state['active'] = False
+            state['finished'] = True
+    
+    def set_tts_active(self, has_voice_output=True):
+        """Set TTS (blue LED) as active - blinks during speech generation
+        If has_voice_output=False, TTS is not used so LED stays off"""
+        if not has_voice_output:
+            # No voice output - no TTS needed, turn off blue LED
+            self._stop_led_activity('blue')
+            self._set_led_direct('blue', False)
+            self.activity_states['blue'] = {'active': False, 'finished': False, 'blink_thread': None, 'blink_event': None}
+        else:
+            # Voice output - TTS is active
+            self.activity_states['blue']['active'] = True
+            self.activity_states['blue']['finished'] = False
+            self._start_led_blink('blue')
+    
+    def set_tts_finished(self):
+        """Set TTS as finished - solid blue LED"""
+        state = self.activity_states['blue']
+        if state['active']:  # Only if it was active
+            self._stop_led_activity('blue')
+            self._set_led_direct('blue', True)  # Solid on
+            state['active'] = False
+            state['finished'] = True
+    
+    def cycle_complete(self):
+        """Called when a full interaction cycle completes
+        All active/finished LEDs blink once then turn off"""
+        # Get all LEDs that were part of this cycle
+        active_colors = []
+        for color, state in self.activity_states.items():
+            if state['active'] or state['finished']:
+                active_colors.append(color)
+        
+        if not active_colors:
+            return  # No LEDs were active in this cycle
+        
+        # Stop any existing completion animation
+        if self.cycle_complete_event:
+            self.cycle_complete_event.set()
+        if self.cycle_complete_thread and self.cycle_complete_thread.is_alive():
+            self.cycle_complete_thread.join(timeout=0.5)
+        
+        # Start completion animation
+        self.cycle_complete_event = threading.Event()
+        
+        def _completion_blink():
+            try:
+                # Stop all current activities
+                for color in active_colors:
+                    self._stop_led_activity(color)
+                
+                # Blink all active LEDs together 3 times
+                for _ in range(3):
+                    if self.cycle_complete_event.is_set():
+                        break
+                    
+                    # Turn on all active LEDs
+                    for color in active_colors:
+                        self._set_led_direct(color, True)
+                    time.sleep(0.2)
+                    
+                    if self.cycle_complete_event.is_set():
+                        break
+                    
+                    # Turn off all LEDs
+                    for color in active_colors:
+                        self._set_led_direct(color, False)
+                    time.sleep(0.2)
+                
+                # Final cleanup - turn off all LEDs
+                if not self.cycle_complete_event.is_set():
+                    self.set_all_leds_off()
+                    
+            except Exception as e:
+                print(f"Error in completion blink: {e}")
+        
+        self.cycle_complete_thread = threading.Thread(target=_completion_blink, daemon=True)
+        self.cycle_complete_thread.start()
+    
+    def update_from_pipeline_status(self, pipeline_status, is_text_input=False, has_voice_output=True):
+        """Update LED states based on pipeline status
+        
+        Args:
+            pipeline_status: Status dict with 'activity' field
+            is_text_input: True if input was text (no ASR)
+            has_voice_output: True if output will be voice (TTS needed)
+        """
+        try:
+            activity = pipeline_status.get('activity', 'idle')
+            
+            # Handle different activity states
+            if 'listening' in activity:
+                self.set_asr_active(is_text_input)
+            elif 'thinking' in activity:
+                # ASR finished (if it was used), LLM active
+                if not is_text_input:
+                    self.set_asr_finished()
+                self.set_llm_active()
+            elif 'speaking' in activity or 'playing' in activity:
+                # LLM finished, TTS active
+                self.set_llm_finished()
+                self.set_tts_active(has_voice_output)
+            elif activity == 'idle':
+                # Full cycle complete
+                if any(state['active'] or state['finished'] for state in self.activity_states.values()):
+                    self.cycle_complete()
+                
+        except Exception as e:
+            print(f"Error updating activity LEDs: {e}")
+
+
 # ------- DRIVER CLASS -------
 class RainbowDriver:
     def __init__(self, num_leds=7, brightness=2, use_experimental_strip=False):
@@ -718,12 +994,18 @@ class RainbowDriver:
         self.strip.spi.max_speed_hz = 1000000
         self.strip.clear_strip()
         self.strip.show()
+        
+        # Create pixels interface for ActivityLEDManager compatibility
+        self.pixels = APA102PixelInterface(self.strip)
 
         # Initialize display manager
         self.display_manager = DisplayManager(self)
 
-        # Initialize LED manager
-        self.led_manager = LEDManager(self)
+        # Initialize LED manager for button LEDs
+        self.button_led_manager = LEDManager(self)
+        
+        # Initialize Activity LED manager for RGB strip
+        self.rgb_led_manager = ActivityLEDManager(self, experimental_features_enabled=use_experimental_strip)
 
         # Initialize Rainbow Strip manager
         self.rainbow_strip_manager = RainbowStripManager(self)
@@ -742,7 +1024,7 @@ class RainbowDriver:
         def handler():
             logging.info(f"Button {name} pressed")
             # Use LED manager for button feedback
-            self.led_manager.pulse_led(name, fade_in=0.1, fade_out=0.1, n=1)
+            self.button_led_manager.pulse_led(name, fade_in=0.1, fade_out=0.1, n=1)
             # Use buzzer manager for immediate button feedback
             self.buzzer_manager.play_tone_immediate(self.tones[name], 0.2)
         return handler
@@ -801,7 +1083,7 @@ class RainbowDriver:
     def shutdown(self, sig=None, frame=None):
         logging.info("🛑 Shutdown: Clearing displays and turning off LEDs.")
         # Stop all LED animations
-        self.led_manager.stop_all_leds()
+        self.button_led_manager.stop_all_leds()
         self.rainbow_strip_manager.clear()
         # Clear displays
         self.strip.clear_strip()
@@ -868,14 +1150,18 @@ class RainbowDriver:
         else:
             # Alternative celebration without rainbow strip - just blink all button LEDs
             for _ in range(3):
-                self.led_manager.blink_all_leds(on_time=0.1, off_time=0.1)
+                self.button_led_manager.blink_all_leds(on_time=0.1, off_time=0.1)
                 time.sleep(0.3)
-            self.led_manager.stop_all_leds()
+            self.button_led_manager.stop_all_leds()
     
     def clear_rainbow_strip(self):
         """Clear all rainbow strip LEDs (turn them off)"""
         if self.use_experimental_strip:
             self.rainbow_strip_manager.clear()
+
+    def update_activity_leds(self, pipeline_status, is_text_input=False, has_voice_output=True):
+        """Update LED states based on pipeline status"""
+        self.rgb_led_manager.update_from_pipeline_status(pipeline_status, is_text_input, has_voice_output)
 
 
 # Global getter for buzzer manager (for use by higher-level code)

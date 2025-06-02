@@ -12,9 +12,11 @@ from cognition.llm_interface import get_available_models, sort_models_by_size
 from cognition.bicameral_mind import bicameral_chat_direct
 from cognition.llm_interface import run_chat_completion
 from expression.text_to_speech import list_voice_ids
-from memory.usage_logger import (load_model_stats, get_available_log_dates, 
-                                parse_log_file)
-from utilities.text_processing import extract_short_model_name
+from memory.usage_logger import (
+    load_model_stats as get_model_stats, get_recent_errors, parse_log_file, 
+    get_available_log_dates as get_available_dates
+)
+from helpers.text_processing_helper import TextProcessingHelper
 from embodiment.rainbow_interface import start_system_processing, stop_system_processing, get_rainbow_driver
 from embodiment.display_manager import scroll_text_on_display
 
@@ -38,7 +40,7 @@ def home():
     models = get_available_models()
     models = sort_models_by_size(models)
     voices = list_voice_ids()  # Keep for compatibility but won't use directly
-    model_stats = load_model_stats()
+    model_stats = get_model_stats()
     
     # Get current personality and all personalities
     from cognition.personality import get_personality_manager
@@ -51,14 +53,14 @@ def home():
     personalities_list = personality_manager.list_personalities()
     
     if personality_manager.current_personality:
-        current_personality = personality_manager.current_personality
-        personality_model = current_personality.model_preference
-        personality_voice = current_personality.voice_id
+        current_personality = personality_manager.current_personality.to_dict()
+        personality_model = personality_manager.current_personality.model_preference
+        personality_voice = personality_manager.current_personality.voice_id
     
     # Process models to include short names for display
     models_with_display_names = []
     for model in models:
-        short_name = extract_short_model_name(model)
+        short_name = TextProcessingHelper.extract_short_model_name(model)
         models_with_display_names.append({
             'full_name': model,
             'display_name': short_name
@@ -380,12 +382,21 @@ def chat_ajax():
     # Get updated AI pipeline status
     ai_pipeline = get_ai_pipeline_status()
     
+    # Get current personality info for frontend display
+    personality_data = None
+    if personality_manager.current_personality:
+        personality_data = {
+            'name': personality_manager.current_personality.name,
+            'avatar_emoji': personality_manager.current_personality.avatar_emoji
+        }
+    
     return jsonify({
         "reply": reply_text,
         "audio_url": audio_url,
         "model": model,
         "error": error,
-        "ai_pipeline": ai_pipeline
+        "ai_pipeline": ai_pipeline,
+        "personality": personality_data
     })
 
 
@@ -435,7 +446,7 @@ def system():
     
     elif view_mode == 'logs' and selected_log_type:
         # Original log viewing functionality
-        available_dates = get_available_log_dates(selected_log_type)
+        available_dates = get_available_dates(selected_log_type)
         
         if not selected_date and available_dates:
             selected_date = available_dates[0]
@@ -444,12 +455,12 @@ def system():
             log_entries = parse_log_file(selected_log_type, date=selected_date)
     
     # Get top performing models from stats (always needed for sidebar)
-    model_stats = load_model_stats()
+    model_stats = get_model_stats()
     top_models = []
     for model, stats in model_stats.items():
         if stats.get('run_count', 0) > 0:
             # Extract short model name for display
-            short_name = extract_short_model_name(model)
+            short_name = TextProcessingHelper.extract_short_model_name(model)
             top_models.append((
                 model,  # Keep full name for data
                 short_name,  # Short name for display
@@ -492,7 +503,7 @@ def system():
                           all_models_data=all_models_data,
                           model_detail=model_detail,
                           model_name=model_name,
-                          extract_short_model_name=extract_short_model_name,
+                          extract_short_model_name=TextProcessingHelper.extract_short_model_name,
                           voices=voices,
                           current_voice=current_voice,
                           current_concurrent=current_concurrent,
@@ -557,7 +568,7 @@ def list_models():
             models_info.append(model_info)
         
         # Load runtime statistics
-        model_stats = load_model_stats()
+        model_stats = get_model_stats()
         
         # Add runtime info to each model
         for model in models_info:

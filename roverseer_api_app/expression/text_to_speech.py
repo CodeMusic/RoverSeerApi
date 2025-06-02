@@ -6,7 +6,7 @@ from pathlib import Path
 from config import VOICES_DIR, DEFAULT_VOICE, INTROS_DIR, AUDIO_DEVICE
 from memory.usage_logger import log_tts_usage, log_error
 from expression.sound_orchestration import play_sound_async, play_tts_tune
-from utilities.text_processing import sanitize_for_speech
+from helpers.text_processing_helper import TextProcessingHelper
 
 
 # -------- VOICE MANAGEMENT -------- #
@@ -64,15 +64,15 @@ def generate_tts_audio(text, voice_id=DEFAULT_VOICE, output_file=None):
         print(f"Warning: Empty voice_id provided, using default: {DEFAULT_VOICE}")
         voice_id = DEFAULT_VOICE
     
-    # Set the active voice
+    # Set active voice for this TTS operation
     import config
     config.active_voice = voice_id
     
-    # Play TTS tune
-    play_sound_async(play_tts_tune, voice_id)
+    # Play tune to indicate start
+    play_sound_async(play_tts_tune)
     
-    # Sanitize text for speech (but keep original for logging)
-    clean_text = sanitize_for_speech(text)
+    # Sanitize text for speech (this preserves think tags in logs but removes them from speech)
+    clean_text = TextProcessingHelper.sanitize_for_speech(text)
     
     try:
         # Find voice files

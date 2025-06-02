@@ -66,7 +66,7 @@ def initialize_hardware():
         
         # Show current selection on startup
         from embodiment.display_manager import scroll_text_on_display
-        from utilities.text_processing import extract_short_model_name
+        from helpers.text_processing_helper import TextProcessingHelper
         
         # Longer delay for startup tune to play and system to settle
         time.sleep(1.5)
@@ -102,7 +102,7 @@ def initialize_hardware():
                     scroll_text_on_display(personality_name, scroll_speed=0.15)
             else:
                 # It's a regular model
-                short_model_name = extract_short_model_name(current_selection)
+                short_model_name = TextProcessingHelper.extract_short_model_name(current_selection)
                 model_name = short_model_name.split(':')[0]
                 
                 if model_name.lower() == "penphinmind":
@@ -141,7 +141,7 @@ def setup_button_handlers():
     from cognition.bicameral_mind import bicameral_chat_direct
     from expression.text_to_speech import find_voice_files, play_voice_intro, generate_tts_audio
     from perception.speech_recognition import transcribe_audio
-    from utilities.text_processing import sanitize_for_speech, extract_short_model_name
+    from helpers.text_processing_helper import TextProcessingHelper
     
     # Track which buttons are currently pressed
     buttons_pressed = {'A': False, 'B': False, 'C': False}
@@ -245,8 +245,8 @@ def setup_button_handlers():
         
         if not config.recording_in_progress and not all(buttons_pressed.values()):
             print(f"Button A pressed, recording_in_progress={config.recording_in_progress}")
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-                rainbow_driver.led_manager.set_led('A', True)  # LED on when pressed
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+                rainbow_driver.button_led_manager.set_led('A', True)  # LED on when pressed
             play_sound_async(play_toggle_left_sound)
             
             # Refresh models if we only have the default
@@ -274,8 +274,8 @@ def setup_button_handlers():
             return
             
         if not config.recording_in_progress and not any(buttons_pressed.values()):
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-                rainbow_driver.led_manager.set_led('A', False)  # LED off when released
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+                rainbow_driver.button_led_manager.set_led('A', False)  # LED off when released
             play_sound_async(play_toggle_left_echo)
             
             # Start model info scroll immediately (no delay, no extra threading)
@@ -298,8 +298,8 @@ def setup_button_handlers():
         check_clear_history()
         
         if not config.recording_in_progress and not all(buttons_pressed.values()):
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-                rainbow_driver.led_manager.set_led('C', True)  # LED on when pressed
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+                rainbow_driver.button_led_manager.set_led('C', True)  # LED on when pressed
             play_sound_async(play_toggle_right_sound)
             
             # Refresh models if we only have the default
@@ -327,8 +327,8 @@ def setup_button_handlers():
             return
             
         if not config.recording_in_progress and not any(buttons_pressed.values()):
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-                rainbow_driver.led_manager.set_led('C', False)  # LED off when released
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+                rainbow_driver.button_led_manager.set_led('C', False)  # LED off when released
             play_sound_async(play_toggle_right_echo)
             
             # Start model info scroll immediately (no delay, no extra threading)
@@ -354,32 +354,43 @@ def setup_button_handlers():
             return  # Ignore if already recording or clearing history
         
         # LED solid on while button is held
-        if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-            rainbow_driver.led_manager.set_led('B', True)
+        if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+            rainbow_driver.button_led_manager.set_led('B', True)
     
     def handle_button_b_release():
         """Start the recording pipeline on button release"""
         buttons_pressed['B'] = False
         
         config.DebugLog("Button B released")
+        print("Button B released - starting checks...")
         
         # Check if system is busy - don't start recording if so
         if is_system_busy():
             config.DebugLog("System busy, not starting recording")
+            print("Button B: System is busy, not starting recording")
             # Turn off LED if it was on
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-                rainbow_driver.led_manager.set_led('B', False)
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+                rainbow_driver.button_led_manager.set_led('B', False)
             return
         
-        if config.recording_in_progress or all(buttons_pressed.values()):
-            config.DebugLog("Recording already in progress ({}) or all buttons pressed", config.recording_in_progress)
-            return  # Ignore if already recording or clearing history
+        if config.recording_in_progress:
+            config.DebugLog("Recording already in progress ({})", config.recording_in_progress)
+            print(f"Button B: Recording already in progress ({config.recording_in_progress})")
+            return
+            
+        if all(buttons_pressed.values()):
+            config.DebugLog("All buttons pressed - ignoring")
+            print("Button B: All buttons pressed - ignoring")
+            return
         
         config.DebugLog("Starting recording pipeline thread")
+        print("Button B: All checks passed, starting recording pipeline...")
+        
         # Start recording pipeline in separate thread
         recording_thread = threading.Thread(target=recording_pipeline)
         recording_thread.daemon = True
         recording_thread.start()
+        print("Button B: Recording thread started")
     
     def show_current_model_info():
         """Display current model or personality name"""
@@ -403,7 +414,7 @@ def setup_button_handlers():
                 scroll_text_on_display(personality_name, scroll_speed=0.2)
         else:
             # It's a regular model
-            short_model_name = extract_short_model_name(current_selection)
+            short_model_name = TextProcessingHelper.extract_short_model_name(current_selection)
             model_name = short_model_name.split(':')[0]  # Remove version tag for display
             
             if model_name.lower() == "penphinmind":
@@ -432,15 +443,30 @@ def setup_button_handlers():
             temp_recording = f"/tmp/recording_{uuid.uuid4().hex}.wav"
             
             # Start LED blinking for recording using LED manager
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
                 config.DebugLog("Starting LED blink")
-                rainbow_driver.led_manager.blink_led('B')
+                rainbow_driver.button_led_manager.blink_led('B')
             
             # Display countdown during recording  
             def show_countdown():
                 if rainbow_driver:
                     config.DebugLog("Starting countdown display")
-                    rainbow_driver.show_countdown(10)
+                    try:
+                        rainbow_driver.show_countdown(10)
+                        config.DebugLog("Countdown display completed")
+                    except Exception as e:
+                        config.DebugLog("Error in show_countdown: {}", e)
+                        print(f"Error in show_countdown: {e}")
+                        # Fallback - manual countdown
+                        try:
+                            for i in range(10, 0, -1):
+                                rainbow_driver.display_number(i)
+                                time.sleep(1)
+                            rainbow_driver.clear_display()
+                        except Exception as e2:
+                            print(f"Error in fallback countdown: {e2}")
+                else:
+                    config.DebugLog("No rainbow_driver available for countdown")
             
             # Start recording with arecord
             record_cmd = [
@@ -477,7 +503,7 @@ def setup_button_handlers():
             
             # Stop LED blinking
             if rainbow_driver:
-                rainbow_driver.led_manager.stop_led('B')
+                rainbow_driver.button_led_manager.stop_led('B')
             
             # Check if recording was successful
             if return_code != 0:
@@ -510,7 +536,7 @@ def setup_button_handlers():
             play_sound_async(play_recording_complete_sound)
             
             # 1. Speech to Text - Start ASR LED
-            start_system_processing('A')  # Red LED for ASR
+            start_system_processing('A', is_text_input=False, has_voice_output=True)  # Voice input, voice output
             transcript = None
             try:
                 transcript = transcribe_audio(temp_recording)
@@ -522,7 +548,7 @@ def setup_button_handlers():
             
             # ASR complete, transition to LLM stage
             stop_system_processing()  # This marks ASR complete
-            start_system_processing('B')  # Start LLM stage
+            start_system_processing('B', is_text_input=False, has_voice_output=True)  # Voice input leads to voice output
             
             # Get personality manager and determine voice/model
             from cognition.personality import get_personality_manager
@@ -588,7 +614,7 @@ def setup_button_handlers():
                 # Add conversation history (including which model said what)
                 for hist_user, hist_reply, hist_model in config.button_history[-config.MAX_BUTTON_HISTORY:]:
                     # Include model name in assistant messages for context
-                    short_hist_model = extract_short_model_name(hist_model)
+                    short_hist_model = TextProcessingHelper.extract_short_model_name(hist_model)
                     
                     # Extract personality name if it's a personality entry
                     if hist_model.startswith("PERSONALITY:"):
@@ -605,7 +631,7 @@ def setup_button_handlers():
                 
                 # Get system message from personality manager
                 # Generate system message with context
-                short_selected_model = extract_short_model_name(selected_model)
+                short_selected_model = TextProcessingHelper.extract_short_model_name(selected_model)
                 
                 if manager.current_personality:
                     # Use personality's system message
@@ -652,17 +678,17 @@ def setup_button_handlers():
             
             # LLM complete, transition to TTS stage
             stop_system_processing()  # This marks LLM complete
-            start_system_processing('C')  # Start TTS stage
+            start_system_processing('C', is_text_input=False, has_voice_output=True)  # Voice output happening
             
             # Sanitize text for speech
-            clean_reply = sanitize_for_speech(reply)
+            clean_reply = TextProcessingHelper.sanitize_for_speech(reply)
             
             # Generate TTS
             output_file, tts_processing_time = generate_tts_audio(clean_reply, voice, tmp_wav)
             
             # TTS complete, transition to audio playback
             stop_system_processing()  # This marks TTS complete
-            start_system_processing('aplay')
+            start_system_processing('aplay', is_text_input=False, has_voice_output=True)
             
             # Play the audio response using Popen to make it interruptible
             config.current_audio_process = subprocess.Popen(
@@ -703,8 +729,8 @@ def setup_button_handlers():
             config.recording_in_progress = False
             
             # Stop any LED animations
-            if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-                rainbow_driver.led_manager.stop_led('B')
+            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+                rainbow_driver.button_led_manager.stop_led('B')
             
             # Clear display
             if rainbow_driver:
@@ -722,6 +748,27 @@ def setup_button_handlers():
 
 
 # -------- LED PIPELINE MANAGEMENT -------- #
+# 
+# ARCHITECTURE OVERVIEW:
+# This system uses a dual-LED approach for comprehensive user feedback:
+#
+# 1. RGB LEDs (Rainbow Strip Pixels 0-2):
+#    - Provides semantic pipeline status using dedicated red/green/blue LEDs
+#    - Red: ASR/Speech Recognition activity
+#    - Green: LLM/Thinking activity  
+#    - Blue: TTS/Speech Generation activity
+#    - Only active when use_experimental_strip=True
+#
+# 2. Button LEDs (Physical Button LEDs A/B/C):
+#    - Handles user interaction feedback and audio playback indication
+#    - Remains available for button press feedback regardless of pipeline state
+#    - Used for audio playback "all blink" effect
+#
+# This separation follows psychology-focused architecture by providing:
+# - Clear semantic meaning (colors = cognitive functions)
+# - Consistent user interaction patterns (buttons always responsive)
+# - Graceful degradation (works with or without experimental features)
+#
 
 def reset_pipeline_stages():
     """Reset all pipeline stages to inactive"""
@@ -729,67 +776,87 @@ def reset_pipeline_stages():
     for key in config.pipeline_stages:
         config.pipeline_stages[key] = False
         
-    # Use LED manager to stop all LEDs
-    if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
-        rainbow_driver.led_manager.stop_all_leds()
+    # Reset RGB LEDs (primary pipeline visualization)
+    if rainbow_driver and hasattr(rainbow_driver, 'rgb_leds'):
+        rainbow_driver.rgb_leds.set_all_leds_off()  # Rainbow strip pixels 0-2
+    
+    # Stop any button LED animations but keep them available for user interaction
+    if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
+        rainbow_driver.button_led_manager.stop_all_leds()  # Button LEDs A/B/C
 
 
-def start_system_processing(led_color='B'):
+def start_system_processing(led_color='B', is_text_input=False, has_voice_output=True):
     """Start the current blinking LED and mark stage as active"""
-    if not rainbow_driver or not hasattr(rainbow_driver, 'led_manager'):
+    if not rainbow_driver:
         return
         
-    # Map old led_color to new stage names
-    stage_map = {
-        'A': 'asr',
-        'B': 'llm', 
-        'C': 'tts',
-        'aplay': 'playing'
-    }
-    
     # Mark current active stage as active
     if led_color == 'A':  # ASR stage
         config.pipeline_stages['asr_active'] = True
-        rainbow_driver.led_manager.show_progress('asr')
+        
+        # Use RGB LED Manager as primary pipeline visualization
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.set_asr_active(is_text_input)
         
     elif led_color == 'B':  # LLM stage
         config.pipeline_stages['llm_active'] = True
-        rainbow_driver.led_manager.show_progress('llm')
+        
+        # Use RGB LED Manager as primary pipeline visualization
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.set_llm_active()
         
     elif led_color == 'C':  # TTS stage
         config.pipeline_stages['tts_active'] = True
-        rainbow_driver.led_manager.show_progress('tts')
+        
+        # Use RGB LED Manager as primary pipeline visualization
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.set_tts_active(has_voice_output)
         
     elif led_color == 'aplay':  # Audio playback stage
         config.pipeline_stages['aplay_active'] = True
-        rainbow_driver.led_manager.show_progress('playing')
+        
+        # Keep button LED manager for audio playback feedback only
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            rainbow_driver.button_led_manager.show_progress('playing')
 
 
 def stop_system_processing():
     """Stop the current blinking LED and mark stage as complete"""
-    if not rainbow_driver or not hasattr(rainbow_driver, 'led_manager'):
+    if not rainbow_driver:
         return
         
     # Mark current active stage as complete and update display
     if config.pipeline_stages['asr_active']:
         config.pipeline_stages['asr_active'] = False
         config.pipeline_stages['asr_complete'] = True
-        rainbow_driver.led_manager.show_progress('asr_complete')
+        
+        # Use RGB LED Manager as primary pipeline visualization
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.set_asr_finished()
             
     elif config.pipeline_stages['llm_active']:
         config.pipeline_stages['llm_active'] = False
         config.pipeline_stages['llm_complete'] = True
-        rainbow_driver.led_manager.show_progress('llm_complete')
+        
+        # Use RGB LED Manager as primary pipeline visualization
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.set_llm_finished()
             
     elif config.pipeline_stages['tts_active']:
         config.pipeline_stages['tts_active'] = False
         config.pipeline_stages['tts_complete'] = True
-        rainbow_driver.led_manager.show_progress('tts_complete')
+        
+        # Use RGB LED Manager as primary pipeline visualization
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.set_tts_finished()
             
     elif config.pipeline_stages['aplay_active']:
         # End of pipeline - reset everything
         reset_pipeline_stages()
-        rainbow_driver.led_manager.show_progress('idle') 
+        
+        # RGB LED Manager handles cycle completion
+        if hasattr(rainbow_driver, 'rgb_led_manager'):
+            rainbow_driver.rgb_led_manager.cycle_complete()
 
 # -------- EXPERIMENTAL RAINBOW STRIP HELPERS -------- #
 # These functions provide direct access to rainbow strip features
@@ -802,7 +869,7 @@ def show_rainbow_progress(progress, color=(0, 255, 0)):
         progress: Float from 0.0 to 1.0
         color: RGB tuple for progress bar color
     """
-    if rainbow_driver and rainbow_driver.use_experimental_strip:
+    if rainbow_driver and config.USE_EXPERIMENTAL_RAINBOW_STRIP:
         rainbow_driver.rainbow_strip_manager.show_progress_bar(progress, color)
 
 
@@ -812,7 +879,7 @@ def start_rainbow_cycle(speed=0.1):
     Args:
         speed: Animation speed (seconds between updates)
     """
-    if rainbow_driver and rainbow_driver.use_experimental_strip:
+    if rainbow_driver and config.USE_EXPERIMENTAL_RAINBOW_STRIP:
         rainbow_driver.rainbow_strip_manager.rainbow_cycle(speed)
 
 
@@ -823,19 +890,19 @@ def pulse_rainbow_color(color, speed=0.05):
         color: RGB tuple
         speed: Pulse speed
     """
-    if rainbow_driver and rainbow_driver.use_experimental_strip:
+    if rainbow_driver and config.USE_EXPERIMENTAL_RAINBOW_STRIP:
         rainbow_driver.rainbow_strip_manager.pulse_color(color, speed)
 
 
 def stop_rainbow_animation():
     """Stop any running rainbow animation (requires experimental features)"""
-    if rainbow_driver and rainbow_driver.use_experimental_strip:
+    if rainbow_driver and config.USE_EXPERIMENTAL_RAINBOW_STRIP:
         rainbow_driver.rainbow_strip_manager.stop_animation()
 
 
 def celebrate_with_rainbow():
     """Alternative celebration with only rainbow effects (requires experimental features)"""
-    if rainbow_driver and rainbow_driver.use_experimental_strip:
+    if rainbow_driver and config.USE_EXPERIMENTAL_RAINBOW_STRIP:
         # Just the rainbow effect without display/button LEDs
         rainbow_driver.rainbow_strip_manager.rainbow_cycle(speed=0.05)
         time.sleep(2)
