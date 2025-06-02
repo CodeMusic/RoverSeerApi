@@ -9,7 +9,7 @@ scp custom_drivers/rainbow_driver.py codemusic@roverseer.local:~/custom_drivers/
 
 # Upload main application
 echo "📦 Uploading roverseer_api_app..."
-rsync -avz --delete --exclude='config.json' roverseer_api_app/ codemusic@roverseer.local:~/roverseer_api_app/
+rsync -avz --delete --exclude='config.json' --exclude='logs/' roverseer_api_app/ codemusic@roverseer.local:~/roverseer_api_app/
 
 # Set permissions on the driver
 echo "🔧 Setting permissions..."

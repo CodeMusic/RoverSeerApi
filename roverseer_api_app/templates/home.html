@@ -635,9 +635,15 @@
                         </audio>`;
                     }
                     
+                    // Get current personality info for display
+                    var personalityDisplay = '{{ current_personality.avatar_emoji if current_personality else "" }} {{ current_personality.name if current_personality else "" }}';
+                    if (!personalityDisplay.trim()) {
+                        personalityDisplay = modelDisplay; // Fallback to model
+                    }
+                    
                     assistantDiv.innerHTML = `
                         <div class="message-bubble">${messageContent}</div>
-                        <div class="message-info">${escapeHtml(modelDisplay)}</div>
+                        <div class="message-info">${escapeHtml(personalityDisplay)}</div>
                     `;
                     messagesContainer.insertBefore(assistantDiv, typingIndicator);
                 }
@@ -760,7 +766,7 @@
 
     <div class="chatbox">
         <div class="chat-header">
-            <h2>RoverSeer Chat</h2>
+            <h2>RoverSeer Chat{% if current_personality %} - {{ current_personality.avatar_emoji }} {{ current_personality.name }}{% endif %}</h2>
             <div class="action-buttons">
                 <form method="post" style="display: inline;">
                     <input type="hidden" name="action" value="clear_context">
@@ -809,12 +815,17 @@
                 {% endfor %}
             </select>
             
-                        <select name="voice" title="Voice">
-                            {% if voices %}
-                {% for v in voices %}
-                    <option value="{{ v }}" {% if v == selected_voice %}selected{% endif %}>{{ v }}</option>
-                {% endfor %}
+                        <select name="voice" title="Personality">
+                            {% if personalities %}
+                                {% for personality in personalities %}
+                                    <option value="{{ personality.voice_id }}" 
+                                            data-personality="{{ personality.name }}"
+                                            {% if current_personality and personality.name == current_personality.name %}selected{% endif %}>
+                                        {{ personality.avatar_emoji }} {{ personality.name }}
+                                    </option>
+                                {% endfor %}
                             {% else %}
+                                <!-- Fallback if no personalities -->
                                 <option value="{{ selected_voice }}">{{ selected_voice }}</option>
                             {% endif %}
             </select>

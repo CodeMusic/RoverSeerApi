@@ -35,8 +35,23 @@ def home():
     statuses = check_tcp_ports()
     models = get_available_models()
     models = sort_models_by_size(models)
-    voices = list_voice_ids()
+    voices = list_voice_ids()  # Keep for compatibility but won't use directly
     model_stats = load_model_stats()
+    
+    # Get current personality and all personalities
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    current_personality = None
+    personality_model = None
+    personality_voice = None
+    
+    # Get all personalities for dropdown
+    personalities_list = personality_manager.list_personalities()
+    
+    if personality_manager.current_personality:
+        current_personality = personality_manager.current_personality
+        personality_model = current_personality.model_preference
+        personality_voice = current_personality.voice_id
     
     # Process models to include short names for display
     models_with_display_names = []
@@ -48,8 +63,11 @@ def home():
         })
     
     sensor_data = get_sensor_data()
-    selected_model = DEFAULT_MODEL
-    selected_voice = DEFAULT_VOICE
+    
+    # Set defaults based on personality or system defaults
+    selected_model = personality_model or DEFAULT_MODEL
+    selected_voice = personality_voice or DEFAULT_VOICE
+    
     reply_text = ""
     audio_url = None
     
@@ -80,7 +98,11 @@ def home():
         if model.lower() == "penphinmind":
             try:
                 reply_text = bicameral_chat_direct(user_input, system)
-                history.append((user_input, reply_text, "PenphinMind"))
+                # Get personality info for history
+                personality_info = "🧠 PenphinMind"
+                if personality_manager.current_personality:
+                    personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                history.append((user_input, reply_text, personality_info))
             except Exception as e:
                 reply_text = f"Bicameral processing error: {e}"
         else:
@@ -92,10 +114,21 @@ def home():
             messages.append({"role": "user", "content": user_input})
 
             try:
+                # Get system message from personality or use provided one
+                if not system and personality_manager.current_personality:
+                    # Generate context-aware system message from current personality
+                    context = {
+                        "time_of_day": "day",  # Could be enhanced with actual time
+                        "user_name": None,  # Could be enhanced if we track users
+                    }
+                    system_message = personality_manager.current_personality.generate_system_message(context)
+                else:
+                    # Use provided system message or default
+                    system_message = system or "You are RoverSeer, a helpful assistant."
+
                 if output_type == 'text':
-                    # For text-only, use web personality
-                    personality = config.get_personality_for_voice(voice, context="web")
-                    reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                    # For text-only
+                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
                     reply_text = reply
                     # Stop LED for text-only output
                     stop_system_processing()
@@ -104,9 +137,8 @@ def home():
                     from expression.text_to_speech import generate_tts_audio
                     import uuid
                     
-                    # For audio output, use voice-specific personality
-                    personality = config.get_personality_for_voice(voice, context="device")
-                    reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                    # For audio output
+                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
                     
                     # Transition to TTS stage
                     stop_system_processing()
@@ -124,9 +156,8 @@ def home():
                 else:  # speak
                     from expression.text_to_speech import speak_text
                     
-                    # For spoken output, use voice-specific personality
-                    personality = config.get_personality_for_voice(voice, context="device")
-                    reply = run_chat_completion(model, messages, personality, voice_id=voice)
+                    # For spoken output
+                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
                     
                     # Transition to TTS stage
                     stop_system_processing()
@@ -137,7 +168,11 @@ def home():
                     # Note: speak_text handles the aplay stage internally
                     reply_text = reply
 
-                history.append((user_input, reply_text, model))
+                # Get personality info for history
+                personality_info = model
+                if personality_manager.current_personality:
+                    personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                history.append((user_input, reply_text, personality_info))
             except Exception as e:
                 reply_text = f"Request failed: {e}"
 
@@ -148,11 +183,13 @@ def home():
                           history=history, 
                           models=models_with_display_names, 
                           selected_model=selected_model, 
-                          voices=voices, 
+                          voices=voices,  # Keep for backward compatibility
                           selected_voice=selected_voice, 
                           sensor_data=sensor_data, 
                           model_stats=model_stats,
-                          ai_pipeline=get_ai_pipeline_status())
+                          ai_pipeline=get_ai_pipeline_status(),
+                          current_personality=current_personality,
+                          personalities=personalities_list)  # Add personalities list
 
 
 @bp.route("/status_only", methods=['GET'])
@@ -190,6 +227,21 @@ def chat_ajax():
     user_input = request.form.get('user_input')
     model = request.form.get('model')
     
+    # Check if we need to switch personality based on voice
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    # Find personality by voice and switch if needed
+    if voice:
+        for personality in personality_manager.personalities.values():
+            if personality.voice_id == voice:
+                if not personality_manager.current_personality or personality_manager.current_personality.name != personality.name:
+                    personality_manager.switch_to(personality.name)
+                    # Update DEFAULT_VOICE to match
+                    from config import update_default_voice
+                    update_default_voice(voice)
+                break
+    
     # Validate voice - use default if empty
     if not voice:
         voice = DEFAULT_VOICE
@@ -214,7 +266,11 @@ def chat_ajax():
         if model.lower() == "penphinmind":
             # PenphinMind uses its own system messages, pass user's system if provided
             reply_text = bicameral_chat_direct(user_input, system)
-            history.append((user_input, reply_text, "PenphinMind"))
+            # Get personality info for history
+            personality_info = "🧠 PenphinMind"
+            if personality_manager.current_personality:
+                personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+            history.append((user_input, reply_text, personality_info))
         else:
             # Normal flow
             messages = []
@@ -223,52 +279,68 @@ def chat_ajax():
                 messages.append({"role": "assistant", "content": ai_reply})
             messages.append({"role": "user", "content": user_input})
 
-            if output_type == 'text':
-                # For text-only, use web personality
-                personality = config.get_personality_for_voice(voice, context="web")
-                reply = run_chat_completion(model, messages, personality, voice_id=voice)
-                reply_text = reply
-                # Stop LED for text-only output
-                stop_system_processing()
-                
-            elif output_type == 'audio_file':
-                from expression.text_to_speech import generate_tts_audio
-                import uuid
-                
-                # For audio output, use voice-specific personality
-                personality = config.get_personality_for_voice(voice, context="device")
-                reply = run_chat_completion(model, messages, personality, voice_id=voice)
-                
-                # Transition to TTS stage
-                stop_system_processing()
-                start_system_processing('C')
-                
-                tmp_audio = f"{uuid.uuid4().hex}.wav"
-                output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
-                
-                # Stop LED after TTS
-                stop_system_processing()
-                
-                audio_url = url_for('system.serve_static', filename=tmp_audio)
-                reply_text = reply
-                    
-            else:  # speak
-                from expression.text_to_speech import speak_text
-                
-                # For spoken output, use voice-specific personality
-                personality = config.get_personality_for_voice(voice, context="device")
-                reply = run_chat_completion(model, messages, personality, voice_id=voice)
-                
-                # Transition to TTS stage
-                stop_system_processing()
-                start_system_processing('C')
-                
-                speak_text(reply, voice)
-                
-                # Note: speak_text handles the aplay stage internally
-                reply_text = reply
+            try:
+                # Get system message from personality or use provided one
+                if not system and personality_manager.current_personality:
+                    # Generate context-aware system message from current personality
+                    context = {
+                        "time_of_day": "day",  # Could be enhanced with actual time
+                        "user_name": None,  # Could be enhanced if we track users
+                    }
+                    system_message = personality_manager.current_personality.generate_system_message(context)
+                else:
+                    # Use provided system message or default
+                    system_message = system or "You are RoverSeer, a helpful assistant."
 
-            history.append((user_input, reply_text, model))
+                if output_type == 'text':
+                    # For text-only
+                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
+                    reply_text = reply
+                    # Stop LED for text-only output
+                    stop_system_processing()
+                    
+                elif output_type == 'audio_file':
+                    from expression.text_to_speech import generate_tts_audio
+                    import uuid
+                    
+                    # For audio output
+                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
+                    
+                    # Transition to TTS stage
+                    stop_system_processing()
+                    start_system_processing('C')
+                    
+                    tmp_audio = f"{uuid.uuid4().hex}.wav"
+                    output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
+                    
+                    # Stop LED after TTS
+                    stop_system_processing()
+                    
+                    audio_url = url_for('system.serve_static', filename=tmp_audio)
+                    reply_text = reply
+                        
+                else:  # speak
+                    from expression.text_to_speech import speak_text
+                    
+                    # For spoken output
+                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
+                    
+                    # Transition to TTS stage
+                    stop_system_processing()
+                    start_system_processing('C')
+                    
+                    speak_text(reply, voice)
+                    
+                    # Note: speak_text handles the aplay stage internally
+                    reply_text = reply
+
+                # Get personality info for history
+                personality_info = model
+                if personality_manager.current_personality:
+                    personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                history.append((user_input, reply_text, personality_info))
+            except Exception as e:
+                reply_text = f"Request failed: {e}"
             
     except Exception as e:
         error = str(e)
@@ -312,6 +384,9 @@ def system():
     voices = list_voice_ids()
     current_voice = DEFAULT_VOICE
     current_concurrent = config.MAX_CONCURRENT_REQUESTS
+    
+    # Get available models for personality creation
+    available_models = get_available_models()
     
     # Handle different view modes
     if view_mode == 'models':
@@ -397,7 +472,8 @@ def system():
                           extract_short_model_name=extract_short_model_name,
                           voices=voices,
                           current_voice=current_voice,
-                          current_concurrent=current_concurrent)
+                          current_concurrent=current_concurrent,
+                          available_models=available_models)  # Add available models
 
 
 @bp.route('/models', methods=['GET'])
@@ -577,6 +653,173 @@ def update_settings():
             return jsonify({"status": "error", "message": "Invalid number"}), 400
     
     return jsonify({"status": "error", "message": "Invalid setting type"}), 400
+
+
+@bp.route('/system/personalities', methods=['GET'])
+def get_personalities():
+    """Get list of available personalities"""
+    from cognition.personality import get_personality_manager
+    
+    personality_manager = get_personality_manager()
+    personalities = personality_manager.list_personalities()
+    current = personality_manager.current_personality.name if personality_manager.current_personality else None
+    
+    return jsonify({
+        "status": "success",
+        "personalities": personalities,
+        "current": current
+    })
+
+
+@bp.route('/system/personality/switch', methods=['POST'])
+def switch_personality():
+    """Switch to a different personality"""
+    personality_name = request.form.get('personality')
+    
+    if not personality_name:
+        return jsonify({"status": "error", "message": "Missing personality name"}), 400
+    
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    if personality_manager.switch_to(personality_name):
+        personality = personality_manager.current_personality
+        
+        # Update the DEFAULT_VOICE to match the personality's voice
+        if personality.voice_id:
+            from config import update_default_voice
+            update_default_voice(personality.voice_id)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Switched to {personality.name}",
+            "voice": personality.voice_id,
+            "model": personality.model_preference,
+            "intro": personality.get_intro_message()
+        })
+    else:
+        return jsonify({"status": "error", "message": f"Personality '{personality_name}' not found"}), 404
+
+
+@bp.route('/system/personality/current', methods=['GET'])
+def get_current_personality():
+    """Get details about the current personality"""
+    from cognition.personality import get_personality_manager
+    
+    personality_manager = get_personality_manager()
+    if personality_manager.current_personality:
+        return jsonify({
+            "status": "success",
+            "personality": personality_manager.current_personality.to_dict()
+        })
+    else:
+        return jsonify({
+            "status": "success",
+            "personality": None
+        })
+
+
+@bp.route('/system/personality/create', methods=['POST'])
+def create_personality():
+    """Create a new custom personality"""
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['name', 'voice_id', 'system_message']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({
+                "status": "error", 
+                "message": f"Missing required field: {field}"
+            }), 400
+    
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    success = personality_manager.create_custom_personality(
+        name=data['name'],
+        voice_id=data['voice_id'],
+        system_message=data['system_message'],
+        model_preference=data.get('model_preference'),
+        description=data.get('description', ''),
+        avatar_emoji=data.get('avatar_emoji', '🤖')
+    )
+    
+    if success:
+        return jsonify({
+            "status": "success",
+            "message": f"Personality '{data['name']}' created successfully"
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": f"Personality '{data['name']}' already exists"
+        }), 400
+
+
+@bp.route('/system/personality/delete', methods=['POST'])
+def delete_personality():
+    """Delete a custom personality"""
+    data = request.get_json()
+    
+    if not data.get('name'):
+        return jsonify({
+            "status": "error",
+            "message": "Missing personality name"
+        }), 400
+    
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    if personality_manager.delete_custom_personality(data['name']):
+        return jsonify({
+            "status": "success",
+            "message": f"Personality '{data['name']}' deleted successfully"
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": f"Cannot delete personality '{data['name']}' (either doesn't exist or is a default personality)"
+        }), 400
+
+
+@bp.route('/system/personality/update', methods=['POST'])
+def update_personality_custom():
+    """Update an existing custom personality"""
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['old_name', 'name', 'voice_id', 'system_message']
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({
+                "status": "error", 
+                "message": f"Missing required field: {field}"
+            }), 400
+    
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    success = personality_manager.update_custom_personality(
+        old_name=data['old_name'],
+        name=data['name'],
+        voice_id=data['voice_id'],
+        system_message=data['system_message'],
+        model_preference=data.get('model_preference'),
+        description=data.get('description', ''),
+        avatar_emoji=data.get('avatar_emoji', '🤖')
+    )
+    
+    if success:
+        return jsonify({
+            "status": "success",
+            "message": f"Personality '{data['name']}' updated successfully"
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": f"Failed to update personality (not found, not custom, or name conflict)"
+        }), 400
 
 
 @bp.route('/system/personality', methods=['GET'])

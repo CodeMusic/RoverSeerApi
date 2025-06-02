@@ -410,11 +410,26 @@ def setup_button_handlers():
             start_system_processing('B')  # Start LLM stage
             
             # Play voice intro before LLM processing
-            voice = config.DEFAULT_VOICE
+            from cognition.personality import get_personality_manager
+            manager = get_personality_manager()
+            
+            # Use personality's voice if available, otherwise use default
+            if manager.current_personality and manager.current_personality.voice_id:
+                voice = manager.current_personality.voice_id
+            else:
+                voice = config.DEFAULT_VOICE
+                
             play_sound_async(play_voice_intro, voice)
             
             # 2. Run LLM with selected model (will keep LED blinking)
             selected_model = config.available_models[config.selected_model_index]
+            
+            # Check if personality has a model preference
+            if manager.current_personality and manager.current_personality.model_preference:
+                # Check if the personality's preferred model is available
+                if manager.current_personality.model_preference in config.available_models:
+                    selected_model = manager.current_personality.model_preference
+                    print(f"Using personality's preferred model: {selected_model}")
             
             # Check if PenphinMind is selected
             if selected_model.lower() == "penphinmind":
@@ -466,8 +481,15 @@ def setup_button_handlers():
             
             print(f"Button chat history: {len(config.button_history)} exchanges")
             
-            # 3. Text to Speech with default voice
-            voice = config.DEFAULT_VOICE
+            # 3. Text to Speech with personality's voice
+            from cognition.personality import get_personality_manager
+            manager = get_personality_manager()
+            
+            # Use personality's voice if available, otherwise use default
+            if manager.current_personality and manager.current_personality.voice_id:
+                voice = manager.current_personality.voice_id
+            else:
+                voice = config.DEFAULT_VOICE
             
             # Generate and play audio response
             tmp_wav = f"/tmp/{uuid.uuid4().hex}.wav"

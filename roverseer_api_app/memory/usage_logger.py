@@ -68,23 +68,22 @@ def get_model_runtime(model_name):
     return None
 
 
-def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None):
+def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None, personality=None):
     """Log LLM usage to daily file in JSON format"""
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Infer personality from voice_id
-    personality = "default"
-    if voice_id:
-        # Import config to check if it's a voice with special personality
-        from config import VOICE_PERSONALITIES
-        if voice_id in VOICE_PERSONALITIES:
-            # Extract personality name from voice_id (e.g., "en_US-GlaDOS" -> "GlaDOS")
-            parts = voice_id.split('-')
-            if len(parts) >= 2:
-                personality = parts[-1]  # Get the last part (GlaDOS, jarvis, amy, etc.)
-        else:
-            personality = "device"  # Default device personality for other voices
+    # If personality not provided, try to get it from the current personality manager
+    if not personality:
+        try:
+            from cognition.personality import get_personality_manager
+            manager = get_personality_manager()
+            if manager.current_personality:
+                personality = manager.current_personality.name
+            else:
+                personality = "default"
+        except:
+            personality = "default"
     
     log_entry = {
         "timestamp": timestamp,

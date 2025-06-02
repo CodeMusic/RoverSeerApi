@@ -68,8 +68,39 @@ def chat_unified():
 
     model = data.get("model", DEFAULT_MODEL)
     messages = data.get("messages", [])
-    system_message = data.get("system", "You are RoverSeer, a helpful assistant.")
-    voice = data.get("voice", DEFAULT_VOICE)
+    
+    # Get personality manager
+    from cognition.personality import get_personality_manager
+    manager = get_personality_manager()
+    
+    # Get system message from personality if not provided
+    system_message = data.get("system")
+    voice = data.get("voice")  # Don't set default yet
+    
+    if manager.current_personality:
+        # Generate context-aware system message if not provided
+        if not system_message:
+            context = {
+                "time_of_day": "day",  # Could be enhanced with actual time
+                "user_name": None,  # Could be enhanced if we track users
+            }
+            system_message = manager.current_personality.generate_system_message(context)
+        
+        # Use personality's preferred model if not specified
+        if not data.get("model") and manager.current_personality.model_preference:
+            model = manager.current_personality.model_preference
+        
+        # Use personality's voice if not specified
+        if not voice and manager.current_personality.voice_id:
+            voice = manager.current_personality.voice_id
+    else:
+        # No personality active, use defaults
+        if not system_message:
+            system_message = "You are RoverSeer, a helpful assistant."
+    
+    # Final fallback to config default if still no voice
+    if not voice:
+        voice = DEFAULT_VOICE
     
     # For backward compatibility, determine output type from endpoint
     output_type = data.get("output_type")
@@ -80,7 +111,7 @@ def chat_unified():
     try:
         # Start LLM processing LED
         start_system_processing('B')
-        reply = run_chat_completion(model, messages, system_message, voice_id=DEFAULT_VOICE)
+        reply = run_chat_completion(model, messages, system_message, voice_id=voice)
         
         # For text-only response, stop LEDs
         if output_type == "text":
@@ -188,10 +219,28 @@ def insight():
     if not data or "prompt" not in data:
         return jsonify({"status": "error", "message": "Missing prompt"}), 400
 
-    model = data.get("model", DEFAULT_MODEL)
+    # Get personality manager
+    from cognition.personality import get_personality_manager
+    manager = get_personality_manager()
+    
+    model = data.get("model")
+    system_message = data.get("system")
+    
+    # Use personality defaults if available
+    if manager.current_personality:
+        if not model and manager.current_personality.model_preference:
+            model = manager.current_personality.model_preference
+        if not system_message:
+            system_message = manager.current_personality.generate_system_message({})
+    
+    # Final fallbacks
+    if not model:
+        model = DEFAULT_MODEL
+    if not system_message:
+        system_message = "You are RoverSeer, an insightful assistant."
+    
     prompt = data["prompt"].strip()
     messages = [{"role": "user", "content": prompt}]
-    system_message = data.get("system", "You are RoverSeer, an insightful assistant.")
 
     try:
         reply = run_chat_completion(model, messages, system_message)
@@ -244,8 +293,20 @@ def bicameral_chat():
 
     prompt = data.get("prompt", "").strip()
     system = data.get("system", "").strip()
-    voice = data.get("voice", DEFAULT_VOICE)
+    voice = data.get("voice")
     speak = data.get("speak", True)
+    
+    # Get personality manager for voice default
+    from cognition.personality import get_personality_manager
+    manager = get_personality_manager()
+    
+    # Use personality's voice if not specified
+    if not voice and manager.current_personality and manager.current_personality.voice_id:
+        voice = manager.current_personality.voice_id
+    
+    # Final fallback to config default
+    if not voice:
+        voice = DEFAULT_VOICE
 
     if not prompt:
         return jsonify({"status": "error", "message": "No prompt provided"}), 400
@@ -409,7 +470,11 @@ def openai_compatible_chat():
     model = data.get("model", DEFAULT_MODEL)
     messages = data.get("messages", [])
     
-    # Extract system message if present
+    # Get personality manager
+    from cognition.personality import get_personality_manager
+    manager = get_personality_manager()
+    
+    # Get system message from personality if not provided
     system_message = None
     filtered_messages = []
     
@@ -423,13 +488,22 @@ def openai_compatible_chat():
     if not system_message:
         system_message = "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational."
 
+    # Use personality's voice if not specified
+    voice = data.get("voice")
+    if manager.current_personality and not voice:
+        voice = manager.current_personality.voice_id
+
+    # Final fallback to config default if still no voice
+    if not voice:
+        voice = DEFAULT_VOICE
+
     try:
         # Start LLM processing LED if this is from the recording pipeline
         from config import pipeline_stages
         if not any(stage for stage in pipeline_stages.values() if stage):
             start_system_processing('B')
         
-        reply = run_chat_completion(model, filtered_messages, system_message, voice_id=DEFAULT_VOICE)
+        reply = run_chat_completion(model, filtered_messages, system_message, voice_id=voice)
         
         # Stop LED processing if we started it
         if pipeline_stages.get('llm_active'):

@@ -94,8 +94,18 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
         
         # Only log if not part of PenphinMind
         if not skip_logging:
+            # Get current personality name
+            personality_name = None
+            try:
+                from cognition.personality import get_personality_manager
+                personality_manager = get_personality_manager()
+                if personality_manager.current_personality:
+                    personality_name = personality_manager.current_personality.name
+            except:
+                pass
+                
             # Log LLM usage
-            log_llm_usage(model, system_message or "Default system message", user_prompt, result, elapsed_time, voice_id)
+            log_llm_usage(model, system_message or "Default system message", user_prompt, result, elapsed_time, voice_id, personality_name)
             
             # Update model runtime statistics
             update_model_runtime(model, elapsed_time)

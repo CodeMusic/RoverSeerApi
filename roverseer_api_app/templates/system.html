@@ -387,75 +387,132 @@
             updateSetting('voice', selectedVoice);
         }
         
-        function loadPersonality() {
-            const select = document.getElementById('personality-type-select');
-            const selectedType = select.value;
-            const editor = document.getElementById('personality-editor');
-            const textArea = document.getElementById('personality-text');
-            
-            if (!selectedType) {
-                editor.style.display = 'none';
-                return;
-            }
-            
-            editor.style.display = 'block';
-            
-            // Fetch current personality text
-            fetch('/system/personality?type=' + encodeURIComponent(selectedType))
+        function loadPersonalities() {
+            fetch('/system/personalities')
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        textArea.value = data.personality;
-                    } else {
-                        textArea.value = '';
+                        const select = document.getElementById('personality-select');
+                        const currentSpan = document.getElementById('current-personality');
+                        
+                        // Clear and populate select
+                        select.innerHTML = '';
+                        data.personalities.forEach(personality => {
+                            const option = document.createElement('option');
+                            option.value = personality.name;
+                            option.textContent = `${personality.avatar_emoji} ${personality.name}`;
+                            if (personality.name === data.current) {
+                                option.selected = true;
+                            }
+                            select.appendChild(option);
+                        });
+                        
+                        // Update current display
+                        currentSpan.textContent = data.current || 'None';
+                        
+                        // Load details for current personality
+                        if (data.current) {
+                            loadPersonalityDetails();
+                        }
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading personality:', error);
-                    textArea.value = '';
+                    console.error('Error loading personalities:', error);
                 });
         }
         
-        function savePersonality() {
-            const select = document.getElementById('personality-type-select');
-            const selectedType = select.value;
-            const textArea = document.getElementById('personality-text');
-            const personalityText = textArea.value.trim();
+        function loadPersonalityDetails() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
             
-            if (!selectedType) {
-                alert('Please select a personality type first');
+            if (!selectedName) {
+                document.getElementById('personality-details').style.display = 'none';
                 return;
             }
             
-            if (!personalityText) {
-                alert('Please enter personality text');
+            // Find the selected personality in the options (has all the data)
+            fetch('/system/personalities')
+                .then(response => response.json())
+                .then(data => {
+                    const personality = data.personalities.find(p => p.name === selectedName);
+                    if (personality) {
+                        document.getElementById('personality-name').textContent = `${personality.avatar_emoji} ${personality.name}`;
+                        document.getElementById('personality-description').textContent = personality.description;
+                        document.getElementById('personality-voice').textContent = personality.voice_id;
+                        document.getElementById('personality-model').textContent = personality.model_preference || 'System Default';
+                        document.getElementById('personality-details').style.display = 'block';
+                        
+                        // Show delete button only for custom personalities
+                        const deleteSection = document.getElementById('custom-personality-actions');
+                        if (personality.is_custom) {
+                            deleteSection.style.display = 'block';
+                        } else {
+                            deleteSection.style.display = 'none';
+                        }
+                        
+                        // Hide intro message for now (will show after switching)
+                        document.getElementById('personality-intro').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading personality details:', error);
+                });
+        }
+        
+        function switchPersonality() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            if (!selectedName) {
+                alert('Please select a personality');
                 return;
             }
             
             const button = event.target;
             const originalText = button.textContent;
             button.disabled = true;
-            button.textContent = 'Saving...';
+            button.textContent = 'Switching...';
             
-            fetch('/system/personality', {
+            fetch('/system/personality/switch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `type=${encodeURIComponent(selectedType)}&personality=${encodeURIComponent(personalityText)}`
+                body: `personality=${encodeURIComponent(selectedName)}`
             })
             .then(response => response.json())
             .then(data => {
                 const statusDiv = document.getElementById('status-message');
                 statusDiv.textContent = data.message;
                 statusDiv.className = `status-message ${data.status}`;
+                
+                if (data.status === 'success') {
+                    // Update current personality display
+                    document.getElementById('current-personality').textContent = selectedName;
+                    
+                    // Update voice if changed
+                    if (data.voice) {
+                        const voiceSelect = document.getElementById('voice-select');
+                        if (voiceSelect) {
+                            voiceSelect.value = data.voice;
+                            document.getElementById('current-voice').textContent = data.voice;
+                        }
+                    }
+                    
+                    // Show intro message
+                    if (data.intro) {
+                        document.getElementById('intro-message').textContent = data.intro;
+                        document.getElementById('personality-intro').style.display = 'block';
+                    }
+                }
+                
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
-                }, 3000);
+                }, 5000);
             })
             .catch(error => {
                 const statusDiv = document.getElementById('status-message');
-                statusDiv.textContent = 'Error saving personality: ' + error;
+                statusDiv.textContent = 'Error switching personality: ' + error;
                 statusDiv.className = 'status-message error';
             })
             .finally(() => {
@@ -468,6 +525,194 @@
             const input = document.getElementById('concurrent-requests-input');
             const value = input.value;
             updateSetting('concurrent_requests', value);
+        }
+        
+        function editPersonality() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            if (!selectedName) {
+                alert('No personality selected');
+                return;
+            }
+            
+            // Find the selected personality data
+            fetch('/system/personalities')
+                .then(response => response.json())
+                .then(data => {
+                    const personality = data.personalities.find(p => p.name === selectedName);
+                    if (personality && personality.is_custom) {
+                        // Populate the form with current values
+                        document.getElementById('new-personality-name').value = personality.name;
+                        document.getElementById('new-personality-voice').value = personality.voice_id;
+                        document.getElementById('new-personality-model').value = personality.model_preference || '';
+                        document.getElementById('new-personality-description').value = personality.description || '';
+                        document.getElementById('new-personality-system').value = personality.system_message || '';
+                        document.getElementById('new-personality-emoji').value = personality.avatar_emoji || '🤖';
+                        
+                        // Change the button text and set editing mode
+                        const createButton = document.querySelector('button[onclick="createPersonality()"]');
+                        createButton.textContent = 'Update Personality';
+                        createButton.setAttribute('data-editing', selectedName);
+                        
+                        // Scroll to the form
+                        document.querySelector('#new-personality-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        
+                        // Update the section title
+                        const sectionTitle = document.getElementById('create-personality-title');
+                        if (sectionTitle) {
+                            sectionTitle.textContent = '✏️ Edit Personality';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading personality for editing:', error);
+                    alert('Error loading personality data');
+                });
+        }
+        
+        function createPersonality() {
+            const name = document.getElementById('new-personality-name').value.trim();
+            const voice = document.getElementById('new-personality-voice').value;
+            const model = document.getElementById('new-personality-model').value;
+            const description = document.getElementById('new-personality-description').value.trim();
+            const systemMessage = document.getElementById('new-personality-system').value.trim();
+            const emoji = document.getElementById('new-personality-emoji').value.trim() || '🤖';
+            
+            if (!name) {
+                alert('Please enter a personality name');
+                return;
+            }
+            
+            if (!systemMessage) {
+                alert('Please enter a system message');
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            const isEditing = button.getAttribute('data-editing');
+            
+            button.disabled = true;
+            button.textContent = isEditing ? 'Updating...' : 'Creating...';
+            
+            const url = isEditing ? '/system/personality/update' : '/system/personality/create';
+            const requestData = {
+                name: name,
+                voice_id: voice,
+                model_preference: model || null,
+                description: description,
+                system_message: systemMessage,
+                avatar_emoji: emoji
+            };
+            
+            if (isEditing) {
+                requestData.old_name = isEditing;
+            }
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = data.message;
+                statusDiv.className = `status-message ${data.status}`;
+                
+                if (data.status === 'success') {
+                    // Clear form
+                    document.getElementById('new-personality-name').value = '';
+                    document.getElementById('new-personality-description').value = '';
+                    document.getElementById('new-personality-system').value = '';
+                    document.getElementById('new-personality-emoji').value = '🤖';
+                    
+                    // Reset button
+                    button.removeAttribute('data-editing');
+                    button.textContent = 'Create Personality';
+                    
+                    // Reset section title
+                    const sectionTitle = document.getElementById('create-personality-title');
+                    if (sectionTitle) {
+                        sectionTitle.textContent = '➕ Create New Personality';
+                    }
+                    
+                    // Reload personalities
+                    loadPersonalities();
+                }
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = `Error ${isEditing ? 'updating' : 'creating'} personality: ` + error;
+                statusDiv.className = 'status-message error';
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = originalText;
+            });
+        }
+        
+        function deletePersonality() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            if (!selectedName) {
+                alert('No personality selected');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete the personality "${selectedName}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Deleting...';
+            
+            fetch('/system/personality/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: selectedName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = data.message;
+                statusDiv.className = `status-message ${data.status}`;
+                
+                if (data.status === 'success') {
+                    // Hide details section
+                    document.getElementById('personality-details').style.display = 'none';
+                    
+                    // Reload personalities
+                    loadPersonalities();
+                }
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = 'Error deleting personality: ' + error;
+                statusDiv.className = 'status-message error';
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = originalText;
+            });
         }
         
         function toggleLogEntry(entryId) {
@@ -527,6 +772,48 @@
             });
             
             return false;  // Extra prevention of event bubbling
+        }
+        
+        function playDetailAudio(button) {
+            const text = button.getAttribute('data-text');
+            const voice = button.getAttribute('data-voice');
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = 'Playing<span class="loading"></span>';
+            
+            // Use the existing /tts endpoint
+            fetch('/tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text,
+                    voice: voice || 'en_US-GlaDOS',
+                    speak: false  // We want the file returned
+                })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const audio = new Audio(URL.createObjectURL(blob));
+                audio.play();
+                button.innerHTML = 'Playing...';
+                audio.addEventListener('ended', () => {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                });
+                audio.addEventListener('error', () => {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    alert('Error playing audio');
+                });
+            })
+            .catch(error => {
+                console.error('Error playing TTS:', error);
+                button.disabled = false;
+                button.innerHTML = originalContent;
+                alert('Error generating audio: ' + error);
+            });
         }
         
         function processThinkTags(text) {
@@ -694,7 +981,10 @@
                     </div>
                     <div class="log-detail-section">
                         <h4>AI Reply</h4>
-                        <div id="processed-reply">${processThinkTags(entry.llm_reply)}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div id="processed-reply" style="flex: 1;">${processThinkTags(entry.llm_reply)}</div>
+                            ${entry.voice_id ? `<button class="play-button" style="margin-left: 10px;" data-text="${entry.llm_reply.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="${entry.voice_id}" onclick="playDetailAudio(this)">🔊 Play</button>` : ''}
+                        </div>
                     </div>
                 `;
             } else if (entry.type === 'tts_usage') {
@@ -711,7 +1001,10 @@
                     </div>
                     <div class="log-detail-section">
                         <h4>Text</h4>
-                        <pre>${entry.text}</pre>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <pre style="flex: 1;">${entry.text}</pre>
+                            <button class="play-button" style="margin-left: 10px;" data-text="${entry.text.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="${entry.voice_id}" onclick="playDetailAudio(this)">🔊 Play</button>
+                        </div>
                     </div>
                 `;
             } else if (entry.type === 'asr_usage') {
@@ -755,7 +1048,10 @@
                     </div>
                     <div class="log-detail-section">
                         <h4>Final Synthesis</h4>
-                        <div>${processThinkTags(entry.final_synthesis)}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">${processThinkTags(entry.final_synthesis)}</div>
+                            <button class="play-button" style="margin-left: 10px;" data-text="${entry.final_synthesis.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="en_US-GlaDOS" onclick="playDetailAudio(this)">🔊 Play</button>
+                        </div>
                     </div>
                 `;
             }
@@ -803,10 +1099,73 @@
                 });
         }
         
+        function previewVoice() {
+            const voiceSelect = document.getElementById('new-personality-voice');
+            const selectedVoice = voiceSelect.value;
+            const nameInput = document.getElementById('new-personality-name');
+            const personalityName = nameInput.value.trim();
+            const button = event.target;
+            
+            if (!selectedVoice) {
+                alert('Please select a voice first');
+                return;
+            }
+            
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.innerHTML = 'Playing<span class="loading"></span>';
+            
+            // Sample text for voice preview - personalized if name is entered
+            let sampleText;
+            if (personalityName) {
+                sampleText = `Hello! I'm ${personalityName}. This is how I sound. I'm looking forward to being your assistant.`;
+            } else {
+                sampleText = "Hello! This is how I sound. I'm looking forward to being your assistant.";
+            }
+            
+            fetch('/tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: sampleText,
+                    voice: selectedVoice,
+                    speak: false  // We want the file returned
+                })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const audio = new Audio(URL.createObjectURL(blob));
+                audio.play();
+                button.innerHTML = 'Playing...';
+                audio.addEventListener('ended', () => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                });
+                audio.addEventListener('error', () => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    alert('Error playing audio');
+                });
+            })
+            .catch(error => {
+                console.error('Error playing voice preview:', error);
+                button.disabled = false;
+                button.innerHTML = originalText;
+                alert('Error generating voice preview: ' + error);
+            });
+        }
+        
         // Load containers when page loads
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('container-list')) {
                 loadContainers();
+            }
+            
+            // Load personalities if on settings page
+            if (document.getElementById('personality-select')) {
+                loadPersonalities();
             }
             
             // Initial status load
@@ -1218,25 +1577,93 @@
                     <div class="settings-group">
                         <h3>🤖 Personality Settings</h3>
                         <div class="setting-item">
-                            <label for="personality-type-select">Select Personality Type</label>
-                            <select id="personality-type-select" onchange="loadPersonality()">
-                                <option value="">-- Select a personality to edit --</option>
-                                <option value="default">Default Personality</option>
-                                <option value="web">Web Interface Personality</option>
-                                <option value="device">Device/Voice Personality</option>
+                            <label for="personality-select">Active Personality</label>
+                            <select id="personality-select" onchange="loadPersonalityDetails()">
+                                <!-- Will be populated dynamically -->
                             </select>
+                            <span class="current-value">Current: <span id="current-personality">Loading...</span></span>
+                            <br>
+                            <button onclick="switchPersonality()">Switch Personality</button>
                         </div>
                         
-                        <div id="personality-editor" style="display: none;">
-                            <div class="setting-item">
-                                <label for="personality-text">Personality Text</label>
-                                <textarea id="personality-text" style="width: 100%; height: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; font-family: inherit;"></textarea>
-                                <button onclick="savePersonality()">Save Personality</button>
+                        <div id="personality-details" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; display: none;">
+                            <h4 id="personality-name" style="margin: 0 0 10px 0;">Personality Details</h4>
+                            <p id="personality-description" style="margin: 10px 0;"></p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div>
+                                    <strong>Voice:</strong> <span id="personality-voice"></span>
+                                </div>
+                                <div>
+                                    <strong>Preferred Model:</strong> <span id="personality-model"></span>
+                                </div>
+                            </div>
+                            <div id="personality-intro" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px; font-style: italic; display: none;">
+                                <strong>Introduction:</strong> <span id="intro-message"></span>
+                            </div>
+                            <div id="custom-personality-actions" style="margin-top: 15px; display: none;">
+                                <div style="display: flex; gap: 10px;">
+                                    <button onclick="editPersonality()" style="background-color: #4169e1; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">✏️ Edit Personality</button>
+                                    <button onclick="deletePersonality()" style="background-color: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">🗑️ Delete Personality</button>
+                                </div>
+                                <p style="margin-top: 5px; color: #666; font-size: 12px;">⚠️ Deletion cannot be undone</p>
                             </div>
                         </div>
                         
                         <p style="margin-top: 10px; color: #666; font-size: 14px;">
-                            Customize how RoverSeer responds in different contexts. Voice-specific personalities (like GlaDOS, JARVIS, etc.) are built-in and automatically activate when their voice is selected.
+                            Personalities combine a voice, model preference, and unique interaction style. When you switch personalities, the voice and default model will automatically update.
+                        </p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3 id="create-personality-title">➕ Create New Personality</h3>
+                        <div class="setting-item">
+                            <label for="new-personality-name">Personality Name</label>
+                            <input type="text" id="new-personality-name" placeholder="e.g., Assistant" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-voice">Voice</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <select id="new-personality-voice" style="flex: 1;">
+                                    {% for voice in voices %}
+                                        <option value="{{ voice }}">{{ voice }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" onclick="previewVoice()" style="background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px;">
+                                    🔊 Preview
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-model">Preferred Model (optional)</label>
+                            <select id="new-personality-model">
+                                <option value="">System Default</option>
+                                {% for model in available_models %}
+                                    <option value="{{ model }}">{{ extract_short_model_name(model) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-description">Description</label>
+                            <input type="text" id="new-personality-description" placeholder="Brief description" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-system">System Message</label>
+                            <textarea id="new-personality-system" placeholder="Enter the system message for this personality..." style="width: 100%; height: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; font-family: inherit;"></textarea>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-emoji">Avatar Emoji</label>
+                            <input type="text" id="new-personality-emoji" placeholder="🤖" value="🤖" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 20px; text-align: center;">
+                        </div>
+                        
+                        <button onclick="createPersonality()">Create Personality</button>
+                        
+                        <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                            Create custom personalities with specific voices and interaction styles. Each personality can have its own system message that defines how it responds.
                         </p>
                     </div>
                     
