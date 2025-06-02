@@ -11,7 +11,7 @@ from embodiment.sensors import get_sensor_data, check_tcp_ports, get_ai_pipeline
 from cognition.llm_interface import get_available_models, sort_models_by_size
 from cognition.bicameral_mind import bicameral_chat_direct
 from cognition.llm_interface import run_chat_completion
-from expression.text_to_speech import list_voice_ids
+from expression.text_to_speech import list_voice_ids, get_categorized_voices
 from memory.usage_logger import (
     load_model_stats as get_model_stats, get_recent_errors, parse_log_file, 
     get_available_log_dates as get_available_dates
@@ -40,6 +40,7 @@ def home():
     models = get_available_models()
     models = sort_models_by_size(models)
     voices = list_voice_ids()  # Keep for compatibility but won't use directly
+    categorized_voices = get_categorized_voices()  # Get categorized voice data for web interface
     model_stats = get_model_stats()
     
     # Get current personality and all personalities
@@ -199,7 +200,8 @@ def home():
                           model_stats=model_stats,
                           ai_pipeline=get_ai_pipeline_status(),
                           current_personality=current_personality,
-                          personalities=personalities_list)  # Add personalities list
+                          personalities=personalities_list,
+                          categorized_voices=categorized_voices)  # Add categorized voices
 
 
 @bp.route("/status_only", methods=['GET'])
@@ -416,6 +418,7 @@ def system():
     
     # Get voices and current settings for settings view
     voices = list_voice_ids()
+    categorized_voices = get_categorized_voices()  # Add categorized voice data for settings
     current_voice = DEFAULT_VOICE
     current_concurrent = config.MAX_CONCURRENT_REQUESTS
     
@@ -505,6 +508,7 @@ def system():
                           model_name=model_name,
                           extract_short_model_name=TextProcessingHelper.extract_short_model_name,
                           voices=voices,
+                          categorized_voices=categorized_voices,  # Add categorized voices
                           current_voice=current_voice,
                           current_concurrent=current_concurrent,
                           available_models=available_models)  # Add available models

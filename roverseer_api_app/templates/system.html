@@ -447,7 +447,20 @@
             margin-right: 5px;
         }
     </style>
+    
+    <!-- Template data as JSON to avoid linter conflicts -->
+    <script type="application/json" id="system-roverseer-data">
+        {
+            "categorizedVoices": {{ categorized_voices | tojson }}
+        }
+    </script>
+    
     <script>
+        // Parse template data from JSON script
+        var systemDataScript = document.getElementById('system-roverseer-data');
+        var systemData = JSON.parse(systemDataScript.textContent);
+        var categorizedVoices = systemData.categorizedVoices;
+        
         function refreshPage() {
             window.location.reload();
         }
@@ -1351,6 +1364,7 @@
             // Auto-refresh status every 5 seconds
             setInterval(refreshStatus, 5000);
         });
+        
     </script>
 </head>
 <body>
@@ -1749,11 +1763,34 @@
                         <div class="setting-item">
                             <label for="voice-select">Default Voice</label>
                             <select id="voice-select">
-                                {% for voice in voices %}
-                                    <option value="{{ voice }}" {% if voice == current_voice %}selected{% endif %}>
-                                        {{ voice }}
-                                    </option>
-                                {% endfor %}
+                                {% if categorized_voices and categorized_voices.categorized %}
+                                    {% for category_name, voices_list in categorized_voices.categorized.items() %}
+                                        {% if category_name == 'uncategorized' %}
+                                            <!-- Add uncategorized voices directly (no optgroup) -->
+                                            {% for voice in voices_list %}
+                                                <option value="{{ voice }}" {% if voice == current_voice %}selected{% endif %}>
+                                                    {{ voice }}
+                                                </option>
+                                            {% endfor %}
+                                        {% else %}
+                                            <!-- Create optgroup for categorized voices -->
+                                            <optgroup label="{{ category_name }}">
+                                                {% for voice in voices_list %}
+                                                    <option value="{{ voice }}" {% if voice == current_voice %}selected{% endif %}>
+                                                        {{ voice }}
+                                                    </option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Fallback to flat list if no categorization -->
+                                    {% for voice in voices %}
+                                        <option value="{{ voice }}" {% if voice == current_voice %}selected{% endif %}>
+                                            {{ voice }}
+                                        </option>
+                                    {% endfor %}
+                                {% endif %}
                             </select>
                             <span class="current-value">Current: <span id="current-voice">{{ current_voice }}</span></span>
                             <br>
@@ -1815,9 +1852,28 @@
                             <label for="new-personality-voice">Voice</label>
                             <div style="display: flex; gap: 10px; align-items: center;">
                                 <select id="new-personality-voice" style="flex: 1;">
-                                    {% for voice in voices %}
-                                        <option value="{{ voice }}">{{ voice }}</option>
-                                    {% endfor %}
+                                    {% if categorized_voices and categorized_voices.categorized %}
+                                        {% for category_name, voices_list in categorized_voices.categorized.items() %}
+                                            {% if category_name == 'uncategorized' %}
+                                                <!-- Add uncategorized voices directly (no optgroup) -->
+                                                {% for voice in voices_list %}
+                                                    <option value="{{ voice }}">{{ voice }}</option>
+                                                {% endfor %}
+                                            {% else %}
+                                                <!-- Create optgroup for categorized voices -->
+                                                <optgroup label="{{ category_name }}">
+                                                    {% for voice in voices_list %}
+                                                        <option value="{{ voice }}">{{ voice }}</option>
+                                                    {% endfor %}
+                                                </optgroup>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <!-- Fallback to flat list if no categorization -->
+                                        {% for voice in voices %}
+                                            <option value="{{ voice }}">{{ voice }}</option>
+                                        {% endfor %}
+                                    {% endif %}
                                 </select>
                                 <button type="button" onclick="previewVoice()" style="background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 14px;">
                                     🔊 Preview

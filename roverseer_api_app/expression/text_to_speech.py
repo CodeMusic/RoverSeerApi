@@ -11,17 +11,73 @@ from helpers.text_processing_helper import TextProcessingHelper
 
 # -------- VOICE MANAGEMENT -------- #
 def list_voice_ids():
-    """List all available voice IDs from the voices directory"""
-    base_names = set()
-    for fname in os.listdir(VOICES_DIR):
-        if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
-            base = fname.rsplit("-", 1)[0]
-            base_names.add(base)
-    return sorted(base_names)
+    """List all available voice IDs from the voices directory (flat list for device compatibility)"""
+    return get_categorized_voices()['flat_list']
+
+
+def get_categorized_voices():
+    """Get voices organized by categories (subdirectories) and as a flat list
+    
+    Returns:
+        dict: {
+            'flat_list': ['voice1', 'voice2', ...],  # For device compatibility
+            'categorized': {
+                'Category Name': ['voice1', 'voice2'],
+                'uncategorized': ['voice3', 'voice4']
+            }
+        }
+    """
+    flat_voices = set()
+    categorized_voices = {}
+    uncategorized_voices = set()
+    
+    # First, scan the root voices directory for uncategorized voices
+    try:
+        for fname in os.listdir(VOICES_DIR):
+            if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
+                base = fname.rsplit("-", 1)[0]
+                uncategorized_voices.add(base)
+    except Exception as e:
+        print(f"Error scanning voices directory: {e}")
+    
+    # Then scan subdirectories for categorized voices
+    try:
+        for item in os.listdir(VOICES_DIR):
+            item_path = os.path.join(VOICES_DIR, item)
+            if os.path.isdir(item_path):
+                category_name = item
+                category_voices = set()
+                
+                # Scan this category directory
+                try:
+                    for fname in os.listdir(item_path):
+                        if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
+                            base = fname.rsplit("-", 1)[0]
+                            category_voices.add(base)
+                            flat_voices.add(base)  # Also add to flat list
+                except Exception as e:
+                    print(f"Error scanning category {category_name}: {e}")
+                
+                if category_voices:
+                    categorized_voices[category_name] = sorted(category_voices)
+    except Exception as e:
+        print(f"Error scanning for voice categories: {e}")
+    
+    # Add uncategorized voices to flat list
+    flat_voices.update(uncategorized_voices)
+    
+    # Add uncategorized voices to categorized structure if any exist
+    if uncategorized_voices:
+        categorized_voices['uncategorized'] = sorted(uncategorized_voices)
+    
+    return {
+        'flat_list': sorted(flat_voices),
+        'categorized': categorized_voices
+    }
 
 
 def find_voice_files(base_voice_id):
-    """Find the model and config files for a voice ID"""
+    """Find the model and config files for a voice ID (searches root and subdirectories)"""
     pattern_prefix = f"{base_voice_id}"
     model_file = None
     config_file = None
@@ -30,21 +86,49 @@ def find_voice_files(base_voice_id):
     print(f"Looking for voice files with prefix: {pattern_prefix}")
     print(f"In directory: {VOICES_DIR}")
     
+    # Search in root directory first
     try:
         files_in_dir = os.listdir(VOICES_DIR)
         matching_files = [f for f in files_in_dir if f.startswith(pattern_prefix)]
-        print(f"Files starting with {pattern_prefix}: {matching_files}")
+        print(f"Root files starting with {pattern_prefix}: {matching_files}")
+        
+        for fname in files_in_dir:
+            if fname.startswith(pattern_prefix):
+                if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
+                    model_file = os.path.join(VOICES_DIR, fname)
+                elif fname.endswith(".onnx.json"):
+                    config_file = os.path.join(VOICES_DIR, fname)
+            if model_file and config_file:
+                break
     except Exception as e:
-        print(f"Error listing directory: {e}")
+        print(f"Error listing root directory: {e}")
     
-    for fname in os.listdir(VOICES_DIR):
-        if fname.startswith(pattern_prefix):
-            if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
-                model_file = os.path.join(VOICES_DIR, fname)
-            elif fname.endswith(".onnx.json"):
-                config_file = os.path.join(VOICES_DIR, fname)
-        if model_file and config_file:
-            break
+    # If not found in root, search subdirectories
+    if not (model_file and config_file):
+        try:
+            for item in os.listdir(VOICES_DIR):
+                item_path = os.path.join(VOICES_DIR, item)
+                if os.path.isdir(item_path):
+                    try:
+                        subdir_files = os.listdir(item_path)
+                        matching_subfiles = [f for f in subdir_files if f.startswith(pattern_prefix)]
+                        print(f"Subdir {item} files starting with {pattern_prefix}: {matching_subfiles}")
+                        
+                        for fname in subdir_files:
+                            if fname.startswith(pattern_prefix):
+                                if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
+                                    model_file = os.path.join(item_path, fname)
+                                elif fname.endswith(".onnx.json"):
+                                    config_file = os.path.join(item_path, fname)
+                            if model_file and config_file:
+                                break
+                    except Exception as e:
+                        print(f"Error scanning subdirectory {item}: {e}")
+                
+                if model_file and config_file:
+                    break
+        except Exception as e:
+            print(f"Error scanning subdirectories: {e}")
     
     if not model_file or not config_file:
         # More detailed error message

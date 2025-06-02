@@ -367,6 +367,20 @@
             color: white;
         }
         
+        /* Voice category styling */
+        select optgroup {
+            font-weight: bold;
+            color: #333;
+            background-color: #f0f0f0;
+            padding: 4px 0;
+        }
+        
+        select optgroup option {
+            font-weight: normal;
+            padding-left: 16px;
+            background-color: white;
+        }
+        
         /* Ensure personality emojis show properly */
         #voice-select option {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -637,6 +651,7 @@
     <script type="application/json" id="roverseer-data">
         {
             "voices": {{ voices | tojson }},
+            "categorizedVoices": {{ categorized_voices | tojson }},
             "personalities": {{ personalities | tojson }},
             "currentPersonality": {{ current_personality | tojson if current_personality else 'null' | safe }},
             "selectedModel": {{ selected_model | tojson }},
@@ -654,6 +669,7 @@
         
         // Use the properly escaped template data
         var availableVoices = roverseerData.voices;
+        var categorizedVoices = roverseerData.categorizedVoices;
         var availablePersonalities = roverseerData.personalities;
         var currentPersonalityName = roverseerData.currentPersonality ? roverseerData.currentPersonality.name : null;
         
@@ -782,21 +798,66 @@
                     voiceSelect.appendChild(option);
                 });
             } else {
-                // Show voices
+                // Show voices with categories
                 customSystemGroup.style.display = 'block';
                 
-                availableVoices.forEach(function(voice) {
-                    var option = document.createElement('option');
-                    option.value = voice;
-                    option.textContent = voice;
-                    
-                    // Select current voice if it matches
-                    if (roverseerData.selectedVoice === voice) {
-                        option.selected = true;
+                // Check if we have categorized voices
+                if (categorizedVoices && categorizedVoices.categorized) {
+                    // Create optgroups for each category
+                    for (var categoryName in categorizedVoices.categorized) {
+                        if (categorizedVoices.categorized.hasOwnProperty(categoryName)) {
+                            var voices = categorizedVoices.categorized[categoryName];
+                            
+                            // Create optgroup for this category (unless it's uncategorized)
+                            if (categoryName === 'uncategorized') {
+                                // Add uncategorized voices directly (no optgroup)
+                                voices.forEach(function(voice) {
+                                    var option = document.createElement('option');
+                                    option.value = voice;
+                                    option.textContent = voice;
+                                    
+                                    if (roverseerData.selectedVoice === voice) {
+                                        option.selected = true;
+                                    }
+                                    
+                                    voiceSelect.appendChild(option);
+                                });
+                            } else {
+                                // Create optgroup for categorized voices
+                                var optgroup = document.createElement('optgroup');
+                                optgroup.label = categoryName;
+                                
+                                voices.forEach(function(voice) {
+                                    var option = document.createElement('option');
+                                    option.value = voice;
+                                    option.textContent = voice;
+                                    
+                                    if (roverseerData.selectedVoice === voice) {
+                                        option.selected = true;
+                                    }
+                                    
+                                    optgroup.appendChild(option);
+                                });
+                                
+                                voiceSelect.appendChild(optgroup);
+                            }
+                        }
                     }
-                    
-                    voiceSelect.appendChild(option);
-                });
+                } else {
+                    // Fallback to flat list if no categorization
+                    availableVoices.forEach(function(voice) {
+                        var option = document.createElement('option');
+                        option.value = voice;
+                        option.textContent = voice;
+                        
+                        // Select current voice if it matches
+                        if (roverseerData.selectedVoice === voice) {
+                            option.selected = true;
+                        }
+                        
+                        voiceSelect.appendChild(option);
+                    });
+                }
             }
         }
         
