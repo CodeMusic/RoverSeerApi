@@ -38,20 +38,54 @@ def initialize_hardware():
         from expression.sound_orchestration import play_sound_async, play_startup_tune
         play_sound_async(play_startup_tune)
         
+        # Refresh available models (including personalities) before re-sync
+        from cognition.model_management import refresh_available_models
+        print("🔄 Refreshing models and personalities list...")
+        refresh_available_models()
+        
+        # Re-sync with current personality after hardware init
+        from cognition.personality import get_personality_manager
+        personality_manager = get_personality_manager()
+        
+        print(f"🔍 Before re-sync: selected_model_index={config.selected_model_index}, available_models count={len(config.available_models)}")
+        
+        if personality_manager.current_personality:
+            # Find and set the personality index
+            personality_entry = f"PERSONALITY:{personality_manager.current_personality.name}"
+            try:
+                personality_index = config.available_models.index(personality_entry)
+                config.selected_model_index = personality_index
+                print(f"✅ Re-synced device to personality {personality_manager.current_personality.name} (index {personality_index})")
+            except ValueError:
+                print(f"⚠️  Current personality {personality_manager.current_personality.name} not found in device list")
+                # List what personalities ARE available
+                personality_entries = [m for m in config.available_models if m.startswith("PERSONALITY:")]
+                print(f"   Available personalities: {personality_entries}")
+        
+        print(f"🔍 After re-sync: selected_model_index={config.selected_model_index}")
+        
         # Show current selection on startup
         from embodiment.display_manager import scroll_text_on_display
         from utilities.text_processing import extract_short_model_name
         
-        # Small delay for startup tune to play
-        time.sleep(0.5)
+        # Longer delay for startup tune to play and system to settle
+        time.sleep(1.5)
+        
+        config.DebugLog("Checking startup display - available_models: {}, selected_index: {}", 
+                        len(config.available_models), config.selected_model_index)
         
         # Display current selection
         if config.available_models and 0 <= config.selected_model_index < len(config.available_models):
             current_selection = config.available_models[config.selected_model_index]
             
+            config.DebugLog("Startup display - selected_model_index: {}", config.selected_model_index)
+            config.DebugLog("Startup display - current_selection: {}", current_selection)
+            config.DebugLog("Startup display - available_models count: {}", len(config.available_models))
+            
             if current_selection.startswith("PERSONALITY:"):
                 # It's a personality - show with emoji
                 personality_name = current_selection[12:]
+                config.DebugLog("Startup display - personality_name: {}", personality_name)
                 
                 # Get the personality to access emoji
                 from cognition.personality import get_personality_manager
@@ -78,6 +112,10 @@ def initialize_hardware():
                 
                 print(f"🎯 Showing default model on startup: {display_text}")
                 scroll_text_on_display(display_text, scroll_speed=0.15)
+        else:
+            config.DebugLog("Startup display - invalid index or no models available")
+            config.DebugLog("available_models: {}", config.available_models)
+            config.DebugLog("selected_model_index: {}", config.selected_model_index)
         
         return True
         
@@ -114,14 +152,17 @@ def setup_button_handlers():
         # Check all active pipeline stages
         for stage, active in config.pipeline_stages.items():
             if active and stage.endswith('_active'):
+                config.DebugLog("System busy - {} is active", stage)
                 return True
         
         # Also check if recording is in progress
         if config.recording_in_progress:
+            config.DebugLog("System busy - recording in progress")
             return True
             
         # Check if any active request is being processed
         if config.active_request_count > 0:
+            config.DebugLog("System busy - {} active requests", config.active_request_count)
             return True
             
         return False
@@ -176,6 +217,10 @@ def setup_button_handlers():
             # Reset pipeline since we interrupted
             reset_pipeline_stages()
             
+            # SAFETY: Clear any stuck buzzer sounds when interrupting
+            if rainbow_driver and hasattr(rainbow_driver, 'buzzer_manager'):
+                rainbow_driver.buzzer_manager.clear_queue_and_interrupt()
+            
             print("Audio playback interrupted")
             return True
         
@@ -184,6 +229,8 @@ def setup_button_handlers():
     def handle_button_a():
         """Toggle to previous model"""
         buttons_pressed['A'] = True
+        
+        config.DebugLog("Button A pressed")
         
         # Check if system is busy - ignore button press if so
         if is_system_busy():
@@ -314,16 +361,21 @@ def setup_button_handlers():
         """Start the recording pipeline on button release"""
         buttons_pressed['B'] = False
         
+        config.DebugLog("Button B released")
+        
         # Check if system is busy - don't start recording if so
         if is_system_busy():
+            config.DebugLog("System busy, not starting recording")
             # Turn off LED if it was on
             if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
                 rainbow_driver.led_manager.set_led('B', False)
             return
         
         if config.recording_in_progress or all(buttons_pressed.values()):
+            config.DebugLog("Recording already in progress ({}) or all buttons pressed", config.recording_in_progress)
             return  # Ignore if already recording or clearing history
         
+        config.DebugLog("Starting recording pipeline thread")
         # Start recording pipeline in separate thread
         recording_thread = threading.Thread(target=recording_pipeline)
         recording_thread.daemon = True
@@ -367,11 +419,13 @@ def setup_button_handlers():
             config.recording_in_progress = True
             
             print(f"Starting recording pipeline with MIC_DEVICE: {config.MIC_DEVICE}")
+            config.DebugLog("Recording flag set to True")
             
             # Reset pipeline stages at start
             reset_pipeline_stages()
             
             # Play confirmation sound
+            config.DebugLog("Playing confirmation sound")
             play_sound_async(play_confirmation_sound)
             
             # Record audio for 10 seconds
@@ -379,11 +433,13 @@ def setup_button_handlers():
             
             # Start LED blinking for recording using LED manager
             if rainbow_driver and hasattr(rainbow_driver, 'led_manager'):
+                config.DebugLog("Starting LED blink")
                 rainbow_driver.led_manager.blink_led('B')
             
             # Display countdown during recording  
             def show_countdown():
                 if rainbow_driver:
+                    config.DebugLog("Starting countdown display")
                     rainbow_driver.show_countdown(10)
             
             # Start recording with arecord
@@ -533,7 +589,14 @@ def setup_button_handlers():
                 for hist_user, hist_reply, hist_model in config.button_history[-config.MAX_BUTTON_HISTORY:]:
                     # Include model name in assistant messages for context
                     short_hist_model = extract_short_model_name(hist_model)
-                    model_prefix = f"[{short_hist_model.split(':')[0]}]: " if hist_model != selected_model else ""
+                    
+                    # Extract personality name if it's a personality entry
+                    if hist_model.startswith("PERSONALITY:"):
+                        hist_personality_name = hist_model[12:]
+                        model_prefix = f"[{hist_personality_name}]: "
+                    else:
+                        model_prefix = f"[{short_hist_model.split(':')[0]}]: " if hist_model != selected_model else ""
+                    
                     messages.append({"role": "user", "content": hist_user})
                     messages.append({"role": "assistant", "content": model_prefix + hist_reply})
                 

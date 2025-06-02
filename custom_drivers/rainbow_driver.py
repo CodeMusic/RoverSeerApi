@@ -8,6 +8,7 @@ from gpiozero.tones import Tone
 import board, busio
 import adafruit_bmp280
 import fourletterphat as flp
+import re
 
 # Add APA102 path if not installed via pip
 sys.path.insert(0, "/home/codemusic/APA102_Pi")
@@ -46,6 +47,7 @@ class BuzzerManager:
         self.sound_queue = queue.Queue()
         self.worker_thread = None
         self.running = False
+        self.current_task_interrupt = threading.Event()  # For interrupting current task
         
         # Initialize buzzer
         self._init_buzzer()
@@ -89,6 +91,8 @@ class BuzzerManager:
                 
                 func, args, kwargs = task
                 try:
+                    # Clear interrupt flag for new task
+                    self.current_task_interrupt.clear()
                     func(*args, **kwargs)
                 except Exception as e:
                     logging.error(f"Error in sound playback: {e}")
@@ -98,6 +102,36 @@ class BuzzerManager:
             except queue.Empty:
                 continue
     
+    def interrupt_current_task(self):
+        """Interrupt any currently playing sound task"""
+        self.current_task_interrupt.set()
+        self.stop()
+    
+    def clear_queue_and_interrupt(self):
+        """Clear all queued sounds and interrupt current playback - for new process flows"""
+        # Only interrupt if there's actually something playing
+        if self.current_task_interrupt.is_set():
+            return  # Already interrupted
+            
+        # Interrupt current task
+        self.interrupt_current_task()
+        
+        # Clear the queue
+        cleared = 0
+        while not self.sound_queue.empty():
+            try:
+                self.sound_queue.get_nowait()
+                cleared += 1
+            except queue.Empty:
+                break
+        
+        # Only force stop if we actually cleared something or interrupted
+        if cleared > 0:
+            self.force_stop()
+            logging.info(f"Buzzer queue cleared ({cleared} items) and current task interrupted")
+        else:
+            logging.debug("Buzzer queue was already empty")
+    
     def play_tone_immediate(self, tone, duration=0.1):
         """Play a tone immediately (blocks) - for button feedback"""
         with self.buzzer_lock:
@@ -106,8 +140,21 @@ class BuzzerManager:
                     return False
             
             try:
+                # Check for interrupt before starting
+                if self.current_task_interrupt.is_set():
+                    return False
+                
                 self.buzzer.play(tone)
-                time.sleep(duration)
+                
+                # Sleep in small chunks to allow interruption
+                sleep_chunks = max(1, int(duration / 0.05))
+                chunk_duration = duration / sleep_chunks
+                
+                for _ in range(sleep_chunks):
+                    if self.current_task_interrupt.is_set():
+                        break
+                    time.sleep(chunk_duration)
+                
                 self.buzzer.stop()
                 return True
             except Exception as e:
@@ -119,9 +166,11 @@ class BuzzerManager:
         """Queue a sequence of notes to play asynchronously"""
         def _play():
             for note, duration in zip(notes, durations):
+                if self.current_task_interrupt.is_set():
+                    break
                 if not self.play_tone_immediate(note, duration):
                     break
-                if gaps > 0:
+                if gaps > 0 and not self.current_task_interrupt.is_set():
                     time.sleep(gaps)
         
         self.sound_queue.put((_play, (), {}))
@@ -139,16 +188,33 @@ class BuzzerManager:
                 except:
                     pass
     
+    def force_stop(self):
+        """Force stop buzzer - more aggressive than normal stop"""
+        with self.buzzer_lock:
+            if self.buzzer:
+                try:
+                    self.buzzer.stop()
+                    # Re-initialize to ensure clean state
+                    self._init_buzzer()
+                except Exception as e:
+                    logging.error(f"Error in force_stop: {e}")
+                    # Last resort - recreate buzzer
+                    try:
+                        self.buzzer = TonalBuzzer(13)
+                    except:
+                        self.buzzer = None
+    
     def shutdown(self):
         """Shutdown the buzzer manager"""
         logging.info("Shutting down buzzer manager")
         self.running = False
+        self.interrupt_current_task()
         self.sound_queue.put(None)  # Shutdown signal
         
         if self.worker_thread:
             self.worker_thread.join(timeout=2)
         
-        self.stop()
+        self.force_stop()
 
 
 # ------- DISPLAY MANAGER CLASS -------
@@ -176,11 +242,11 @@ class DisplayManager:
                 try:
                     import fourletterphat as flp
                     self.scroll_interrupt = False
-                    padded_text = "    " + text.upper() + "    "
+                    padded_text = "    " + text.upper() + "    "  # 4 spaces on each side - text starts off screen
                     self.is_scrolling = True
                     print(f"Starting scroll: '{text}'")
                     
-                    for i in range(len(padded_text) - 3):
+                    for i in range(len(padded_text) - 4 + 1):  # 4 chars display window
                         if self.scroll_interrupt:
                             print(f"Scrolling '{text}' interrupted")
                             break
@@ -201,12 +267,25 @@ class DisplayManager:
                             break
                     
                     if not self.scroll_interrupt:
-                        final_text = padded_text[-8:-4] if len(padded_text) > 8 else padded_text[:4]
+                        # Show the first 4 characters of the actual text content
+                        # This is what would naturally appear after the scroll animation
+                        clean_text = text.strip().upper()  # Remove any leading/trailing spaces first
+                        
+                        # Handle emoji characters - extract only ASCII letters/numbers for final display
+                        ascii_only = re.sub(r'[^\w\s]', '', clean_text)  # Remove non-alphanumeric except spaces
+                        ascii_only = re.sub(r'\s+', ' ', ascii_only)  # Normalize spaces
+                        ascii_only = ascii_only.strip()  # Remove leading/trailing spaces
+                        
+                        final_text = ascii_only[:4].ljust(4, ' ')  # Take first 4 chars, pad to 4 if shorter
+                        
+                        # Debug output
+                        print(f"Original text: '{text}', Clean text: '{clean_text}', ASCII only: '{ascii_only}', Final display: '{final_text}'")
+                        
                         flp.clear()
                         flp.print_str(final_text)
                         flp.show()
                         self.current_value = final_text
-                        print(f"Scrolling '{text}' completed normally")
+                        print(f"Scrolling '{text}' completed normally, showing: '{final_text}'")
                     
                 except Exception as e:
                     print(f"Error scrolling text '{text}': {e}")

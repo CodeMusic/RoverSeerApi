@@ -104,7 +104,8 @@ def log_penphin_mind_usage(logical_model, creative_model, convergence_model,
                           system_message, user_prompt, 
                           logical_response, logical_time,
                           creative_response, creative_time,
-                          convergence_response, convergence_time):
+                          convergence_response, convergence_time,
+                          voice_id=None):
     """Log PenphinMind bicameral flow to daily file in JSON format"""
     ensure_log_dir()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -123,7 +124,8 @@ def log_penphin_mind_usage(logical_model, creative_model, convergence_model,
         "creative_time": creative_time,
         "final_synthesis": convergence_response,
         "convergence_time": convergence_time,
-        "total_time": total_time
+        "total_time": total_time,
+        "voice_id": voice_id
     }
     
     with open(get_log_filename("penphin_mind"), "a", encoding="utf-8") as f:

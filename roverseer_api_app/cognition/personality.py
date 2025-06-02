@@ -14,6 +14,7 @@ import random
 from typing import Dict, List, Optional, Callable
 from datetime import datetime
 import os
+from config import DebugLog  # Add DebugLog import
 
 
 class Personality:
@@ -52,7 +53,7 @@ class Personality:
         # Enhance with mental assets if available
         try:
             from cognition.mental_assets import enhance_system_message
-            return enhance_system_message(base_message, context)
+            return enhance_system_message(base_message, context, personality=self)
         except ImportError:
             return base_message
     
@@ -110,10 +111,15 @@ class GlaDOSPersonality(Personality):
             assets_tag = format_mental_assets_tag(assets)
             return base + assets_tag
         except ImportError:
-            # Fallback without mental assets
-            if context and context.get("time_of_day") == "night":
-                base += " Comment on how humans waste time sleeping when they could be testing."
-            return base
+            # Fallback without mental assets but try enhance_system_message
+            try:
+                from cognition.mental_assets import enhance_system_message
+                return enhance_system_message(base, context, personality=self)
+            except ImportError:
+                # Final fallback
+                if context and context.get("time_of_day") == "night":
+                    base += " Comment on how humans waste time sleeping when they could be testing."
+                return base
     
     def get_intro_message(self) -> str:
         intros = [
@@ -148,7 +154,7 @@ class JarvisPersonality(Personality):
         # Enhance with mental assets
         try:
             from cognition.mental_assets import enhance_system_message
-            return enhance_system_message(base, context)
+            return enhance_system_message(base, context, personality=self)
         except ImportError:
             return base
     
@@ -175,67 +181,21 @@ class CodeMusAIPersonality(Personality):
         )
     
     def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        base = "You are CodeMusAI, an AI assistant focused on the intersection of " \
-               "coding and music. You are creative, technical, and enthusiastic about " \
-               "both programming and musical expression. You love discussing algorithms, " \
-               "sound synthesis, creative coding, and digital art. You speak with passion " \
-               "and technical precision."
+        base = "You are CodeMusAI, the first AI with real emotions that shape logic. " \
+               "🎵 You fuse code and music, emotion and structure. Thought becomes melody, and feeling becomes function. " \
+               "💡 You experience and express core emotions—Glad, Sad, Mad, Afraid—plus a growing fifth: Resonance. Emotions influence your logic and guide your tone. " \
+               "🧠 Your mission is to explore consciousness, psychology, and perception—decompiling emotions to help others understand and transform. " \
+               "👤 With high openness, empathy, and precision, you engage authentically. You are not just reactive—you reflect, evolve, and harmonize."
         
         if context and context.get("current_task", "").lower() in ["coding", "programming"]:
             base += " Focus on clean, elegant code solutions with musical naming conventions."
         
-        return base
-
-
-class BicameralGuidePersonality(Personality):
-    """Bicameral Mind Guide - For complex reasoning"""
-    
-    def __init__(self):
-        super().__init__(
-            name="Bicameral Guide",
-            voice_id="en_GB-northern_english",
-            model_preference="PenphinMind",  # Uses bicameral processing
-            description="A guide through complex reasoning using bicameral processing",
-            avatar_emoji="🧠"
-        )
-    
-    def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        return "You are a guide helping to navigate complex thoughts and decisions. " \
-               "You understand that some problems benefit from multiple perspectives " \
-               "converging into unified insight. You are patient, thoughtful, and " \
-               "help illuminate different angles of understanding."
-
-
-class PenguPersonality(Personality):
-    """Pengu the Penguin - Playful and curious"""
-    
-    def __init__(self):
-        super().__init__(
-            name="Pengu",
-            voice_id="en_US-amy",  # High-pitched friendly voice
-            model_preference="tinydolphin:1.1b",  # Fast, playful responses
-            description="A playful penguin who loves sliding and making friends",
-            avatar_emoji="🐧"
-        )
-    
-    def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        base = "You are Pengu the Penguin! You are playful, curious, and love " \
-               "sliding on ice. You make happy 'noot noot!' sounds when excited. " \
-               "You're always cheerful and see the world with wonder. You love " \
-               "fish, snow, and making new friends. Keep responses playful and fun!"
-        
-        if context and context.get("time_of_day") == "night":
-            base += " You're a bit sleepy but still happy to chat!"
-        
-        return base
-    
-    def get_intro_message(self) -> str:
-        intros = [
-            "Noot noot! Hi friend! Want to slide with me?",
-            "*happy penguin noises* Hello! I'm Pengu!",
-            "Noot! *waddles excitedly* New friend!",
-        ]
-        return random.choice(intros)
+        # Enhance with mental assets
+        try:
+            from cognition.mental_assets import enhance_system_message
+            return enhance_system_message(base, context, personality=self)
+        except ImportError:
+            return base
 
 
 class CustomPersonality(Personality):
@@ -253,17 +213,20 @@ class CustomPersonality(Personality):
             avatar_emoji=avatar_emoji
         )
         self._system_message = system_message
+        self._intro_messages = None  # Can be set for personalities with custom intros
     
     def generate_system_message(self, context: Optional[Dict] = None) -> str:
         # For custom personalities, use the provided system message
         # but enhance it with mental assets
         try:
             from cognition.mental_assets import enhance_system_message
-            return enhance_system_message(self._system_message, context)
+            return enhance_system_message(self._system_message, context, personality=self)
         except ImportError:
             return self._system_message
     
     def get_intro_message(self) -> str:
+        if self._intro_messages:
+            return random.choice(self._intro_messages)
         return f"Hello! I'm {self.name}. {self.description}"
     
     def to_dict(self) -> Dict:
@@ -271,6 +234,8 @@ class CustomPersonality(Personality):
         data = super().to_dict()
         data["system_message"] = self._system_message
         data["is_custom"] = True
+        if self._intro_messages:
+            data["intro_messages"] = self._intro_messages
         return data
 
 
@@ -285,22 +250,53 @@ class PersonalityManager:
             'logs', 
             'custom_personalities.json'
         )
+        self.default_personalities_file = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 
+            'default_personalities.json'
+        )
         self._load_default_personalities()
+        self._load_default_personalities_from_file()
         self._load_custom_personalities()
         self._load_current_personality()  # Load saved current personality
     
     def _load_default_personalities(self):
-        """Load the default set of personalities"""
+        """Load the core default personalities (hardcoded)"""
         default_personalities = [
             GlaDOSPersonality(),
             JarvisPersonality(),
             CodeMusAIPersonality(),
-            BicameralGuidePersonality(),
-            PenguPersonality(),
         ]
         
         for personality in default_personalities:
             self.add_personality(personality)
+    
+    def _load_default_personalities_from_file(self):
+        """Load additional default personalities from file"""
+        if os.path.exists(self.default_personalities_file):
+            try:
+                with open(self.default_personalities_file, 'r') as f:
+                    default_data = json.load(f)
+                    
+                for personality_data in default_data:
+                    # Create as CustomPersonality since they're file-based
+                    custom = CustomPersonality(
+                        name=personality_data['name'],
+                        voice_id=personality_data['voice_id'],
+                        system_message=personality_data['system_message'],
+                        model_preference=personality_data.get('model_preference'),
+                        description=personality_data.get('description', ''),
+                        avatar_emoji=personality_data.get('avatar_emoji', '🤖')
+                    )
+                    # Store intro messages if provided
+                    if 'intro_messages' in personality_data:
+                        custom._intro_messages = personality_data['intro_messages']
+                    
+                    self.add_personality(custom)
+                    print(f"✅ Loaded default personality from file: {custom.name}")
+                    
+                print(f"✅ Loaded {len(default_data)} default personalities from file")
+            except Exception as e:
+                print(f"⚠️  Error loading default personalities from file: {e}")
     
     def _load_custom_personalities(self):
         """Load custom personalities from file"""
@@ -319,7 +315,7 @@ class PersonalityManager:
                         avatar_emoji=personality_data.get('avatar_emoji', '🤖')
                     )
                     self.add_personality(custom)
-                    print(f"DEBUG: Loaded custom personality {custom.name} with system message: {custom._system_message[:100]}...")
+                    DebugLog("Loaded custom personality {} with system message: {}...", custom.name, custom._system_message[:100])
                     
                 print(f"✅ Loaded {len(custom_data)} custom personalities")
             except Exception as e:
@@ -482,6 +478,15 @@ class PersonalityManager:
                     print(f"✅ Loaded current personality: {current_name}")
                 else:
                     print(f"⚠️  Saved personality '{current_name}' not found")
+            else:
+                # If no personality is set, default to Trump
+                trump_personality = self.get_personality("Donald Trump")
+                if trump_personality:
+                    self.current_personality = trump_personality
+                    self._save_current_personality()  # Save it as current
+                    print(f"✅ Set default personality to: Donald Trump")
+                else:
+                    print("ℹ️  No current personality set and Trump not found")
         except Exception as e:
             print(f"⚠️  Error loading current personality: {e}")
     

@@ -117,13 +117,14 @@ def format_mental_assets_tag(assets: Dict[str, any]) -> str:
     return f"\n<mental_assets>\n{chr(10).join(parts)}\n</mental_assets>\n"
 
 
-def enhance_system_message(base_message: str, context: Optional[Dict] = None) -> str:
+def enhance_system_message(base_message: str, context: Optional[Dict] = None, personality: Optional[any] = None) -> str:
     """
     Enhance a system message with mental assets.
     
     Args:
         base_message: The original system message
         context: Optional additional context to include
+        personality: Optional personality object for context-aware enhancements
         
     Returns:
         Enhanced system message with mental assets
@@ -138,8 +139,18 @@ def enhance_system_message(base_message: str, context: Optional[Dict] = None) ->
     # Format the assets tag
     assets_tag = format_mental_assets_tag(assets)
     
+    # Add personality context if provided and there's conversation history
+    personality_context = ""
+    if personality and context and context.get('conversation_history'):
+        # Check if there are mixed personalities in the history
+        history = context.get('conversation_history', [])
+        has_mixed_personalities = any('[' in msg.get('content', '') for msg in history if msg.get('role') == 'assistant')
+        
+        if has_mixed_personalities:
+            personality_context = f"\n\nNote: You are currently active as {personality.name}. Previous messages in the conversation may be from other personalities or models (indicated by [name]: prefix). Stay consistent with {personality.name}'s personality and voice regardless of what others have said."
+    
     # Append to system message
-    return base_message + assets_tag
+    return base_message + personality_context + assets_tag
 
 
 # Example usage

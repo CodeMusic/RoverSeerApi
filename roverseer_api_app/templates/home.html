@@ -300,9 +300,30 @@
             }
         }
     </style>
+    
+    <!-- Template data as JSON to avoid linter conflicts -->
+    <script type="application/json" id="roverseer-data">
+        {
+            "voices": {{ voices | tojson }},
+            "personalities": {{ personalities | tojson }},
+            "currentPersonality": {{ current_personality | tojson if current_personality else 'null' | safe }},
+            "selectedModel": {{ selected_model | tojson }},
+            "selectedVoice": {{ selected_voice | tojson }}
+        }
+    </script>
+    
     <script>
         // Configuration
         var STATUS_REFRESH_INTERVAL = 5000; // 5 seconds
+        
+        // Parse template data from JSON script
+        var roverseerDataScript = document.getElementById('roverseer-data');
+        var roverseerData = JSON.parse(roverseerDataScript.textContent);
+        
+        // Use the properly escaped template data
+        var availableVoices = roverseerData.voices;
+        var availablePersonalities = roverseerData.personalities;
+        var currentPersonalityName = roverseerData.currentPersonality ? roverseerData.currentPersonality.name : null;
         
         function escapeHtml(text) {
             var div = document.createElement('div');
@@ -332,14 +353,14 @@
             mainContent = mainContent.trim();
             thinkContent = thinkContent.trim();
             
-            // Generate unique ID for this think section
-            var thinkId = 'think-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            // Generate unique ID for this think section - using 4 characters instead of 2
+            var thinkId = 'think-' + Date.now() + '-' + Math.random().toString(36).substr(0, 4);
             
             // Build HTML with collapsible think section
             var html = '';
             if (thinkContent) {
-                html += `<span class="think-toggle" onclick="toggleThink('${thinkId}')">▶ Show thoughts</span>`;
-                html += `<div class="think-content" id="${thinkId}">${escapeHtml(thinkContent)}</div>`;
+                html += '<span class="think-toggle" onclick="toggleThink(\'' + thinkId + '\')">▶ Show thoughts</span>';
+                html += '<div class="think-content" id="' + thinkId + '">' + escapeHtml(thinkContent) + '</div>';
             }
             html += escapeHtml(mainContent);
             
@@ -390,62 +411,134 @@
             textarea.style.height = textarea.scrollHeight + 'px';
         }
         
-        // Store current form selections
-        var currentSelections = {
-            outputType: 'speak',
-            model: '{{ selected_model }}',
-            voice: '{{ selected_voice }}'
-        };
-        
         // Track if request is in progress
         var requestInProgress = false;
         
+        // Store current form selections
+        var currentSelections = {
+            outputType: 'speak',
+            model: roverseerData.selectedModel,
+            voice: roverseerData.selectedVoice
+        };
+        
+        // Function to toggle between personality and voice mode
+        function togglePersonalityMode() {
+            var usePersonality = document.getElementById('use-personality').checked;
+            var voiceSelect = document.getElementById('voice-select');
+            var customSystemGroup = document.getElementById('custom-system-group');
+            var systemTextarea = document.getElementById('system-message');
+            
+            // Clear current options
+            voiceSelect.innerHTML = '';
+            
+            if (usePersonality) {
+                // Show personalities
+                customSystemGroup.style.display = 'none';
+                systemTextarea.value = ''; // Clear system message
+                
+                availablePersonalities.forEach(function(personality) {
+                    var option = document.createElement('option');
+                    option.value = personality.voice_id;
+                    option.setAttribute('data-personality', personality.name);
+                    option.textContent = personality.avatar_emoji + ' ' + personality.name;
+                    
+                    // Select current personality if it matches
+                    if (currentPersonalityName && currentPersonalityName === personality.name) {
+                        option.selected = true;
+                    }
+                    
+                    voiceSelect.appendChild(option);
+                });
+            } else {
+                // Show voices
+                customSystemGroup.style.display = 'block';
+                
+                availableVoices.forEach(function(voice) {
+                    var option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    
+                    // Select current voice if it matches
+                    if (roverseerData.selectedVoice === voice) {
+                        option.selected = true;
+                    }
+                    
+                    voiceSelect.appendChild(option);
+                });
+            }
+        }
+        
         // Update selections when changed
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelector('[name="output_type"]').addEventListener('change', function(e) {
+        document.addEventListener('DOMContentLoaded', function() 
+        {
+            // Initialize the voice/personality dropdown
+            togglePersonalityMode();
+            
+            // Debug: Log initial voice value
+            console.log('Initial voice value after toggle:', document.querySelector('[name="voice"]').value);
+            
+            document.querySelector('[name="output_type"]').addEventListener('change', function(e) 
+            {
                 currentSelections.outputType = e.target.value;
             });
-            document.querySelector('[name="model"]').addEventListener('change', function(e) {
+            document.querySelector('[name="model"]').addEventListener('change', function(e) 
+            {
                 currentSelections.model = e.target.value;
             });
-            document.querySelector('[name="voice"]').addEventListener('change', function(e) {
+            document.querySelector('[name="voice"]').addEventListener('change', function(e) 
+            {
                 currentSelections.voice = e.target.value;
+                console.log('Voice changed to:', e.target.value);
                 
-                // Get the selected option's personality data
-                var selectedOption = e.target.options[e.target.selectedIndex];
-                var personalityName = selectedOption.getAttribute('data-personality');
+                var usePersonality = document.getElementById('use-personality').checked;
                 
-                if (personalityName) {
-                    // Fetch personality details to get model preference
-                    fetch('/system/personalities')
-                        .then(response => response.json())
-                        .then(data => {
-                            var personality = data.personalities.find(p => p.name === personalityName);
-                            if (personality && personality.model_preference) {
-                                // Update model selection if personality has a preference
-                                var modelSelect = document.querySelector('[name="model"]');
-                                
-                                // Check if model exists in dropdown
-                                var modelExists = false;
-                                for (var i = 0; i < modelSelect.options.length; i++) {
-                                    if (modelSelect.options[i].value === personality.model_preference) {
-                                        modelExists = true;
-                                        break;
+                if (usePersonality) 
+                {
+                    // Get the selected option's personality data
+                    var selectedOption = e.target.options[e.target.selectedIndex];
+                    var personalityName = selectedOption.getAttribute('data-personality');
+                    
+                    if (personalityName) 
+                    {
+                        // Fetch personality details to get model preference
+                        fetch('/system/personalities')
+                            .then(response => response.json())
+                            .then(data => 
+                            {
+                                var personality = data.personalities.find(p => p.name === personalityName);
+                                if (personality && personality.model_preference) 
+                                {
+                                    // Update model selection if personality has a preference
+                                    var modelSelect = document.querySelector('[name="model"]');
+                                    
+                                    // Check if model exists in dropdown
+                                    var modelExists = false;
+                                    for (var i = 0; i < modelSelect.options.length; i++) 
+                                    {
+                                        if (modelSelect.options[i].value === personality.model_preference) 
+                                        {
+                                            modelExists = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (modelExists) 
+                                    {
+                                        modelSelect.value = personality.model_preference;
+                                        currentSelections.model = personality.model_preference;
+                                        console.log('Updated model to personality preference:', personality.model_preference);
+                                    } 
+                                    else 
+                                    {
+                                        console.warn('Personality preferred model not available:', personality.model_preference);
                                     }
                                 }
-                                
-                                if (modelExists) {
-                                    modelSelect.value = personality.model_preference;
-                                    currentSelections.model = personality.model_preference;
-                                    console.log('Updated model to personality preference:', personality.model_preference);
-                                } else {
-                                    console.warn('Personality preferred model not available:', personality.model_preference);
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error fetching personality details:', error);
-                        });
+                            })
+                            .catch(error => 
+                            {
+                                console.error('Error fetching personality details:', error);
+                            });
+                    }
                 }
             });
             
@@ -455,92 +548,104 @@
             currentSelections.voice = document.querySelector('[name="voice"]').value;
         });
         
-        function refreshStatus() {
+        function refreshStatus() 
+        {
             // Only refresh status, not reload the page
             fetch('/status_only')
                 .then(response => response.json())
-                .then(data => {
+                .then(data => 
+                {
                     // Update sensor data
-                    if (data.sensor_data) {
-                        document.querySelector('.sensor-data').innerHTML = `
-                            <span class="sensor-item">🌡️ HAT: ${data.sensor_data.hat_temperature}</span>
-                            <span class="sensor-item">🖥️ CPU: ${data.sensor_data.cpu_temperature}</span>
-                            <span class="sensor-item">🌊 ${data.sensor_data.pressure}</span>
-                            <span class="sensor-item">🏔️ ${data.sensor_data.altitude}</span>
-                            <span class="sensor-item">🌬️ Fan: ${data.sensor_data.fan_state}</span>
-                        `;
+                    if (data.sensor_data) 
+                    {
+                        document.querySelector('.sensor-data').innerHTML = 
+                            '<span class="sensor-item">🌡️ HAT: ' + data.sensor_data.hat_temperature + '</span>' +
+                            '<span class="sensor-item">🖥️ CPU: ' + data.sensor_data.cpu_temperature + '</span>' +
+                            '<span class="sensor-item">🌊 ' + data.sensor_data.pressure + '</span>' +
+                            '<span class="sensor-item">🏔️ ' + data.sensor_data.altitude + '</span>' +
+                            '<span class="sensor-item">🌬️ Fan: ' + data.sensor_data.fan_state + '</span>';
                     }
                     
                     // Update TCP status
-                    if (data.tcp_status) {
+                    if (data.tcp_status) 
+                    {
                         var statusHtml = '';
-                        for (const [name, info] of Object.entries(data.tcp_status)) {
-                            if (name === "Ollama") {
-                                statusHtml += `<span class="status-item">
-                                    <a href="http://roverseer.local:${info.port}/api/tags" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
-                                        ${info.status} ${name} (${info.port})
-                                    </a>
-                                </span>`;
-                            } else {
-                                statusHtml += `<span class="status-item">
-                                    <a href="http://roverseer.local:${info.port}" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
-                                        ${info.status} ${name} (${info.port})
-                                    </a>
-                                </span>`;
+                        for (const [name, info] of Object.entries(data.tcp_status)) 
+                        {
+                            if (name === "Ollama") 
+                            {
+                                statusHtml += '<span class="status-item">' +
+                                    '<a href="http://roverseer.local:' + info.port + '/api/tags" onclick="window.open(this.href, \'_blank\'); return false;" class="status-link">' +
+                                        info.status + ' ' + name + ' (' + info.port + ')' +
+                                    '</a>' +
+                                '</span>';
+                            } 
+                            else 
+                            {
+                                statusHtml += '<span class="status-item">' +
+                                    '<a href="http://roverseer.local:' + info.port + '" onclick="window.open(this.href, \'_blank\'); return false;" class="status-link">' +
+                                        info.status + ' ' + name + ' (' + info.port + ')' +
+                                    '</a>' +
+                                '</span>';
                             }
                         }
                         document.querySelector('.status-section').innerHTML = statusHtml;
                     }
                     
                     // Update AI pipeline status
-                    if (data.ai_pipeline) {
+                    if (data.ai_pipeline) 
+                    {
                         updateAIPipelineStatus(data.ai_pipeline);
                     }
                 })
                 .catch(error => console.error('Error refreshing status:', error));
         }
         
-        function updateAIPipelineStatus(pipeline) {
+        function updateAIPipelineStatus(pipeline) 
+        {
             var pipelineDiv = document.querySelector('.ai-pipeline-status');
-            if (pipelineDiv) {
-                var statusHtml = `
-                    <div class="pipeline-item">
-                        <span class="status-indicator">${pipeline.status}</span>
-                        <span>RoverSeer</span>
-                        ${pipeline.activity !== 'idle' ? `<span class="detail">${pipeline.activity}</span>` : ''}
-                        ${pipeline.detail ? `<span class="detail">(${pipeline.detail})</span>` : ''}
-                        ${pipeline.requests ? `<span class="detail">[${pipeline.requests}]</span>` : ''}
-                    </div>
-                `;
+            if (pipelineDiv) 
+            {
+                var statusHtml = 
+                    '<div class="pipeline-item">' +
+                        '<span class="status-indicator">' + pipeline.status + '</span>' +
+                        '<span>RoverSeer</span>' +
+                        (pipeline.activity !== 'idle' ? '<span class="detail">' + pipeline.activity + '</span>' : '') +
+                        (pipeline.detail ? '<span class="detail">(' + pipeline.detail + ')</span>' : '') +
+                        (pipeline.requests ? '<span class="detail">[' + pipeline.requests + ']</span>' : '') +
+                    '</div>';
                 pipelineDiv.innerHTML = statusHtml;
             }
         }
         
         // Handle form submission
-        function handleSubmit(event) {
+        function handleSubmit(event) 
+        {
             event.preventDefault(); // Prevent default form submission
             
             // Immediately disable submit button and check if already in progress
             var submitButton = event.target.querySelector('[type="submit"]');
-            if (submitButton.disabled || requestInProgress) {
+            if (submitButton.disabled || requestInProgress) 
+            {
                 return; // Already processing
             }
             
             // Check if RoverSeer is already busy by fetching current status
             fetch('/status_only')
                 .then(response => response.json())
-                .then(data => {
-                    if (data.ai_pipeline && data.ai_pipeline.status !== '🔵') {
+                .then(data => 
+                {
+                    if (data.ai_pipeline && data.ai_pipeline.status !== '🔵') 
+                    {
                         // RoverSeer is busy
                         var messagesContainer = document.getElementById('messages-container');
                         var typingIndicator = document.getElementById('typing-indicator');
                         
                         var errorDiv = document.createElement('div');
                         errorDiv.className = 'message assistant';
-                        errorDiv.innerHTML = `
-                            <div class="message-bubble">RoverSeer is currently busy processing another request. Please wait a moment and try again.</div>
-                            <div class="message-info">System</div>
-                        `;
+                        errorDiv.innerHTML = 
+                            '<div class="message-bubble">RoverSeer is currently busy processing another request. Please wait a moment and try again.</div>' +
+                            '<div class="message-info">System</div>';
                         messagesContainer.insertBefore(errorDiv, typingIndicator);
                         
                         // Scroll to bottom
@@ -548,9 +653,11 @@
                         
                         // Flash the status indicator
                         var statusIndicator = document.querySelector('.ai-pipeline-status .status-indicator');
-                        if (statusIndicator) {
+                        if (statusIndicator) 
+                        {
                             statusIndicator.style.animation = 'flash 0.5s ease-in-out 3';
-                            setTimeout(() => {
+                            setTimeout(() => 
+                            {
                                 statusIndicator.style.animation = '';
                             }, 1500);
                         }
@@ -561,14 +668,16 @@
                     // RoverSeer is idle, proceed with submission
                     proceedWithSubmission(event);
                 })
-                .catch(error => {
+                .catch(error => 
+                {
                     // If status check fails, proceed anyway
                     console.error('Failed to check status:', error);
                     proceedWithSubmission(event);
                 });
         }
         
-        function proceedWithSubmission(event) {
+        function proceedWithSubmission(event) 
+        {
             var submitButton = event.target.querySelector('[type="submit"]');
             
             // Set request in progress and disable button
@@ -581,14 +690,18 @@
             var modelDisplay = document.querySelector('[name="model"] option:checked').text;
             var voice = document.querySelector('[name="voice"]').value;
             var outputType = document.querySelector('[name="output_type"]').value;
+            var usePersonality = document.getElementById('use-personality').checked;
+            var systemMessage = document.getElementById('system-message').value.trim();
             
             // Validate voice selection - use default if empty
-            if (!voice) {
-                voice = '{{ selected_voice }}' || 'en_US-amy-medium';
+            if (!voice) 
+            {
+                voice = roverseerData.selectedVoice || 'en_US-amy-medium';
                 console.warn('No voice selected, using default:', voice);
             }
             
-            if (!userInput) {
+            if (!userInput) 
+            {
                 // Re-enable if no input
                 requestInProgress = false;
                 submitButton.disabled = false;
@@ -601,10 +714,9 @@
             
             var userDiv = document.createElement('div');
             userDiv.className = 'message user';
-            userDiv.innerHTML = `
-                <div class="message-bubble">${escapeHtml(userInput)}</div>
-                <div class="message-info">You</div>
-            `;
+            userDiv.innerHTML = 
+                '<div class="message-bubble">' + escapeHtml(userInput) + '</div>' +
+                '<div class="message-info">You</div>';
             messagesContainer.insertBefore(userDiv, typingIndicator);
             
             // Clear input and reset height
@@ -631,62 +743,81 @@
             formData.append('model', model);
             formData.append('voice', voice);
             formData.append('output_type', outputType);
+            formData.append('use_personality', usePersonality);
+            formData.append('system_message', systemMessage);
+            
+            // Debug logging
+            console.log('Submitting form with voice:', voice);
+            console.log('Use personality:', usePersonality);
             
             fetch('/chat_ajax', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => {
+            .then(response => 
+            {
                 // Check if we got a 429 (Too Many Requests) status
-                if (response.status === 429) {
-                    return response.json().then(data => {
+                if (response.status === 429) 
+                {
+                    return response.json().then(data => 
+                    {
                         throw new Error(data.error || 'RoverSeer is busy');
                     });
                 }
                 return response.json();
             })
-            .then(data => {
+            .then(data => 
+            {
                 // Hide typing indicator
                 typingIndicator.style.display = 'none';
                 
-                if (data.error) {
+                if (data.error) 
+                {
                     // Show error message
                     var errorDiv = document.createElement('div');
                     errorDiv.className = 'message assistant';
-                    errorDiv.innerHTML = `
-                        <div class="message-bubble">Error: ${escapeHtml(data.error)}</div>
-                        <div class="message-info">System</div>
-                    `;
+                    errorDiv.innerHTML = 
+                        '<div class="message-bubble">Error: ' + escapeHtml(data.error) + '</div>' +
+                        '<div class="message-info">System</div>';
                     messagesContainer.insertBefore(errorDiv, typingIndicator);
-                } else {
+                } 
+                else 
+                {
                     // Add assistant message
                     var assistantDiv = document.createElement('div');
                     assistantDiv.className = 'message assistant';
                     
                     var messageContent = processThinkTags(data.reply);
                     
-                    if (data.audio_url) {
-                        messageContent += `<audio controls autoplay>
-                            <source src="${data.audio_url}" type="audio/wav">
-                            Your browser does not support the audio element.
-                        </audio>`;
+                    if (data.audio_url) 
+                    {
+                        messageContent += '<audio controls autoplay>' +
+                            '<source src="' + data.audio_url + '" type="audio/wav">' +
+                            'Your browser does not support the audio element.' +
+                        '</audio>';
                     }
                     
                     // Get current personality info for display
-                    var personalityDisplay = '{{ current_personality.avatar_emoji if current_personality else "" }} {{ current_personality.name if current_personality else "" }}';
-                    if (!personalityDisplay.trim()) {
+                    var personalityDisplay = '';
+                    if (roverseerData.currentPersonality) 
+                    {
+                        personalityDisplay = roverseerData.currentPersonality.avatar_emoji + ' ' + 
+                                           roverseerData.currentPersonality.name;
+                    }
+                    if (!personalityDisplay.trim()) 
+                    {
                         personalityDisplay = modelDisplay; // Fallback to model
                     }
                     
-                    assistantDiv.innerHTML = `
-                        <div class="message-bubble">${messageContent}</div>
-                        <div class="message-info">${escapeHtml(personalityDisplay)}</div>
-                    `;
+                    assistantDiv.innerHTML = 
+                        '<div class="message-bubble">' + messageContent + '</div>' +
+                        '<div class="message-info">' + escapeHtml(personalityDisplay) + '</div>';
                     messagesContainer.insertBefore(assistantDiv, typingIndicator);
                 }
                 
                 // Update AI pipeline status
-                if (data.ai_pipeline) {
+                if (data.ai_pipeline) 
+                {
                     updateAIPipelineStatus(data.ai_pipeline);
                 }
                 
@@ -702,19 +833,25 @@
                 
                 // Safely restore voice selection
                 var voiceSelect = document.querySelector('[name="voice"]');
-                if (voiceSelect && currentSelections.voice) {
+                if (voiceSelect && currentSelections.voice) 
+                {
                     // Check if the voice option exists
                     var voiceExists = false;
-                    for (var i = 0; i < voiceSelect.options.length; i++) {
-                        if (voiceSelect.options[i].value === currentSelections.voice) {
+                    for (var i = 0; i < voiceSelect.options.length; i++) 
+                    {
+                        if (voiceSelect.options[i].value === currentSelections.voice) 
+                        {
                             voiceExists = true;
                             break;
                         }
                     }
                     
-                    if (voiceExists) {
+                    if (voiceExists) 
+                    {
                         voiceSelect.value = currentSelections.voice;
-                    } else {
+                    } 
+                    else 
+                    {
                         console.warn('Voice option not found:', currentSelections.voice);
                         // Let it use the default selected option
                     }
@@ -723,17 +860,17 @@
                 // Clear request flag
                 requestInProgress = false;
             })
-            .catch(error => {
+            .catch(error => 
+            {
                 console.error('Error:', error);
                 typingIndicator.style.display = 'none';
                 
                 // Add error message
                 var errorDiv = document.createElement('div');
                 errorDiv.className = 'message assistant';
-                errorDiv.innerHTML = `
-                    <div class="message-bubble">Sorry, an error occurred: ${escapeHtml(error.toString())}</div>
-                    <div class="message-info">System</div>
-                `;
+                errorDiv.innerHTML = 
+                    '<div class="message-bubble">Sorry, an error occurred: ' + escapeHtml(error.toString()) + '</div>' +
+                    '<div class="message-info">System</div>';
                 messagesContainer.insertBefore(errorDiv, typingIndicator);
                 
                 // Scroll to bottom
@@ -852,20 +989,25 @@
                 {% endfor %}
             </select>
             
-                        <select name="voice" title="Personality">
-                            {% if personalities %}
-                                {% for personality in personalities %}
-                                    <option value="{{ personality.voice_id }}" 
-                                            data-personality="{{ personality.name }}"
-                                            {% if current_personality and personality.name == current_personality.name %}selected{% endif %}>
-                                        {{ personality.avatar_emoji }} {{ personality.name }}
-                                    </option>
-                                {% endfor %}
-                            {% else %}
-                                <!-- Fallback if no personalities -->
-                                <option value="{{ selected_voice }}">{{ selected_voice }}</option>
-                            {% endif %}
-            </select>
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="use-personality" name="use_personality" checked onchange="togglePersonalityMode()">
+                            <span style="white-space: nowrap;">Use Personality</span>
+                        </label>
+                        
+                        <select name="voice" id="voice-select" title="Voice/Personality">
+                            <!-- Will be populated dynamically based on checkbox state -->
+                        </select>
+                    </div>
+                    
+                    <div id="custom-system-group" style="display: none; margin-top: 8px;">
+                        <textarea 
+                            name="system" 
+                            id="system-message" 
+                            class="chat-textarea" 
+                            style="min-height: 60px; font-size: 14px;"
+                            placeholder="Enter custom system message..."
+                            oninput="autoResize(this)"
+                        ></textarea>
                     </div>
                     
                     <textarea 

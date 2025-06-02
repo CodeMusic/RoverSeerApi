@@ -28,6 +28,15 @@ def save_persistent_config(config_data):
         print(f"Error saving config.json: {e}")
         return False
 
+# Wrapper functions for personality.py compatibility
+def load_config():
+    """Load configuration from JSON file (wrapper for personality.py)"""
+    return load_persistent_config()
+
+def save_config(config_data):
+    """Save configuration to JSON file (wrapper for personality.py)"""
+    return save_persistent_config(config_data)
+
 def get_config_value(key, default):
     """Get a value from persistent config or return default"""
     config = load_persistent_config()
@@ -258,4 +267,26 @@ def initialize_config():
     print(f"🎤 Microphone device: {MIC_DEVICE}")
     print(f"🔊 Audio device: {AUDIO_DEVICE}")
     print(f"🗣️ Default voice: {DEFAULT_VOICE}")
-    print(f"🤖 Default model: {DEFAULT_MODEL}") 
+    print(f"🤖 Default model: {DEFAULT_MODEL}")
+
+# Fan control settings
+FAN_TEMP_THRESHOLD = get_config_value("fan_temp_threshold", 60.0)
+FAN_HYSTERESIS = get_config_value("fan_hysteresis", 5.0)
+
+# Debug logging
+DEBUG_LOGGING = get_config_value("debug_logging", False)
+
+def DebugLog(message, *args):
+    """Print debug message if DEBUG_LOGGING is enabled
+    
+    Args:
+        message: The message to print (can include {} placeholders)
+        *args: Arguments to format into the message
+    """
+    if DEBUG_LOGGING:
+        if args:
+            print(f"DEBUG: {message.format(*args)}")
+        else:
+            print(f"DEBUG: {message}")
+
+# Active request tracking 

@@ -6,6 +6,7 @@ import config
 import os
 
 from config import history, MAX_HISTORY, DEFAULT_MODEL, DEFAULT_VOICE
+from config import DebugLog  # Add DebugLog import
 from embodiment.sensors import get_sensor_data, check_tcp_ports, get_ai_pipeline_status
 from cognition.llm_interface import get_available_models, sort_models_by_size
 from cognition.bicameral_mind import bicameral_chat_direct
@@ -14,7 +15,8 @@ from expression.text_to_speech import list_voice_ids
 from memory.usage_logger import (load_model_stats, get_available_log_dates, 
                                 parse_log_file)
 from utilities.text_processing import extract_short_model_name
-from embodiment.rainbow_interface import start_system_processing, stop_system_processing
+from embodiment.rainbow_interface import start_system_processing, stop_system_processing, get_rainbow_driver
+from embodiment.display_manager import scroll_text_on_display
 
 bp = Blueprint('system', __name__)
 
@@ -97,7 +99,7 @@ def home():
         # Check if PenphinMind is selected
         if model.lower() == "penphinmind":
             try:
-                reply_text = bicameral_chat_direct(user_input, system)
+                reply_text = bicameral_chat_direct(user_input, system, voice)
                 # Get personality info for history
                 personality_info = "🧠 PenphinMind"
                 if personality_manager.current_personality:
@@ -115,18 +117,22 @@ def home():
 
             try:
                 # Get system message from personality or use provided one
-                if not system and personality_manager.current_personality:
+                if use_personality and personality_manager.current_personality:
                     # Generate context-aware system message from current personality
                     context = {
                         "time_of_day": "day",  # Could be enhanced with actual time
                         "user_name": None,  # Could be enhanced if we track users
                     }
                     system_message = personality_manager.current_personality.generate_system_message(context)
-                    print(f"DEBUG: Using personality system message for {personality_manager.current_personality.name}: {system_message[:100]}...")
+                    DebugLog("Using personality system message for {}: {}...", personality_manager.current_personality.name, system_message[:100])
+                elif not use_personality and custom_system_message:
+                    # Use the custom system message provided by user
+                    system_message = custom_system_message
+                    DebugLog("Using custom system message: {}...", system_message[:100])
                 else:
                     # Use provided system message or default
                     system_message = system or "You are RoverSeer, a helpful assistant."
-                    print(f"DEBUG: Using {'provided' if system else 'default'} system message: {system_message[:100]}...")
+                    DebugLog("Using {} system message: {}...", 'provided' if system else 'default', system_message[:100])
 
                 if output_type == 'text':
                     # For text-only
@@ -228,28 +234,30 @@ def chat_ajax():
     system = request.form.get('system')  # May be None now
     user_input = request.form.get('user_input')
     model = request.form.get('model')
+    use_personality = request.form.get('use_personality', 'true').lower() == 'true'
+    custom_system_message = request.form.get('system_message', '').strip()
     
     # Check if we need to switch personality based on voice
     from cognition.personality import get_personality_manager
     personality_manager = get_personality_manager()
     
-    # Find personality by voice and switch if needed
-    if voice:
-        print(f"DEBUG: Looking for personality with voice {voice}")
+    # Only handle personality switching if use_personality is true
+    if use_personality and voice:
+        DebugLog("Looking for personality with voice {}", voice)
         for personality in personality_manager.personalities.values():
             if personality.voice_id == voice:
-                print(f"DEBUG: Found personality {personality.name} for voice {voice}")
+                DebugLog("Found personality {} for voice {}", personality.name, voice)
                 if not personality_manager.current_personality or personality_manager.current_personality.name != personality.name:
-                    print(f"DEBUG: Switching to personality {personality.name}")
+                    DebugLog("Switching to personality {}", personality.name)
                     personality_manager.switch_to(personality.name)
                     # Update DEFAULT_VOICE to match
                     from config import update_default_voice
                     update_default_voice(voice)
                 else:
-                    print(f"DEBUG: Already using personality {personality.name}")
+                    DebugLog("Already using personality {}", personality.name)
                 break
         else:
-            print(f"DEBUG: No personality found for voice {voice}")
+            DebugLog("No personality found for voice {}", voice)
     
     # Validate voice - use default if empty
     if not voice:
@@ -274,7 +282,7 @@ def chat_ajax():
         # Check if PenphinMind is selected
         if model.lower() == "penphinmind":
             # PenphinMind uses its own system messages, pass user's system if provided
-            reply_text = bicameral_chat_direct(user_input, system)
+            reply_text = bicameral_chat_direct(user_input, system, voice)
             # Get personality info for history
             personality_info = "🧠 PenphinMind"
             if personality_manager.current_personality:
@@ -290,18 +298,22 @@ def chat_ajax():
 
             try:
                 # Get system message from personality or use provided one
-                if not system and personality_manager.current_personality:
+                if use_personality and personality_manager.current_personality:
                     # Generate context-aware system message from current personality
                     context = {
                         "time_of_day": "day",  # Could be enhanced with actual time
                         "user_name": None,  # Could be enhanced if we track users
                     }
                     system_message = personality_manager.current_personality.generate_system_message(context)
-                    print(f"DEBUG: Using personality system message for {personality_manager.current_personality.name}: {system_message[:100]}...")
+                    DebugLog("Using personality system message for {}: {}...", personality_manager.current_personality.name, system_message[:100])
+                elif not use_personality and custom_system_message:
+                    # Use the custom system message provided by user
+                    system_message = custom_system_message
+                    DebugLog("Using custom system message: {}...", system_message[:100])
                 else:
                     # Use provided system message or default
                     system_message = system or "You are RoverSeer, a helpful assistant."
-                    print(f"DEBUG: Using {'provided' if system else 'default'} system message: {system_message[:100]}...")
+                    DebugLog("Using {} system message: {}...", 'provided' if system else 'default', system_message[:100])
 
                 if output_type == 'text':
                     # For text-only
@@ -711,6 +723,15 @@ def switch_personality():
             except ValueError:
                 print(f"Personality's preferred model {personality.model_preference} not found in available models")
         
+        # Trigger display update to show the new personality name
+        rainbow_driver = get_rainbow_driver()
+        
+        if rainbow_driver:
+            # Show the personality change with emoji and name
+            display_text = f"{personality.avatar_emoji} {personality.name}"
+            print(f"🎯 Displaying personality switch: {display_text}")
+            scroll_text_on_display(display_text, scroll_speed=0.15)
+        
         return jsonify({
             "status": "success",
             "message": f"Switched to {personality.name}",
@@ -902,3 +923,22 @@ def update_personality():
         return jsonify({"status": "error", "message": "Invalid personality type"}), 400
     
     return jsonify({"status": "error", "message": "Failed to update personality"}), 500 
+
+
+# Simple personality endpoints for RoverCub compatibility
+@bp.route('/personalities', methods=['GET'])
+def get_personalities_simple():
+    """Get list of available personalities (RoverCub compatible endpoint)"""
+    return get_personalities()
+
+
+@bp.route('/personalities/switch', methods=['POST'])
+def switch_personality_simple():
+    """Switch to a different personality (RoverCub compatible endpoint)"""
+    return switch_personality()
+
+
+@bp.route('/personalities/current', methods=['GET'])
+def get_current_personality_simple():
+    """Get current personality (RoverCub compatible endpoint)"""
+    return get_current_personality() 

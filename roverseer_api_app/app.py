@@ -60,6 +60,16 @@ def initialize_application():
     initialize_config()
     print("✅ Configuration initialized")
     
+    # Initialize personality system FIRST (before model list)
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    print(f"✅ Personality system initialized with {len(personality_manager.personalities)} personalities")
+    
+    if personality_manager.current_personality:
+        print(f"✅ Current personality loaded: {personality_manager.current_personality.name}")
+    else:
+        print("ℹ️  No current personality set")
+    
     # Initialize hardware interface
     hardware_success = initialize_hardware()
     if hardware_success:
@@ -67,19 +77,16 @@ def initialize_application():
     else:
         print("⚠️  Running without hardware (development mode)")
     
-    # Initialize model management
+    # Initialize model management (now personalities are available)
     model_success = initialize_model_list()
     if model_success:
         print("✅ Model management initialized")
     else:
         print("⚠️  Model management using defaults")
     
-    # Initialize personality system and sync model selection
-    from cognition.personality import get_personality_manager
-    personality_manager = get_personality_manager()
-    
+    # Sync device selection with current personality
     if personality_manager.current_personality:
-        print(f"✅ Current personality: {personality_manager.current_personality.name}")
+        print(f"🎯 Syncing device to current personality: {personality_manager.current_personality.name}")
         
         # Find the personality in the available models list
         personality_entry = f"PERSONALITY:{personality_manager.current_personality.name}"
@@ -99,8 +106,6 @@ def initialize_application():
                     print(f"✅ Device set to personality's preferred model {personality_manager.current_personality.model_preference} (index {model_index})")
                 except ValueError:
                     print(f"⚠️  Personality's preferred model {personality_manager.current_personality.model_preference} not available")
-    else:
-        print("ℹ️  No personality selected")
     
     print("🎯 RoverSeer API is ready!")
 

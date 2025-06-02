@@ -84,7 +84,8 @@ def bicameral_chat_direct(prompt, system="", voice=DEFAULT_VOICE):
             bicameral_system_message, prompt,
             first_response, first_time,
             second_response, second_time,
-            final_response, convergence_time
+            final_response, convergence_time,
+            voice_id=voice
         )
         
         return final_response

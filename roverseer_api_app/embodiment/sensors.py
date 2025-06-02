@@ -1,6 +1,7 @@
 import socket
 from embodiment.rainbow_interface import get_rainbow_driver
 from config import TCP_SERVICES
+import os
 
 
 def get_sensor_data():
@@ -40,23 +41,109 @@ def get_sensor_data():
     except Exception as e:
         print(f"Error reading CPU temperature: {e}")
     
-    # Get fan state from Rainbow HAT
-    if rainbow and hasattr(rainbow, 'cooler'):
+    # Get fan state - Raspberry Pi active cooler with PWM speed control
+    # The Pi's fan is typically controlled via PWM on GPIO18
+    try:
+        # First, try to read the actual fan PWM duty cycle
+        fan_detected = False
         try:
-            # Check if fan is on (assuming it has an 'is_on' or similar property)
-            # This might need adjustment based on the actual rainbow driver implementation
-            fan_on = getattr(rainbow.cooler, 'value', 0) > 0
-            data["fan_state"] = "ON" if fan_on else "OFF"
+            # Check if we can access the PWM sysfs interface
+            # The fan is typically on PWM0 (GPIO18)
+            pwm_chip_path = "/sys/class/pwm/pwmchip0"
+            
+            if os.path.exists(pwm_chip_path):
+                # Try to read PWM duty cycle
+                pwm_path = f"{pwm_chip_path}/pwm0"
+                
+                if os.path.exists(pwm_path):
+                    # Read period and duty cycle
+                    with open(f"{pwm_path}/period", 'r') as f:
+                        period = int(f.read().strip())
+                    
+                    with open(f"{pwm_path}/duty_cycle", 'r') as f:
+                        duty_cycle = int(f.read().strip())
+                    
+                    # Calculate duty cycle percentage
+                    if period > 0:
+                        duty_percent = (duty_cycle / period) * 100
+                        
+                        # Map duty cycle to fan speed
+                        if duty_percent < 5:
+                            data["fan_state"] = "OFF"
+                        elif duty_percent < 35:
+                            data["fan_state"] = "LOW 🌀"
+                        elif duty_percent < 70:
+                            data["fan_state"] = "MED 🌀🌀"
+                        else:
+                            data["fan_state"] = "HIGH 🌀🌀🌀"
+                        
+                        data["fan_state"] += f" ({duty_percent:.0f}%)"
+                        fan_detected = True
+                        print(f"Fan PWM detected: {duty_percent:.1f}% duty cycle")
         except Exception as e:
-            print(f"Error reading fan state: {e}")
-            # Alternative method - check GPIO pin directly if needed
+            # PWM reading failed, try alternative method
+            pass
+        
+        # If PWM reading failed, try to detect via GPIO
+        if not fan_detected:
             try:
+                # Try reading fan tachometer if available (some fans have this on GPIO14)
                 import RPi.GPIO as GPIO
-                # Assuming fan is on a specific GPIO pin (adjust as needed)
-                # This is a fallback if the rainbow driver doesn't expose fan state
-                data["fan_state"] = "Unknown"
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setup(14, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                
+                # Sample the tachometer for a short period
+                import time
+                pulse_count = 0
+                sample_time = 0.1  # 100ms sample
+                start_time = time.time()
+                last_state = GPIO.input(14)
+                
+                while time.time() - start_time < sample_time:
+                    current_state = GPIO.input(14)
+                    if current_state != last_state and current_state == 1:
+                        pulse_count += 1
+                    last_state = current_state
+                
+                # Calculate RPM (2 pulses per revolution typical)
+                rpm = (pulse_count / 2) * (60 / sample_time)
+                
+                if rpm < 100:
+                    data["fan_state"] = "OFF"
+                elif rpm < 2000:
+                    data["fan_state"] = "LOW 🌀"
+                elif rpm < 3500:
+                    data["fan_state"] = "MED 🌀🌀"
+                else:
+                    data["fan_state"] = "HIGH 🌀🌀🌀"
+                
+                data["fan_state"] += f" ({rpm:.0f} RPM)"
+                fan_detected = True
+                
+                GPIO.cleanup(14)
             except:
                 pass
+        
+        # Fallback: Infer from CPU temperature if detection failed
+        if not fan_detected and data["cpu_temperature"] != "N/A":
+            cpu_temp = float(data["cpu_temperature"].replace("°C", ""))
+            
+            # Temperature-based inference
+            if cpu_temp < 50.0:
+                data["fan_state"] = "OFF (inferred)"
+            elif cpu_temp < 60.0:
+                data["fan_state"] = "LOW 🌀 (inferred)"
+            elif cpu_temp < 70.0:
+                data["fan_state"] = "MED 🌀🌀 (inferred)"
+            else:
+                data["fan_state"] = "HIGH 🌀🌀🌀 (inferred)"
+            
+            # Add temperature to show why fan is inferred at this speed
+            data["fan_state"] += f" {cpu_temp:.0f}°C"
+                
+    except Exception as e:
+        print(f"Error determining fan state: {e}")
+        data["fan_state"] = "Error"
     
     return data
 

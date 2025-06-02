@@ -29,6 +29,17 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
     if skip_logging:  # hack for PenphinMind to show different name
         model_display_name = "PenphinMind"
     
+    # Check if we have a personality to display instead
+    personality_display_name = None
+    try:
+        from cognition.personality import get_personality_manager
+        personality_manager = get_personality_manager()
+        if personality_manager.current_personality:
+            # Use personality name with emoji for display
+            personality_display_name = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+    except:
+        pass
+    
     # Extract user prompt from last message
     user_prompt = ""
     if messages and messages[-1].get("role") == "user":
@@ -36,8 +47,9 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
     
     # Start a thread to handle display
     def display_handler():
-        # First scroll the model name
-        scroll_text_on_display(model_display_name, scroll_speed=0.2)
+        # First scroll the personality name or model name
+        display_name = personality_display_name if personality_display_name else model_display_name
+        scroll_text_on_display(display_name, scroll_speed=0.2)
         # Wait a moment after scrolling completes
         time.sleep(0.5)
         # Clear display before starting timer
