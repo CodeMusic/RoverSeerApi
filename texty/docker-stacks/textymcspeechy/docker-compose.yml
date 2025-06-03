@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  textymcspeechy:
+    image: textymcspeechy-ml
+    container_name: textymcspeechy
+    restart: unless-stopped
+    volumes:
+      - /home/codemusic/texty/voice_data:/app/data         # MP3s + metadata
+      - /home/codemusic/texty/output_onnx:/app/output      # ONNX files dropped here
+      - /home/codemusic/texty/train.py:/app/train.py       # Mount training script
+    environment:
+      - TZ=America/Toronto
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    entrypoint: ["python3", "train.py"]
+    command: ["/app/data/MyVoice", "/app/output/MyVoice"]  # Default paths, can be overridden
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu] 

@@ -11,6 +11,126 @@ tune_playing = threading.Event()
 
 
 # -------- TUNE FUNCTIONS -------- #
+def play_neural_training_start_tune(voice_name=None):
+    """Play an ascending neural network activation tune when starting voice training"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Neural activation sequence - ascending pattern mimicking neural pathways
+            base_notes = [
+                Tone("C4"), Tone("D4"), Tone("F4"), Tone("G4"),
+                Tone("A4"), Tone("C5"), Tone("D5"), Tone("F5")
+            ]
+            
+            if voice_name:
+                # Create voice-specific neural pattern
+                voice_hash = hashlib.md5(voice_name.encode()).hexdigest()
+                
+                # Neural pathway activation sequence
+                notes = []
+                durations = []
+                
+                # Start with base neural activation
+                notes.extend([Tone("C4"), Tone("E4"), Tone("G4")])
+                durations.extend([0.12, 0.12, 0.15])
+                
+                # Voice-specific neural pattern (3-4 notes)
+                for i in range(3):
+                    char_val = ord(voice_hash[i % len(voice_hash)])
+                    note_idx = char_val % len(base_notes)
+                    notes.append(base_notes[note_idx])
+                    # Accelerating pattern for neural excitement
+                    duration = 0.15 - (i * 0.02)
+                    durations.append(duration)
+                
+                # Final neural synthesis burst - ascending
+                notes.extend([Tone("A4"), Tone("C5"), Tone("E5"), Tone("G5")])
+                durations.extend([0.1, 0.12, 0.15, 0.4])
+                
+            else:
+                # Default neural activation sequence
+                notes = [
+                    Tone("C4"), Tone("E4"), Tone("G4"), Tone("C5"),
+                    Tone("E5"), Tone("G5"), Tone("C6")
+                ]
+                durations = [0.12, 0.12, 0.15, 0.15, 0.18, 0.2, 0.5]
+            
+            # Play the neural activation sequence
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing neural training start tune: {e}")
+
+
+def play_neural_training_status_tune():
+    """Play a brief neural processing tune for training status checks"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Brief neural processing pulse - quick status check sound
+            notes = [
+                Tone("G4"), Tone("C5"), Tone("G4")  # Quick neural ping
+            ]
+            durations = [0.08, 0.12, 0.08]
+            
+            # Play the brief status check tune
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing neural status tune: {e}")
+
+
+def play_neural_training_complete_tune():
+    """Play a triumphant neural synthesis completion tune"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Neural synthesis completion fanfare - triumphant and complex
+            notes = [
+                Tone("C4"), Tone("E4"), Tone("G4"), Tone("C5"),  # Building up
+                Tone("E5"), Tone("G5"), Tone("C6"), Tone("E6"),  # Neural peak
+                Tone("C6"), Tone("G5"), Tone("E5"), Tone("C5")   # Settling into completion
+            ]
+            durations = [
+                0.1, 0.1, 0.12, 0.15,
+                0.18, 0.2, 0.25, 0.3,
+                0.15, 0.12, 0.1, 0.4
+            ]
+            
+            # Play the neural completion fanfare
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.03)
+                
+        except Exception as e:
+            print(f"Error playing neural training complete tune: {e}")
+
+
+def play_neural_training_error_tune():
+    """Play a descending neural disconnection tune for training errors"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Neural error/disconnection sequence - descending and diminishing
+            notes = [
+                Tone("G5"), Tone("F5"), Tone("D5"),
+                Tone("C5"), Tone("A4"), Tone("F4"), Tone("C4")
+            ]
+            durations = [0.12, 0.12, 0.15, 0.15, 0.18, 0.2, 0.3]
+            
+            # Play the neural error sequence
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.05)
+                
+        except Exception as e:
+            print(f"Error playing neural training error tune: {e}")
+
+
 def play_startup_tune():
     """Play an ascending startup tune when the system initializes - welcoming and optimistic"""
     from embodiment.rainbow_interface import get_rainbow_driver

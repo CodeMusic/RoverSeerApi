@@ -7,33 +7,33 @@ from config import VOICES_DIR, DEFAULT_VOICE, INTROS_DIR, AUDIO_DEVICE
 from memory.usage_logger import log_tts_usage, log_error
 from expression.sound_orchestration import play_sound_async, play_tts_tune
 from helpers.text_processing_helper import TextProcessingHelper
+from helpers.logging_helper import LoggingHelper
+
+# Import the logging functions directly for this module
+log_error = LoggingHelper.log_error
+log_tts_usage = LoggingHelper.log_tts_usage
 
 
 # -------- VOICE MANAGEMENT -------- #
+def filter_hidden_files(files):
+    """Filter out macOS and system hidden files from a list of files"""
+    return [f for f in files if not f.startswith('.') and not f.startswith('_') and f != 'Thumbs.db']
+
+
 def list_voice_ids():
     """List all available voice IDs from the voices directory (flat list for device compatibility)"""
     return get_categorized_voices()['flat_list']
 
 
 def get_categorized_voices():
-    """Get voices organized by categories (subdirectories) and as a flat list
-    
-    Returns:
-        dict: {
-            'flat_list': ['voice1', 'voice2', ...],  # For device compatibility
-            'categorized': {
-                'Category Name': ['voice1', 'voice2'],
-                'uncategorized': ['voice3', 'voice4']
-            }
-        }
-    """
+    """Get voices organized by categories (subdirectories) with fallback to flat list"""
     flat_voices = set()
     categorized_voices = {}
     uncategorized_voices = set()
     
     # First, scan the root voices directory for uncategorized voices
     try:
-        for fname in os.listdir(VOICES_DIR):
+        for fname in filter_hidden_files(os.listdir(VOICES_DIR)):
             if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
                 base = fname.rsplit("-", 1)[0]
                 uncategorized_voices.add(base)
@@ -42,7 +42,7 @@ def get_categorized_voices():
     
     # Then scan subdirectories for categorized voices
     try:
-        for item in os.listdir(VOICES_DIR):
+        for item in filter_hidden_files(os.listdir(VOICES_DIR)):
             item_path = os.path.join(VOICES_DIR, item)
             if os.path.isdir(item_path):
                 category_name = item
@@ -50,7 +50,7 @@ def get_categorized_voices():
                 
                 # Scan this category directory
                 try:
-                    for fname in os.listdir(item_path):
+                    for fname in filter_hidden_files(os.listdir(item_path)):
                         if fname.endswith(".onnx") and not fname.endswith(".onnx.json"):
                             base = fname.rsplit("-", 1)[0]
                             category_voices.add(base)
@@ -88,7 +88,7 @@ def find_voice_files(base_voice_id):
     
     # Search in root directory first
     try:
-        files_in_dir = os.listdir(VOICES_DIR)
+        files_in_dir = filter_hidden_files(os.listdir(VOICES_DIR))
         matching_files = [f for f in files_in_dir if f.startswith(pattern_prefix)]
         print(f"Root files starting with {pattern_prefix}: {matching_files}")
         
@@ -106,11 +106,11 @@ def find_voice_files(base_voice_id):
     # If not found in root, search subdirectories
     if not (model_file and config_file):
         try:
-            for item in os.listdir(VOICES_DIR):
+            for item in filter_hidden_files(os.listdir(VOICES_DIR)):
                 item_path = os.path.join(VOICES_DIR, item)
                 if os.path.isdir(item_path):
                     try:
-                        subdir_files = os.listdir(item_path)
+                        subdir_files = filter_hidden_files(os.listdir(item_path))
                         matching_subfiles = [f for f in subdir_files if f.startswith(pattern_prefix)]
                         print(f"Subdir {item} files starting with {pattern_prefix}: {matching_subfiles}")
                         
@@ -341,8 +341,8 @@ def debug_list_voices():
     print(f"Looking in: {VOICES_DIR}")
     
     try:
-        all_files = sorted(os.listdir(VOICES_DIR))
-        print(f"Total files: {len(all_files)}")
+        all_files = sorted(filter_hidden_files(os.listdir(VOICES_DIR)))
+        print(f"Total files (after filtering hidden): {len(all_files)}")
         
         # Group by base name
         voice_groups = {}

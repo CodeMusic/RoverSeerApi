@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  textymcspeechy:
+    build: .
+    image: textymcspeechy-ml
+    container_name: textymcspeechy
+    restart: unless-stopped
+    volumes:
+      - /home/codemusic/texty/voice_data:/app/data         # MP3s + metadata
+      - /home/codemusic/texty/output_onnx:/app/output      # ONNX files dropped here
+      - ./train.py:/app/train.py                           # Mount training script from local dir
+    environment:
+      - TZ=America/Toronto
+      - PYTHONUNBUFFERED=1
+    working_dir: /app
+    # Keep container running with sleep infinity
+    command: ["sleep", "infinity"]

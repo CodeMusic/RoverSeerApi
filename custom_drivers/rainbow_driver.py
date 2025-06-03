@@ -554,36 +554,22 @@ class LEDManager:
         
         NOTE: This is application-specific for the RoverSeer voice assistant pipeline.
         The stages represent: Recording -> ASR -> LLM -> TTS -> Audio Playback
-        Customize these stages for your specific application needs.
         
         Args:
             stage: One of 'recording', 'asr', 'asr_complete', 'llm', 'llm_complete',
                    'tts', 'tts_complete', 'playing', 'idle'
         """
         stages = {
-            # Voice assistant pipeline stages - customize for your application
-            'recording': {'A': 'blink', 'B': 'off', 'C': 'off'},     # Recording audio
-            'asr': {'A': 'blink', 'B': 'off', 'C': 'off'},          # Speech recognition
-            'asr_complete': {'A': 'on', 'B': 'off', 'C': 'off'},    # ASR done
-            'llm': {'A': 'on', 'B': 'blink', 'C': 'off'},           # LLM processing
-            'llm_complete': {'A': 'on', 'B': 'on', 'C': 'off'},     # LLM done
-            'tts': {'A': 'on', 'B': 'on', 'C': 'blink'},            # Text-to-speech
-            'tts_complete': {'A': 'on', 'B': 'on', 'C': 'on'},      # TTS done
-            'playing': 'blink_all',                                   # Playing audio
-            'idle': {'A': 'off', 'B': 'off', 'C': 'off'}            # Idle state
-        }
-        
-        # Rainbow strip patterns for each stage (if experimental features enabled)
-        rainbow_patterns = {
-            'recording': ('pulse', (255, 0, 0)),       # Red pulse
-            'asr': ('pulse', (255, 165, 0)),          # Orange pulse
-            'asr_complete': ('solid', (255, 165, 0)),  # Orange solid
-            'llm': ('pulse', (0, 255, 0)),            # Green pulse
-            'llm_complete': ('solid', (0, 255, 0)),    # Green solid
-            'tts': ('pulse', (0, 100, 255)),          # Blue pulse
-            'tts_complete': ('solid', (0, 100, 255)),  # Blue solid
-            'playing': ('rainbow', None),              # Rainbow animation
-            'idle': ('clear', None)                    # Clear
+            # Voice assistant pipeline stages
+            'recording': {'A': 'blink', 'B': 'off', 'C': 'off'},     # Red blink during recording
+            'asr': {'A': 'blink', 'B': 'off', 'C': 'off'},          # Red blink during ASR
+            'asr_complete': {'A': 'on', 'B': 'off', 'C': 'off'},    # Red solid when ASR done
+            'llm': {'A': 'on', 'B': 'blink', 'C': 'off'},           # Red solid + Green blink during LLM
+            'llm_complete': {'A': 'on', 'B': 'on', 'C': 'off'},     # Red+Green solid when LLM done
+            'tts': {'A': 'on', 'B': 'on', 'C': 'blink'},            # Red+Green solid + Blue blink during TTS
+            'tts_complete': {'A': 'on', 'B': 'on', 'C': 'on'},      # All solid when TTS done
+            'playing': {'A': 'on', 'B': 'on', 'C': 'on'},           # All solid during playback
+            'idle': {'A': 'off', 'B': 'off', 'C': 'off'}            # All off when idle
         }
         
         if stage not in stages:
@@ -602,26 +588,6 @@ class LEDManager:
                     self.set_led(led, True)
                 elif state == 'off':
                     self.set_led(led, False)
-        
-        # Update rainbow strip if experimental features enabled
-        if self.rainbow_driver.use_experimental_strip and stage in rainbow_patterns:
-            pattern, color = rainbow_patterns[stage]
-            
-            if pattern == 'pulse':
-                self.rainbow_driver.rainbow_strip_manager.pulse_color(color, speed=0.05)
-            elif pattern == 'solid':
-                # Set all LEDs to solid color
-                self.rainbow_driver.rainbow_strip_manager.stop_animation()
-                for i in range(self.rainbow_driver.NUM_LEDS):
-                    self.rainbow_driver.set_led(i, *color)
-            elif pattern == 'rainbow':
-                self.rainbow_driver.rainbow_strip_manager.rainbow_cycle(speed=0.1)
-            elif pattern == 'clear':
-                self.rainbow_driver.rainbow_strip_manager.clear()
-        
-        # Always clear rainbow strip when going to idle
-        if stage == 'idle' and self.rainbow_driver.use_experimental_strip:
-            self.rainbow_driver.rainbow_strip_manager.clear()
 
 
 # ------- RAINBOW STRIP MANAGER -------

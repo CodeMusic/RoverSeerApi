@@ -16,6 +16,26 @@ log_asr_usage = LoggingHelper.log_asr_usage
 log_tts_usage = LoggingHelper.log_tts_usage
 log_penphin_mind_usage = LoggingHelper.log_penphin_mind_usage
 
+# Voice training logging function
+def log_training_event(voice_identity, event_type, data=None):
+    """Log voice training events to a dedicated training log"""
+    timestamp = datetime.now().isoformat()
+    log_entry = {
+        "timestamp": timestamp,
+        "voice_identity": voice_identity,
+        "event_type": event_type,
+        "data": data or {}
+    }
+    
+    ensure_log_dir()
+    training_log = LOG_DIR / f"voice_training_{datetime.now().strftime('%Y-%m-%d')}.log"
+    
+    try:
+        with open(training_log, 'a') as f:
+            f.write(json.dumps(log_entry) + '\n')
+    except Exception as e:
+        print(f"Error logging training event: {e}")
+
 
 def load_model_stats():
     """Load model statistics from JSON file"""

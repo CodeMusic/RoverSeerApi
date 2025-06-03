@@ -1,0 +1,7 @@
+torchaudio>=2.1.0
+TTS>=0.21.1
+onnx>=1.15.0
+onnxruntime-gpu>=1.16.1
+numpy>=1.24.0
+librosa>=0.10.1
+soundfile>=0.12.1 

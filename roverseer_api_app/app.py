@@ -12,6 +12,7 @@ from cognition.model_management import initialize_model_list
 from routes.system_routes import bp as system_bp
 from routes.chat_routes import bp as chat_bp
 from routes.audio_routes import bp as audio_bp
+from routes.voice_training_routes import neural_voice_synthesis_bp
 
 # Create Flask application
 app = Flask(__name__)
@@ -45,6 +46,7 @@ swagger = Swagger(app, template={
 app.register_blueprint(system_bp)
 app.register_blueprint(chat_bp)
 app.register_blueprint(audio_bp)
+app.register_blueprint(neural_voice_synthesis_bp)
 
 # Root redirect
 @app.route('/docs/')

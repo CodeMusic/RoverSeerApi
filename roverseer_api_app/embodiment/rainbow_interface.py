@@ -795,28 +795,32 @@ def start_system_processing(led_color='B', is_text_input=False, has_voice_output
         config.pipeline_stages['asr_active'] = True
         
         # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.set_asr_active(is_text_input)
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            # During ASR, red LED blinks
+            rainbow_driver.button_led_manager.show_progress('asr')
         
     elif led_color == 'B':  # LLM stage
         config.pipeline_stages['llm_active'] = True
         
         # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.set_llm_active()
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            # During LLM, red solid + green blinking
+            rainbow_driver.button_led_manager.show_progress('llm')
         
     elif led_color == 'C':  # TTS stage
         config.pipeline_stages['tts_active'] = True
         
         # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.set_tts_active(has_voice_output)
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            # During TTS, red+green solid, blue blinking
+            rainbow_driver.button_led_manager.show_progress('tts')
         
     elif led_color == 'aplay':  # Audio playback stage
         config.pipeline_stages['aplay_active'] = True
         
         # Keep button LED manager for audio playback feedback only
         if hasattr(rainbow_driver, 'button_led_manager'):
+            # During playback, all LEDs solid
             rainbow_driver.button_led_manager.show_progress('playing')
 
 
@@ -831,32 +835,32 @@ def stop_system_processing():
         config.pipeline_stages['asr_complete'] = True
         
         # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.set_asr_finished()
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            rainbow_driver.button_led_manager.show_progress('asr_complete')
             
     elif config.pipeline_stages['llm_active']:
         config.pipeline_stages['llm_active'] = False
         config.pipeline_stages['llm_complete'] = True
         
         # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.set_llm_finished()
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            rainbow_driver.button_led_manager.show_progress('llm_complete')
             
     elif config.pipeline_stages['tts_active']:
         config.pipeline_stages['tts_active'] = False
         config.pipeline_stages['tts_complete'] = True
         
         # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.set_tts_finished()
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            rainbow_driver.button_led_manager.show_progress('tts_complete')
             
     elif config.pipeline_stages['aplay_active']:
         # End of pipeline - reset everything
         reset_pipeline_stages()
         
-        # RGB LED Manager handles cycle completion
-        if hasattr(rainbow_driver, 'rgb_led_manager'):
-            rainbow_driver.rgb_led_manager.cycle_complete()
+        # Set all LEDs to idle state
+        if hasattr(rainbow_driver, 'button_led_manager'):
+            rainbow_driver.button_led_manager.show_progress('idle')
 
 # -------- EXPERIMENTAL RAINBOW STRIP HELPERS -------- #
 # These functions provide direct access to rainbow strip features

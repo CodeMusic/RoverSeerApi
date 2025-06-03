@@ -1358,6 +1358,11 @@
                 loadPersonalities();
             }
             
+            // Load voice training components if on voice training page
+            if (document.getElementById('training-status-display')) {
+                initializeVoiceTraining();
+            }
+            
             // Initial status load
             refreshStatus();
             
@@ -1365,6 +1370,285 @@
             setInterval(refreshStatus, 5000);
         });
         
+        // ======= NEURAL VOICE TRAINING FUNCTIONS =======
+        
+        function initializeVoiceTraining() {
+            refreshTrainingStatus();
+            refreshAvailableVoices();
+            refreshVoiceRegistry();
+            
+            // Auto-refresh training status every 10 seconds when on training page
+            setInterval(function() {
+                if (document.getElementById('training-status-display')) {
+                    refreshTrainingStatus();
+                }
+            }, 10000);
+        }
+        
+        function refreshTrainingStatus() {
+            fetch('/train-status')
+                .then(response => response.json())
+                .then(data => {
+                    const statusText = document.getElementById('training-status-text');
+                    const logSection = document.getElementById('training-log-section');
+                    const logDiv = document.getElementById('training-log');
+                    const cancelBtn = document.getElementById('cancel-training-btn');
+                    const progressDiv = document.getElementById('training-progress');
+                    
+                    if (data.status === 'neural_synthesis_active') {
+                        statusText.innerHTML = `🧠 <strong>Neural Training Active:</strong> ${data.voice_identity}`;
+                        statusText.style.color = '#28a745';
+                        
+                        // Show training log
+                        logSection.style.display = 'block';
+                        logDiv.textContent = data.neural_log || 'Neural pathway initialization...';
+                        logDiv.scrollTop = logDiv.scrollHeight; // Auto-scroll to bottom
+                        
+                        // Show cancel button
+                        cancelBtn.style.display = 'inline-block';
+                        
+                        // Show progress with percentage from backend
+                        progressDiv.style.display = 'block';
+                        const progress = data.progress_percentage || 0;
+                        document.getElementById('progress-bar').style.width = progress + '%';
+                        
+                        // Enhanced progress text with percentage
+                        let progressText = `Neural synthesis in progress... ${progress}%`;
+                        if (data.log_length) {
+                            progressText += ` (${data.log_length} training events)`;
+                        }
+                        document.getElementById('progress-text').textContent = progressText;
+                        
+                        // Disable start training
+                        document.getElementById('start-training-btn').disabled = true;
+                        document.getElementById('start-training-btn').textContent = '🧠 Neural Synthesis Active...';
+                        
+                    } else if (data.status === 'neural_pathway_idle') {
+                        statusText.innerHTML = '🔵 <strong>Neural Pathways Idle:</strong> Ready for voice synthesis';
+                        statusText.style.color = '#6c757d';
+                        
+                        // Hide training log and progress
+                        logSection.style.display = 'none';
+                        cancelBtn.style.display = 'none';
+                        progressDiv.style.display = 'none';
+                        
+                        // Enable start training
+                        document.getElementById('start-training-btn').disabled = false;
+                        document.getElementById('start-training-btn').textContent = '🧠 Start Neural Voice Training';
+                        
+                    } else {
+                        // Handle other statuses (errors, etc.)
+                        statusText.innerHTML = `⚠️ <strong>Status:</strong> ${data.message || data.status}`;
+                        statusText.style.color = '#ffc107';
+                        
+                        // Hide training controls
+                        logSection.style.display = 'none';
+                        cancelBtn.style.display = 'none';
+                        progressDiv.style.display = 'none';
+                        
+                        // Enable start training
+                        document.getElementById('start-training-btn').disabled = false;
+                        document.getElementById('start-training-btn').textContent = '🧠 Start Neural Voice Training';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching training status:', error);
+                    document.getElementById('training-status-text').innerHTML = '❌ <strong>Neural Status Error:</strong> Connection failed';
+                    document.getElementById('training-status-text').style.color = '#dc3545';
+                });
+        }
+        
+        function refreshAvailableVoices() {
+            fetch('/available-voices')
+                .then(response => response.json())
+                .then(data => {
+                    const voicesList = document.getElementById('available-voices-list');
+                    const voiceSelect = document.getElementById('training-voice-select');
+                    
+                    // Clear existing options (except first placeholder)
+                    voiceSelect.innerHTML = '<option value="">Select a voice...</option>';
+                    
+                    if (data.voices && data.voices.length > 0) {
+                        let voicesHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px;">';
+                        
+                        data.voices.forEach(voice => {
+                            // Add to list display
+                            voicesHtml += `
+                                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid #28a745;">
+                                    <strong>📁 ${voice.name}</strong><br>
+                                    <small style="color: #666;">${voice.audio_count} audio files</small><br>
+                                    <small style="color: #999; font-family: monospace;">${voice.path}</small>
+                                </div>
+                            `;
+                            
+                            // Add to select dropdown
+                            const option = document.createElement('option');
+                            option.value = voice.name;
+                            option.textContent = `${voice.name} (${voice.audio_count} files)`;
+                            voiceSelect.appendChild(option);
+                        });
+                        
+                        voicesHtml += '</div>';
+                        voicesList.innerHTML = voicesHtml;
+                        
+                    } else {
+                        voicesList.innerHTML = '<p style="color: #666; font-style: italic;">No voice sample directories found. Please add voice samples to /home/codemusic/texty/voice_data/</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching available voices:', error);
+                    document.getElementById('available-voices-list').innerHTML = '<p style="color: #dc3545;">Error loading voice samples: ' + error + '</p>';
+                });
+        }
+        
+        function refreshVoiceRegistry() {
+            fetch('/voice-registry')
+                .then(response => response.json())
+                .then(data => {
+                    const registryDiv = document.getElementById('voice-registry');
+                    
+                    if (data.registry && Object.keys(data.registry).length > 0) {
+                        let registryHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px;">';
+                        
+                        for (const [voiceName, voiceData] of Object.entries(data.registry)) {
+                            const statusColor = voiceData.last_status === 'training_started' ? '#28a745' : 
+                                              voiceData.last_status === 'training_cancelled' ? '#dc3545' : '#6c757d';
+                            
+                            registryHtml += `
+                                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; border-left: 4px solid ${statusColor};">
+                                    <strong>🎤 ${voiceName}</strong><br>
+                                    <small style="color: #666;">Status: ${voiceData.last_status}</small><br>
+                                    <small style="color: #999;">Updated: ${new Date(voiceData.last_update).toLocaleString()}</small>
+                                </div>
+                            `;
+                        }
+                        
+                        registryHtml += '</div>';
+                        registryDiv.innerHTML = registryHtml;
+                        
+                    } else {
+                        registryDiv.innerHTML = '<p style="color: #666; font-style: italic;">No voice training history found.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching voice registry:', error);
+                    document.getElementById('voice-registry').innerHTML = '<p style="color: #dc3545;">Error loading voice registry: ' + error + '</p>';
+                });
+        }
+        
+        function startVoiceTraining() {
+            const voiceSelect = document.getElementById('training-voice-select');
+            const selectedVoice = voiceSelect.value;
+            
+            if (!selectedVoice) {
+                alert('Please select a voice to train from the dropdown.');
+                return;
+            }
+            
+            if (!confirm(`Start neural voice training for "${selectedVoice}"?\n\nThis process will take 30-60 minutes and cannot be paused.\n\nProceed?`)) {
+                return;
+            }
+            
+            const startBtn = document.getElementById('start-training-btn');
+            const originalText = startBtn.textContent;
+            
+            startBtn.disabled = true;
+            startBtn.textContent = '🚀 Initiating Neural Synthesis...';
+            
+            fetch('/train-voice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    voice_name: selectedVoice
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('training-status-message');
+                
+                if (data.status === 'neural_synthesis_initiated') {
+                    statusDiv.textContent = `Neural voice synthesis started for ${data.voice_identity}. Training process will take 30-60 minutes.`;
+                    statusDiv.className = 'status-message success';
+                    
+                    // Refresh status immediately
+                    setTimeout(refreshTrainingStatus, 2000);
+                    
+                } else {
+                    statusDiv.textContent = data.message || 'Failed to start training';
+                    statusDiv.className = 'status-message error';
+                    
+                    // Re-enable button
+                    startBtn.disabled = false;
+                    startBtn.textContent = originalText;
+                }
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 10000);
+            })
+            .catch(error => {
+                console.error('Error starting training:', error);
+                
+                const statusDiv = document.getElementById('training-status-message');
+                statusDiv.textContent = 'Error starting training: ' + error;
+                statusDiv.className = 'status-message error';
+                
+                // Re-enable button
+                startBtn.disabled = false;
+                startBtn.textContent = originalText;
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 10000);
+            });
+        }
+        
+        function cancelTraining() {
+            if (!confirm('Cancel the current voice training process?\n\nAll progress will be lost and cannot be recovered.\n\nProceed?')) {
+                return;
+            }
+            
+            const cancelBtn = document.getElementById('cancel-training-btn');
+            const originalText = cancelBtn.textContent;
+            
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = '🛑 Terminating...';
+            
+            fetch('/cancel-training', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('training-status-message');
+                statusDiv.textContent = data.message || 'Training cancelled';
+                statusDiv.className = 'status-message success';
+                
+                // Refresh status
+                setTimeout(refreshTrainingStatus, 2000);
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                console.error('Error cancelling training:', error);
+                
+                const statusDiv = document.getElementById('training-status-message');
+                statusDiv.textContent = 'Error cancelling training: ' + error;
+                statusDiv.className = 'status-message error';
+                
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = originalText;
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            });
+        }
+        
+        // Load containers when page loads
     </script>
 </head>
 <body>
@@ -1437,6 +1721,10 @@
             <a href="/system?view=settings" 
                class="log-type {% if view_mode == 'settings' %}active{% endif %}">
                🔧 Settings
+            </a>
+            <a href="/system?view=voice_training" 
+               class="log-type {% if view_mode == 'voice_training' %}active{% endif %}">
+               🧠 Voice Training
             </a>
         </div>
         
@@ -1928,6 +2216,116 @@
                     </div>
                     
                     <div id="status-message" class="status-message"></div>
+                </div>
+            
+            {% elif view_mode == 'voice_training' %}
+                <h2>🧠 Neural Voice Training</h2>
+                <p>Train custom voices using your own audio samples to create personalized TTS models.</p>
+                
+                <div class="settings-section">
+                    <!-- Training Status Section -->
+                    <div class="settings-group">
+                        <h3>🎯 Training Status</h3>
+                        <div id="training-status-display" style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span id="training-status-text">Loading...</span>
+                                <button id="refresh-status-btn" onclick="refreshTrainingStatus()" style="background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">🔄 Refresh</button>
+                            </div>
+                            <div id="training-progress" style="margin-top: 10px; display: none;">
+                                <div style="background: #e0e0e0; border-radius: 10px; height: 8px; overflow: hidden;">
+                                    <div id="progress-bar" style="background: #4CAF50; height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                                </div>
+                                <p id="progress-text" style="margin: 5px 0 0 0; font-size: 12px; color: #666;"></p>
+                            </div>
+                        </div>
+                        
+                        <!-- Training Log Viewer -->
+                        <div id="training-log-section" style="display: none;">
+                            <h4>🔍 Training Log</h4>
+                            <div id="training-log" style="background: #000; color: #00ff00; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 15px;">
+                                <!-- Training log will be populated here -->
+                            </div>
+                            <button id="cancel-training-btn" onclick="cancelTraining()" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; display: none;">
+                                ⛔ Cancel Training
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Available Voice Samples Section -->
+                    <div class="settings-group">
+                        <h3>🎤 Available Voice Samples</h3>
+                        <div id="available-voices-list" style="margin-bottom: 15px;">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                        <button onclick="refreshAvailableVoices()" style="background: #4169e1; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                            🔄 Refresh Voice List
+                        </button>
+                        <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                            Voice sample directories should be placed in <code>/home/codemusic/texty/voice_data/</code>. Each directory should contain MP3, WAV, or FLAC audio files of the voice you want to train.
+                        </p>
+                    </div>
+                    
+                    <!-- Start Training Section -->
+                    <div class="settings-group">
+                        <h3>🚀 Start Voice Training</h3>
+                        <div class="setting-item">
+                            <label for="training-voice-select">Select Voice to Train</label>
+                            <select id="training-voice-select" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                                <option value="">Select a voice...</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <button id="start-training-btn" onclick="startVoiceTraining()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                                🧠 Start Neural Voice Training
+                            </button>
+                        </div>
+                        
+                        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 15px; margin-top: 15px;">
+                            <h4 style="margin: 0 0 10px 0; color: #856404;">⚠️ Training Requirements</h4>
+                            <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                                <li>Voice samples should be high quality (44.1kHz, 16-bit minimum)</li>
+                                <li>Each voice directory should contain 50-200 audio samples</li>
+                                <li>Training typically takes 30-60 minutes depending on sample count</li>
+                                <li>Ensure textymcspeechy-piper Docker container is running</li>
+                                <li>Only one voice can be trained at a time</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Voice Registry Section -->
+                    <div class="settings-group">
+                        <h3>📚 Voice Training Registry</h3>
+                        
+                        <!-- Quick Training Controls -->
+                        <div id="quick-training-controls" style="display: none; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; padding: 10px; margin-bottom: 15px;">
+                            <strong style="color: #856404;">🧠 Training Active</strong>
+                            <div style="margin: 5px 0;">
+                                <span id="quick-training-voice" style="color: #856404;"></span>
+                            </div>
+                            <div style="margin-top: 10px;">
+                                <button onclick="refreshTrainingStatus()" style="background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-right: 5px;">
+                                    🔄 Check Status
+                                </button>
+                                <button onclick="cancelTraining()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; margin-right: 5px;">
+                                    ⛔ Cancel
+                                </button>
+                                <button onclick="window.location.href='/system?view=voice_training'" style="background: #4169e1; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                                    🎯 Full Interface
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="voice-registry" style="margin-bottom: 15px;">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                        <button onclick="refreshVoiceRegistry()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                            📋 Refresh Registry
+                        </button>
+                    </div>
+                    
+                    <div id="training-status-message" class="status-message"></div>
                 </div>
             
             {% else %}
