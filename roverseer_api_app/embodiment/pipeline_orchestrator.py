@@ -224,6 +224,15 @@ class PipelineOrchestrator:
                             pass
                 del self.state.active_processes['audio_process']
             
+            # Special cleanup for EXPRESSING state (audio playback)
+            if state == SystemState.EXPRESSING:
+                # Ensure all LEDs are turned off after audio playback
+                if self.rainbow_driver:
+                    if hasattr(self.rainbow_driver, 'button_led_manager'):
+                        self.rainbow_driver.button_led_manager.stop_all_leds()
+                    if hasattr(self.rainbow_driver, 'rgb_led_manager'):
+                        self.rainbow_driver.rgb_led_manager.set_all_leds_off()
+            
         except Exception as e:
             self.logger.error(f"Error during state cleanup: {e}")
     
