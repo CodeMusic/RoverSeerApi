@@ -241,27 +241,56 @@ def chat_ajax():
     use_personality = request.form.get('use_personality', 'true').lower() == 'true'
     custom_system_message = request.form.get('system_message', '').strip()
     
+    # 🐛 DEBUG: Log all received parameters
+    print(f"🐛 CHAT_AJAX DEBUG:")
+    print(f"  📝 user_input: {user_input}")
+    print(f"  🤖 model: {model}")
+    print(f"  🔊 voice: {voice}")
+    print(f"  🎭 use_personality: {use_personality}")
+    print(f"  💬 output_type: {output_type}")
+    print(f"  ⚙️ system: {system}")
+    print(f"  📋 custom_system_message: {custom_system_message}")
+    
     # Check if we need to switch personality based on voice
     from cognition.personality import get_personality_manager
     personality_manager = get_personality_manager()
     
+    # 🐛 DEBUG: Show current personality state
+    current_name = personality_manager.current_personality.name if personality_manager.current_personality else "None"
+    print(f"  🎭 Current personality: {current_name}")
+    print(f"  📊 Total personalities available: {len(personality_manager.personalities)}")
+    
     # Only handle personality switching if use_personality is true
     if use_personality and voice:
         DebugLog("Looking for personality with voice {}", voice)
+        personality_found = False
         for personality in personality_manager.personalities.values():
             if personality.voice_id == voice:
                 DebugLog("Found personality {} for voice {}", personality.name, voice)
+                personality_found = True
                 if not personality_manager.current_personality or personality_manager.current_personality.name != personality.name:
                     DebugLog("Switching to personality {}", personality.name)
-                    personality_manager.switch_to(personality.name)
-                    # Update DEFAULT_VOICE to match
-                    from config import update_default_voice
-                    update_default_voice(voice)
+                    success = personality_manager.switch_to(personality.name)
+                    if success:
+                        DebugLog("✅ Successfully switched to personality {}", personality.name)
+                        # Update DEFAULT_VOICE to match
+                        from config import update_default_voice
+                        update_default_voice(voice)
+                    else:
+                        DebugLog("❌ Failed to switch to personality {}", personality.name)
                 else:
                     DebugLog("Already using personality {}", personality.name)
                 break
+        
+        if not personality_found:
+            DebugLog("❌ No personality found for voice {}. Available personalities:", voice)
+            for p in personality_manager.personalities.values():
+                DebugLog("  - {} (voice: {})", p.name, p.voice_id)
+    else:
+        if use_personality:
+            DebugLog("Use personality is true but no voice provided")
         else:
-            DebugLog("No personality found for voice {}", voice)
+            DebugLog("Use personality is false, using current personality or default")
     
     # Validate voice - use default if empty
     if not voice:
@@ -408,7 +437,7 @@ def system():
     selected_log_type = request.args.get('log_type', None)
     selected_date = request.args.get('date', None)
     sort_by = request.args.get('sort_by', 'fastest')  # 'fastest' or 'usage'
-    view_mode = request.args.get('view', 'logs')  # 'logs', 'models', 'model_detail', 'commands', or 'settings'
+    view_mode = request.args.get('view', 'logs')  # 'logs', 'models', 'model_detail', 'commands', 'settings', or 'training_activity'
     model_name = request.args.get('model', None)  # For individual model details
     
     log_entries = []
@@ -446,6 +475,26 @@ def system():
         except Exception as e:
             print(f"Error fetching model details: {e}")
             model_detail = None
+    
+    elif view_mode == 'training_activity':
+        # Handle training activity view - redirect to dedicated training activity page
+        from helpers.logging_helper import LoggingHelper
+        try:
+            # Get recent training activity logs
+            training_logs = LoggingHelper.get_training_activity_logs(limit=500)
+            
+            # Get unique voice identities for filtering
+            voice_identities = list(set(log.get("voice_identity", "Unknown") for log in training_logs))
+            voice_identities.sort()
+            
+            return render_template('training_activity.html', 
+                                 logs=training_logs,
+                                 voice_identities=voice_identities,
+                                 title="🧠 Neural Voice Training Activity Monitor")
+        except Exception as e:
+            error_msg = f"Error loading training activity: {str(e)}"
+            print(error_msg)
+            return f"Error: {error_msg}", 500
     
     elif view_mode == 'logs' and selected_log_type:
         # Original log viewing functionality
@@ -941,7 +990,7 @@ def update_personality():
     else:
         return jsonify({"status": "error", "message": "Invalid personality type"}), 400
     
-    return jsonify({"status": "error", "message": "Failed to update personality"}), 500 
+    return jsonify({"status": "error", "message": "Failed to update personality"}), 500
 
 
 # Simple personality endpoints for RoverCub compatibility
@@ -960,4 +1009,135 @@ def switch_personality_simple():
 @bp.route('/personalities/current', methods=['GET'])
 def get_current_personality_simple():
     """Get current personality (RoverCub compatible endpoint)"""
-    return get_current_personality() 
+    return get_current_personality()
+
+
+# Add contextual moods API endpoints
+@bp.route('/system/personality/<personality_name>/moods', methods=['GET'])
+def get_personality_moods(personality_name):
+    """Get all moods for a specific personality"""
+    from cognition.contextual_moods import contextual_moods
+    
+    try:
+        moods = contextual_moods.list_personality_moods(personality_name)
+        return jsonify({
+            "status": "success",
+            "personality": personality_name,
+            "moods": moods
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error loading moods: {str(e)}"
+        }), 500
+
+
+@bp.route('/system/personality/<personality_name>/moods', methods=['POST'])
+def create_personality_mood(personality_name):
+    """Create a new mood for a personality"""
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['mood_name', 'trigger_probability', 'context_triggers', 'mood_influences']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({
+                "status": "error",
+                "message": f"Missing required field: {field}"
+            }), 400
+    
+    try:
+        from cognition.contextual_moods import contextual_moods
+        
+        contextual_moods.add_mood(
+            personality_name=personality_name,
+            mood_name=data['mood_name'],
+            trigger_probability=float(data['trigger_probability']),
+            context_triggers=data['context_triggers'],
+            mood_influences=data['mood_influences'],
+            is_custom=True  # Always save as custom
+        )
+        
+        contextual_moods.save_custom_moods()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Mood '{data['mood_name']}' created for {personality_name}"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error creating mood: {str(e)}"
+        }), 500
+
+
+@bp.route('/system/personality/<personality_name>/moods/<mood_name>', methods=['PUT'])
+def update_personality_mood(personality_name, mood_name):
+    """Update an existing mood for a personality"""
+    data = request.get_json()
+    
+    try:
+        from cognition.contextual_moods import contextual_moods
+        
+        # Remove old mood
+        if personality_name in contextual_moods.custom_moods:
+            if mood_name in contextual_moods.custom_moods[personality_name]:
+                del contextual_moods.custom_moods[personality_name][mood_name]
+        
+        # Add updated mood
+        contextual_moods.add_mood(
+            personality_name=personality_name,
+            mood_name=data.get('mood_name', mood_name),
+            trigger_probability=float(data.get('trigger_probability', 0.5)),
+            context_triggers=data.get('context_triggers', []),
+            mood_influences=data.get('mood_influences', []),
+            is_custom=True
+        )
+        
+        contextual_moods.save_custom_moods()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Mood '{mood_name}' updated for {personality_name}"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error updating mood: {str(e)}"
+        }), 500
+
+
+@bp.route('/system/personality/<personality_name>/moods/<mood_name>', methods=['DELETE'])
+def delete_personality_mood(personality_name, mood_name):
+    """Delete a mood from a personality"""
+    try:
+        from cognition.contextual_moods import contextual_moods
+        
+        # Only allow deletion from custom moods
+        if personality_name in contextual_moods.custom_moods:
+            if mood_name in contextual_moods.custom_moods[personality_name]:
+                del contextual_moods.custom_moods[personality_name][mood_name]
+                
+                # Remove personality entry if no moods left
+                if not contextual_moods.custom_moods[personality_name]:
+                    del contextual_moods.custom_moods[personality_name]
+                
+                contextual_moods.save_custom_moods()
+                
+                return jsonify({
+                    "status": "success",
+                    "message": f"Mood '{mood_name}' deleted from {personality_name}"
+                })
+        
+        return jsonify({
+            "status": "error",
+            "message": f"Mood '{mood_name}' not found or cannot be deleted"
+        }), 404
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Error deleting mood: {str(e)}"
+        }), 500 

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - RoverSeer</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #4a5568;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 10px;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #4a5568;
+            border-radius: 5px;
+            background: #2d3748;
+            color: #e0e0e0;
+            font-family: inherit;
+        }
+
+        button {
+            background: linear-gradient(45deg, #4299e1, #3182ce);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #3182ce, #2c5282);
+            transform: translateY(-1px);
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4299e1;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4299e1;
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #4a5568;
+        }
+
+        .log-entry {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #4a5568;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .log-entry.debug {
+            border-left-color: #9f7aea;
+            background: rgba(159, 122, 234, 0.1);
+        }
+
+        .log-entry.error {
+            border-left-color: #f56565;
+            background: rgba(245, 101, 101, 0.1);
+        }
+
+        .log-entry.training_start {
+            border-left-color: #48bb78;
+            background: rgba(72, 187, 120, 0.1);
+        }
+
+        .log-entry.epoch_complete {
+            border-left-color: #4299e1;
+            background: rgba(66, 153, 225, 0.1);
+        }
+
+        .log-entry.training_complete {
+            border-left-color: #38b2ac;
+            background: rgba(56, 178, 172, 0.1);
+        }
+
+        .log-timestamp {
+            color: #a0aec0;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .log-message {
+            margin-bottom: 5px;
+        }
+
+        .log-data {
+            font-size: 11px;
+            color: #cbd5e0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px;
+            border-radius: 3px;
+            margin-top: 5px;
+            white-space: pre-wrap;
+        }
+
+        .voice-tag {
+            display: inline-block;
+            background: #4299e1;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 5px;
+        }
+
+        .event-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 5px;
+            color: white;
+        }
+
+        .event-tag.debug { background: #9f7aea; }
+        .event-tag.error { background: #f56565; }
+        .event-tag.training_start { background: #48bb78; }
+        .event-tag.epoch_complete { background: #4299e1; }
+        .event-tag.training_complete { background: #38b2ac; }
+
+        .no-logs {
+            text-align: center;
+            color: #a0aec0;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        .refresh-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+
+        .refresh-indicator.active {
+            background: #48bb78;
+            animation: pulse 2s infinite;
+        }
+
+        .refresh-indicator.inactive {
+            background: #a0aec0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .nav-link {
+            display: inline-block;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            background: linear-gradient(45deg, #764ba2, #667eea);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <p>Real-time monitoring of neural voice synthesis training processes</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Voice Filter:</label>
+                <select id="voiceFilter">
+                    <option value="">All Voices</option>
+                    {% for voice in voice_identities %}
+                    <option value="{{ voice }}">{{ voice }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Event Type:</label>
+                <select id="eventFilter">
+                    <option value="">All Events</option>
+                    <option value="debug">Debug</option>
+                    <option value="error">Error</option>
+                    <option value="training_start">Training Start</option>
+                    <option value="epoch_complete">Epoch Complete</option>
+                    <option value="training_complete">Training Complete</option>
+                </select>
+            </div>
+
+            <button onclick="refreshLogs()">🔄 Refresh</button>
+            <button onclick="clearLogs()">🗑️ Clear View</button>
+
+            <div class="auto-refresh">
+                <label>
+                    <input type="checkbox" id="autoRefresh" checked> Auto-refresh (5s)
+                </label>
+                <span class="refresh-indicator" id="refreshIndicator"></span>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalLogs">{{ logs|length }}</div>
+                <div>Total Log Entries</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeVoices">{{ voice_identities|length }}</div>
+                <div>Active Voice Models</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="errorCount">0</div>
+                <div>Recent Errors</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="lastUpdate">-</div>
+                <div>Last Update</div>
+            </div>
+        </div>
+
+        <div class="log-container" id="logContainer">
+            {% if logs %}
+                {% for log in logs %}
+                <div class="log-entry {{ log.event_type }}" data-voice="{{ log.voice_identity }}" data-event="{{ log.event_type }}">
+                    <div class="log-timestamp">{{ log.timestamp }}</div>
+                    <div>
+                        <span class="voice-tag">{{ log.voice_identity }}</span>
+                        <span class="event-tag {{ log.event_type }}">{{ log.event_type }}</span>
+                    </div>
+                    <div class="log-message">{{ log.message }}</div>
+                    {% if log.data %}
+                    <div class="log-data">{{ log.data | tojson(indent=2) }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="no-logs">
+                🧠 No training activity recorded yet. Start a voice training session to see live updates here.
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="/" class="nav-link">← Back to Home</a>
+            <a href="/system?view=voice_training" class="nav-link">🎤 Voice Training</a>
+        </div>
+    </div>
+
+    <script>
+        let autoRefreshEnabled = true;
+        let refreshTimer;
+
+        function updateRefreshIndicator() {
+            const indicator = document.getElementById('refreshIndicator');
+            indicator.className = 'refresh-indicator ' + (autoRefreshEnabled ? 'active' : 'inactive');
+        }
+
+        function refreshLogs() {
+            fetch('/api/training-activity')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        updateLogDisplay(data.logs);
+                        updateStats(data.logs);
+                        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching logs:', error);
+                });
+        }
+
+        function updateLogDisplay(logs) {
+            const container = document.getElementById('logContainer');
+            const voiceFilter = document.getElementById('voiceFilter').value;
+            const eventFilter = document.getElementById('eventFilter').value;
+
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="no-logs">🧠 No training activity recorded yet.</div>';
+                return;
+            }
+
+            const filteredLogs = logs.filter(log => {
+                const voiceMatch = !voiceFilter || log.voice_identity === voiceFilter;
+                const eventMatch = !eventFilter || log.event_type === eventFilter;
+                return voiceMatch && eventMatch;
+            });
+
+            container.innerHTML = filteredLogs.map(log => `
+                <div class="log-entry ${log.event_type}" data-voice="${log.voice_identity}" data-event="${log.event_type}">
+                    <div class="log-timestamp">${log.timestamp}</div>
+                    <div>
+                        <span class="voice-tag">${log.voice_identity}</span>
+                        <span class="event-tag ${log.event_type}">${log.event_type}</span>
+                    </div>
+                    <div class="log-message">${log.message}</div>
+                    ${log.data && Object.keys(log.data).length > 0 ? 
+                        `<div class="log-data">${JSON.stringify(log.data, null, 2)}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function updateStats(logs) {
+            document.getElementById('totalLogs').textContent = logs.length;
+            
+            const voices = new Set(logs.map(log => log.voice_identity));
+            document.getElementById('activeVoices').textContent = voices.size;
+            
+            const errors = logs.filter(log => log.event_type === 'error');
+            document.getElementById('errorCount').textContent = errors.length;
+        }
+
+        function clearLogs() {
+            if (confirm('Clear the current log view? This will only clear the display, not the actual log files.')) {
+                document.getElementById('logContainer').innerHTML = '<div class="no-logs">Logs cleared from view. Refresh to reload.</div>';
+            }
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshEnabled) {
+                refreshTimer = setInterval(refreshLogs, 5000);
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('autoRefresh').addEventListener('change', function() {
+            autoRefreshEnabled = this.checked;
+            updateRefreshIndicator();
+            
+            if (autoRefreshEnabled) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        });
+
+        document.getElementById('voiceFilter').addEventListener('change', function() {
+            refreshLogs();
+        });
+
+        document.getElementById('eventFilter').addEventListener('change', function() {
+            refreshLogs();
+        });
+
+        // Initialize
+        updateRefreshIndicator();
+        startAutoRefresh();
+        
+        // Initial stats update - use the data that's already rendered
+        const initialLogs = Array.from(document.querySelectorAll('.log-entry')).map(entry => ({
+            voice_identity: entry.getAttribute('data-voice'),
+            event_type: entry.getAttribute('data-event')
+        }));
+        updateStats(initialLogs);
+    </script>
+</body>
+</html> 

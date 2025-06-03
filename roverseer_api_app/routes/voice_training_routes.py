@@ -3,7 +3,7 @@ Voice Training Routes - Neural Voice Synthesis Management
 Handles custom voice training pipeline using textymcspeechy-piper
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 import subprocess
 import os
 import signal
@@ -39,13 +39,40 @@ neural_voice_synthesis_bp = Blueprint('neural_voice_synthesis', __name__)
 # Voice Training Configuration - Psychology-focused path naming
 class VoiceTrainingArchitecture:
     """Centralized configuration for voice training neural pathways"""
-    VOICE_DATA_PATH = "/home/codemusic/texty/voice_data"  # Input voice samples directory
-    OUTPUT_ONNX_PATH = "/home/codemusic/texty/output_onnx"  # Trained voice models output  
+    # Host paths (where data actually resides)
+    VOICE_DATA_PATH = os.getenv("VOICE_DATA_HOST_PATH", "/home/codemusic/texty/voice_data")  # Input voice samples directory
+    OUTPUT_ONNX_PATH = os.getenv("OUTPUT_ONNX_HOST_PATH", "/home/codemusic/texty/output_onnx")  # Trained voice models output  
     TRAINING_SCRIPT_PATH = "/home/codemusic/docker-stacks/textymcspeechy/train.py"  # Training orchestrator
+    
+    # Container paths (what the Docker container sees)
+    CONTAINER_VOICE_DATA_PATH = "/app/data"  # Voice samples path inside container
+    CONTAINER_OUTPUT_ONNX_PATH = "/app/output"  # Output path inside container
+    
+    # Training management paths
     TRAINING_LOG_PATH = "/tmp/training.log"  # Training session memory
     TRAINING_LOCK_PATH = "/tmp/training.lock"  # Prevents concurrent training
     TRAINING_PID_PATH = "/tmp/training.pid"  # Process identification memory
     VOICE_REGISTRY_PATH = "/tmp/voice_training_registry.json"  # Voice metadata registry
+
+    @classmethod
+    def get_container_voice_path(cls, voice_identity):
+        """Get the container path for a specific voice identity"""
+        return os.path.join(cls.CONTAINER_VOICE_DATA_PATH, voice_identity)
+    
+    @classmethod
+    def get_container_output_path(cls, voice_identity):
+        """Get the container output path for a specific voice identity"""
+        return os.path.join(cls.CONTAINER_OUTPUT_ONNX_PATH, voice_identity)
+    
+    @classmethod
+    def get_host_voice_path(cls, voice_identity):
+        """Get the host path for a specific voice identity"""
+        return os.path.join(cls.VOICE_DATA_PATH, voice_identity)
+    
+    @classmethod
+    def get_host_output_path(cls, voice_identity):
+        """Get the host output path for a specific voice identity"""
+        return os.path.join(cls.OUTPUT_ONNX_PATH, voice_identity)
 
     @classmethod
     def validate_neural_environment(cls):
@@ -230,31 +257,35 @@ def initiate_neural_voice_synthesis():
                 'message': env_message
             }), 500
         
-        # Check if voice samples exist
-        voice_samples_path = os.path.join(VoiceTrainingArchitecture.VOICE_DATA_PATH, voice_identity)
-        if not os.path.exists(voice_samples_path):
+        # Check if voice samples exist (use host path for validation)
+        host_voice_samples_path = VoiceTrainingArchitecture.get_host_voice_path(voice_identity)
+        if not os.path.exists(host_voice_samples_path):
             play_sound_async(play_neural_training_error_tune)
             display_text("ERR3")
             time.sleep(2)
             clear_display()
             return jsonify({
                 'status': 'voice_samples_not_found',
-                'message': f'Voice samples not found: {voice_samples_path}'
+                'message': f'Voice samples not found: {host_voice_samples_path}'
             }), 404
         
-        # Neural output path
-        neural_output_path = os.path.join(VoiceTrainingArchitecture.OUTPUT_ONNX_PATH, voice_identity)
-        os.makedirs(neural_output_path, exist_ok=True)
+        # Create neural output directory (use host path)
+        host_neural_output_path = VoiceTrainingArchitecture.get_host_output_path(voice_identity)
+        os.makedirs(host_neural_output_path, exist_ok=True)
+        
+        # Get container paths for Docker exec command
+        container_voice_samples_path = VoiceTrainingArchitecture.get_container_voice_path(voice_identity)
+        container_neural_output_path = VoiceTrainingArchitecture.get_container_output_path(voice_identity)
         
         # Show training started on display
         display_text("STRT")
         time.sleep(1)
         
-        # Start neural synthesis process
+        # Start neural synthesis process using container paths
         training_command = [
             'docker', 'exec', 'textymcspeechy',
             'python3', '/app/train.py',
-            voice_samples_path, neural_output_path
+            container_voice_samples_path, container_neural_output_path
         ]
         
         # Redirect output to log file for real-time monitoring
@@ -280,8 +311,8 @@ def initiate_neural_voice_synthesis():
         
         # Log training event
         log_training_event(voice_identity, 'neural_synthesis_initiated', {
-            'voice_samples_path': voice_samples_path,
-            'neural_output_path': neural_output_path,
+            'voice_samples_path': container_voice_samples_path,
+            'neural_output_path': container_neural_output_path,
             'process_id': process.pid
         })
         
@@ -292,7 +323,7 @@ def initiate_neural_voice_synthesis():
             'status': 'neural_synthesis_initiated',
             'message': f'Neural voice synthesis started for {voice_identity}',
             'voice_identity': voice_identity,
-            'neural_output_path': neural_output_path
+            'neural_output_path': container_neural_output_path
         })
         
     except Exception as e:
@@ -565,4 +596,42 @@ def get_available_voice_samples():
         return jsonify({
             'status': 'voices_error',
             'message': f'Failed to get available voices: {str(e)}'
-        }), 500 
+        }), 500
+
+@neural_voice_synthesis_bp.route('/training-activity')
+def training_activity_dashboard():
+    """Voice training activity monitoring dashboard"""
+    try:
+        # Get recent training activity logs
+        recent_logs = LoggingHelper.get_training_activity_logs(limit=500)
+        
+        # Get unique voice identities for filtering
+        voice_identities = list(set(log.get("voice_identity", "Unknown") for log in recent_logs))
+        voice_identities.sort()
+        
+        return render_template('training_activity.html', 
+                             logs=recent_logs,
+                             voice_identities=voice_identities,
+                             title="🧠 Neural Voice Training Activity Monitor")
+    except Exception as e:
+        error_msg = f"Error loading training activity dashboard: {str(e)}"
+        LoggingHelper.log_error("training_activity_dashboard", error_msg)
+        return f"Error: {error_msg}", 500
+
+@neural_voice_synthesis_bp.route('/api/training-activity/<voice_identity>')
+def get_training_activity_api(voice_identity):
+    """API endpoint to get training activity for a specific voice"""
+    try:
+        logs = LoggingHelper.get_training_activity_logs(voice_identity=voice_identity, limit=200)
+        return jsonify({"status": "success", "logs": logs})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@neural_voice_synthesis_bp.route('/api/training-activity')
+def get_all_training_activity_api():
+    """API endpoint to get all recent training activity"""
+    try:
+        logs = LoggingHelper.get_training_activity_logs(limit=100)
+        return jsonify({"status": "success", "logs": logs})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500 

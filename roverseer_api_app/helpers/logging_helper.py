@@ -179,4 +179,65 @@ class LoggingHelper:
         }
         
         with open(LoggingHelper.get_log_filename("penphin_mind"), "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry) + "\n") 
+            f.write(json.dumps(log_entry) + "\n")
+
+    @staticmethod
+    def log_training_activity(voice_identity, event_type, message, data=None):
+        """
+        Log voice training activity to dedicated training log file
+        
+        Args:
+            voice_identity (str): The voice being trained (e.g., "HomerSimpson")
+            event_type (str): Type of event (e.g., "training_start", "epoch_complete", "error", "debug")
+            message (str): Human-readable message
+            data (dict): Additional structured data
+        """
+        LoggingHelper.ensure_log_dir()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        log_entry = {
+            "timestamp": timestamp,
+            "voice_identity": voice_identity,
+            "event_type": event_type,
+            "message": message,
+            "data": data or {}
+        }
+        
+        try:
+            # Write to training activity log
+            with open(LoggingHelper.get_log_filename("training_activity"), "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as e:
+            print(f"Failed to log training activity: {e}")
+
+    @staticmethod
+    def get_training_activity_logs(voice_identity=None, limit=100):
+        """
+        Get recent training activity logs, optionally filtered by voice identity
+        
+        Args:
+            voice_identity (str): Optional filter by voice identity
+            limit (int): Maximum number of entries to return
+            
+        Returns:
+            list: List of training activity log entries
+        """
+        LoggingHelper.ensure_log_dir()
+        training_file = LoggingHelper.get_log_filename("training_activity")
+        
+        logs = []
+        if training_file.exists():
+            try:
+                with open(training_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        try:
+                            entry = json.loads(line.strip())
+                            if voice_identity is None or entry.get("voice_identity") == voice_identity:
+                                logs.append(entry)
+                        except json.JSONDecodeError:
+                            continue
+            except Exception as e:
+                print(f"Error reading training activity log: {e}")
+        
+        # Return most recent entries first
+        return logs[-limit:][::-1] 

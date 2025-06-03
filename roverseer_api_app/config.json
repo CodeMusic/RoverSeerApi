@@ -1,4 +1,5 @@
 {
   "default_voice": "en_GB-alan",
-  "debug_logging": true
+  "debug_logging": true,
+  "current_personality": "Pengu"
 }

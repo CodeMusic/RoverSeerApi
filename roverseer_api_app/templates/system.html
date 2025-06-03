@@ -773,6 +773,22 @@
                         document.getElementById('new-personality-system').value = personality.system_message || '';
                         document.getElementById('new-personality-emoji').value = personality.avatar_emoji || '🤖';
                         
+                        // Show current moods list when editing
+                        document.getElementById('current-moods-list').style.display = 'block';
+                        loadPersonalityMoodsForEdit();
+                        
+                        // Clear temp mood storage and reset form
+                        tempMoodStorage = [];
+                        resetMoodForm();
+                        updateTempMoodsDisplay();
+                        
+                        // Show mood management section for editing
+                        document.getElementById('personality-mood-section').style.display = 'block';
+                        
+                        // Make sure the add mood button is visible (not the form)
+                        document.getElementById('add-mood-button-container').style.display = 'block';
+                        document.getElementById('add-mood-form').style.display = 'none';
+                        
                         // Change the button text and set editing mode
                         const createButton = document.querySelector('button[onclick="createPersonality()"]');
                         createButton.textContent = 'Update Personality';
@@ -786,6 +802,8 @@
                         if (sectionTitle) {
                             sectionTitle.textContent = '✏️ Edit Personality';
                         }
+                        
+                        console.log('Editing personality:', selectedName);
                     }
                 })
                 .catch(error => {
@@ -851,6 +869,31 @@
                 statusDiv.className = `status-message ${data.status}`;
                 
                 if (data.status === 'success') {
+                    // Save temporary moods if any exist - WAIT for personality creation first
+                    if (tempMoodStorage.length > 0) {
+                        const finalPersonalityName = isEditing ? name : name;
+                        console.log('About to save moods for:', finalPersonalityName);
+                        
+                        // Save moods AFTER successful personality creation
+                        saveTempMoodsToPersonality(finalPersonalityName)
+                            .then(success => {
+                                if (success) {
+                                    console.log('Moods saved successfully');
+                                } else {
+                                    console.log('Some moods failed to save');
+                                }
+                                
+                                // Clean up after mood saving (success or failure)
+                                tempMoodStorage = [];
+                                updateTempMoodsDisplay();
+                            })
+                            .catch(error => {
+                                console.error('Error in mood saving process:', error);
+                                tempMoodStorage = [];
+                                updateTempMoodsDisplay();
+                            });
+                    }
+                    
                     // Clear form
                     document.getElementById('new-personality-name').value = '';
                     document.getElementById('new-personality-description').value = '';
@@ -858,6 +901,11 @@
                     document.getElementById('new-personality-emoji').value = '🤖';
                     document.getElementById('new-personality-mini-model').value = '';
                     document.getElementById('new-personality-threshold').value = '1000';
+                    
+                    // Reset mood form and hide section
+                    resetMoodForm();
+                    document.getElementById('current-moods-list').style.display = 'none';
+                    document.getElementById('personality-mood-section').style.display = 'none';
                     
                     // Reset button
                     button.removeAttribute('data-editing');
@@ -1435,6 +1483,23 @@
                 initializeVoiceTraining();
             }
             
+            // Show mood section when starting personality creation
+            const personalityNameInput = document.getElementById('new-personality-name');
+            if (personalityNameInput) {
+                personalityNameInput.addEventListener('focus', function() {
+                    // Mood section is now shown only when "Add Contextual Mood" button is clicked
+                    // No longer automatically showing mood section on name field focus
+                    /*
+                    const moodSection = document.getElementById('personality-mood-section');
+                    if (moodSection && moodSection.style.display === 'none') {
+                        moodSection.style.display = 'block';
+                        // Don't show current moods list for new personalities
+                        document.getElementById('current-moods-list').style.display = 'none';
+                    }
+                    */
+                });
+            }
+            
             // Initial status load
             refreshStatus();
             
@@ -1720,6 +1785,471 @@
             });
         }
         
+        // Mood Management Functions
+        let currentEditingMood = null;
+        let moodInfluenceCounter = 0;
+        
+        function showMoodForm() {
+            document.getElementById('add-mood-button-container').style.display = 'none';
+            document.getElementById('add-mood-form').style.display = 'block';
+        }
+        
+        function hideMoodForm() {
+            document.getElementById('add-mood-form').style.display = 'none';
+            document.getElementById('add-mood-button-container').style.display = 'block';
+            resetMoodForm();
+        }
+        
+        function loadPersonalityMoods() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            if (!selectedName) return;
+            
+            fetch(`/system/personality/${encodeURIComponent(selectedName)}/moods`)
+                .then(response => response.json())
+                .then(data => {
+                    const moodsDisplay = document.getElementById('moods-display');
+                    
+                    if (data.status === 'success' && Object.keys(data.moods).length > 0) {
+                        let html = '';
+                        for (const [moodName, moodData] of Object.entries(data.moods)) {
+                            html += `
+                                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; margin-bottom: 10px; background: #fafafa;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <strong>${moodName}</strong>
+                                        <div>
+                                            <button onclick="editMood('${moodName}')" style="background: #ffc107; color: black; border: none; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-right: 5px;">Edit</button>
+                                            <button onclick="deleteMood('${moodName}')" style="background: #dc3545; color: white; border: none; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 10px;">Delete</button>
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                                        <div>Probability: ${moodData.trigger_probability}</div>
+                                        <div>Triggers: ${moodData.context_triggers.join(', ')}</div>
+                                        <div>Influences: ${moodData.mood_influences.length} configured</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        moodsDisplay.innerHTML = html;
+                    } else {
+                        moodsDisplay.innerHTML = '<em style="color: #666;">No moods configured yet</em>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading moods:', error);
+                    document.getElementById('moods-display').innerHTML = '<em style="color: #f00;">Error loading moods</em>';
+                });
+        }
+        
+        // New mood management for personality creation/editing
+        let tempMoodStorage = []; // Store moods temporarily during creation/editing
+        
+        function loadPersonalityMoodsForEdit() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            if (!selectedName) return;
+            
+            fetch(`/system/personality/${encodeURIComponent(selectedName)}/moods`)
+                .then(response => response.json())
+                .then(data => {
+                    const moodsDisplay = document.getElementById('moods-display');
+                    
+                    if (data.status === 'success' && Object.keys(data.moods).length > 0) {
+                        let html = '';
+                        for (const [moodName, moodData] of Object.entries(data.moods)) {
+                            html += `
+                                <div style="border: 1px solid #ddd; border-radius: 5px; padding: 8px; margin-bottom: 8px; background: #fafafa;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <strong style="font-size: 13px;">${moodName}</strong>
+                                        <button onclick="deleteMoodFromEdit('${moodName}')" style="background: #dc3545; color: white; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px;">Delete</button>
+                                    </div>
+                                    <div style="font-size: 10px; color: #666; margin-top: 3px;">
+                                        ${moodData.context_triggers.join(', ')} (${moodData.trigger_probability})
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        moodsDisplay.innerHTML = html;
+                    } else {
+                        moodsDisplay.innerHTML = '<em style="color: #666;">No moods configured yet</em>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading moods for edit:', error);
+                });
+        }
+        
+        function saveMoodToForm() {
+            const moodName = document.getElementById('mood-name').value.trim();
+            const probability = parseFloat(document.getElementById('mood-probability').value);
+            const triggersText = document.getElementById('mood-triggers').value.trim();
+            
+            if (!moodName) {
+                alert('Please enter a mood name');
+                return;
+            }
+            
+            if (!triggersText) {
+                alert('Please enter at least one trigger');
+                return;
+            }
+            
+            // Parse triggers
+            const triggers = triggersText.split(',').map(t => t.trim()).filter(t => t);
+            
+            // Collect trance words
+            const tranceWords = [];
+            const influenceItems = document.querySelectorAll('.mood-influence-item');
+            influenceItems.forEach(item => {
+                const textInput = item.querySelector('input[type="text"]');
+                const weightInput = item.querySelector('input[type="number"]');
+                const text = textInput.value.trim();
+                const weight = parseFloat(weightInput.value) || 1.0;
+                
+                if (text) {
+                    tranceWords.push({ text, weight });
+                }
+            });
+            
+            if (tranceWords.length === 0) {
+                alert('Please add at least one trance word');
+                return;
+            }
+            
+            // Add to temporary storage
+            const moodData = {
+                mood_name: moodName,
+                trigger_probability: probability,
+                context_triggers: triggers,
+                mood_influences: tranceWords
+            };
+            
+            // Remove existing mood with same name if it exists
+            tempMoodStorage = tempMoodStorage.filter(m => m.mood_name !== moodName);
+            tempMoodStorage.push(moodData);
+            
+            // Update the display
+            updateTempMoodsDisplay();
+            
+            // Clear the form
+            resetMoodForm();
+            
+            showStatusMessage(`Mood "${moodName}" added to personality`, 'success');
+        }
+        
+        function updateTempMoodsDisplay() {
+            const tempMoodsList = document.getElementById('temp-moods-list');
+            
+            if (tempMoodStorage.length === 0) {
+                tempMoodsList.innerHTML = '<em style="color: #666;">No moods configured yet. Add moods above to enhance this personality.</em>';
+                return;
+            }
+            
+            let html = '';
+            tempMoodStorage.forEach((mood, index) => {
+                html += `
+                    <div style="border: 1px solid #ddd; border-radius: 5px; padding: 8px; margin-bottom: 8px; background: #fff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong style="font-size: 13px;">${mood.mood_name}</strong>
+                            <div>
+                                <button onclick="editTempMood(${index})" style="background: #ffc107; color: black; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-right: 3px;">Edit</button>
+                                <button onclick="removeTempMood(${index})" style="background: #dc3545; color: white; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px;">Remove</button>
+                            </div>
+                        </div>
+                        <div style="font-size: 10px; color: #666; margin-top: 3px;">
+                            Triggers: ${mood.context_triggers.join(', ')} (${mood.trigger_probability})<br>
+                            Trance Words: ${mood.mood_influences.map(tw => tw.text).join(', ')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            tempMoodsList.innerHTML = html;
+        }
+        
+        function removeTempMood(index) {
+            tempMoodStorage.splice(index, 1);
+            updateTempMoodsDisplay();
+        }
+        
+        function editTempMood(index) {
+            const mood = tempMoodStorage[index];
+            
+            // Populate the form with the mood data
+            document.getElementById('mood-name').value = mood.mood_name;
+            document.getElementById('mood-probability').value = mood.trigger_probability;
+            document.getElementById('mood-triggers').value = mood.context_triggers.join(', ');
+            
+            // Clear and populate trance words
+            const influencesList = document.getElementById('mood-influences-list');
+            influencesList.innerHTML = '';
+            moodInfluenceCounter = 0;
+            
+            mood.mood_influences.forEach(influence => {
+                addMoodInfluence(influence.text, influence.weight);
+            });
+            
+            // Remove the mood from temp storage (will be re-added when saved)
+            tempMoodStorage.splice(index, 1);
+            updateTempMoodsDisplay();
+            
+            // Show the form
+            showMoodForm();
+        }
+        
+        function deleteMoodFromEdit(moodName) {
+            if (!confirm(`Are you sure you want to delete the mood "${moodName}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            fetch(`/system/personality/${encodeURIComponent(selectedName)}/moods/${encodeURIComponent(moodName)}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    loadPersonalityMoodsForEdit(); // Refresh the display
+                    showStatusMessage(data.message, 'success');
+                } else {
+                    showStatusMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting mood:', error);
+                showStatusMessage('Error deleting mood: ' + error, 'error');
+            });
+        }
+        
+        function editMood(moodName) {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            fetch(`/system/personality/${encodeURIComponent(selectedName)}/moods`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success' && data.moods[moodName]) {
+                        const mood = data.moods[moodName];
+                        currentEditingMood = moodName;
+                        
+                        // Populate form
+                        document.getElementById('mood-name').value = moodName;
+                        document.getElementById('mood-probability').value = mood.trigger_probability;
+                        document.getElementById('mood-triggers').value = mood.context_triggers.join(', ');
+                        
+                        // Clear and populate mood influences
+                        const influencesList = document.getElementById('mood-influences-list');
+                        influencesList.innerHTML = '';
+                        moodInfluenceCounter = 0;
+                        
+                        mood.mood_influences.forEach(influence => {
+                            addMoodInfluence(influence.text, influence.weight);
+                        });
+                        
+                        document.getElementById('add-mood-form').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading mood for editing:', error);
+                    alert('Error loading mood data');
+                });
+        }
+        
+        function deleteMood(moodName) {
+            if (!confirm(`Are you sure you want to delete the mood "${moodName}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            fetch(`/system/personality/${encodeURIComponent(selectedName)}/moods/${encodeURIComponent(moodName)}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    loadPersonalityMoods(); // Refresh the display
+                    showStatusMessage(data.message, 'success');
+                } else {
+                    showStatusMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting mood:', error);
+                showStatusMessage('Error deleting mood: ' + error, 'error');
+            });
+        }
+        
+        function addMoodInfluence(text = '', weight = 1.0) {
+            const influencesList = document.getElementById('mood-influences-list');
+            const influenceId = ++moodInfluenceCounter;
+            
+            const influenceDiv = document.createElement('div');
+            influenceDiv.className = 'mood-influence-item';
+            influenceDiv.style.cssText = 'display: flex; gap: 10px; margin-bottom: 8px; align-items: center;';
+            influenceDiv.innerHTML = `
+                <input type="text" placeholder="e.g., 'Be creative', 'Focus on art', 'You feel inspired'..." value="${text}" 
+                       style="flex: 1; padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;">
+                <input type="number" value="${weight}" min="0.1" max="2.0" step="0.1" 
+                       style="width: 60px; padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 11px;" 
+                       placeholder="Weight" title="Influence strength (0.1 - 2.0)">
+                <button type="button" onclick="this.parentElement.remove()" 
+                        style="background: #dc3545; color: white; border: none; padding: 4px 6px; border-radius: 3px; cursor: pointer; font-size: 10px;">Remove</button>
+            `;
+            
+            influencesList.appendChild(influenceDiv);
+        }
+        
+        function resetMoodForm() {
+            document.getElementById('mood-name').value = '';
+            document.getElementById('mood-probability').value = '0.7';
+            document.getElementById('mood-triggers').value = '';
+            document.getElementById('mood-influences-list').innerHTML = '';
+            moodInfluenceCounter = 0;
+        }
+        
+        function saveTempMoodsToPersonality(personalityName) {
+            // Save all temporary moods to the personality
+            if (tempMoodStorage.length === 0) {
+                console.log('No temporary moods to save');
+                return Promise.resolve();
+            }
+            
+            console.log(`Saving ${tempMoodStorage.length} moods to ${personalityName}`);
+            
+            const promises = tempMoodStorage.map(mood => {
+                console.log('Saving mood:', mood);
+                return fetch(`/system/personality/${encodeURIComponent(personalityName)}/moods`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(mood)
+                });
+            });
+            
+            return Promise.all(promises)
+                .then(responses => {
+                    // Check if all succeeded
+                    const allSucceeded = responses.every(r => r.ok);
+                    if (allSucceeded) {
+                        console.log(`✅ Successfully saved ${tempMoodStorage.length} moods to ${personalityName}`);
+                        showStatusMessage(`Saved ${tempMoodStorage.length} moods to personality`, 'success');
+                    } else {
+                        console.warn('Some moods failed to save');
+                        showStatusMessage('Some moods failed to save', 'error');
+                    }
+                    return allSucceeded;
+                })
+                .catch(error => {
+                    console.error('Error saving temporary moods:', error);
+                    showStatusMessage('Error saving moods: ' + error, 'error');
+                    return false;
+                });
+        }
+        
+        function cancelMoodEdit() {
+            document.getElementById('add-mood-form').style.display = 'none';
+            resetMoodForm();
+            currentEditingMood = null;
+        }
+        
+        function saveMood() {
+            const select = document.getElementById('personality-select');
+            const selectedName = select.value;
+            
+            const moodName = document.getElementById('mood-name').value.trim();
+            const probability = parseFloat(document.getElementById('mood-probability').value);
+            const triggersText = document.getElementById('mood-triggers').value.trim();
+            
+            if (!moodName) {
+                alert('Please enter a mood name');
+                return;
+            }
+            
+            if (!triggersText) {
+                alert('Please enter at least one trigger');
+                return;
+            }
+            
+            // Parse triggers
+            const triggers = triggersText.split(',').map(t => t.trim()).filter(t => t);
+            
+            // Collect mood influences
+            const influences = [];
+            const influenceItems = document.querySelectorAll('.mood-influence-item');
+            influenceItems.forEach(item => {
+                const textInput = item.querySelector('input[type="text"]');
+                const weightInput = item.querySelector('input[type="number"]');
+                const text = textInput.value.trim();
+                const weight = parseFloat(weightInput.value) || 1.0;
+                
+                if (text) {
+                    influences.push({ text, weight });
+                }
+            });
+            
+            if (influences.length === 0) {
+                alert('Please add at least one mood influence');
+                return;
+            }
+            
+            const moodData = {
+                mood_name: moodName,
+                trigger_probability: probability,
+                context_triggers: triggers,
+                mood_influences: influences
+            };
+            
+            const url = currentEditingMood ? 
+                `/system/personality/${encodeURIComponent(selectedName)}/moods/${encodeURIComponent(currentEditingMood)}` :
+                `/system/personality/${encodeURIComponent(selectedName)}/moods`;
+            const method = currentEditingMood ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(moodData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    cancelMoodEdit();
+                    loadPersonalityMoods(); // Refresh the display
+                    showStatusMessage(data.message, 'success');
+                } else {
+                    showStatusMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving mood:', error);
+                showStatusMessage('Error saving mood: ' + error, 'error');
+            });
+        }
+        
+        function toggleMoodHelp() {
+            const helpDiv = document.getElementById('mood-help');
+            helpDiv.style.display = helpDiv.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function showStatusMessage(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
         // Load containers when page loads
     </script>
 </head>
@@ -1797,6 +2327,10 @@
             <a href="/system?view=voice_training" 
                class="log-type {% if view_mode == 'voice_training' %}active{% endif %}">
                🧠 Voice Training
+            </a>
+            <a href="/system?view=training_activity" 
+               class="log-type {% if view_mode == 'training_activity' %}active{% endif %}">
+               📊 Training Activity
             </a>
         </div>
         
@@ -2292,6 +2826,104 @@
                         <div class="setting-item">
                             <label for="new-personality-emoji">Avatar Emoji</label>
                             <input type="text" id="new-personality-emoji" placeholder="🤖" value="🤖" style="width: 60px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 20px; text-align: center;">
+                        </div>
+                        
+                        <!-- Mood Management Section (only shown during create/edit) -->
+                        <div id="personality-mood-section" class="setting-item" style="display: none;">
+                            <h4 style="margin: 20px 0 15px 0; color: #1a472a;">🎭 Contextual Moods</h4>
+                            
+                            <!-- Current Moods Display (only show when editing) -->
+                            <div id="current-moods-list" style="margin-bottom: 15px; display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-weight: bold;">Current Moods:</span>
+                                    <button type="button" onclick="loadPersonalityMoodsForEdit()" style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 12px;">🔄 Refresh</button>
+                                </div>
+                                <div id="moods-display" style="min-height: 40px; background: white; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
+                                    <em style="color: #666;">No moods configured yet</em>
+                                </div>
+                            </div>
+                            
+                            <!-- Add Mood Button (shows by default) -->
+                            <div id="add-mood-button-container" style="margin-bottom: 15px;">
+                                <button type="button" onclick="showMoodForm()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">🎭 Add Contextual Mood</button>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 12px;">Create dynamic personality shifts based on context triggers</p>
+                            </div>
+                            
+                            <!-- Add New Mood Form (hidden by default) -->
+                            <div id="add-mood-form" style="background: #f0f8ff; border: 1px solid #e0e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: none;">
+                                <h5 style="margin: 0 0 15px 0;">➕ Add Contextual Mood</h5>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                                    <div>
+                                        <label for="mood-name" style="display: block; font-size: 12px; margin-bottom: 3px; font-weight: bold;">Mood Name:</label>
+                                        <input type="text" id="mood-name" placeholder="e.g., creative_inspiration" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                                    </div>
+                                    <div>
+                                        <label for="mood-probability" style="display: block; font-size: 12px; margin-bottom: 3px; font-weight: bold;">Trigger Probability:</label>
+                                        <input type="number" id="mood-probability" value="0.7" min="0" max="1" step="0.1" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 15px;">
+                                    <label for="mood-triggers" style="display: block; font-size: 12px; margin-bottom: 3px; font-weight: bold;">Context Triggers (comma-separated OR conditions):</label>
+                                    <input type="text" id="mood-triggers" placeholder="e.g., sunny, morning, coding, user_happy" style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                                    <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                                        If ANY of these conditions are true, this mood can trigger (subject to probability)
+                                    </div>
+                                </div>
+                                
+                                <div id="trance-words-section" style="margin-bottom: 15px;">
+                                    <label style="display: block; font-size: 12px; margin-bottom: 5px; font-weight: bold;">Trance Words & Phrases:</label>
+                                    <div style="font-size: 11px; color: #666; margin-bottom: 8px; padding: 8px; background: #fff3cd; border-radius: 3px;">
+                                        <strong>💭 What are Trance Words?</strong><br>
+                                        These are custom words, phrases, or even full sentences that will be added to the personality's system message when this mood is triggered. 
+                                        They influence how the AI responds and behaves during the conversation.<br>
+                                        <strong>Examples:</strong> "Be more creative", "Focus on artistic aspects", "You feel inspired by the morning light", "Channel your inner poet"
+                                    </div>
+                                    <div id="mood-influences-list" style="margin-bottom: 10px;">
+                                        <!-- Trance words will be added here -->
+                                    </div>
+                                    <button type="button" onclick="addMoodInfluence()" style="background: #17a2b8; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">+ Add Trance Phrase</button>
+                                </div>
+                                
+                                <div style="display: flex; gap: 10px;">
+                                    <button type="button" onclick="saveMoodToForm()" style="background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">💾 Add This Mood</button>
+                                    <button type="button" onclick="resetMoodForm()" style="background: #6c757d; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Clear Form</button>
+                                    <button type="button" onclick="hideMoodForm()" style="background: #6c757d; color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">Cancel</button>
+                                    <button type="button" onclick="toggleMoodHelp()" style="background: #ffc107; color: black; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 12px;">❓ Help</button>
+                                </div>
+                                
+                                <!-- Help Section -->
+                                <div id="mood-help" style="margin-top: 15px; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px; display: none;">
+                                    <h6 style="margin: 0 0 8px 0;">🎭 About Contextual Moods</h6>
+                                    <p style="margin: 0 0 8px 0; font-size: 12px;">
+                                        Contextual moods add dynamic personality shifts based on environmental triggers and user input. 
+                                        When triggered, the "trance words" are added to the personality's system message, influencing how the AI responds.
+                                    </p>
+                                    <div style="margin: 8px 0; padding: 8px; background: #e8f5e8; border-radius: 3px;">
+                                        <strong style="font-size: 11px; color: #2d5a2d;">📋 Available Trigger Conditions (OR logic):</strong>
+                                        <div style="font-size: 10px; color: #2d5a2d; margin-top: 4px; line-height: 1.3;">
+                                            <strong>Time:</strong> morning, afternoon, evening, night<br>
+                                            <strong>Weather:</strong> sunny, hot, warm, cold, cool, rainy, snowy, cloudy<br>
+                                            <strong>User Emotions:</strong> user_sad, user_happy, user_angry, user_afraid, user_excited, user_frustrated<br>
+                                            <strong>Activities:</strong> coding, music, creative, learning, gaming, working<br>
+                                            <strong>Interactions:</strong> compliment, criticism, error, help_needed, philosophical, small_talk<br>
+                                            <strong>System:</strong> high_load, low_battery, startup, shutdown
+                                        </div>
+                                    </div>
+                                    <p style="margin: 0; font-size: 11px; color: #856404;">
+                                        <strong>How it works:</strong> If ANY trigger matches current conditions, this mood may activate based on its probability.
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Configured Moods List -->
+                            <div id="configured-moods-display" style="margin-bottom: 15px;">
+                                <div style="font-weight: bold; margin-bottom: 8px;">Configured Moods for this Personality:</div>
+                                <div id="temp-moods-list" style="min-height: 30px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 5px; padding: 10px;">
+                                    <em style="color: #666;">No moods configured yet. Add moods above to enhance this personality.</em>
+                                </div>
+                            </div>
                         </div>
                         
                         <button onclick="createPersonality()">Create Personality</button>

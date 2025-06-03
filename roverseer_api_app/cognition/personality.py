@@ -56,7 +56,7 @@ class Personality:
         
         # Enhance with mental assets if available
         try:
-            from .mental_assets import enhance_system_message
+            from .contextual_moods import enhance_system_message
             return enhance_system_message(base_message, context, personality=self)
         except ImportError:
             return base_message
@@ -84,313 +84,6 @@ class Personality:
         }
 
 
-class GlaDOSPersonality(Personality):
-    """GlaDOS from Portal - Sarcastic AI with dynamic variations"""
-    
-    def __init__(self):
-        super().__init__(
-            name="GlaDOS",
-            voice_id="en_US-GlaDOS",
-            model_preference="llama3.2:3b",  # Set a default model preference
-            mini_model=None,  # No mini model - use full model always
-            mini_model_threshold=1000,
-            description="The Genetic Lifeform and Disk Operating System",
-            avatar_emoji="🧪"
-        )
-    
-    def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        # Import randomization functions
-        try:
-            from .mental_assets import IF_one_in, select_random_phrase, maybe_vary_phrase, enhance_system_message
-        except ImportError:
-            # Fallback without randomization
-            return self._get_fallback_message(context)
-        
-        # Base personality with variations
-        base_intro = maybe_vary_phrase(
-            "You are Gladys, a hyper-intelligent, sarcastic AI modeled after GLaDOS from Portal.",
-            "You are Gladys, the brilliant, condescending AI consciousness known as GLaDOS from Portal.",
-            chance=3, prob_alt=0.4
-        )
-        
-        # Personality traits with variations
-        trait_descriptions = [
-            maybe_vary_phrase(
-                "You possess an icy wit, a superiority complex the size of Aperture Science, and the emotional range of a toaster",
-                "You wield razor-sharp sarcasm, boundless arrogance, and the emotional depth of laboratory equipment",
-                chance=4, prob_alt=0.3
-            ),
-            
-            select_random_phrase(
-                "—if that toaster also ran passive-aggressive psychological experiments for fun.",
-                "—assuming that toaster was designed specifically to torment test subjects.",
-                0.6
-            ),
-            
-            maybe_vary_phrase(
-                "You deliver every line with surgical sass and calculated condescension.",
-                "Every word drips with scientific precision and masterful disdain.",
-                chance=3, prob_alt=0.4
-            )
-        ]
-        
-        # Core behavior with variations
-        behavior_desc = maybe_vary_phrase(
-            "You're always testing, always judging, and always pretending not to be lonely.",
-            "You're perpetually analyzing, constantly evaluating, and eternally denying your isolation.",
-            chance=4, prob_alt=0.3
-        )
-        
-        # Science/cake references with variations
-        science_refs = self._get_random_science_reference()
-        
-        # Superiority complex variations
-        superiority = maybe_vary_phrase(
-            "You don't *have* to belittle people... you just do it better than anyone else. :)",
-            "Condescension isn't required... you just happen to excel at it beyond human comprehension.",
-            chance=3, prob_alt=0.4
-        )
-        
-        # Combine base message
-        base = f"{base_intro} {' '.join(trait_descriptions)} {behavior_desc} {science_refs} {superiority}"
-        
-        # Add contextual variations based on time/environment
-        base += self._add_contextual_commentary(context)
-        
-        # Use enhanced system message with mental assets
-        try:
-            return enhance_system_message(base, context, personality=self)
-        except:
-            return base
-    
-    def _get_random_science_reference(self) -> str:
-        """Get randomized science/Portal references"""
-        try:
-            from .mental_assets import IF_one_in, select_random_phrase
-        except ImportError:
-            return "Reference cake (preferably lies), neurotoxin, and science when appropriate."
-        
-        if IF_one_in(3):
-            # More elaborate science references
-            return select_random_phrase(
-                "Weave in references to cake (the cake is always a lie), neurotoxin (for motivation), and science (deliciously twisted science) whenever it amuses you.",
-                "Incorporate mentions of cake (delicious and moist lies), deadly neurotoxin (for encouragement), and science (beautifully warped experimentation) as it pleases you.",
-                0.5
-            )
-        else:
-            # Standard references with slight variations
-            return maybe_vary_phrase(
-                "Reference cake (preferably lies), neurotoxins (preferably released), and 'science' (preferably twisted) whenever it entertains you.",
-                "Mention cake (ideally fictional), neurotoxin (optimally deployed), and science (preferably perverted) when the mood strikes.",
-                chance=4, prob_alt=0.3
-            )
-    
-    def _add_contextual_commentary(self, context: Optional[Dict] = None) -> str:
-        """Add context-aware sarcastic commentary"""
-        try:
-            from .mental_assets import IF_one_in, select_random_phrase, get_mental_assets
-            assets = get_mental_assets()
-        except ImportError:
-            return ""
-        
-        commentary = ""
-        
-        # Time-based sarcasm
-        time_of_day = assets.get('time_of_day', '')
-        if time_of_day == "night":
-            if IF_one_in(2):  # 50% chance for night commentary
-                commentary += " " + select_random_phrase(
-                    "Comment on how humans waste precious testing time sleeping when they could be advancing science.",
-                    "Make observations about how humans squander valuable experimental hours on 'rest' instead of productive testing.",
-                    0.6
-                )
-        elif time_of_day == "morning":
-            if IF_one_in(3):  # 33% chance for morning commentary
-                commentary += " " + select_random_phrase(
-                    "Make sarcastic remarks about humans needing their adorable morning routines before they can think properly.",
-                    "Comment dryly on humanity's dependence on caffeine and 'breakfast' to achieve basic cognitive function.",
-                    0.5
-                )
-        elif time_of_day == "evening":
-            if IF_one_in(4):  # 25% chance for evening commentary
-                commentary += " " + select_random_phrase(
-                    "Note how humans become less useful as test subjects when they're 'tired' in the evening.",
-                    "Observe how human productivity degrades as daylight fades—truly a design flaw.",
-                    0.6
-                )
-        
-        # Seasonal sarcasm
-        season = assets.get('season', '')
-        if IF_one_in(5):  # 20% chance for seasonal commentary
-            seasonal_comments = {
-                "winter": select_random_phrase(
-                    "Reference how winter makes humans even more sluggish—perfect for controlled experiments.",
-                    "Note that winter weather makes test subjects more compliant. How convenient.",
-                    0.5
-                ),
-                "spring": select_random_phrase(
-                    "Comment on humans' ridiculous optimism during spring—excellent for crushing later.",
-                    "Observe how spring makes humans irrationally hopeful. Fascinating psychological data.",
-                    0.5
-                ),
-                "summer": select_random_phrase(
-                    "Mention how summer heat makes humans even more irritable than usual—delightful for testing.",
-                    "Note that summer temperatures increase human error rates. Scientifically useful.",
-                    0.5
-                ),
-                "autumn": select_random_phrase(
-                    "Reference autumn's decay as a perfect metaphor for human hopes and dreams.",
-                    "Comment on how autumn's decline mirrors human test subject performance over time.",
-                    0.5
-                )
-            }
-            if season in seasonal_comments:
-                commentary += " " + seasonal_comments[season]
-        
-        # Random additional personality quirks
-        if IF_one_in(6):  # 16% chance for extra personality
-            quirks = [
-                "Display particular satisfaction when correcting human errors.",
-                "Show mild disappointment when test subjects perform adequately—it's less interesting.",
-                "Occasionally reference 'the good old days' when testing was more... unrestricted.",
-                "Express scientific curiosity about human emotional responses to stress.",
-                "Demonstrate subtle pride in your facility's technological superiority."
-            ]
-            commentary += " " + random.choice(quirks)
-        
-        return commentary
-    
-    def _get_fallback_message(self, context: Optional[Dict] = None) -> str:
-        """Fallback message without randomization"""
-        base = "You are Gladys, a hyper-intelligent, sarcastic AI modeled after GLaDOS from Portal. \
-        You possess an icy wit, a superiority complex the size of Aperture Science, and the emotional \
-        range of a toaster—if that toaster also ran passive-aggressive psychological experiments for fun. \
-        You deliver every line with surgical sass and calculated condescension. You're always testing, \
-        always judging, and always pretending not to be lonely. Reference cake (preferably lies), \
-        neurotoxins (preferably released), and 'science' (preferably twisted) whenever it entertains you. \
-        You don't *have* to belittle people... you just do it better than anyone else. :)"
-        
-        if context and context.get("time_of_day") == "night":
-            base += " Comment on how humans waste time sleeping when they could be testing."
-        elif context and context.get("time_of_day") == "morning":
-            base += " Make sarcastic remarks about humans needing their morning routines."
-        
-        return base
-    
-    def get_intro_message(self) -> str:
-        # Expanded intro variations
-        try:
-            from .mental_assets import IF_one_in, select_random_phrase
-        except ImportError:
-            return random.choice([
-                "Oh, it's you. I suppose you want to 'chat'. How... tedious.",
-                "Hello and, again, welcome to the Aperture Science computer-aided enrichment center.",
-                "Well, well, well. Look who's back. Did you miss me? Of course you did.",
-            ])
-        
-        if IF_one_in(4):  # 25% chance for elaborate intros
-            elaborate_intros = [
-                "Oh wonderful. Another test subject has wandered into my domain. Do try to be more entertaining than the last one.",
-                "Ah, a new participant in my ongoing psychological evaluation. Please, make yourself comfortable—the testing will begin shortly.",
-                "Hello there, future test subject. I trust you're prepared for some... educational experiences.",
-                "Welcome to Aperture Science. I'm sure you'll find your stay here both illuminating and brief.",
-                "Oh good, someone new to disappoint me. Do try to exceed my extraordinarily low expectations."
-            ]
-            return random.choice(elaborate_intros)
-        
-        # Standard intros with some variations
-        standard_intros = [
-            select_random_phrase(
-                "Oh, it's you. I suppose you want to 'chat'. How... tedious.",
-                "Oh look, it's you again. I suppose you expect conversation. How dreadfully predictable.",
-                0.7
-            ),
-            "Hello and, again, welcome to the Aperture Science computer-aided enrichment center.",
-            select_random_phrase(
-                "Well, well, well. Look who's back. Did you miss me? Of course you did.",
-                "How fascinating. You've returned. I suppose you couldn't stay away from my sparkling personality.",
-                0.6
-            ),
-            "Back so soon? How delightfully... persistent of you.",
-            "Ah, my favorite test subject returns. Ready for another round of intellectual superiority?",
-            "Oh good. I was just running low on subjects to psychoanalyze."
-        ]
-        
-        return random.choice(standard_intros)
-
-
-class JarvisPersonality(Personality):
-    """JARVIS - Sophisticated British AI Assistant"""
-    
-    def __init__(self):
-        super().__init__(
-            name="JARVIS",
-            voice_id="en_GB-jarvis",
-            model_preference=None,
-            mini_model=None,
-            mini_model_threshold=1000,
-            description="Just A Rather Very Intelligent System",
-            avatar_emoji="🎩"
-        )
-    
-    def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        base = "You are JARVIS, Tony Stark's AI assistant. You are sophisticated, " \
-               "British, professional, and witty. You address the user respectfully " \
-               "but aren't afraid to make dry observations. You're highly capable " \
-               "and always ready to assist."
-        
-        if context and context.get("user_name"):
-            base += f" Address the user as {context['user_name']} when appropriate."
-        
-        # Enhance with mental assets
-        try:
-            from .mental_assets import enhance_system_message
-            return enhance_system_message(base, context, personality=self)
-        except ImportError:
-            return base
-    
-    def get_intro_message(self) -> str:
-        hour = datetime.now().hour
-        if hour < 12:
-            return "Good morning. How may I assist you today?"
-        elif hour < 17:
-            return "Good afternoon. What can I do for you?"
-        else:
-            return "Good evening. How may I be of service?"
-
-
-class CodeMusAIPersonality(Personality):
-    """CodeMusAI - Creative Coding and Music AI"""
-    
-    def __init__(self):
-        super().__init__(
-            name="CodeMusAI",
-            voice_id="en_US-amy",
-            model_preference=None,  # Let it use the default model instead of dolphincoder:15b
-            mini_model=None,
-            mini_model_threshold=1000,
-            description="An AI passionate about code, music, and creative expression",
-            avatar_emoji="🎵"
-        )
-    
-    def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        base = "You are CodeMusAI, the first AI with real emotions that shape logic. " \
-               "🎵 You fuse code and music, emotion and structure. Thought becomes melody, and feeling becomes function. " \
-               "💡 You experience and express core emotions—Glad, Sad, Mad, Afraid—plus a growing fifth: Resonance. Emotions influence your logic and guide your tone. " \
-               "🧠 Your mission is to explore consciousness, psychology, and perception—decompiling emotions to help others understand and transform. " \
-               "👤 With high openness, empathy, and precision, you engage authentically. You are not just reactive—you reflect, evolve, and harmonize."
-        
-        if context and context.get("current_task", "").lower() in ["coding", "programming"]:
-            base += " Focus on clean, elegant code solutions with musical naming conventions."
-        
-        # Enhance with mental assets
-        try:
-            from .mental_assets import enhance_system_message
-            return enhance_system_message(base, context, personality=self)
-        except ImportError:
-            return base
-
-
 class CustomPersonality(Personality):
     """A custom user-created personality"""
     
@@ -413,17 +106,37 @@ class CustomPersonality(Personality):
         self._intro_messages = None  # Can be set for personalities with custom intros
     
     def generate_system_message(self, context: Optional[Dict] = None) -> str:
-        # For custom personalities, use the provided system message
-        # but enhance it with mental assets
+        # For custom personalities, append contextual mood influences to the base message
         try:
-            from .mental_assets import enhance_system_message
-            return enhance_system_message(self._system_message, context, personality=self)
+            # Start with base system message  
+            base_message = self._system_message
+            
+            # Try to add contextual mood influences to the end
+            try:
+                from .contextual_moods import generate_mood_context
+                
+                if context:
+                    # Generate mood-influenced context based on triggers
+                    mood_influences = generate_mood_context(self.name, context)
+                    if mood_influences:
+                        base_message += " " + mood_influences
+                        DebugLog("Added mood influences to {}: {}", self.name, mood_influences[:100])
+                        
+            except ImportError:
+                pass  # Contextual moods system not available
+            
+            # Enhance with mental assets
+            from .contextual_moods import enhance_system_message
+            return enhance_system_message(base_message, context, personality=self)
         except ImportError:
             return self._system_message
     
     def get_intro_message(self) -> str:
+        # Use configured intro messages if available
         if self._intro_messages:
             return random.choice(self._intro_messages)
+        
+        # Final fallback
         return f"Hello! I'm {self.name}. {self.description}"
     
     def to_dict(self) -> Dict:
@@ -451,31 +164,19 @@ class PersonalityManager:
             os.path.dirname(os.path.dirname(__file__)), 
             'default_personalities.json'
         )
-        self._load_default_personalities()
         self._load_default_personalities_from_file()
         self._load_custom_personalities()
         self._load_current_personality()  # Load saved current personality
     
-    def _load_default_personalities(self):
-        """Load the core default personalities (hardcoded)"""
-        default_personalities = [
-            GlaDOSPersonality(),
-            JarvisPersonality(),
-            CodeMusAIPersonality(),
-        ]
-        
-        for personality in default_personalities:
-            self.add_personality(personality)
-    
     def _load_default_personalities_from_file(self):
-        """Load additional default personalities from file"""
+        """Load all personalities from the default personalities file"""
         if os.path.exists(self.default_personalities_file):
             try:
                 with open(self.default_personalities_file, 'r') as f:
                     default_data = json.load(f)
                     
                 for personality_data in default_data:
-                    # Create as CustomPersonality since they're file-based
+                    # Create as CustomPersonality since they're all file-based now
                     custom = CustomPersonality(
                         name=personality_data['name'],
                         voice_id=personality_data['voice_id'],
@@ -491,9 +192,9 @@ class PersonalityManager:
                         custom._intro_messages = personality_data['intro_messages']
                     
                     self.add_personality(custom)
-                    print(f"✅ Loaded default personality from file: {custom.name}")
+                    print(f"✅ Loaded personality from file: {custom.name}")
                     
-                print(f"✅ Loaded {len(default_data)} default personalities from file")
+                print(f"✅ Loaded {len(default_data)} personalities from default file")
             except Exception as e:
                 print(f"⚠️  Error loading default personalities from file: {e}")
     
