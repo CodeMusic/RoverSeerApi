@@ -34,6 +34,11 @@ def initialize_hardware():
         setup_button_handlers()
         print("✅ Rainbow HAT initialized successfully")
         
+        # Initialize pipeline orchestrator after hardware is ready
+        from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+        orchestrator = get_pipeline_orchestrator()
+        orchestrator._initialize_hardware_reference()  # Ensure it has the rainbow_driver reference
+        
         # Play welcoming startup tune to indicate system is ready
         from expression.sound_orchestration import play_sound_async, play_startup_tune
         play_sound_async(play_startup_tune)
@@ -142,30 +147,18 @@ def setup_button_handlers():
     from expression.text_to_speech import find_voice_files, play_voice_intro, generate_tts_audio
     from perception.speech_recognition import transcribe_audio
     from helpers.text_processing_helper import TextProcessingHelper
+    from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+    
+    # Get pipeline orchestrator
+    orchestrator = get_pipeline_orchestrator()
     
     # Track which buttons are currently pressed
     buttons_pressed = {'A': False, 'B': False, 'C': False}
     clear_history_timer = None
     
     def is_system_busy():
-        """Check if any pipeline stage is active"""
-        # Check all active pipeline stages
-        for stage, active in config.pipeline_stages.items():
-            if active and stage.endswith('_active'):
-                config.DebugLog("System busy - {} is active", stage)
-                return True
-        
-        # Also check if recording is in progress
-        if config.recording_in_progress:
-            config.DebugLog("System busy - recording in progress")
-            return True
-            
-        # Check if any active request is being processed
-        if config.active_request_count > 0:
-            config.DebugLog("System busy - {} active requests", config.active_request_count)
-            return True
-            
-        return False
+        """Check if button actions should be blocked - delegate to orchestrator"""
+        return orchestrator.should_block_button_actions()
     
     def check_clear_history():
         """Check if all buttons are pressed to clear history"""
@@ -182,7 +175,7 @@ def setup_button_handlers():
                         config.button_history.clear()
                         print("Button chat history cleared!")
                         
-                        # Play confirmation sound - random 7-note tune
+                        # Play confirmation sound using orchestrator
                         if rainbow_driver and hasattr(rainbow_driver, 'buzzer_manager'):
                             from gpiozero.tones import Tone
                             # Available notes for random selection
@@ -202,9 +195,12 @@ def setup_button_handlers():
                 clear_history_timer.start()
     
     def interrupt_audio_playback():
-        """Interrupt any currently playing audio"""
+        """Interrupt any currently playing audio using orchestrator"""
+        # Use orchestrator to handle interruption properly
+        orchestrator.request_interruption()
+        
+        # Also check for external audio processes
         if config.current_audio_process and config.current_audio_process.poll() is None:
-            # Audio is still playing, terminate it
             try:
                 config.current_audio_process.terminate()
                 config.current_audio_process.wait(timeout=1)
@@ -213,14 +209,6 @@ def setup_button_handlers():
                     config.current_audio_process.kill()
                 except:
                     pass
-            
-            # Reset pipeline since we interrupted
-            reset_pipeline_stages()
-            
-            # SAFETY: Clear any stuck buzzer sounds when interrupting
-            if rainbow_driver and hasattr(rainbow_driver, 'buzzer_manager'):
-                rainbow_driver.buzzer_manager.clear_queue_and_interrupt()
-            
             print("Audio playback interrupted")
             return True
         
@@ -232,7 +220,7 @@ def setup_button_handlers():
         
         config.DebugLog("Button A pressed")
         
-        # Check if system is busy - ignore button press if so
+        # Check if system is busy using orchestrator
         if is_system_busy():
             print("Button A ignored - system is busy")
             return
@@ -245,8 +233,9 @@ def setup_button_handlers():
         
         if not config.recording_in_progress and not all(buttons_pressed.values()):
             print(f"Button A pressed, recording_in_progress={config.recording_in_progress}")
+            # Use rainbow_driver's LED manager instead of direct calls
             if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                rainbow_driver.button_led_manager.set_led('A', True)  # LED on when pressed
+                rainbow_driver.button_led_manager.set_led('A', True)
             play_sound_async(play_toggle_left_sound)
             
             # Refresh models if we only have the default
@@ -274,8 +263,9 @@ def setup_button_handlers():
             return
             
         if not config.recording_in_progress and not any(buttons_pressed.values()):
+            # Use rainbow_driver's LED manager instead of direct calls
             if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                rainbow_driver.button_led_manager.set_led('A', False)  # LED off when released
+                rainbow_driver.button_led_manager.set_led('A', False)
             play_sound_async(play_toggle_left_echo)
             
             # Start model info scroll immediately (no delay, no extra threading)
@@ -286,7 +276,7 @@ def setup_button_handlers():
         """Toggle to next model"""
         buttons_pressed['C'] = True
         
-        # Check if system is busy - ignore button press if so
+        # Check if system is busy using orchestrator
         if is_system_busy():
             print("Button C ignored - system is busy")
             return
@@ -298,8 +288,9 @@ def setup_button_handlers():
         check_clear_history()
         
         if not config.recording_in_progress and not all(buttons_pressed.values()):
+            # Use rainbow_driver's LED manager instead of direct calls
             if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                rainbow_driver.button_led_manager.set_led('C', True)  # LED on when pressed
+                rainbow_driver.button_led_manager.set_led('C', True)
             play_sound_async(play_toggle_right_sound)
             
             # Refresh models if we only have the default
@@ -327,8 +318,9 @@ def setup_button_handlers():
             return
             
         if not config.recording_in_progress and not any(buttons_pressed.values()):
+            # Use rainbow_driver's LED manager instead of direct calls
             if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                rainbow_driver.button_led_manager.set_led('C', False)  # LED off when released
+                rainbow_driver.button_led_manager.set_led('C', False)
             play_sound_async(play_toggle_right_echo)
             
             # Start model info scroll immediately (no delay, no extra threading)
@@ -336,10 +328,10 @@ def setup_button_handlers():
                 show_current_model_info()
     
     def handle_button_b():
-        """Start recording on button press - LED solid while held"""
+        """Start recording on button press"""
         buttons_pressed['B'] = True
         
-        # Check if system is busy - ignore button press if so
+        # Check if system is busy using orchestrator
         if is_system_busy():
             print("Button B ignored - system is busy")
             return
@@ -353,9 +345,8 @@ def setup_button_handlers():
         if config.recording_in_progress or all(buttons_pressed.values()):
             return  # Ignore if already recording or clearing history
         
-        # LED solid on while button is held
-        if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-            rainbow_driver.button_led_manager.set_led('B', True)
+        # Use orchestrator to start the pipeline flow
+        orchestrator.start_pipeline_flow("voice")
     
     def handle_button_b_release():
         """Start the recording pipeline on button release"""
@@ -364,15 +355,13 @@ def setup_button_handlers():
         config.DebugLog("Button B released")
         print("Button B released - starting checks...")
         
-        # Check if system is busy - don't start recording if so
-        if is_system_busy():
-            config.DebugLog("System busy, not starting recording")
-            print("Button B: System is busy, not starting recording")
-            # Turn off LED if it was on
-            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                rainbow_driver.button_led_manager.set_led('B', False)
+        # Check if recording should be blocked using orchestrator
+        if orchestrator.should_block_recording():
+            current_state = orchestrator.get_current_state()
+            config.DebugLog("Recording blocked in {} state", current_state.value)
+            print(f"Button B: Recording blocked in {current_state.value} state")
             return
-        
+
         if config.recording_in_progress:
             config.DebugLog("Recording already in progress ({})", config.recording_in_progress)
             print(f"Button B: Recording already in progress ({config.recording_in_progress})")
@@ -425,6 +414,10 @@ def setup_button_handlers():
     
     def recording_pipeline():
         """Handle the complete recording -> transcription -> LLM -> TTS pipeline"""
+        # Get orchestrator instance
+        from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
+        orchestrator = get_pipeline_orchestrator()
+        
         try:
             # Set recording flag
             config.recording_in_progress = True
@@ -432,20 +425,17 @@ def setup_button_handlers():
             print(f"Starting recording pipeline with MIC_DEVICE: {config.MIC_DEVICE}")
             config.DebugLog("Recording flag set to True")
             
-            # Reset pipeline stages at start
-            reset_pipeline_stages()
+            # We should already be in LISTENING state from button press
+            # If not, transition to it now
+            if orchestrator.get_current_state().value != "listening":
+                orchestrator.transition_to_state(SystemState.LISTENING)
             
-            # Play confirmation sound
+            # Play confirmation sound using orchestrator
             config.DebugLog("Playing confirmation sound")
-            play_sound_async(play_confirmation_sound)
+            orchestrator.play_system_sound(play_confirmation_sound)
             
             # Record audio for 10 seconds
             temp_recording = f"/tmp/recording_{uuid.uuid4().hex}.wav"
-            
-            # Start LED blinking for recording using LED manager
-            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                config.DebugLog("Starting LED blink")
-                rainbow_driver.button_led_manager.blink_led('B')
             
             # Display countdown during recording  
             def show_countdown():
@@ -482,9 +472,13 @@ def setup_button_handlers():
             print(f"Recording command: {' '.join(record_cmd)}")
             
             # Run recording and countdown in parallel
+            # This happens DURING the LISTENING state (green blink)
             record_process = subprocess.Popen(record_cmd, 
                                             stdout=subprocess.PIPE, 
                                             stderr=subprocess.PIPE)
+            
+            # Register the process with orchestrator for cleanup tracking
+            orchestrator.register_audio_process(record_process)
             
             countdown_thread = threading.Thread(target=show_countdown)
             countdown_thread.start()
@@ -500,10 +494,6 @@ def setup_button_handlers():
                 print(f"Recording stderr: {stderr.decode()}")
             
             countdown_thread.join()
-            
-            # Stop LED blinking
-            if rainbow_driver:
-                rainbow_driver.button_led_manager.stop_led('B')
             
             # Check if recording was successful
             if return_code != 0:
@@ -532,23 +522,62 @@ def setup_button_handlers():
                 os.remove(temp_recording)
                 return
             
-            # Play recording complete sound
-            play_sound_async(play_recording_complete_sound)
+            # Play recording complete sound using orchestrator
+            orchestrator.play_system_sound(play_recording_complete_sound)
             
-            # 1. Speech to Text - Start ASR LED
-            start_system_processing('A', is_text_input=False, has_voice_output=True)  # Voice input, voice output
+            # NOW advance to speech processing (red blink) - recording is complete
+            print("🔄 Recording complete, transitioning to speech processing (red blink)...")
+            config.DebugLog("Transitioning from LISTENING to PROCESSING_SPEECH")
+            
+            try:
+                current_state_before = orchestrator.get_current_state()
+                print(f"📊 Current state before advance: {current_state_before.value}")
+                
+                orchestrator.advance_pipeline_flow()  # LISTENING -> PROCESSING_SPEECH
+                
+                current_state_after = orchestrator.get_current_state()
+                print(f"📊 Current state after advance: {current_state_after.value}")
+                
+                if current_state_after.value == "processing_speech":
+                    print("✅ Successfully transitioned to PROCESSING_SPEECH")
+                else:
+                    print(f"❌ Failed to transition - still in {current_state_after.value}")
+                    
+            except Exception as e:
+                print(f"❌ Error during state transition: {e}")
+                import traceback
+                traceback.print_exc()
+            
+            # Brief delay to ensure LED state change is visible
+            time.sleep(0.5)
+            
             transcript = None
             try:
+                print("🎤 Starting transcription with Whisper...")
                 transcript = transcribe_audio(temp_recording)
                 os.remove(temp_recording)
-                print(f"Transcription successful: {transcript[:50]}...")
+                print(f"✅ Transcription successful: {transcript[:50]}...")
             except Exception as e:
-                print(f"Transcription error: {e}")
+                print(f"❌ Transcription error: {e}")
                 transcript = "Hello, testing the system."
             
             # ASR complete, transition to LLM stage
-            stop_system_processing()  # This marks ASR complete
-            start_system_processing('B', is_text_input=False, has_voice_output=True)  # Voice input leads to voice output
+            print("🔄 Transcription complete, transitioning to LLM processing...")
+            config.DebugLog("Transitioning from PROCESSING_SPEECH to CONTEMPLATING")
+            
+            try:
+                current_state_before = orchestrator.get_current_state()
+                print(f"📊 Current state before advance: {current_state_before.value}")
+                
+                orchestrator.advance_pipeline_flow()  # PROCESSING_SPEECH -> CONTEMPLATING
+                
+                current_state_after = orchestrator.get_current_state()
+                print(f"📊 Current state after advance: {current_state_after.value}")
+                
+            except Exception as e:
+                print(f"❌ Error during state transition: {e}")
+                import traceback
+                traceback.print_exc()
             
             # Get personality manager and determine voice/model
             from cognition.personality import get_personality_manager
@@ -596,9 +625,9 @@ def setup_button_handlers():
                     voice = config.DEFAULT_VOICE
                     print("No current personality, using default voice")
             
-            play_sound_async(play_voice_intro, voice)
+            orchestrator.play_system_sound(play_voice_intro, voice)
             
-            # 2. Run LLM with selected model (will keep LED blinking)
+            # 2. Run LLM with selected model
             # Check if PenphinMind is selected
             if selected_model.lower() == "penphinmind":
                 # Use bicameral_chat_direct function
@@ -677,8 +706,7 @@ def setup_button_handlers():
             tmp_wav = f"/tmp/{uuid.uuid4().hex}.wav"
             
             # LLM complete, transition to TTS stage
-            stop_system_processing()  # This marks LLM complete
-            start_system_processing('C', is_text_input=False, has_voice_output=True)  # Voice output happening
+            orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
             
             # Sanitize text for speech
             clean_reply = TextProcessingHelper.sanitize_for_speech(reply)
@@ -687,8 +715,7 @@ def setup_button_handlers():
             output_file, tts_processing_time = generate_tts_audio(clean_reply, voice, tmp_wav)
             
             # TTS complete, transition to audio playback
-            stop_system_processing()  # This marks TTS complete
-            start_system_processing('aplay', is_text_input=False, has_voice_output=True)
+            orchestrator.advance_pipeline_flow()  # SYNTHESIZING -> EXPRESSING
             
             # Play the audio response using Popen to make it interruptible
             config.current_audio_process = subprocess.Popen(
@@ -697,14 +724,17 @@ def setup_button_handlers():
                 stderr=subprocess.PIPE
             )
             
+            # Register the process with orchestrator for cleanup tracking
+            orchestrator.register_audio_process(config.current_audio_process)
+            
             # Wait for playback to complete
             config.current_audio_process.wait()
             config.current_audio_process = None
             
             os.remove(tmp_wav)
             
-            # All complete - stop resets everything
-            stop_system_processing()
+            # All complete - return to idle
+            orchestrator.complete_pipeline_flow()  # EXPRESSING -> IDLE
 
         except Exception as e:
             print(f"Error in recording pipeline: {e}")
@@ -719,18 +749,15 @@ def setup_button_handlers():
                 "traceback": traceback.format_exc()
             })
             
-            # On error, reset everything
-            reset_pipeline_stages()
+            # On error, interrupt the pipeline using orchestrator
+            orchestrator.request_interruption()
+            
             # Show error on display
             if rainbow_driver:
                 rainbow_driver.show_error("ERROR")
         finally:
             # Reset recording flag
             config.recording_in_progress = False
-            
-            # Stop any LED animations
-            if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-                rainbow_driver.button_led_manager.stop_led('B')
             
             # Clear display
             if rainbow_driver:
@@ -771,96 +798,49 @@ def setup_button_handlers():
 #
 
 def reset_pipeline_stages():
-    """Reset all pipeline stages to inactive"""
-    # Reset pipeline flags
-    for key in config.pipeline_stages:
-        config.pipeline_stages[key] = False
-        
-    # Reset RGB LEDs (primary pipeline visualization)
-    if rainbow_driver and hasattr(rainbow_driver, 'rgb_leds'):
-        rainbow_driver.rgb_leds.set_all_leds_off()  # Rainbow strip pixels 0-2
-    
-    # Stop any button LED animations but keep them available for user interaction
-    if rainbow_driver and hasattr(rainbow_driver, 'button_led_manager'):
-        rainbow_driver.button_led_manager.stop_all_leds()  # Button LEDs A/B/C
+    """Reset all pipeline stages to inactive using orchestrator"""
+    from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+    orchestrator = get_pipeline_orchestrator()
+    orchestrator.complete_pipeline_flow()  # Forces transition to IDLE and cleanup
 
 
 def start_system_processing(led_color='B', is_text_input=False, has_voice_output=True):
-    """Start the current blinking LED and mark stage as active"""
-    if not rainbow_driver:
-        return
-        
-    # Mark current active stage as active
-    if led_color == 'A':  # ASR stage
-        config.pipeline_stages['asr_active'] = True
-        
-        # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            # During ASR, red LED blinks
-            rainbow_driver.button_led_manager.show_progress('asr')
-        
-    elif led_color == 'B':  # LLM stage
-        config.pipeline_stages['llm_active'] = True
-        
-        # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            # During LLM, red solid + green blinking
-            rainbow_driver.button_led_manager.show_progress('llm')
-        
-    elif led_color == 'C':  # TTS stage
-        config.pipeline_stages['tts_active'] = True
-        
-        # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            # During TTS, red+green solid, blue blinking
-            rainbow_driver.button_led_manager.show_progress('tts')
-        
-    elif led_color == 'aplay':  # Audio playback stage
-        config.pipeline_stages['aplay_active'] = True
-        
-        # Keep button LED manager for audio playback feedback only
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            # During playback, all LEDs solid
-            rainbow_driver.button_led_manager.show_progress('playing')
+    """Start system processing using orchestrator
+    
+    Note: This function is kept for backward compatibility but now delegates
+    to the orchestrator. The led_color parameter maps to system states.
+    """
+    from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+    from embodiment.pipeline_orchestrator import SystemState
+    
+    orchestrator = get_pipeline_orchestrator()
+    
+    # Map legacy led_color to orchestrator states
+    state_mappings = {
+        'A': SystemState.PROCESSING_SPEECH,  # ASR stage
+        'B': SystemState.CONTEMPLATING,     # LLM stage  
+        'C': SystemState.SYNTHESIZING,      # TTS stage
+        'aplay': SystemState.EXPRESSING     # Audio playback
+    }
+    
+    if led_color in state_mappings:
+        target_state = state_mappings[led_color]
+        orchestrator.transition_to_state(target_state)
+    else:
+        print(f"Warning: Unknown led_color '{led_color}' in start_system_processing")
 
 
 def stop_system_processing():
-    """Stop the current blinking LED and mark stage as complete"""
-    if not rainbow_driver:
-        return
-        
-    # Mark current active stage as complete and update display
-    if config.pipeline_stages['asr_active']:
-        config.pipeline_stages['asr_active'] = False
-        config.pipeline_stages['asr_complete'] = True
-        
-        # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            rainbow_driver.button_led_manager.show_progress('asr_complete')
-            
-    elif config.pipeline_stages['llm_active']:
-        config.pipeline_stages['llm_active'] = False
-        config.pipeline_stages['llm_complete'] = True
-        
-        # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            rainbow_driver.button_led_manager.show_progress('llm_complete')
-            
-    elif config.pipeline_stages['tts_active']:
-        config.pipeline_stages['tts_active'] = False
-        config.pipeline_stages['tts_complete'] = True
-        
-        # Use RGB LED Manager as primary pipeline visualization
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            rainbow_driver.button_led_manager.show_progress('tts_complete')
-            
-    elif config.pipeline_stages['aplay_active']:
-        # End of pipeline - reset everything
-        reset_pipeline_stages()
-        
-        # Set all LEDs to idle state
-        if hasattr(rainbow_driver, 'button_led_manager'):
-            rainbow_driver.button_led_manager.show_progress('idle')
+    """Stop system processing using orchestrator
+    
+    Note: This function is kept for backward compatibility but now delegates
+    to the orchestrator to advance to the next stage.
+    """
+    from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+    orchestrator = get_pipeline_orchestrator()
+    
+    # Advance to next stage in the pipeline
+    orchestrator.advance_pipeline_flow()
 
 # -------- EXPERIMENTAL RAINBOW STRIP HELPERS -------- #
 # These functions provide direct access to rainbow strip features

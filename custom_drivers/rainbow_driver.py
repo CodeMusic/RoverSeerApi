@@ -561,14 +561,14 @@ class LEDManager:
         """
         stages = {
             # Voice assistant pipeline stages
-            'recording': {'A': 'blink', 'B': 'off', 'C': 'off'},     # Red blink during recording
+            'recording': {'A': 'off', 'B': 'blink', 'C': 'off'},     # Green blink during recording/listening
             'asr': {'A': 'blink', 'B': 'off', 'C': 'off'},          # Red blink during ASR
             'asr_complete': {'A': 'on', 'B': 'off', 'C': 'off'},    # Red solid when ASR done
             'llm': {'A': 'on', 'B': 'blink', 'C': 'off'},           # Red solid + Green blink during LLM
             'llm_complete': {'A': 'on', 'B': 'on', 'C': 'off'},     # Red+Green solid when LLM done
             'tts': {'A': 'on', 'B': 'on', 'C': 'blink'},            # Red+Green solid + Blue blink during TTS
             'tts_complete': {'A': 'on', 'B': 'on', 'C': 'on'},      # All solid when TTS done
-            'playing': {'A': 'on', 'B': 'on', 'C': 'on'},           # All solid during playback
+            'playing': {'A': 'blink', 'B': 'blink', 'C': 'blink'},  # All blink during aplay
             'idle': {'A': 'off', 'B': 'off', 'C': 'off'}            # All off when idle
         }
         
@@ -577,10 +577,11 @@ class LEDManager:
         
         config = stages[stage]
         
-        # Update button LEDs
-        if config == 'blink_all':
+        # Special case: if all LEDs should blink (playing stage), use blink_all_leds for synchronization
+        if config == {'A': 'blink', 'B': 'blink', 'C': 'blink'}:
             self.blink_all_leds()
         else:
+            # Update button LEDs individually
             for led, state in config.items():
                 if state == 'blink':
                     self.blink_led(led)

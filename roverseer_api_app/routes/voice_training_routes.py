@@ -541,12 +541,12 @@ def get_available_voice_samples():
         
         # Display voice count
         voice_count = len(available_voices)
-        if voice_count < 10:
-            display_text(f"V0{voice_count}")
-        else:
-            display_text(f"V{voice_count:02d}")
-        time.sleep(1)
-        clear_display()
+        #if voice_count < 10:
+        #    display_text(f"V0{voice_count}")
+        # else:
+        #    display_text(f"V{voice_count:02d}")
+        #time.sleep(1)
+        #clear_display()
         
         return jsonify({
             'status': 'voices_found',
