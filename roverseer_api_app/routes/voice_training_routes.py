@@ -368,9 +368,38 @@ def get_neural_synthesis_status():
         neural_log = TrainingStateManager.get_neural_training_log()
         log_length = TrainingStateManager.get_neural_log_length()
         
-        # Calculate and display progress percentage
-        # Rough estimate: 100 log lines = ~50% progress, 200+ lines = ~90%
-        progress_percentage = min(int((log_length / 200) * 100), 95)  # Max 95% until complete
+        # Calculate proper progress based on actual training epochs
+        progress_percentage = 0
+        total_epochs = 500  # Default from training script
+        current_epoch = 0
+        
+        if neural_log:
+            # Look for epoch completion messages in the log
+            import re
+            epoch_pattern = r'Epoch (\d+)/(\d+)'
+            epoch_complete_pattern = r'✅ Epoch (\d+) completed'
+            
+            # Find total epochs from log
+            total_match = re.search(r'epochs.*(\d{3,})', neural_log)
+            if total_match:
+                total_epochs = int(total_match.group(1))
+            
+            # Find current epoch progress
+            epoch_matches = re.findall(epoch_complete_pattern, neural_log)
+            if epoch_matches:
+                current_epoch = int(epoch_matches[-1])  # Last completed epoch
+                progress_percentage = min(int((current_epoch / total_epochs) * 100), 95)
+            elif 'training_start' in neural_log.lower() or 'initializing' in neural_log.lower():
+                progress_percentage = 5  # Just started
+            elif 'smart resume' in neural_log.lower() or 'existing model' in neural_log.lower():
+                progress_percentage = 85  # Smart resume (near completion)
+            elif 'onnx export' in neural_log.lower():
+                progress_percentage = 90  # ONNX export phase
+            elif 'completed successfully' in neural_log.lower():
+                progress_percentage = 100  # Completed
+            else:
+                # Fallback to log-based estimation but with better scaling
+                progress_percentage = min(int((log_length / 50) * 10), 15)  # Cap at 15% for log-only
         
         # Display progress on digit screen
         if progress_percentage < 10:
@@ -386,7 +415,9 @@ def get_neural_synthesis_status():
             'neural_log': neural_log,
             'log_length': log_length,
             'progress_percentage': progress_percentage,
-            'message': f'Neural synthesis active for {active_identity}'
+            'current_epoch': current_epoch,
+            'total_epochs': total_epochs,
+            'message': f'Neural synthesis active for {active_identity} - Epoch {current_epoch}/{total_epochs}'
         })
         
     except Exception as e:

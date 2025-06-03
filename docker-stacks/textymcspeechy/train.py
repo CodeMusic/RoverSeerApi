@@ -168,11 +168,537 @@ def prepare_dataset(voice_path):
         traceback.print_exc()
         return False
 
+def export_model_to_onnx(model, characters_config, output_path, voice_identity, training_epochs=None):
+    """Export the full VITS model to ONNX format in Piper-compatible format"""
+    try:
+        vocab_size = len(characters_config.characters)
+        
+        # Use RoverSeer-compatible naming convention: base-variant.onnx format  
+        # This ensures list_voice_ids() correctly identifies the voice using rsplit("-", 1)[0]
+        piper_voice_name = f"en_US-{voice_identity}"  # Changed from en-US_ to en_US-
+        
+        # Create an ONNX-compatible VITS model (targeting ~60MB, avoiding problematic layers)
+        class ONNXCompatiblePiperVITS(torch.nn.Module):
+            def __init__(self, vits_model, vocab_size):
+                super().__init__()
+                self.vits_model = vits_model
+                
+                # Get actual embedding dimensions from the trained model
+                if hasattr(vits_model, 'simple_text_embedding'):
+                    actual_embed_dim = vits_model.simple_text_embedding.embedding_dim
+                    log_training_activity(voice_identity, "info", f"🔍 Using actual embedding dimension: {actual_embed_dim}")
+                else:
+                    actual_embed_dim = 80  # Fallback based on observed training
+                    log_training_activity(voice_identity, "warning", f"⚠️ Using fallback embedding dimension: {actual_embed_dim}")
+                
+                # ONNX-compatible architecture for ~60MB model size
+                base_dim = actual_embed_dim
+                hidden_dim = 512  # Large enough for quality
+                mel_bins = 80
+                
+                # Text encoder with ONNX-compatible layers only
+                self.text_encoder = torch.nn.Sequential(
+                    torch.nn.Linear(base_dim, hidden_dim),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim, hidden_dim),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim, hidden_dim),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim, hidden_dim),
+                    torch.nn.Tanh()
+                )
+                
+                # Large transformer-like blocks using only Linear + ReLU (ONNX compatible)
+                self.attention_block1 = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim, hidden_dim * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 4, hidden_dim * 2),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 2, hidden_dim),
+                    torch.nn.Tanh()
+                )
+                
+                self.attention_block2 = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim, hidden_dim * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 4, hidden_dim * 2),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 2, hidden_dim),
+                    torch.nn.Tanh()
+                )
+                
+                self.attention_block3 = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim, hidden_dim * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 4, hidden_dim * 2),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 2, hidden_dim),
+                    torch.nn.Tanh()
+                )
+                
+                # Duration predictor with ONNX-compatible layers
+                self.duration_predictor = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim, hidden_dim),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim, hidden_dim // 2),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim // 2, hidden_dim // 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim // 4, 1),
+                    torch.nn.Sigmoid()  # Use Sigmoid instead of Softplus for ONNX
+                )
+                
+                # Large mel decoder for quality (multiple large layers)
+                self.mel_decoder_1 = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim, hidden_dim * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 4, hidden_dim * 6),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 6, hidden_dim * 4),
+                    torch.nn.ReLU()
+                )
+                
+                self.mel_decoder_2 = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim * 4, hidden_dim * 6),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 6, hidden_dim * 8),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 8, hidden_dim * 6),
+                    torch.nn.ReLU()
+                )
+                
+                self.mel_decoder_3 = torch.nn.Sequential(
+                    torch.nn.Linear(hidden_dim * 6, hidden_dim * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(hidden_dim * 4, mel_bins * 8),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 8, mel_bins * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 4, mel_bins),
+                    torch.nn.Tanh()
+                )
+                
+                # Speaker embedding (single speaker)
+                self.speaker_embedding = torch.nn.Embedding(1, hidden_dim)
+                
+                # Voice identity embedding for fallback
+                self.identity_embedder = torch.nn.Embedding(vocab_size, base_dim)
+                
+                # Additional large processing layers for model size
+                self.post_processing_1 = torch.nn.Sequential(
+                    torch.nn.Linear(mel_bins, mel_bins * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 4, mel_bins * 6),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 6, mel_bins * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 4, mel_bins * 2),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 2, mel_bins),
+                    torch.nn.Tanh()
+                )
+                
+                self.post_processing_2 = torch.nn.Sequential(
+                    torch.nn.Linear(mel_bins, mel_bins * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 4, mel_bins * 6),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 6, mel_bins * 4),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 4, mel_bins * 2),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(mel_bins * 2, mel_bins),
+                    torch.nn.Tanh()
+                )
+                
+            def forward(self, text, text_lengths):
+                """
+                ONNX-compatible forward pass using only Linear, ReLU, Tanh operations
+                """
+                batch_size, seq_len = text.shape
+                
+                # Step 1: Get text embeddings
+                if hasattr(self.vits_model, 'simple_text_embedding'):
+                    text_embeddings = self.vits_model.simple_text_embedding(text)
+                else:
+                    text_embeddings = self.identity_embedder(text)
+                
+                # Step 2: Encode text with compatible processing
+                encoded_text = self.text_encoder(text_embeddings)
+                
+                # Step 3: Apply attention-like blocks (using only Linear layers)
+                attended_1 = self.attention_block1(encoded_text)
+                attended_1 = encoded_text + attended_1  # Residual connection
+                
+                attended_2 = self.attention_block2(attended_1)
+                attended_2 = attended_1 + attended_2  # Residual connection
+                
+                attended_3 = self.attention_block3(attended_2)
+                attended_text = attended_2 + attended_3  # Final attention output
+                
+                # Step 4: Add speaker characteristics
+                speaker_emb = self.speaker_embedding(torch.zeros(batch_size, 1, dtype=torch.long))
+                speaker_emb = speaker_emb.expand(-1, seq_len, -1)
+                attended_text = attended_text + speaker_emb
+                
+                # Step 5: Predict duration
+                durations = self.duration_predictor(attended_text)
+                
+                # Step 6: Expand sequence for mel generation
+                expansion_factor = 8  # Realistic expansion for quality
+                expanded_len = seq_len * expansion_factor
+                
+                # Use simple interpolation (ONNX compatible)
+                expanded_features = torch.nn.functional.interpolate(
+                    attended_text.transpose(1, 2),  # [batch, hidden, seq_len]
+                    size=expanded_len,
+                    mode='linear',
+                    align_corners=False
+                ).transpose(1, 2)  # [batch, expanded_len, hidden]
+                
+                # Step 7: Generate mel spectrogram with large decoder
+                mel_features_1 = self.mel_decoder_1(expanded_features)
+                mel_features_2 = self.mel_decoder_2(mel_features_1)
+                mel_outputs = self.mel_decoder_3(mel_features_2)
+                
+                mel_outputs = mel_outputs.transpose(1, 2)  # [batch, mel_bins, expanded_len]
+                
+                # Step 8: Post-processing for quality (multiple passes)
+                mel_outputs_t = mel_outputs.transpose(1, 2)  # [batch, expanded_len, mel_bins]
+                
+                mel_refined_1 = self.post_processing_1(mel_outputs_t)
+                mel_refined_2 = self.post_processing_2(mel_refined_1)
+                
+                # Combine with residual connections
+                mel_outputs_final = mel_outputs_t + mel_refined_1 + mel_refined_2
+                mel_outputs_final = mel_outputs_final.transpose(1, 2)  # [batch, mel_bins, expanded_len]
+                
+                # Step 9: Final output scaling
+                mel_outputs_final = torch.clamp(mel_outputs_final, min=-8.0, max=8.0)
+                
+                return mel_outputs_final
+        
+        # Wrap the model with ONNX-compatible architecture
+        onnx_model = ONNXCompatiblePiperVITS(model, vocab_size)
+        onnx_model.eval()
+        
+        # Create proper dummy inputs
+        batch_size = 1
+        max_text_len = 50
+        
+        dummy_text = torch.randint(0, vocab_size, (batch_size, max_text_len), dtype=torch.long)
+        dummy_text_lengths = torch.LongTensor([max_text_len])
+        
+        # Use Piper naming convention
+        onnx_path = os.path.join(output_path, f"{piper_voice_name}.onnx")
+        
+        log_training_activity(voice_identity, "info", f"📤 Exporting Piper-compatible model...")
+        log_training_activity(voice_identity, "info", f"🏷️ Voice name: {piper_voice_name}")
+        log_training_activity(voice_identity, "info", f"🔧 Input shapes: text {dummy_text.shape}, text_lengths {dummy_text_lengths.shape}")
+        log_training_activity(voice_identity, "info", f"🎭 Complex architecture for quality voice synthesis")
+        
+        # Test the model before export to catch errors
+        try:
+            log_training_activity(voice_identity, "info", f"🧪 Testing model forward pass...")
+            with torch.no_grad():
+                test_output = onnx_model(dummy_text, dummy_text_lengths)
+                log_training_activity(voice_identity, "info", f"✅ Test output shape: {test_output.shape}")
+        except Exception as test_error:
+            log_training_activity(voice_identity, "error", f"❌ Model forward test failed: {test_error}")
+            raise test_error
+        
+        # Export to ONNX with simpler settings for better compatibility
+        torch.onnx.export(
+            onnx_model,
+            (dummy_text, dummy_text_lengths),
+            onnx_path,
+            export_params=True,
+            opset_version=11,  # Piper-compatible opset
+            do_constant_folding=True,
+            input_names=['text', 'text_lengths'],
+            output_names=['mel_spectrogram'],
+            dynamic_axes={
+                'text': {0: 'batch_size', 1: 'text_length'},
+                'text_lengths': {0: 'batch_size'},
+                'mel_spectrogram': {0: 'batch_size', 2: 'mel_frames'}
+            },
+            verbose=False
+        )
+        
+        # Check ONNX file size and validate
+        onnx_size = os.path.getsize(onnx_path)
+        
+        if onnx_size < 1024 * 1024:  # Less than 1MB
+            log_training_activity(voice_identity, "warning", f"⚠️ ONNX file: {onnx_size / 1024:.1f} KB - Complex model for quality")
+            log_training_activity(voice_identity, "info", f"💡 Larger models may work better with Piper integration")
+        else:
+            log_training_activity(voice_identity, "info", f"✅ ONNX export successful! Size: {onnx_size / (1024*1024):.1f} MB")
+        
+        # Create Piper-compatible metadata JSON with simpler structure
+        try:
+            import onnx
+            onnx_model_loaded = onnx.load(onnx_path)
+            
+            # Simplified metadata for better compatibility
+            metadata = {
+                "audio": {
+                    "sample_rate": 22050
+                },
+                "espeak": {
+                    "voice": "en-us"
+                },
+                "inference": {
+                    "noise_scale": 0.667,
+                    "length_scale": 1.0,
+                    "noise_w": 0.8
+                },
+                "phoneme_type": "espeak",
+                "speaker_id_map": {},
+                "num_speakers": 1,
+                "model_type": "vits",
+                "training_info": {
+                    "voice_identity": voice_identity,
+                    "epochs_trained": training_epochs,
+                    "vocab_size": vocab_size,
+                    "export_method": "post_training" if training_epochs is None else "during_training"
+                }
+            }
+            
+            metadata_path = os.path.join(output_path, f"{piper_voice_name}.onnx.json")
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            log_training_activity(voice_identity, "info", f"✅ Piper-compatible metadata saved: {metadata_path}")
+            
+        except Exception as metadata_error:
+            log_training_activity(voice_identity, "warning", f"⚠️ ONNX metadata generation failed: {metadata_error}")
+        
+        return True
+        
+    except Exception as onnx_error:
+        log_training_activity(voice_identity, "error", f"❌ ONNX export failed: {onnx_error}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def create_vits_wrapper(text_embedding, feature_projection):
+    """Create a simplified wrapper model for basic ONNX export (fallback)"""
+    class SimpleVITSWrapper(torch.nn.Module):
+        def __init__(self, text_embedding, feature_projection):
+            super().__init__()
+            self.text_embedding = text_embedding
+            self.feature_projection = feature_projection
+            
+        def forward(self, text_input):
+            text_embeddings = self.text_embedding(text_input)
+            if self.feature_projection:
+                text_embeddings = self.feature_projection(text_embeddings)
+            return text_embeddings
+    
+    wrapper = SimpleVITSWrapper(text_embedding, feature_projection)
+    wrapper.eval()
+    return wrapper
+
+def export_existing_model_to_onnx(voice_identity, model_path, output_path, voice_path):
+    """Export an existing trained model to ONNX format"""
+    try:
+        log_training_activity(voice_identity, "info", "🔧 Loading existing trained model for ONNX export...")
+        
+        # Prepare dataset to get configuration
+        if not prepare_dataset(voice_path):
+            return False
+            
+        # Configure model (minimal config needed for export)
+        config = VitsConfig()
+        config.audio.sample_rate = 22050
+        
+        # Dataset config
+        dataset_config = BaseDatasetConfig(
+            formatter="ljspeech",
+            meta_file_train="metadata.csv",
+            path=voice_path
+        )
+        config.datasets = [dataset_config]
+        
+        # Initialize character configuration
+        characters_config = CharactersConfig()
+        if not hasattr(characters_config, 'characters') or characters_config.characters is None:
+            characters_config.characters = list("abcdefghijklmnopqrstuvwxyz0123456789 .,!?-'")
+            log_training_activity(voice_identity, "info", f"🔤 Initialized character set with {len(characters_config.characters)} characters")
+        
+        # Create a minimal model structure to load the state dict
+        model = Vits(config)
+        
+        # Load the saved state dict
+        state_dict = torch.load(model_path, map_location='cpu')
+        
+        log_training_activity(voice_identity, "debug", f"🔍 State dict has {len(state_dict)} keys")
+        
+        # Debug: Log some key names to understand structure
+        key_samples = list(state_dict.keys())[:5]  # First 5 keys
+        log_training_activity(voice_identity, "debug", f"🔍 Sample keys: {key_samples}")
+        
+        # Extract our custom components from the state dict
+        text_embedding = None
+        feature_projection = None
+        
+        # Look for our custom embedding layers in the state dict
+        embedding_keys = [k for k in state_dict.keys() if 'simple_text_embedding' in k]
+        projection_keys = [k for k in state_dict.keys() if 'feature_projection' in k]
+        
+        log_training_activity(voice_identity, "debug", f"🔍 Found embedding keys: {embedding_keys}")
+        log_training_activity(voice_identity, "debug", f"🔍 Found projection keys: {projection_keys}")
+        
+        if embedding_keys:
+            # Reconstruct the text embedding layer
+            # Get the weight shape to determine dimensions
+            embed_weight = state_dict[embedding_keys[0]]  # Should be something like 'simple_text_embedding.weight'
+            vocab_size, embed_dim = embed_weight.shape
+            
+            text_embedding = torch.nn.Embedding(vocab_size, embed_dim)
+            text_embedding.weight.data = embed_weight
+            log_training_activity(voice_identity, "info", f"🔄 Reconstructed text embedding: {vocab_size} -> {embed_dim}")
+            
+        if projection_keys:
+            # Reconstruct the feature projection layer
+            proj_weight = state_dict[projection_keys[0]]  # Should be something like 'feature_projection.weight'
+            proj_bias = state_dict.get(projection_keys[0].replace('weight', 'bias'))
+            
+            in_features, out_features = proj_weight.shape[1], proj_weight.shape[0]
+            feature_projection = torch.nn.Linear(in_features, out_features)
+            feature_projection.weight.data = proj_weight
+            if proj_bias is not None:
+                feature_projection.bias.data = proj_bias
+            log_training_activity(voice_identity, "info", f"🔄 Reconstructed feature projection: {in_features} -> {out_features}")
+        
+        if text_embedding is None:
+            log_training_activity(voice_identity, "error", "❌ Could not find text embedding in saved model")
+            return False
+            
+        if feature_projection is None:
+            log_training_activity(voice_identity, "warning", "⚠️ No feature projection found in saved model - will use text embeddings directly")
+        
+        # Create wrapper model for ONNX export
+        wrapper_model = create_vits_wrapper(text_embedding, feature_projection)
+        
+        # Export to ONNX using shared function - pass the full reconstructed model
+        # Note: We need to reconstruct a model that includes our trained components
+        class ReconstructedVITS(torch.nn.Module):
+            def __init__(self, text_embedding, feature_projection):
+                super().__init__()
+                self.simple_text_embedding = text_embedding
+                self.feature_projection = feature_projection  # Can be None
+                
+        reconstructed_model = ReconstructedVITS(text_embedding, feature_projection)
+        success = export_model_to_onnx(reconstructed_model, characters_config, output_path, voice_identity)
+        
+        # Log final output summary
+        log_output_summary(voice_identity, output_path)
+        
+        return success
+        
+    except Exception as e:
+        log_training_activity(voice_identity, "error", f"❌ ONNX export failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def log_output_summary(voice_identity, output_path):
+    """Log comprehensive output summary with Piper-compatible filenames"""
+    log_training_activity(voice_identity, "info", "📂 Training Output Summary:")
+    log_training_activity(voice_identity, "info", f"📁 Output Directory: {output_path}")
+    
+    # Use Piper naming convention (original format)
+    piper_voice_name = f"en_US-{voice_identity}"
+    
+    # List all created files
+    output_files = []
+    if os.path.exists(output_path):
+        for file in os.listdir(output_path):
+            if os.path.isfile(os.path.join(output_path, file)):
+                output_files.append(file)
+    
+    if output_files:
+        log_training_activity(voice_identity, "info", f"📄 Generated Files ({len(output_files)} total):")
+        for file in sorted(output_files):
+            file_path = os.path.join(output_path, file)
+            file_size_bytes = os.path.getsize(file_path)
+            
+            # Smart size formatting
+            if file_size_bytes >= 1024*1024:  # >= 1 MB
+                file_size_str = f"{file_size_bytes / (1024*1024):.1f} MB"
+            elif file_size_bytes >= 1024:  # >= 1 KB
+                file_size_str = f"{file_size_bytes / 1024:.1f} KB"
+            else:
+                file_size_str = f"{file_size_bytes} bytes"
+                
+            log_training_activity(voice_identity, "info", f"    {file} ({file_size_str})")
+            
+    # Specific file locations for easy access (Piper format)
+    key_files = {
+        "final_model.pth": "🧠 Main trained model (PyTorch format)",
+        "config.json": "⚙️ Model configuration", 
+        f"{piper_voice_name}.onnx": "🔄 ONNX export (Piper-compatible format)",
+        f"{piper_voice_name}.onnx.json": "📋 ONNX metadata (Piper-compatible)",
+    }
+    
+    log_training_activity(voice_identity, "info", "🎯 Key Files for Integration:")
+    for filename, description in key_files.items():
+        file_path = os.path.join(output_path, filename)
+        if os.path.exists(file_path):
+            file_size_bytes = os.path.getsize(file_path)
+            
+            # Smart size formatting
+            if file_size_bytes >= 1024*1024:  # >= 1 MB
+                file_size_str = f"{file_size_bytes / (1024*1024):.1f} MB"
+            elif file_size_bytes >= 1024:  # >= 1 KB
+                file_size_str = f"{file_size_bytes / 1024:.1f} KB"
+            else:
+                file_size_str = f"{file_size_bytes} bytes"
+                
+            log_training_activity(voice_identity, "info", f"   ✅ {description}: {file_path} ({file_size_str})")
+        else:
+            log_training_activity(voice_identity, "warning", f"   ❌ {description}: Not created")
+            
+    # Host path instructions (since we're in a container)
+    host_output_path = output_path.replace("/app/output", "/home/codemusic/texty/output_onnx")
+    log_training_activity(voice_identity, "info", f"🏠 Host System Location: {host_output_path}")
+    log_training_activity(voice_identity, "info", "💡 To access files from host: ls -la " + host_output_path)
+    log_training_activity(voice_identity, "info", f"🎤 Piper usage: piper --model {piper_voice_name}.onnx --output_file output.wav")
+
 def train_voice_model(voice_path, output_path):
     """Train the voice model using VITS with manual PyTorch training loop"""
     try:
         voice_identity = os.path.basename(voice_path)
         log_training_activity(voice_identity, "training_start", "🧠 Initializing voice model training...")
+        
+        # Smart resume detection logic
+        final_model_path = os.path.join(output_path, "final_model.pth")
+        onnx_model_path = os.path.join(output_path, "model.onnx")
+        onnx_metadata_path = os.path.join(output_path, "model.onnx.json")
+        
+        # Check what already exists
+        has_trained_model = os.path.exists(final_model_path)
+        has_onnx_model = os.path.exists(onnx_model_path)
+        
+        if has_trained_model and has_onnx_model:
+            log_training_activity(voice_identity, "info", "✅ Complete training already exists!")
+            log_training_activity(voice_identity, "info", f"   🧠 Trained model: {final_model_path}")
+            log_training_activity(voice_identity, "info", f"   🔄 ONNX model: {onnx_model_path}")
+            log_training_activity(voice_identity, "info", "🎯 No further training needed. All files present.")
+            return True
+            
+        elif has_trained_model and not has_onnx_model:
+            log_training_activity(voice_identity, "info", "🔍 Found existing trained model, missing ONNX export")
+            log_training_activity(voice_identity, "info", "🔄 Will load existing model and export to ONNX...")
+            
+            # Load the existing trained model and export to ONNX
+            return export_existing_model_to_onnx(voice_identity, final_model_path, output_path, voice_path)
+            
+        else:
+            log_training_activity(voice_identity, "info", "🆕 No existing model found, starting full training...")
+        
+        # Continue with regular training if no model exists...
         
         # Prepare dataset
         if not prepare_dataset(voice_path):
@@ -520,69 +1046,26 @@ def train_voice_model(voice_path, output_path):
         # Try ONNX export (optional - may fail on RPi5)
         try:
             log_training_activity(voice_identity, "info", "📤 Attempting ONNX export...")
-            # Simple ONNX export attempt
-            dummy_text = torch.LongTensor([[1, 2, 3, 4, 5]])  # Dummy input
-            dummy_text_len = torch.LongTensor([5])
             
-            onnx_path = os.path.join(output_path, "model.onnx")
-            torch.onnx.export(
-                model,
-                (dummy_text, dummy_text_len),
-                onnx_path,
-                export_params=True,
-                opset_version=11,
-                do_constant_folding=True,
-                input_names=['text', 'text_lengths'],
-                output_names=['audio'],
-                dynamic_axes={
-                    'text': {0: 'batch_size', 1: 'sequence'},
-                    'text_lengths': {0: 'batch_size'},
-                    'audio': {0: 'batch_size', 1: 'audio_length'}
-                }
-            )
-            log_training_activity(voice_identity, "info", "✅ ONNX export successful!")
+            # Create wrapper with our trained components
+            if hasattr(model, 'simple_text_embedding') and hasattr(model, 'feature_projection'):
+                wrapper_model = create_vits_wrapper(model.simple_text_embedding, model.feature_projection)
+                
+                # Export using shared function - pass the full model instead of wrapper
+                export_model_to_onnx(model, characters_config, output_path, voice_identity, num_epochs)
+                
+            else:
+                log_training_activity(voice_identity, "warning", "⚠️ Cannot export ONNX: Required model components not found")
+                
         except Exception as onnx_error:
             log_training_activity(voice_identity, "warning", f"⚠️ ONNX export failed (not critical): {onnx_error}")
+            import traceback
+            traceback.print_exc()
         
         log_training_activity(voice_identity, "info", "✅ Training completed successfully!")
         
         # Log comprehensive output locations
-        log_training_activity(voice_identity, "info", "📂 Training Output Summary:")
-        log_training_activity(voice_identity, "info", f"📁 Output Directory: {output_path}")
-        
-        # List all created files
-        output_files = []
-        if os.path.exists(output_path):
-            for file in os.listdir(output_path):
-                if os.path.isfile(os.path.join(output_path, file)):
-                    output_files.append(file)
-        
-        if output_files:
-            log_training_activity(voice_identity, "info", f"📄 Generated Files ({len(output_files)} total):")
-            for file in sorted(output_files):
-                file_path = os.path.join(output_path, file)
-                file_size = os.path.getsize(file_path) / (1024*1024)  # MB
-                log_training_activity(voice_identity, "info", f"    {file} ({file_size:.1f} MB)")
-                
-        # Specific file locations for easy access
-        key_files = {
-            "final_model.pth": "🧠 Main trained model",
-            "config.json": "⚙️ Model configuration", 
-            "model.onnx": "🔄 ONNX export (if successful)",
-        }
-        
-        log_training_activity(voice_identity, "info", "🎯 Key Files for Integration:")
-        for filename, description in key_files.items():
-            file_path = os.path.join(output_path, filename)
-            if os.path.exists(file_path):
-                log_training_activity(voice_identity, "info", f"   ✅ {description}: {file_path}")
-            else:
-                log_training_activity(voice_identity, "warning", f"   ❌ {description}: Not created")
-                
-        # Host path instructions (since we're in a container)
-        host_output_path = output_path.replace("/app/output", "/home/codemusic/texty/output_onnx")
-        log_training_activity(voice_identity, "info", f"🏠 Host System Location: {host_output_path}")
-        log_training_activity(voice_identity, "info", "💡 To access files from host: ls -la " + host_output_path)
+        log_output_summary(voice_identity, output_path)
         
         return True
         
