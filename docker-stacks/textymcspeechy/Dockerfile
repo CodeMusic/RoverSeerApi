@@ -5,6 +5,14 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libsndfile1 \
     ffmpeg \
+    libmp3lame0 \
+    libavcodec-extra \
+    libavformat-dev \
+    libavutil-dev \
+    libavdevice-dev \
+    sox \
+    libsox-dev \
+    libsox-fmt-all \
     && rm -rf /var/lib/apt/lists/*
 
 # Clear pip cache
