@@ -106,7 +106,7 @@ def home():
                 # Get personality info for history
                 personality_info = "🧠 PenphinMind"
                 if personality_manager.current_personality:
-                    personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                    personality_info = personality_manager.get_display_name_for_model("PenphinMind")
                 history.append((user_input, reply_text, personality_info))
             except Exception as e:
                 reply_text = f"Bicameral processing error: {e}"
@@ -179,10 +179,10 @@ def home():
                     # Note: speak_text handles the aplay stage internally
                     reply_text = reply
 
-                # Get personality info for history
+                # Get personality info for history with mini-model detection
                 personality_info = model
                 if personality_manager.current_personality:
-                    personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                    personality_info = personality_manager.get_display_name_for_model(model)
                 history.append((user_input, reply_text, personality_info))
             except Exception as e:
                 reply_text = f"Request failed: {e}"
@@ -290,7 +290,7 @@ def chat_ajax():
             # Get personality info for history
             personality_info = "🧠 PenphinMind"
             if personality_manager.current_personality:
-                personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                personality_info = personality_manager.get_display_name_for_model("PenphinMind")
             history.append((user_input, reply_text, personality_info))
         else:
             # Normal flow
@@ -361,10 +361,10 @@ def chat_ajax():
                     # Note: speak_text handles the aplay stage internally
                     reply_text = reply
 
-                # Get personality info for history
+                # Get personality info for history with mini-model detection
                 personality_info = model
                 if personality_manager.current_personality:
-                    personality_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                    personality_info = personality_manager.get_display_name_for_model(model)
                 history.append((user_input, reply_text, personality_info))
             except Exception as e:
                 reply_text = f"Request failed: {e}"
@@ -798,6 +798,8 @@ def create_personality():
         voice_id=data['voice_id'],
         system_message=data['system_message'],
         model_preference=data.get('model_preference'),
+        mini_model=data.get('mini_model'),
+        mini_model_threshold=data.get('mini_model_threshold', 1000),
         description=data.get('description', ''),
         avatar_emoji=data.get('avatar_emoji', '🤖')
     )
@@ -863,6 +865,8 @@ def update_personality_custom():
         voice_id=data['voice_id'],
         system_message=data['system_message'],
         model_preference=data.get('model_preference'),
+        mini_model=data.get('mini_model'),
+        mini_model_threshold=data.get('mini_model_threshold', 1000),
         description=data.get('description', ''),
         avatar_emoji=data.get('avatar_emoji', '🤖')
     )

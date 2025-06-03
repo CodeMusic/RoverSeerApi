@@ -513,9 +513,10 @@ class LEDManager:
     
     def stop_led(self, led_name):
         """Stop blinking a specific LED"""
-        if led_name in self.blink_events and self.blink_events[led_name]:
-            self.blink_events[led_name].set()
-            if led_name in self.blink_threads and self.blink_threads[led_name]:
+        if led_name in self.blink_events and self.blink_events[led_name] is not None:
+            event = self.blink_events[led_name]
+            event.set()
+            if led_name in self.blink_threads and self.blink_threads[led_name] is not None:
                 self.blink_threads[led_name].join(timeout=0.5)
             self.blink_events[led_name] = None
             self.blink_threads[led_name] = None

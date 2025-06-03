@@ -446,6 +446,42 @@
             font-size: 16px;
             margin-right: 5px;
         }
+        
+        /* Error context styles */
+        .error-context {
+            background: #fff3f3;
+            border: 1px solid #ffcdd2;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .error-context-item {
+            margin-bottom: 15px;
+        }
+        
+        .error-context-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .error-context-item strong {
+            color: #d32f2f;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .error-context-item pre {
+            background: #fff;
+            border: 1px solid #ffcdd2;
+            border-radius: 3px;
+            padding: 10px;
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            font-size: 12px;
+            color: #333;
+        }
     </style>
     
     <!-- Template data as JSON to avoid linter conflicts -->
@@ -623,6 +659,8 @@
                         document.getElementById('personality-description').textContent = personality.description;
                         document.getElementById('personality-voice').textContent = personality.voice_id;
                         document.getElementById('personality-model').textContent = personality.model_preference || 'System Default';
+                        document.getElementById('personality-mini-model').textContent = personality.mini_model || 'None';
+                        document.getElementById('personality-threshold').textContent = personality.mini_model_threshold || '1000';
                         document.getElementById('personality-details').style.display = 'block';
                         
                         // Show delete button only for custom personalities
@@ -729,6 +767,8 @@
                         document.getElementById('new-personality-name').value = personality.name;
                         document.getElementById('new-personality-voice').value = personality.voice_id;
                         document.getElementById('new-personality-model').value = personality.model_preference || '';
+                        document.getElementById('new-personality-mini-model').value = personality.mini_model || '';
+                        document.getElementById('new-personality-threshold').value = personality.mini_model_threshold || 1000;
                         document.getElementById('new-personality-description').value = personality.description || '';
                         document.getElementById('new-personality-system').value = personality.system_message || '';
                         document.getElementById('new-personality-emoji').value = personality.avatar_emoji || '🤖';
@@ -758,6 +798,8 @@
             const name = document.getElementById('new-personality-name').value.trim();
             const voice = document.getElementById('new-personality-voice').value;
             const model = document.getElementById('new-personality-model').value;
+            const miniModel = document.getElementById('new-personality-mini-model').value;
+            const threshold = parseInt(document.getElementById('new-personality-threshold').value) || 1000;
             const description = document.getElementById('new-personality-description').value.trim();
             const systemMessage = document.getElementById('new-personality-system').value.trim();
             const emoji = document.getElementById('new-personality-emoji').value.trim() || '🤖';
@@ -784,6 +826,8 @@
                 name: name,
                 voice_id: voice,
                 model_preference: model || null,
+                mini_model: miniModel || null,
+                mini_model_threshold: threshold,
                 description: description,
                 system_message: systemMessage,
                 avatar_emoji: emoji
@@ -812,6 +856,8 @@
                     document.getElementById('new-personality-description').value = '';
                     document.getElementById('new-personality-system').value = '';
                     document.getElementById('new-personality-emoji').value = '🤖';
+                    document.getElementById('new-personality-mini-model').value = '';
+                    document.getElementById('new-personality-threshold').value = '1000';
                     
                     // Reset button
                     button.removeAttribute('data-editing');
@@ -1243,6 +1289,32 @@
                             <button class="play-button" style="margin-left: 10px;" data-text="${entry.final_synthesis.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="en_US-GlaDOS" onclick="playDetailAudio(this)">🔊 Play</button>
                         </div>
                     </div>
+                `;
+            } else if (entry.type === 'errors') {
+                html = `
+                    <div class="log-detail-header">
+                        <h2>Error Log Entry</h2>
+                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
+                    </div>
+                    <div class="log-detail-section">
+                        <h4>Error Details</h4>
+                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
+                        <p><strong>Error Type:</strong> ${entry.error_type}</p>
+                        <p><strong>Message:</strong> ${entry.message}</p>
+                    </div>
+                    ${entry.context ? `
+                    <div class="log-detail-section">
+                        <h4>Context</h4>
+                        <div class="error-context">
+                            ${Object.entries(entry.context).map(([key, value]) => `
+                                <div class="error-context-item">
+                                    <strong>${key}:</strong>
+                                    <pre>${value}</pre>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
                 `;
             }
             
@@ -2111,6 +2183,12 @@
                                 <div>
                                     <strong>Preferred Model:</strong> <span id="personality-model"></span>
                                 </div>
+                                <div>
+                                    <strong>Mini Model:</strong> <span id="personality-mini-model"></span>
+                                </div>
+                                <div>
+                                    <strong>Mini Threshold:</strong> <span id="personality-threshold"></span> tokens
+                                </div>
                             </div>
                             <div id="personality-intro" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 5px; font-style: italic; display: none;">
                                 <strong>Introduction:</strong> <span id="intro-message"></span>
@@ -2177,6 +2255,28 @@
                                     <option value="{{ model }}">{{ extract_short_model_name(model) }}</option>
                                 {% endfor %}
                             </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-mini-model">Mini Model (optional)</label>
+                            <select id="new-personality-mini-model">
+                                <option value="">None (always use preferred model)</option>
+                                {% for model in available_models %}
+                                    <option value="{{ model }}">{{ extract_short_model_name(model) }}</option>
+                                {% endfor %}
+                            </select>
+                            <p style="margin-top: 5px; color: #666; font-size: 12px;">
+                                A smaller, faster model used when conversation context gets large (context overflow protection).
+                            </p>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="new-personality-threshold">Mini Model Threshold (tokens)</label>
+                            <input type="number" id="new-personality-threshold" value="1000" min="50" max="2000" step="50" 
+                                   style="width: 100px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                            <p style="margin-top: 5px; color: #666; font-size: 12px;">
+                                Switch to mini model when total context (conversation + input) exceeds this token count.
+                            </p>
                         </div>
                         
                         <div class="setting-item">

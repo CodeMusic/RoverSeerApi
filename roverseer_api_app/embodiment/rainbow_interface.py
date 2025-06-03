@@ -600,15 +600,26 @@ def setup_button_handlers():
                     
                     # Use personality's voice and model
                     voice = manager.current_personality.voice_id
-                    selected_model = manager.current_personality.model_preference or config.DEFAULT_MODEL
+                    
+                    # Use smart model selection based on total context size
+                    # Calculate total context: current transcript + conversation history
+                    context_tokens = len(transcript.split())  # Current input
+                    
+                    # Add conversation history tokens
+                    for hist_user, hist_reply, _ in config.button_history[-config.MAX_BUTTON_HISTORY:]:
+                        context_tokens += len(hist_user.split())
+                        context_tokens += len(hist_reply.split())
+                    
+                    print(f"Total context tokens: {context_tokens}")
+                    selected_model = manager.choose_model(max_tokens=context_tokens, default_model=config.DEFAULT_MODEL)
                     
                     # Verify the model exists in available models (not counting personality entries)
                     actual_models = [m for m in config.available_models if not m.startswith("PERSONALITY:")]
                     if selected_model not in actual_models:
-                        print(f"⚠️  Personality's preferred model {selected_model} not available, using default")
+                        print(f"⚠️  Selected model {selected_model} not available, using default")
                         selected_model = config.DEFAULT_MODEL
                     
-                    print(f"Using personality voice: {voice}, model: {selected_model}")
+                    print(f"Using personality voice: {voice}, selected model: {selected_model} (total context {context_tokens} tokens)")
                 else:
                     print(f"Failed to switch to personality: {personality_name}")
                     voice = config.DEFAULT_VOICE
@@ -692,6 +703,10 @@ def setup_button_handlers():
             
             print(f"Button chat history: {len(config.button_history)} exchanges")
             
+            # Show appropriate display name in console log
+            display_name = manager.get_display_name_for_model(selected_model)
+            print(f"💬 Chat saved with {display_name} using {selected_model}")
+            
             # 3. Text to Speech with personality's voice
             from cognition.personality import get_personality_manager
             manager = get_personality_manager()
@@ -752,9 +767,43 @@ def setup_button_handlers():
             # On error, interrupt the pipeline using orchestrator
             orchestrator.request_interruption()
             
-            # Show error on display
+            # Show more specific error on display based on error type
             if rainbow_driver:
-                rainbow_driver.show_error("ERROR")
+                error_message = "ERROR"  # Default fallback
+                
+                # Categorize common errors for better user feedback
+                error_str = str(e).lower()
+                if "connection" in error_str or "network" in error_str:
+                    error_message = "NET ERR"
+                elif "timeout" in error_str:
+                    error_message = "TIMEOUT"
+                elif "model" in error_str or "ollama" in error_str:
+                    error_message = "MODEL"
+                elif "voice" in error_str or "tts" in error_str:
+                    error_message = "VOICE"
+                elif "transcrib" in error_str or "asr" in error_str:
+                    error_message = "ASR ERR"
+                elif "memory" in error_str or "allocation" in error_str:
+                    error_message = "MEMORY"
+                else:
+                    # For debugging, show first 7 chars of error if it's short
+                    if len(str(e)) <= 7:
+                        error_message = str(e)[:7].upper()
+                
+                print(f"Displaying error: {error_message} (original: {e})")
+                rainbow_driver.show_error(error_message)
+                
+                # Auto-clear error after 3 seconds
+                def clear_error_display():
+                    time.sleep(3)
+                    try:
+                        rainbow_driver.clear_display()
+                    except:
+                        pass
+                
+                error_clear_thread = threading.Thread(target=clear_error_display)
+                error_clear_thread.daemon = True
+                error_clear_thread.start()
         finally:
             # Reset recording flag
             config.recording_in_progress = False

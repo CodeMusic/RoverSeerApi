@@ -82,7 +82,7 @@
                 }
                 to {
                     opacity: 1;
-                    max-height: 300px; /* Increased for sensor data */
+                    max-height: 400px; /* Increased for sensor data */
                 }
             }
             
@@ -105,6 +105,9 @@
                 background: #2c5f2d;
                 color: #ffffff;
                 margin-bottom: 4px; /* Add spacing when in collapsed section */
+                display: flex; /* Ensure flex display */
+                flex-wrap: wrap; /* Allow wrapping on small screens */
+                justify-content: center; /* Center items */
             }
             
             .ai-pipeline-status {
@@ -943,23 +946,33 @@
         
         function refreshStatus() 
         {
+            console.log('🔄 Auto-refreshing status at', new Date().toLocaleTimeString());
+            
             // Only refresh status, not reload the page
             fetch('/status_only')
                 .then(response => response.json())
                 .then(data => 
                 {
+                    console.log('📊 Status data received:', data);
+                    
                     // Update sensor data
                     if (data.sensor_data) 
                     {
-                        document.querySelector('.sensor-data').innerHTML = 
-                            '<span class="sensor-item">🌡️ HAT: ' + data.sensor_data.hat_temperature + '</span>' +
-                            '<span class="sensor-item">🖥️ CPU: ' + data.sensor_data.cpu_temperature + '</span>' +
-                            '<span class="sensor-item">🌊 ' + data.sensor_data.pressure + '</span>' +
-                            '<span class="sensor-item">🏔️ ' + data.sensor_data.altitude + '</span>' +
-                            '<span class="sensor-item">🌬️ Fan: ' + data.sensor_data.fan_state + '</span>';
+                        var sensorElement = document.querySelector('.sensor-data');
+                        if (sensorElement) {
+                            sensorElement.innerHTML = 
+                                '<span class="sensor-item">🌡️ HAT: ' + data.sensor_data.hat_temperature + '</span>' +
+                                '<span class="sensor-item">🖥️ CPU: ' + data.sensor_data.cpu_temperature + '</span>' +
+                                '<span class="sensor-item">🌊 ' + data.sensor_data.pressure + '</span>' +
+                                '<span class="sensor-item">🏔️ ' + data.sensor_data.altitude + '</span>' +
+                                '<span class="sensor-item">🌬️ Fan: ' + data.sensor_data.fan_state + '</span>';
+                            console.log('✅ Sensor data updated');
+                        } else {
+                            console.warn('⚠️ .sensor-data element not found');
+                        }
                     }
                     
-                    // Update TCP status
+                    // Update TCP status - find or create TCP services container
                     if (data.tcp_status) 
                     {
                         var statusHtml = '';
@@ -982,16 +995,39 @@
                                 '</span>';
                             }
                         }
-                        document.querySelector('.status-section').innerHTML = statusHtml;
+                        
+                        // Find the TCP services container and update only that part
+                        var statusSection = document.querySelector('.status-section');
+                        var tcpContainer = statusSection ? statusSection.querySelector('.tcp-services') : null;
+                        
+                        if (tcpContainer) {
+                            // Update existing TCP container
+                            tcpContainer.innerHTML = statusHtml;
+                            console.log('✅ TCP services updated');
+                        } else {
+                            console.warn('⚠️ .tcp-services container not found');
+                            // Create TCP container if it doesn't exist and insert before sensor data
+                            if (statusSection) {
+                                var sensorData = statusSection.querySelector('.sensor-data');
+                                var newTcpContainer = document.createElement('div');
+                                newTcpContainer.className = 'tcp-services';
+                                newTcpContainer.innerHTML = statusHtml;
+                                statusSection.insertBefore(newTcpContainer, sensorData);
+                                console.log('✅ TCP services container created and updated');
+                            }
+                        }
                     }
                     
                     // Update AI pipeline status
                     if (data.ai_pipeline) 
                     {
                         updateAIPipelineStatus(data.ai_pipeline);
+                        console.log('✅ AI pipeline status updated');
                     }
                 })
-                .catch(error => console.error('Error refreshing status:', error));
+                .catch(error => {
+                    console.error('❌ Error refreshing status:', error);
+                });
         }
         
         function updateAIPipelineStatus(pipeline) 
@@ -1289,23 +1325,37 @@
             var statusSection = document.querySelector('.status-section');
             var toggleButton = document.querySelector('.mobile-status-toggle');
             
+            console.log('Toggling mobile status. Current classes:', statusSection.className);
+            
             if (statusSection.classList.contains('mobile-expanded')) {
                 statusSection.classList.remove('mobile-expanded');
                 toggleButton.textContent = '📡 Show Status';
+                console.log('Status collapsed');
             } else {
                 statusSection.classList.add('mobile-expanded');
                 toggleButton.textContent = '📡 Hide Status';
+                console.log('Status expanded');
             }
         }
         
         // Show mobile toggle button only on mobile
         function setupMobileUI() {
+            console.log('Setting up mobile UI. Window width:', window.innerWidth);
+            
+            var toggleButton = document.querySelector('.mobile-status-toggle');
+            var statusSection = document.querySelector('.status-section');
+            
             if (window.innerWidth <= 768) {
-                document.querySelector('.mobile-status-toggle').style.display = 'block';
+                toggleButton.style.display = 'block';
+                console.log('Mobile mode: toggle button shown');
+                // Start with status expanded on mobile for better UX
+                statusSection.classList.add('mobile-expanded');
+                toggleButton.textContent = '📡 Hide Status';
             } else {
-                document.querySelector('.mobile-status-toggle').style.display = 'none';
+                toggleButton.style.display = 'none';
                 // Ensure status section is visible on desktop
-                document.querySelector('.status-section').classList.add('mobile-expanded');
+                statusSection.classList.add('mobile-expanded');
+                console.log('Desktop mode: status always visible');
             }
         }
         
@@ -1330,19 +1380,21 @@
             <!-- Collapsible status section - includes TCP services, sensor data, and refresh -->
             <div class="status-section">
                 <!-- TCP Services -->
-                {% for name, info in statuses.items() %}
-                    <span class="status-item">
-                        {% if name == "Ollama" %}
-                            <a href="http://roverseer.local:{{ info.port }}/api/tags" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
-                                {{ info.status }} {{ name }} ({{ info.port }})
-                            </a>
-                        {% else %}
-                            <a href="http://roverseer.local:{{ info.port }}" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
-                                {{ info.status }} {{ name }} ({{ info.port }})
-                            </a>
-                        {% endif %}
-                    </span>
-                {% endfor %}
+                <div class="tcp-services">
+                    {% for name, info in statuses.items() %}
+                        <span class="status-item">
+                            {% if name == "Ollama" %}
+                                <a href="http://roverseer.local:{{ info.port }}/api/tags" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
+                                    {{ info.status }} {{ name }} ({{ info.port }})
+                                </a>
+                            {% else %}
+                                <a href="http://roverseer.local:{{ info.port }}" onclick="window.open(this.href, '_blank'); return false;" class="status-link">
+                                    {{ info.status }} {{ name }} ({{ info.port }})
+                                </a>
+                            {% endif %}
+                        </span>
+                    {% endfor %}
+                </div>
                 
                 <!-- Sensor Data (moved from essential-status) -->
                 <div class="sensor-data">

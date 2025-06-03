@@ -186,7 +186,10 @@ class PipelineOrchestrator:
         if (state in progress_stage_mappings and 
             hasattr(self.rainbow_driver, 'button_led_manager')):
             stage = progress_stage_mappings[state]
+            print(f"🔥 DEBUG: Calling show_progress('{stage}') for state {state}")
             self.rainbow_driver.button_led_manager.show_progress(stage)
+        else:
+            print(f"🔥 DEBUG: No LED update - state {state} not in mappings or no button_led_manager")
         
         # Use existing ActivityLEDManager for RGB strip visualization
         if hasattr(self.rainbow_driver, 'rgb_led_manager'):
