@@ -625,6 +625,145 @@ class ContextualMoods:
         
         # Combine all enhancements
         return base_message + mood_influences + personality_context + assets_tag
+    
+    def generate_mood_influences_with_details(self, personality_name: str, context: Optional[Dict[str, Any]] = None) -> tuple[str, Dict]:
+        """
+        Generate mood-influenced additions with detailed activation data for logging
+        
+        Args:
+            personality_name: Name of the personality
+            context: Context information that might trigger mood shifts
+            
+        Returns:
+            Tuple of (mood_influences_text, detailed_activation_data)
+        """
+        detailed_data = {
+            "personality": personality_name,
+            "context_triggers_detected": [],
+            "moods_checked": [],
+            "moods_activated": [],
+            "total_moods_available": 0,
+            "activation_summary": {}
+        }
+        
+        try:
+            if not context:
+                return "", detailed_data
+            
+            # Get combined moods (default + custom)
+            personality_moods = self.get_all_moods_for_personality(personality_name)
+            if not personality_moods:
+                return "", detailed_data
+            
+            detailed_data["total_moods_available"] = len(personality_moods)
+            active_influences = []
+            
+            # Detect current context triggers
+            current_triggers = self._detect_context_triggers(context)
+            detailed_data["context_triggers_detected"] = current_triggers
+            DebugLog("Context triggers detected for {}: {}", personality_name, current_triggers)
+            
+            # Process each mood for this personality
+            for mood_name, mood_data in personality_moods.items():
+                trigger_prob = mood_data.get('trigger_probability', 1.0)
+                mood_triggers = mood_data.get('context_triggers', [])
+                influences = mood_data.get('mood_influences', [])
+                
+                # Track that we checked this mood
+                mood_check_data = {
+                    "mood_name": mood_name,
+                    "trigger_probability": trigger_prob,
+                    "context_triggers": mood_triggers,
+                    "available_influences": len(influences),
+                    "triggered": False,
+                    "activated": False,
+                    "selected_influence": None
+                }
+                
+                # Check if any current context triggers match this mood's triggers
+                matching_triggers = [t for t in current_triggers if t in mood_triggers]
+                if matching_triggers:
+                    mood_check_data["triggered"] = True
+                    mood_check_data["matching_triggers"] = matching_triggers
+                    
+                    # Roll for mood activation
+                    activation_roll = random.random()
+                    if activation_roll <= trigger_prob:
+                        mood_check_data["activated"] = True
+                        mood_check_data["activation_roll"] = activation_roll
+                        
+                        # Select specific influence from this mood
+                        if influences:
+                            selected_influence = self._weighted_choice(influences)
+                            if selected_influence:
+                                mood_check_data["selected_influence"] = selected_influence
+                                active_influences.append(selected_influence['text'])
+                                detailed_data["moods_activated"].append(mood_name)
+                                DebugLog("Activated mood {} for {}: {}", 
+                                        mood_name, personality_name, selected_influence['text'][:50])
+                    else:
+                        mood_check_data["activation_roll"] = activation_roll
+                        mood_check_data["activation_failed_reason"] = f"Roll {activation_roll:.3f} > probability {trigger_prob}"
+                
+                detailed_data["moods_checked"].append(mood_check_data)
+            
+            # Create activation summary
+            detailed_data["activation_summary"] = {
+                "total_moods": len(personality_moods),
+                "triggered_moods": len([m for m in detailed_data["moods_checked"] if m.get("triggered", False)]),
+                "activated_moods": len(detailed_data["moods_activated"]),
+                "activation_rate": len(detailed_data["moods_activated"]) / max(1, len([m for m in detailed_data["moods_checked"] if m.get("triggered", False)]))
+            }
+            
+            # Join all active mood influences
+            result = " ".join(active_influences)
+            return result, detailed_data
+            
+        except Exception as e:
+            print(f"⚠️  Error generating detailed mood influences for {personality_name}: {e}")
+            detailed_data["error"] = str(e)
+            return "", detailed_data
+    
+    def add_contextual_tags_to_response(self, response: str, personality_name: str, mood_data: Dict) -> str:
+        """
+        Add personality and mood tags to LLM response for easy log extraction
+        
+        Args:
+            response: The original LLM response
+            personality_name: Name of the personality used
+            mood_data: Mood activation data from generate_mood_influences_with_details
+            
+        Returns:
+            Response with embedded tags for analysis
+        """
+        try:
+            # Build personality tag content
+            personality_tag_content = personality_name
+            
+            # Add mood summary if moods were activated
+            if mood_data.get("moods_activated"):
+                activated_moods = mood_data["moods_activated"]
+                mood_summary = {
+                    "activated_moods": activated_moods,
+                    "context_triggers": mood_data.get("context_triggers_detected", []),
+                    "activation_summary": mood_data.get("activation_summary", {})
+                }
+                
+                # Create mood tag content
+                mood_tag_content = json.dumps(mood_summary, separators=(',', ':'))
+                
+                # Add both tags to response
+                tagged_response = f"<personality>{personality_tag_content}</personality><mood>{mood_tag_content}</mood>{response}"
+            else:
+                # Just personality tag if no moods activated
+                tagged_response = f"<personality>{personality_tag_content}</personality>{response}"
+            
+            return tagged_response
+            
+        except Exception as e:
+            print(f"⚠️  Error adding contextual tags: {e}")
+            # Return original response if tagging fails
+            return response
 
 
 # Global instance
@@ -643,6 +782,82 @@ def generate_mood_context(personality_name: str, context: Optional[Dict[str, Any
         String of mood influences to append to the system message
     """
     return contextual_moods.generate_mood_influences(personality_name, context)
+
+
+def generate_mood_context_with_details(personality_name: str, context: Optional[Dict[str, Any]] = None) -> tuple[str, Dict]:
+    """
+    Convenience function to generate mood-influenced context with detailed activation data
+    
+    Args:
+        personality_name: Name of the personality
+        context: Context information that might trigger mood shifts
+        
+    Returns:
+        Tuple of (mood_influences_text, detailed_activation_data)
+    """
+    return contextual_moods.generate_mood_influences_with_details(personality_name, context)
+
+
+def add_personality_mood_tags(response: str, personality_name: str, mood_data: Dict) -> str:
+    """
+    Convenience function to add personality and mood tags to LLM response
+    
+    Args:
+        response: The original LLM response
+        personality_name: Name of the personality used
+        mood_data: Mood activation data from generate_mood_influences_with_details
+        
+    Returns:
+        Response with embedded tags for analysis
+    """
+    return contextual_moods.add_contextual_tags_to_response(response, personality_name, mood_data)
+
+
+def extract_tags_from_response(response: str) -> Dict[str, str]:
+    """
+    Extract personality and mood tags from a response for analysis
+    
+    Args:
+        response: Response text potentially containing tags
+        
+    Returns:
+        Dict with extracted tag contents (personality, mood, clean_response)
+    """
+    import re
+    
+    extracted = {
+        "personality": None,
+        "mood": None,
+        "clean_response": response
+    }
+    
+    try:
+        # Extract personality tag
+        personality_match = re.search(r'<personality>(.*?)</personality>', response)
+        if personality_match:
+            extracted["personality"] = personality_match.group(1)
+            # Remove from clean response
+            extracted["clean_response"] = re.sub(r'<personality>.*?</personality>', '', extracted["clean_response"])
+        
+        # Extract mood tag
+        mood_match = re.search(r'<mood>(.*?)</mood>', response)
+        if mood_match:
+            extracted["mood"] = mood_match.group(1)
+            try:
+                # Try to parse mood JSON
+                extracted["mood"] = json.loads(extracted["mood"])
+            except:
+                pass  # Keep as string if not valid JSON
+            # Remove from clean response
+            extracted["clean_response"] = re.sub(r'<mood>.*?</mood>', '', extracted["clean_response"])
+        
+        # Clean up any extra whitespace
+        extracted["clean_response"] = extracted["clean_response"].strip()
+        
+    except Exception as e:
+        print(f"⚠️  Error extracting tags from response: {e}")
+    
+    return extracted
 
 
 def enhance_system_message(base_message: str, context: Optional[Dict] = None, personality: Optional[any] = None) -> str:

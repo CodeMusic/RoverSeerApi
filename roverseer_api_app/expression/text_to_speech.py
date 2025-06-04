@@ -244,20 +244,49 @@ def speak_text(text, voice_id=DEFAULT_VOICE):
     try:
         output_file, _ = generate_tts_audio(text, voice_id)
         
-        # Transition to audio playback stage (voice is still active)
-        from embodiment.rainbow_interface import start_system_processing, stop_system_processing
-        stop_system_processing()  # Stop TTS stage
-        start_system_processing('aplay')  # Start audio playback
+        # Get orchestrator for proper state management
+        from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
+        orchestrator = get_pipeline_orchestrator()
+        
+        # Transition to audio playback stage
+        orchestrator.transition_to_state(SystemState.EXPRESSING)
         
         # Play audio on device
-        subprocess.run(["aplay", "-D", AUDIO_DEVICE, output_file], check=True)
+        audio_process = subprocess.Popen(
+            ["aplay", "-D", AUDIO_DEVICE, output_file],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         
-        # Stop all processing when done
-        stop_system_processing()
+        # Register process with orchestrator for cleanup tracking
+        orchestrator.register_audio_process(audio_process)
+        
+        # Wait for completion
+        audio_process.wait()
+        
+        # Properly complete the pipeline flow when audio finishes
+        orchestrator.complete_pipeline_flow()
         
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error playing audio: {e}")
+        # Handle error properly with orchestrator
+        try:
+            from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+            orchestrator = get_pipeline_orchestrator()
+            orchestrator.request_interruption()
+        except:
+            pass
+        return False
+    except Exception as e:
+        print(f"Error in speak_text: {e}")
+        # Handle error properly with orchestrator
+        try:
+            from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+            orchestrator = get_pipeline_orchestrator()
+            orchestrator.request_interruption()
+        except:
+            pass
         return False
     finally:
         # Clean up temp file

@@ -86,8 +86,60 @@ class PipelineOrchestrator:
         # State transition callbacks
         self.state_callbacks = {}
         
+        # Load timeout settings from configuration
+        self._load_timeout_settings()
+        
+        # Start automatic cleanup thread
+        self._start_cleanup_thread()
+        
         # Initialize with hardware reference
         self._initialize_hardware_reference()
+    
+    def _load_timeout_settings(self):
+        """Load pipeline timeout settings from configuration"""
+        # REMOVED: Complex timeout system that was breaking hardware init
+        # Keep it simple - no automatic timeouts
+        self.state_timeouts = {}
+        
+    def _start_cleanup_thread(self):
+        """Start a background thread to monitor and cleanup stuck states"""
+        def cleanup_monitor():
+            while True:
+                try:
+                    time.sleep(5)  # Check every 5 seconds
+                    self._check_for_stuck_state()
+                except Exception as e:
+                    self.logger.error(f"Error in cleanup monitor: {e}")
+        
+        cleanup_thread = threading.Thread(target=cleanup_monitor, daemon=True)
+        cleanup_thread.start()
+    
+    def _check_for_stuck_state(self):
+        """Check if current state has been active too long and force reset if needed"""
+        with self.state_lock:
+            current_state = self.state.current_state
+            
+            # Skip timeout check for IDLE and INTERRUPTED states
+            if current_state in [SystemState.IDLE, SystemState.INTERRUPTED]:
+                return
+            
+            # Check if state has been active too long
+            if current_state in self.state_timeouts:
+                state_duration = time.time() - self.state.state_start_time
+                timeout = self.state_timeouts[current_state]
+                
+                if state_duration > timeout:
+                    self.logger.warning(f"State {current_state.value} has been active for {state_duration:.1f}s (timeout: {timeout}s). Force resetting...")
+                    
+                    # Force cleanup and reset to idle
+                    self.state.force_cleanup_needed = True
+                    self.transition_to_state(SystemState.IDLE, force=True)
+                    
+                    # Also reset external flags
+                    import config
+                    config.recording_in_progress = False
+                    for key in config.pipeline_stages:
+                        config.pipeline_stages[key] = False
     
     def _initialize_hardware_reference(self):
         """Initialize reference to hardware drivers"""
@@ -403,6 +455,25 @@ class PipelineOrchestrator:
         """Play a sound using the existing BuzzerManager"""
         if self.rainbow_driver and hasattr(self.rainbow_driver, 'buzzer_manager'):
             self.rainbow_driver.buzzer_manager.queue_function(sound_function, *args, **kwargs)
+    
+    def force_reset_to_idle(self):
+        """Public method to force reset the orchestrator to idle state"""
+        with self.state_lock:
+            current_state = self.state.current_state
+            self.logger.warning(f"Force resetting from {current_state.value} to IDLE")
+            
+            # Force cleanup
+            self.state.force_cleanup_needed = True
+            self.transition_to_state(SystemState.IDLE, force=True)
+            
+            # Reset external flags
+            import config
+            config.recording_in_progress = False
+            config.active_request_count = 0
+            for key in config.pipeline_stages:
+                config.pipeline_stages[key] = False
+            
+            return current_state
 
 
 # Global instance

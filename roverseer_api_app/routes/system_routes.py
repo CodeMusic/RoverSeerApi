@@ -19,6 +19,7 @@ from memory.usage_logger import (
 from helpers.text_processing_helper import TextProcessingHelper
 from embodiment.rainbow_interface import start_system_processing, stop_system_processing, get_rainbow_driver
 from embodiment.display_manager import scroll_text_on_display
+from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
 
 bp = Blueprint('system', __name__)
 
@@ -230,6 +231,16 @@ def chat_ajax():
             "ai_pipeline": get_ai_pipeline_status()
         }), 429  # 429 Too Many Requests
     
+    # CRITICAL FIX: Check orchestrator state instead of just counting requests
+    orchestrator = get_pipeline_orchestrator()
+    
+    if orchestrator.is_system_busy():
+        current_state = orchestrator.get_current_state()
+        return jsonify({
+            "error": f"RoverSeer is currently busy ({current_state.value}). Please wait a moment and try again.",
+            "ai_pipeline": get_ai_pipeline_status()
+        }), 429  # 429 Too Many Requests
+    
     # Increment active request count
     config.active_request_count += 1
     
@@ -309,20 +320,28 @@ def chat_ajax():
     error = None
     
     try:
-        # Start LLM processing LED
-        start_system_processing('B')
+        # Get orchestrator and ensure proper pipeline flow
+        orchestrator = get_pipeline_orchestrator()
+        
+        # Start LLM processing - transition to CONTEMPLATING state
+        print(f"🔧 Starting LLM processing - transitioning to CONTEMPLATING state")
+        orchestrator.transition_to_state(SystemState.CONTEMPLATING)
         
         # Check if PenphinMind is selected
         if model.lower() == "penphinmind":
-            # PenphinMind uses its own system messages, pass user's system if provided
-            reply_text = bicameral_chat_direct(user_input, system, voice)
-            # Get personality info for history
-            personality_info = "🧠 PenphinMind"
-            if personality_manager.current_personality:
-                personality_info = personality_manager.get_display_name_for_model("PenphinMind")
-            history.append((user_input, reply_text, personality_info))
+            # Use bicameral_chat_direct function
+            try:
+                reply = bicameral_chat_direct(user_input, system, voice)
+            except Exception as e:
+                reply = f"Bicameral processing error: {e}"
+            
+            # Store PenphinMind identity in history for consistency
+            history_info = "🧠 PenphinMind"
+            history.append((user_input, reply, history_info))
+            reply_text = reply
         else:
-            # Normal flow
+            # Normal single model flow
+            # Build message history with model context
             messages = []
             for user_msg, ai_reply, _ in history[-MAX_HISTORY:]:
                 messages.append({"role": "user", "content": user_msg})
@@ -347,79 +366,145 @@ def chat_ajax():
                     # Use provided system message or default
                     system_message = system or "You are RoverSeer, a helpful assistant."
                     DebugLog("Using {} system message: {}...", 'provided' if system else 'default', system_message[:100])
+                
+                # Run LLM
+                reply = run_chat_completion(model, messages, system_message, voice_id=voice)
+                
+                # Log response for analytics with voice model context
+                from memory.usage_logger import log_llm_usage
+                log_llm_usage(model, system_message, user_input, reply, voice_id=voice)
 
-                if output_type == 'text':
-                    # For text-only
-                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                    reply_text = reply
-                    # Stop LED for text-only output
-                    stop_system_processing()
+                # LLM complete, advance to next stage based on output type
+                print(f"🔧 LLM complete, advancing to next stage for output type: {output_type}")
+                
+                # TTS and audio generation
+                if output_type == "speak":
+                    # Import needed for TTS
+                    from expression.text_to_speech import speak_text
                     
-                elif output_type == 'audio_file':
+                    # Transition to TTS stage
+                    orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
+                    
+                    # Use text_to_speech speak_text function which handles the rest of the pipeline
+                    speak_text(reply, voice)
+                    
+                    reply_text = reply
+                elif output_type == "audio_file":
+                    # Import needed for TTS generation
                     from expression.text_to_speech import generate_tts_audio
                     import uuid
                     
-                    # For audio output
-                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                    
                     # Transition to TTS stage
-                    stop_system_processing()
-                    start_system_processing('C')
+                    orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
                     
-                    tmp_audio = f"{uuid.uuid4().hex}.wav"
-                    output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
-                    
-                    # Stop LED after TTS
-                    stop_system_processing()
-                    
-                    audio_url = url_for('system.serve_static', filename=tmp_audio)
-                    reply_text = reply
+                    # Generate TTS and return audio file
+                    try:
+                        # Generate TTS directly to a unique temp file
+                        temp_filename = f"response_{uuid.uuid4().hex}.wav"
+                        temp_path = f"/tmp/{temp_filename}"
                         
-                else:  # speak
-                    from expression.text_to_speech import speak_text
-                    
-                    # For spoken output
-                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                    
-                    # Transition to TTS stage
-                    stop_system_processing()
-                    start_system_processing('C')
-                    
-                    speak_text(reply, voice)
-                    
-                    # Note: speak_text handles the aplay stage internally
+                        # TTS generation
+                        output_file, tts_processing_time = generate_tts_audio(reply, voice, temp_path)
+                        print(f"✅ Audio file generated: {output_file}")
+                        
+                        # Return the temp file path for serving
+                        audio_url = f"/static/{temp_filename}"
+                        reply_text = reply
+                        
+                        # TTS complete, return to idle for audio file mode
+                        orchestrator.complete_pipeline_flow()
+                        
+                    except Exception as e:
+                        print(f"❌ TTS generation failed: {e}")
+                        DebugLog("TTS generation failed: {}", e)
+                        reply_text = f"{reply}\n\n(Audio generation failed: {e})"
+                        orchestrator.complete_pipeline_flow()  # Reset on error
+                else:
+                    # Text only - complete pipeline and return to idle
+                    print(f"🔧 Text-only mode, completing pipeline flow")
+                    orchestrator.complete_pipeline_flow()
                     reply_text = reply
 
-                # Get personality info for history with mini-model detection
-                personality_info = model
-                if personality_manager.current_personality:
-                    personality_info = personality_manager.get_display_name_for_model(model)
-                history.append((user_input, reply_text, personality_info))
+                # Determine what to show in history - match the frontend logic
+                history_info = model  # Default fallback
+                
+                if use_personality and personality_manager.current_personality:
+                    # If using personality mode, show personality name with emoji
+                    history_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                else:
+                    # Check if this model is associated with any personality
+                    for personality in personality_manager.personalities.values():
+                        if personality.model_preference == model:
+                            history_info = f"{personality.avatar_emoji} {personality.name}"
+                            break
+                    # If no personality association found, keep the model name as fallback
+                
+                history.append((user_input, reply_text, history_info))
             except Exception as e:
                 reply_text = f"Request failed: {e}"
+                # Save error to history with model name
+                history.append((user_input, reply_text, model))
             
     except Exception as e:
         error = str(e)
         reply_text = f"Request failed: {e}"
-        # Make sure to stop LED on error
+        print(f"🔧 Error in chat_ajax: {e}")
+        
+        # Make sure to reset orchestrator on error
         try:
-            stop_system_processing()
-        except:
-            pass
+            orchestrator = get_pipeline_orchestrator()
+            current_state = orchestrator.get_current_state()
+            print(f"🔧 Error occurred, orchestrator in state: {current_state.value}")
+            orchestrator.complete_pipeline_flow()  # Reset to idle
+            print(f"🔧 Orchestrator reset to idle after error")
+        except Exception as reset_error:
+            print(f"🔧 Failed to reset orchestrator after error: {reset_error}")
     finally:
         # Always decrement active request count
         config.active_request_count -= 1
+        
+        # Ensure orchestrator is in a clean state
+        try:
+            orchestrator = get_pipeline_orchestrator()
+            current_state = orchestrator.get_current_state()
+            print(f"🔧 Finally block - orchestrator state: {current_state.value}")
+            if current_state.value not in ["idle", "interrupted"]:
+                print(f"🔧 Finally block - forcing orchestrator to idle from {current_state.value}")
+                orchestrator.complete_pipeline_flow()
+        except Exception as final_error:
+            print(f"🔧 Error in finally block: {final_error}")
     
     # Get updated AI pipeline status
     ai_pipeline = get_ai_pipeline_status()
     
-    # Get current personality info for frontend display
+    # Get personality info for frontend display based on which model actually handled this request
     personality_data = None
-    if personality_manager.current_personality:
+    
+    # Determine which personality should be displayed for this specific request
+    if use_personality and personality_manager.current_personality:
+        # If using personality mode and we have a current personality, show it
         personality_data = {
             'name': personality_manager.current_personality.name,
             'avatar_emoji': personality_manager.current_personality.avatar_emoji
         }
+    elif model.lower() == "penphinmind":
+        # Special case for PenphinMind - show PenphinMind identity
+        personality_data = {
+            'name': 'PenphinMind',
+            'avatar_emoji': '🧠'
+        }
+    else:
+        # For regular models, check if this model is associated with any personality
+        # This handles cases where someone selected a model directly but it's a personality's preferred model
+        for personality in personality_manager.personalities.values():
+            if personality.model_preference == model:
+                personality_data = {
+                    'name': personality.name,
+                    'avatar_emoji': personality.avatar_emoji
+                }
+                break
+        
+        # If no personality association found, don't show personality data (will fall back to model name)
     
     return jsonify({
         "reply": reply_text,
@@ -635,8 +720,13 @@ def list_models():
                 model["run_count"] = 0
                 model["last_runtime"] = None
         
-        # Sort models by parameter size
+        # Sort models by parameter size using the existing function
         model_names = [m["name"] for m in models_info]
+        
+        # Explicitly add PenphinMind to the list for model selection
+        if "PenphinMind" not in model_names:
+            model_names.insert(0, "PenphinMind")
+            
         sorted_names = sort_models_by_size(model_names, models_info)
         
         # Reorder models_info based on sorted names
@@ -1140,4 +1230,32 @@ def delete_personality_mood(personality_name, mood_name):
         return jsonify({
             "status": "error",
             "message": f"Error deleting mood: {str(e)}"
+        }), 500 
+
+
+@bp.route('/system/reset_pipeline', methods=['POST'])
+def reset_pipeline_state():
+    """Force reset the pipeline orchestrator when it gets stuck"""
+    try:
+        from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+        
+        orchestrator = get_pipeline_orchestrator()
+        current_state_before = orchestrator.get_current_state()
+        
+        print(f"🔧 Force resetting pipeline state from: {current_state_before.value}")
+        
+        # Use the new force reset method
+        previous_state = orchestrator.force_reset_to_idle()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Pipeline reset from {previous_state.value} to idle",
+            "previous_state": previous_state.value,
+            "current_state": "idle"
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "status": "error", 
+            "message": f"Failed to reset pipeline: {str(e)}"
         }), 500 

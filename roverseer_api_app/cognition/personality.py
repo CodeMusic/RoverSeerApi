@@ -111,16 +111,26 @@ class CustomPersonality(Personality):
             # Start with base system message  
             base_message = self._system_message
             
+            # Store mood data for potential logging
+            self._last_mood_data = None
+            
             # Try to add contextual mood influences to the end
             try:
-                from .contextual_moods import generate_mood_context
+                from .contextual_moods import generate_mood_context_with_details
                 
                 if context:
-                    # Generate mood-influenced context based on triggers
-                    mood_influences = generate_mood_context(self.name, context)
+                    # Generate mood-influenced context with detailed data
+                    mood_influences, mood_data = generate_mood_context_with_details(self.name, context)
+                    
+                    # Store the detailed mood data for logging
+                    self._last_mood_data = mood_data
+                    
                     if mood_influences:
                         base_message += " " + mood_influences
                         DebugLog("Added mood influences to {}: {}", self.name, mood_influences[:100])
+                        DebugLog("Mood activation details: {} moods checked, {} activated", 
+                                len(mood_data.get("moods_checked", [])), 
+                                len(mood_data.get("moods_activated", [])))
                         
             except ImportError:
                 pass  # Contextual moods system not available
@@ -147,6 +157,19 @@ class CustomPersonality(Personality):
         if self._intro_messages:
             data["intro_messages"] = self._intro_messages
         return data
+
+    def get_last_mood_data(self) -> Optional[Dict]:
+        """Get the mood data from the last system message generation for logging"""
+        return getattr(self, '_last_mood_data', None)
+    
+    def add_personality_mood_tags_to_response(self, response: str) -> str:
+        """Add personality and mood tags to a response for this personality"""
+        try:
+            from .contextual_moods import add_personality_mood_tags
+            mood_data = self.get_last_mood_data() or {}
+            return add_personality_mood_tags(response, self.name, mood_data)
+        except ImportError:
+            return response
 
 
 class PersonalityManager:

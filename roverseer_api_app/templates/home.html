@@ -1064,7 +1064,24 @@
                 .then(response => response.json())
                 .then(data => 
                 {
-                    if (data.ai_pipeline && data.ai_pipeline.status !== '🔵') 
+                    // CRITICAL FIX: Check for actual activity strings returned by API
+                    var current_activity = data.ai_pipeline && data.ai_pipeline.activity ? data.ai_pipeline.activity : 'idle';
+                    
+                    // Check if the activity indicates a busy state (match actual API response strings)
+                    var is_busy = false;
+                    if (data.ai_pipeline && data.ai_pipeline.status !== '🔵') {
+                        // Check for the actual activity strings returned by sensors.py
+                        if (current_activity.includes('listening') || 
+                            current_activity.includes('processing') || 
+                            current_activity.includes('thinking') || 
+                            current_activity.includes('speaking') || 
+                            current_activity.includes('playing') ||
+                            current_activity.includes('interrupted')) {
+                            is_busy = true;
+                        }
+                    }
+                    
+                    if (is_busy) 
                     {
                         // RoverSeer is busy
                         var messagesContainer = document.getElementById('messages-container');
@@ -1073,7 +1090,7 @@
                         var errorDiv = document.createElement('div');
                         errorDiv.className = 'message assistant';
                         errorDiv.innerHTML = 
-                            '<div class="message-bubble">RoverSeer is currently busy processing another request. Please wait a moment and try again.</div>' +
+                            '<div class="message-bubble">RoverSeer is currently busy (' + escapeHtml(current_activity) + '). Please wait a moment and try again.</div>' +
                             '<div class="message-info">System</div>';
                         messagesContainer.insertBefore(errorDiv, typingIndicator);
                         
@@ -1359,6 +1376,50 @@
             }
         }
         
+        // Reset pipeline function
+        function resetPipeline() {
+            fetch('/system/reset_pipeline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('✅ Pipeline reset successful:', data.message);
+                    
+                    // Update status to show idle
+                    updateAIPipelineStatus({
+                        status: '🔵',
+                        activity: 'idle',
+                        detail: ''
+                    });
+                    
+                    // Show success message in chat
+                    var messagesContainer = document.getElementById('messages-container');
+                    var typingIndicator = document.getElementById('typing-indicator');
+                    
+                    var resetDiv = document.createElement('div');
+                    resetDiv.className = 'message assistant';
+                    resetDiv.innerHTML = 
+                        '<div class="message-bubble">🔧 Pipeline reset successfully. System is now ready.</div>' +
+                        '<div class="message-info">System</div>';
+                    messagesContainer.insertBefore(resetDiv, typingIndicator);
+                    
+                    // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                } else {
+                    console.error('❌ Pipeline reset failed:', data.message);
+                    alert('Pipeline reset failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error resetting pipeline:', error);
+                alert('Error resetting pipeline: ' + error);
+            });
+        }
+        
         // Setup mobile UI on load and resize
         window.addEventListener('load', setupMobileUI);
         window.addEventListener('resize', setupMobileUI);
@@ -1435,6 +1496,7 @@
                     <input type="hidden" name="action" value="clear_context">
                     <button type="submit" class="clear-button">🗑️ Clear</button>
                 </form>
+                <button onclick="resetPipeline()" class="clear-button" style="background: #ff6b35;">🔧 Reset</button>
                 <button onclick="window.location.href='/system'" class="logs-button">📊 System</button>
             </div>
         </div>

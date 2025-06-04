@@ -135,6 +135,9 @@ def setup_button_handlers():
     if not rainbow_driver:
         return
     
+    import threading
+    import time
+    
     from cognition.model_management import refresh_available_models
     from expression.sound_orchestration import play_sound_async
     from expression.sound_orchestration import (play_toggle_left_sound, play_toggle_right_sound,
@@ -158,7 +161,17 @@ def setup_button_handlers():
     
     def is_system_busy():
         """Check if button actions should be blocked - delegate to orchestrator"""
-        return orchestrator.should_block_button_actions()
+        # TEMPORARY FIX: Be more permissive to restore button functionality
+        # Only block during actual processing, not stuck states
+        current_state = orchestrator.get_current_state()
+        
+        # Force reset if we're in a stuck state without recording in progress
+        if current_state.value != "idle" and not config.recording_in_progress:
+            print(f"🔧 Force resetting stuck orchestrator state from {current_state.value} to idle")
+            orchestrator.force_reset_to_idle()
+        
+        # Allow buttons during most states to prevent permanent blocking
+        return current_state.value in ["processing_speech", "contemplating"] and config.recording_in_progress
     
     def check_clear_history():
         """Check if all buttons are pressed to clear history"""
@@ -356,8 +369,9 @@ def setup_button_handlers():
         print("Button B released - starting checks...")
         
         # Check if recording should be blocked using orchestrator
-        if orchestrator.should_block_recording():
-            current_state = orchestrator.get_current_state()
+        # TEMPORARY FIX: Be more permissive to restore functionality
+        current_state = orchestrator.get_current_state()
+        if current_state.value in ["processing_speech", "contemplating"] and config.recording_in_progress:
             config.DebugLog("Recording blocked in {} state", current_state.value)
             print(f"Button B: Recording blocked in {current_state.value} state")
             return
@@ -504,6 +518,10 @@ def setup_button_handlers():
                 # Show error using new method
                 if rainbow_driver:
                     rainbow_driver.show_error("REC ERR")
+                
+                # CRITICAL FIX: Request interruption to properly reset orchestrator state
+                print("🔧 Requesting orchestrator interruption due to recording failure")
+                orchestrator.request_interruption()
                 return
             
             # Check if recording file exists and has content
@@ -511,6 +529,10 @@ def setup_button_handlers():
                 print(f"Recording file {temp_recording} was not created")
                 if rainbow_driver:
                     rainbow_driver.show_error("NO FILE")
+                
+                # CRITICAL FIX: Request interruption to properly reset orchestrator state
+                print("🔧 Requesting orchestrator interruption due to missing recording file")
+                orchestrator.request_interruption()
                 return
             
             file_size = os.path.getsize(temp_recording)
@@ -520,6 +542,10 @@ def setup_button_handlers():
                 if rainbow_driver:
                     rainbow_driver.show_error("EMPTY")
                 os.remove(temp_recording)
+                
+                # CRITICAL FIX: Request interruption to properly reset orchestrator state
+                print("🔧 Requesting orchestrator interruption due to empty recording")
+                orchestrator.request_interruption()
                 return
             
             # Play recording complete sound using orchestrator
@@ -808,6 +834,23 @@ def setup_button_handlers():
             # Reset recording flag
             config.recording_in_progress = False
             
+            # CRITICAL FIX: Force orchestrator back to IDLE state to prevent stuck "busy" condition
+            try:
+                current_state = orchestrator.get_current_state()
+                if current_state.value != "idle" and current_state.value != "interrupted":
+                    print(f"🔧 CLEANUP: Forcing orchestrator from {current_state.value} to IDLE")
+                    orchestrator.complete_pipeline_flow()  # Forces transition to IDLE
+                else:
+                    print(f"🔧 CLEANUP: Orchestrator already in {current_state.value} state")
+            except Exception as cleanup_error:
+                print(f"🔧 CLEANUP ERROR: Failed to reset orchestrator state: {cleanup_error}")
+                # Last resort - try requesting interruption
+                try:
+                    orchestrator.request_interruption()
+                    print("🔧 CLEANUP: Requested interruption as fallback")
+                except:
+                    print("🔧 CLEANUP: Even interruption request failed!")
+            
             # Clear display
             if rainbow_driver:
                 rainbow_driver.clear_display()
@@ -815,12 +858,22 @@ def setup_button_handlers():
             print("Recording pipeline complete, buttons re-enabled")
     
     # Setup button handlers with both press and release
-    rainbow_driver.buttons['A'].when_pressed = handle_button_a
-    rainbow_driver.buttons['A'].when_released = handle_button_a_release
-    rainbow_driver.buttons['B'].when_pressed = handle_button_b
-    rainbow_driver.buttons['B'].when_released = handle_button_b_release
-    rainbow_driver.buttons['C'].when_pressed = handle_button_c
-    rainbow_driver.buttons['C'].when_released = handle_button_c_release
+    # CRITICAL FIX: Assign our handlers AFTER a brief delay to override template handlers
+    def assign_our_handlers():
+        time.sleep(0.1)  # Brief delay to ensure driver's template handlers are set first
+        print("🔧 Assigning sophisticated button handlers (overriding template handlers)")
+        rainbow_driver.buttons['A'].when_pressed = handle_button_a
+        rainbow_driver.buttons['A'].when_released = handle_button_a_release
+        rainbow_driver.buttons['B'].when_pressed = handle_button_b
+        rainbow_driver.buttons['B'].when_released = handle_button_b_release
+        rainbow_driver.buttons['C'].when_pressed = handle_button_c
+        rainbow_driver.buttons['C'].when_released = handle_button_c_release
+        print("✅ Sophisticated button handlers assigned successfully")
+    
+    # Run handler assignment in a separate thread to avoid blocking initialization
+    assignment_thread = threading.Thread(target=assign_our_handlers)
+    assignment_thread.daemon = True
+    assignment_thread.start()
 
 
 # -------- LED PIPELINE MANAGEMENT -------- #

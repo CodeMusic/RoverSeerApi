@@ -7,9 +7,9 @@ from config import DEFAULT_VOICE, DEFAULT_MODEL, MIC_DEVICE, AUDIO_DEVICE, curre
 from expression.text_to_speech import generate_tts_audio, speak_text, list_voice_ids
 from perception.speech_recognition import transcribe_audio
 from cognition.llm_interface import run_chat_completion
-from embodiment.rainbow_interface import start_system_processing, stop_system_processing
 from expression.sound_orchestration import play_sound_async
 from flasgger import swag_from
+from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
 
 bp = Blueprint('audio', __name__)
 
@@ -103,8 +103,11 @@ def text_to_speech():
         output_file, tts_processing_time = generate_tts_audio(text, voice_id, tmp_wav)
         
         if speak:
+            # Get orchestrator for proper state management
+            orchestrator = get_pipeline_orchestrator()
+            
             # Transition to audio playback stage
-            start_system_processing('aplay')
+            orchestrator.transition_to_state(SystemState.EXPRESSING)
             
             # Play using Popen for interruptibility
             current_audio_process = subprocess.Popen(
@@ -112,22 +115,30 @@ def text_to_speech():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
+            
+            # Register process with orchestrator for cleanup tracking
+            orchestrator.register_audio_process(current_audio_process)
+            
             current_audio_process.wait()
             current_audio_process = None
             
             os.remove(tmp_wav)
             
-            # Stop all LEDs after playback
-            stop_system_processing()
+            # Properly complete the pipeline flow when audio finishes
+            orchestrator.complete_pipeline_flow()
 
             return jsonify({"status": "success", "message": f"Spoken with {voice_id}: {text}"})
         else:
-            # Stop system processing after TTS generation when returning file
-            stop_system_processing()
+            # Return file - no need for orchestrator state change
             return send_file(tmp_wav, mimetype="audio/wav", as_attachment=True, download_name="tts.wav")
             
     except Exception as e:
-        stop_system_processing()
+        # Handle error properly with orchestrator
+        try:
+            orchestrator = get_pipeline_orchestrator()
+            orchestrator.request_interruption()
+        except:
+            pass
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -212,13 +223,16 @@ def transcribe_chat_voice():
     file.save(tmp_audio)
 
     try:
+        # Get orchestrator for proper state management
+        orchestrator = get_pipeline_orchestrator()
+        
         # 1. Transcribe
+        orchestrator.transition_to_state(SystemState.PROCESSING_SPEECH)
         transcript = transcribe_audio(tmp_audio)
         os.remove(tmp_audio)
 
         # 2. LLM reply
-        # Transition to LLM stage
-        start_system_processing('B')
+        orchestrator.transition_to_state(SystemState.CONTEMPLATING)
         messages = [{"role": "user", "content": transcript}]
         system_message = "You are RoverSeer, a helpful voice assistant."
         reply = run_chat_completion(model, messages, system_message, voice_id=voice)
@@ -231,15 +245,12 @@ def transcribe_chat_voice():
         # 3. TTS (Piper)
         tmp_output = f"/tmp/{uuid.uuid4().hex}_spoken.wav"
         
-        # Transition to TTS stage
-        start_system_processing('C')
-        
+        orchestrator.transition_to_state(SystemState.SYNTHESIZING)
         output_file, tts_processing_time = generate_tts_audio(reply, voice, tmp_output)
         
         if speak:
             # 4. Speak it!
-            # Transition to audio playback
-            start_system_processing('aplay')
+            orchestrator.transition_to_state(SystemState.EXPRESSING)
             
             # Speak on rover using Popen for interruptibility
             current_audio_process = subprocess.Popen(
@@ -247,13 +258,17 @@ def transcribe_chat_voice():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )
+            
+            # Register process with orchestrator for cleanup tracking
+            orchestrator.register_audio_process(current_audio_process)
+            
             current_audio_process.wait()
             current_audio_process = None
             
             os.remove(tmp_output)
             
-            # Stop all LEDs
-            stop_system_processing()
+            # Properly complete the pipeline flow when audio finishes
+            orchestrator.complete_pipeline_flow()
 
             return jsonify({
                 "transcript": transcript,
@@ -262,10 +277,17 @@ def transcribe_chat_voice():
                 "model": model
             })
         else:
-            # 4. Return WAV
+            # 4. Return WAV - transition back to idle
+            orchestrator.transition_to_state(SystemState.IDLE)
             return send_file(tmp_output, mimetype="audio/wav", as_attachment=True, download_name="response.wav")
 
     except Exception as e:
+        # Handle error properly with orchestrator
+        try:
+            orchestrator = get_pipeline_orchestrator()
+            orchestrator.request_interruption()
+        except:
+            pass
         return jsonify({"error": str(e)}), 500
 
 

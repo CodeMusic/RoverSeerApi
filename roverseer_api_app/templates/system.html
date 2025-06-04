@@ -1242,6 +1242,76 @@
             let html = '';
             
             if (entry.type === 'llm_usage') {
+                // Build mood details section
+                let moodDetailsHtml = '';
+                if (entry.mood_data && Object.keys(entry.mood_data).length > 0) {
+                    const moodData = entry.mood_data;
+                    
+                    moodDetailsHtml = `
+                        <div class="log-detail-section">
+                            <h4>🧠 Mood System Details</h4>
+                            <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                                <p><strong>Context Triggers Detected:</strong> ${(moodData.context_triggers_detected || []).join(', ') || 'None'}</p>
+                                <p><strong>Total Moods Available:</strong> ${moodData.total_moods_available || 0}</p>
+                                <p><strong>Moods Activated:</strong> ${(moodData.moods_activated || []).join(', ') || 'None'}</p>
+                                
+                                ${moodData.activation_summary ? `
+                                    <div style="margin-top: 10px;">
+                                        <strong>Activation Summary:</strong>
+                                        <ul style="margin: 5px 0;">
+                                            <li>Triggered: ${moodData.activation_summary.triggered_moods || 0}/${moodData.activation_summary.total_moods || 0}</li>
+                                            <li>Activated: ${moodData.activation_summary.activated_moods || 0}</li>
+                                            <li>Success Rate: ${((moodData.activation_summary.activation_rate || 0) * 100).toFixed(1)}%</li>
+                                        </ul>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            ${moodData.moods_checked && moodData.moods_checked.length > 0 ? `
+                                <div style="margin-top: 15px;">
+                                    <h5>📊 Detailed Mood Probabilities</h5>
+                                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">
+                                        ${moodData.moods_checked.map(mood => `
+                                            <div style="margin-bottom: 15px; padding: 10px; background: ${mood.activated ? '#e8f5e8' : mood.triggered ? '#fff8e1' : '#f5f5f5'}; border-radius: 5px;">
+                                                <div style="font-weight: bold; color: ${mood.activated ? '#2e7d32' : mood.triggered ? '#f57c00' : '#666'};">
+                                                    ${mood.mood_name} ${mood.activated ? '✅' : mood.triggered ? '⚡' : '💤'}
+                                                </div>
+                                                <div style="font-size: 12px; margin-top: 5px;">
+                                                    <div>Probability: <strong>${(mood.trigger_probability * 100).toFixed(1)}%</strong></div>
+                                                    <div>Triggers: ${(mood.context_triggers || []).join(', ')}</div>
+                                                    ${mood.matching_triggers ? `<div style="color: #f57c00;">Matched: ${mood.matching_triggers.join(', ')}</div>` : ''}
+                                                    ${mood.activation_roll !== undefined ? `<div>Roll: ${(mood.activation_roll * 100).toFixed(1)}% ${mood.activated ? '(Success)' : '(Failed)'}</div>` : ''}
+                                                    ${mood.selected_influence ? `<div style="margin-top: 5px; font-style: italic; color: #2e7d32;">"${mood.selected_influence.text.substring(0, 80)}${mood.selected_influence.text.length > 80 ? '...' : ''}"</div>` : ''}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                
+                // Build tag information section
+                let tagInfoHtml = '';
+                if (entry.has_tags) {
+                    tagInfoHtml = `
+                        <div class="log-detail-section">
+                            <h4>🏷️ Response Tags</h4>
+                            <div style="background: #f0f8ff; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                                ${entry.extracted_personality ? `<p><strong>&lt;personality&gt;</strong> ${entry.extracted_personality}</p>` : ''}
+                                ${entry.extracted_mood ? `
+                                    <p><strong>&lt;mood&gt;</strong></p>
+                                    <pre style="font-size: 11px; margin: 5px 0; padding: 5px; background: white; border-radius: 3px;">${JSON.stringify(entry.extracted_mood, null, 2)}</pre>
+                                ` : ''}
+                                <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                                    💡 These tags are automatically added for log analysis and are not shown to users
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }
+                
                 html = `
                     <div class="log-detail-header">
                         <h2>LLM Usage Log Entry</h2>
@@ -1255,6 +1325,8 @@
                         <p><strong>Runtime:</strong> ${entry.runtime.toFixed(2)} seconds</p>
                         ${entry.voice_id ? `<p><strong>Voice:</strong> ${entry.voice_id}</p>` : ''}
                     </div>
+                    ${tagInfoHtml}
+                    ${moodDetailsHtml}
                     <div class="log-detail-section">
                         <h4>User Prompt</h4>
                         <pre>${entry.user_prompt}</pre>
@@ -1264,11 +1336,8 @@
                         <pre>${entry.system_message}</pre>
                     </div>
                     <div class="log-detail-section">
-                        <h4>AI Reply</h4>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div id="processed-reply" style="flex: 1;">${processThinkTags(entry.llm_reply)}</div>
-                            ${entry.voice_id ? `<button class="play-button" style="margin-left: 10px;" data-text="${entry.llm_reply.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="${entry.voice_id}" onclick="playDetailAudio(this)">🔊 Play</button>` : ''}
-                        </div>
+                        <h4>LLM Response</h4>
+                        <pre>${entry.llm_reply}</pre>
                     </div>
                 `;
             } else if (entry.type === 'tts_usage') {
@@ -1285,10 +1354,7 @@
                     </div>
                     <div class="log-detail-section">
                         <h4>Text</h4>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <pre style="flex: 1;">${entry.text}</pre>
-                            <button class="play-button" style="margin-left: 10px;" data-text="${entry.text.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="${entry.voice_id}" onclick="playDetailAudio(this)">🔊 Play</button>
-                        </div>
+                        <pre>${entry.text}</pre>
                     </div>
                 `;
             } else if (entry.type === 'asr_usage') {
@@ -1303,66 +1369,9 @@
                         <p><strong>Processing Time:</strong> ${entry.processing_time.toFixed(2)} seconds</p>
                     </div>
                     <div class="log-detail-section">
-                        <h4>Transcription</h4>
+                        <h4>Transcribed Text</h4>
                         <pre>${entry.text}</pre>
                     </div>
-                `;
-            } else if (entry.type === 'penphin_mind') {
-                html = `
-                    <div class="log-detail-header">
-                        <h2>PenphinMind Log Entry</h2>
-                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
-                    </div>
-                    <div class="log-detail-section">
-                        <h4>Metadata</h4>
-                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
-                        <p><strong>Total Time:</strong> ${entry.total_time.toFixed(2)} seconds</p>
-                    </div>
-                    <div class="log-detail-section">
-                        <h4>Original Prompt</h4>
-                        <pre>${entry.original_prompt}</pre>
-                    </div>
-                    <div class="log-detail-section">
-                        <h4>Logical Response</h4>
-                        <pre>${entry.logical_response}</pre>
-                    </div>
-                    <div class="log-detail-section">
-                        <h4>Creative Response</h4>
-                        <pre>${entry.creative_response}</pre>
-                    </div>
-                    <div class="log-detail-section">
-                        <h4>Final Synthesis</h4>
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div style="flex: 1;">${processThinkTags(entry.final_synthesis)}</div>
-                            <button class="play-button" style="margin-left: 10px;" data-text="${entry.final_synthesis.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}" data-voice="en_US-GlaDOS" onclick="playDetailAudio(this)">🔊 Play</button>
-                        </div>
-                    </div>
-                `;
-            } else if (entry.type === 'errors') {
-                html = `
-                    <div class="log-detail-header">
-                        <h2>Error Log Entry</h2>
-                        <button class="back-button" onclick="hideLogDetail()">← Back to Logs</button>
-                    </div>
-                    <div class="log-detail-section">
-                        <h4>Error Details</h4>
-                        <p><strong>Timestamp:</strong> ${entry.timestamp}</p>
-                        <p><strong>Error Type:</strong> ${entry.error_type}</p>
-                        <p><strong>Message:</strong> ${entry.message}</p>
-                    </div>
-                    ${entry.context ? `
-                    <div class="log-detail-section">
-                        <h4>Context</h4>
-                        <div class="error-context">
-                            ${Object.entries(entry.context).map(([key, value]) => `
-                                <div class="error-context-item">
-                                    <strong>${key}:</strong>
-                                    <pre>${value}</pre>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
                 `;
             }
             
@@ -2527,6 +2536,23 @@
                                                 <strong>{{ entry.model }}</strong> 
                                                 <span style="color: #666;">({{ entry.personality }})</span>
                                                 <span class="log-entry-meta">{{ entry.timestamp }} - {{ "%.2f"|format(entry.runtime) }}s</span>
+                                                
+                                                <!-- Enhanced indicators for mood data and tags -->
+                                                {% if entry.mood_data and entry.mood_data.get('moods_activated') %}
+                                                    <span title="Mood system activated: {{ ', '.join(entry.mood_data.get('moods_activated', [])) }}" style="background: #e8f5e8; color: #2e7d32; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px;">
+                                                        🧠{{ entry.mood_data.get('moods_activated')|length }}
+                                                    </span>
+                                                {% elif entry.mood_data and entry.mood_data.get('total_moods_available', 0) > 0 %}
+                                                    <span title="Mood system available but no moods activated" style="background: #f5f5f5; color: #666; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px;">
+                                                        🧠-
+                                                    </span>
+                                                {% endif %}
+                                                
+                                                {% if entry.has_tags %}
+                                                    <span title="Response contains personality/mood tags" style="background: #f0f8ff; color: #1976d2; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px;">
+                                                        🏷️
+                                                    </span>
+                                                {% endif %}
                                             </div>
                                             <div class="log-entry-preview log-entry-preview-mobile" id="preview-{{ entry.id }}">
                                                 {% if entry.user_prompt|length > 50 %}

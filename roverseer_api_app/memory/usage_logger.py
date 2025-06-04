@@ -11,10 +11,14 @@ from helpers.logging_helper import LoggingHelper
 ensure_log_dir = LoggingHelper.ensure_log_dir
 get_log_filename = LoggingHelper.get_log_filename
 log_error = LoggingHelper.log_error
-log_llm_usage = LoggingHelper.log_llm_usage
 log_asr_usage = LoggingHelper.log_asr_usage
 log_tts_usage = LoggingHelper.log_tts_usage
 log_penphin_mind_usage = LoggingHelper.log_penphin_mind_usage
+
+# Enhanced LLM logging with mood data support
+def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None, personality=None, mood_data=None):
+    """Enhanced LLM usage logging with mood data support"""
+    return LoggingHelper.log_llm_usage(model_name, system_message, user_prompt, response, processing_time, voice_id, personality, mood_data)
 
 # Voice training logging function
 def log_training_event(voice_identity, event_type, data=None):
@@ -109,6 +113,16 @@ def parse_log_file(log_type, date=None):
                     entry = json.loads(line.strip())
                     
                     if log_type == 'llm_usage':
+                        # Extract tags from response if present
+                        response_text = entry['llm_reply']
+                        extracted_tags = {}
+                        
+                        try:
+                            from cognition.contextual_moods import extract_tags_from_response
+                            extracted_tags = extract_tags_from_response(response_text)
+                        except:
+                            extracted_tags = {"clean_response": response_text}
+                        
                         # Return structured data for expandable view
                         entries.append({
                             'type': 'llm_usage',
@@ -119,7 +133,12 @@ def parse_log_file(log_type, date=None):
                             'runtime': entry['runtime'],
                             'system_message': entry['system_message'],
                             'user_prompt': entry['user_prompt'],
-                            'llm_reply': entry['llm_reply'],
+                            'llm_reply': extracted_tags.get("clean_response", response_text),
+                            'original_reply': response_text,
+                            'mood_data': entry.get('mood_data', {}),
+                            'extracted_personality': extracted_tags.get("personality"),
+                            'extracted_mood': extracted_tags.get("mood"),
+                            'has_tags': bool(extracted_tags.get("personality") or extracted_tags.get("mood")),
                             'id': f"{entry['timestamp']}_{entry['model']}"  # Unique ID for expansion
                         })
                         

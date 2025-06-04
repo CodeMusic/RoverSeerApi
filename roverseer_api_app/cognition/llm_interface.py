@@ -31,12 +31,14 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
     
     # Check if we have a personality to display instead
     personality_display_name = None
+    current_personality = None
     try:
         from cognition.personality import get_personality_manager
         personality_manager = get_personality_manager()
         if personality_manager.current_personality:
+            current_personality = personality_manager.current_personality
             # Use personality name with emoji for display
-            personality_display_name = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+            personality_display_name = f"{current_personality.avatar_emoji} {current_personality.name}"
     except:
         pass
     
@@ -45,29 +47,20 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
     if messages and messages[-1].get("role") == "user":
         user_prompt = messages[-1].get("content", "")
     
-    # Start a thread to handle display
-    def display_handler():
-        # First scroll the personality name or model name
-        display_name = personality_display_name if personality_display_name else model_display_name
-        scroll_text_on_display(display_name, scroll_speed=0.2)
-        # Wait a moment after scrolling completes
-        time.sleep(0.5)
-        # Clear display before starting timer
-        clear_display()
-        
-        # Wait for ollama tune to finish before starting timer with ticks
-        while tune_playing.is_set():
-            time.sleep(0.1)
-        
-        # Then show the timer with sound effects (now that tune is done)
-        display_timer(start_time, stop_timer, sound_fx=True)
+    # Set up display timer
+    display_name = personality_display_name if personality_display_name else model_display_name
     
-    display_thread = threading.Thread(target=display_handler)
-    display_thread.daemon = True
-    display_thread.start()
+    # Start thinking timer thread
+    def timer_thread():
+        while not stop_timer.is_set():
+            display_timer(start_time, stop_timer)
+    
+    timer = threading.Thread(target=timer_thread)
+    timer.daemon = True
+    timer.start()
     
     try:
-        # Add system message if provided and not already present
+        # Build the request
         if system_message and not any(msg.get("role") == "system" for msg in messages):
             messages.insert(0, {"role": "system", "content": system_message})
 
@@ -106,18 +99,27 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
         
         # Only log if not part of PenphinMind
         if not skip_logging:
-            # Get current personality name
+            # Get current personality name and mood data
             personality_name = None
+            mood_data = None
+            tagged_result = result  # Default to untagged result
+            
             try:
                 from cognition.personality import get_personality_manager
                 personality_manager = get_personality_manager()
                 if personality_manager.current_personality:
                     personality_name = personality_manager.current_personality.name
-            except:
-                pass
+                    # Get mood data from last system message generation
+                    mood_data = personality_manager.current_personality.get_last_mood_data()
+                    
+                    # Add personality and mood tags to the response
+                    tagged_result = personality_manager.current_personality.add_personality_mood_tags_to_response(result)
+                    
+            except Exception as e:
+                print(f"Warning: Could not get personality/mood data for logging: {e}")
                 
-            # Log LLM usage
-            log_llm_usage(model, system_message or "Default system message", user_prompt, result, elapsed_time, voice_id, personality_name)
+            # Enhanced logging with mood data
+            log_llm_usage(model, system_message or "Default system message", user_prompt, tagged_result, elapsed_time, voice_id, personality_name, mood_data)
             
             # Update model runtime statistics
             update_model_runtime(model, elapsed_time)
@@ -136,6 +138,7 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
         # Clear active model when done
         config.active_model = None
         
+        # Return the original result (without tags) for normal operation
         return result
         
     except Exception as e:
@@ -171,7 +174,7 @@ def get_available_models():
 
 
 def sort_models_by_size(models, models_info=None):
-    """Sort models by parameter size, with PenphinMind first"""
+    """Sort models by parameter size, with PenphinMind first only if explicitly present"""
     def extract_size_value(param_size):
         """Extract numeric value from parameter size string like '1B', '999.89M', '1.2B'"""
         if not param_size or param_size == "unknown":
@@ -190,7 +193,7 @@ def sort_models_by_size(models, models_info=None):
     def get_sort_key(model):
         model_lower = model.lower()
         
-        # PenphinMind always first
+        # PenphinMind always first IF it's already in the list
         if 'penphinmind' in model_lower:
             return (0, 0, model)
         
@@ -243,9 +246,6 @@ def sort_models_by_size(models, models_info=None):
         # Models without clear size go to the end
         return (2, 999, model)
     
-    # Add PenphinMind as first option if not already in list
-    models_with_penphin = list(models)
-    if not any('penphinmind' in m.lower() for m in models_with_penphin):
-        models_with_penphin.insert(0, "PenphinMind")
-    
-    return sorted(models_with_penphin, key=get_sort_key) 
+    # Don't automatically add PenphinMind - only sort what's actually provided
+    # This prevents automatic selection of PenphinMind in webui when personalities should be used
+    return sorted(models, key=get_sort_key) 

@@ -64,9 +64,9 @@ class LoggingHelper:
             print(f"Failed to log error: {e}")
 
     @staticmethod
-    def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None, personality=None):
+    def log_llm_usage(model_name, system_message, user_prompt, response, processing_time=None, voice_id=None, personality=None, mood_data=None):
         """
-        Log LLM usage to daily file in JSON format
+        Log LLM usage to daily file in JSON format with enhanced personality and mood details
         
         Args:
             model_name (str): Name of the model used
@@ -76,6 +76,7 @@ class LoggingHelper:
             processing_time (float): Time taken to process in seconds
             voice_id (str): Voice ID used for TTS
             personality (str): Personality name used
+            mood_data (dict): Detailed mood activation data including probabilities
         """
         LoggingHelper.ensure_log_dir()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -92,6 +93,7 @@ class LoggingHelper:
             except:
                 personality = "default"
         
+        # Enhanced log entry with mood details
         log_entry = {
             "timestamp": timestamp,
             "model": model_name,
@@ -100,7 +102,8 @@ class LoggingHelper:
             "system_message": system_message,
             "user_prompt": user_prompt,
             "llm_reply": response,
-            "runtime": processing_time or 0
+            "runtime": processing_time or 0,
+            "mood_data": mood_data or {}
         }
         
         with open(LoggingHelper.get_log_filename("llm_usage"), "a", encoding="utf-8") as f:
