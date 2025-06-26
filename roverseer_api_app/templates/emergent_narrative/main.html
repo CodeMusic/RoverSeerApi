@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RoverSeer Emergent Narrative</title>
+    <style>
+        body 
+        {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #1a1a1a; 
+            color: #ffffff; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        /* Navigation Header */
+        .header 
+        { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .back-header-link 
+        {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        
+        .back-arrow 
+        {
+            color: white; 
+            text-decoration: none; 
+            font-size: 24px; 
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-arrow:hover 
+        {
+            color: #e0e0e0;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) 
+        {
+            .header 
+            {
+                background: #1c1c1e;
+                color: white;
+                padding: 15px 10px 10px 10px;
+                padding-top: max(15px, env(safe-area-inset-top));
+                flex-direction: column;
+                gap: 10px;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            
+            .back-header-link 
+            {
+                flex-direction: column;
+                text-align: center;
+                gap: 5px;
+            }
+            
+            .narrative-container 
+            {
+                padding: 10px !important;
+            }
+        }
+        
+        .narrative-container 
+        {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            gap: 30px;
+            grid-template-columns: 1fr;
+            padding: 20px;
+        }
+        
+        .narrative-header 
+        {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .narrative-header h1 
+        {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 3rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .narrative-header p 
+        {
+            color: #b0b0b0;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        
+        .consciousness-section 
+        {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .consciousness-section:hover 
+        {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .section-header 
+        {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 15px;
+        }
+        
+        .section-icon 
+        {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .section-title 
+        {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+            color: #ffffff;
+        }
+        
+        .narrative-grid 
+        {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .narrative-option 
+        {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .narrative-option:hover 
+        {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+            transform: translateY(-3px);
+        }
+        
+        .option-icon 
+        {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .option-title 
+        {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .option-description 
+        {
+            color: #b0b0b0;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .existing-narratives 
+        {
+            background: #222;
+            border: 2px dashed #444;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 200px;
+        }
+        
+        .narrative-list 
+        {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .narrative-item 
+        {
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .narrative-item:hover 
+        {
+            background: #3a3a3a;
+            border-color: #667eea;
+        }
+        
+        .narrative-meta 
+        {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .narrative-title 
+        {
+            font-weight: 600;
+            color: #ffffff;
+        }
+        
+        .narrative-date 
+        {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .narrative-summary 
+        {
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .empty-state 
+        {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            margin-top: 50px;
+        }
+        
+        .action-button 
+        {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .action-button:hover 
+        {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/" class="back-header-link">
+            <div class="back-arrow">←</div>
+            Back to Home
+        </a>
+    </div>
+
+    <div class="narrative-container">
+        <div class="narrative-header">
+            <h1>Emergent Narrative</h1>
+            <p>Multi-agent storytelling through autonomous character interactions</p>
+        </div>
+        
+        <!-- Create New Narrative Section -->
+        <div class="consciousness-section">
+            <div class="section-header">
+                <div class="section-icon">✨</div>
+                <h2 class="section-title">Create New Saga</h2>
+            </div>
+            
+            <div class="narrative-grid">
+                <a href="/emergent_narrative/create" class="narrative-option">
+                    <div class="option-icon">🎭</div>
+                    <div class="option-title">Character-Driven Story</div>
+                    <div class="option-description">
+                        Create multiple AI characters with unique personalities, 
+                        define story arcs, and watch emergent narratives unfold
+                    </div>
+                </a>
+                
+                <a href="/emergent_narrative/templates" class="narrative-option">
+                    <div class="option-icon">📚</div>
+                    <div class="option-title">From Template</div>
+                    <div class="option-description">
+                        Start with pre-configured story templates like 
+                        "Philosophical Debate" or "Space Station Drama"
+                    </div>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Existing Narratives Section -->
+        <div class="consciousness-section">
+            <div class="section-header">
+                <div class="section-icon">📖</div>
+                <h2 class="section-title">Existing Narratives</h2>
+            </div>
+            
+            <div class="existing-narratives">
+                <div class="narrative-list" id="narrativeList">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
+                <div class="empty-state" id="emptyState" style="display: none;">
+                    No narratives found. Create your first emergent story above!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load existing narratives
+        async function loadNarratives() 
+        {
+            try 
+            {
+                const response = await fetch('/emergent_narrative/list');
+                const narratives = await response.json();
+                
+                const listContainer = document.getElementById('narrativeList');
+                const emptyState = document.getElementById('emptyState');
+                
+                if (narratives.length === 0) 
+                {
+                    listContainer.style.display = 'none';
+                    emptyState.style.display = 'block';
+                    return;
+                }
+                
+                listContainer.innerHTML = '';
+                emptyState.style.display = 'none';
+                
+                narratives.forEach(narrative => 
+                {
+                    const item = document.createElement('div');
+                    item.className = 'narrative-item';
+                    item.onclick = () => playNarrative(narrative.id);
+                    
+                    item.innerHTML = `
+                        <div class="narrative-meta">
+                            <div class="narrative-title">${narrative.title}</div>
+                            <div class="narrative-date">${new Date(narrative.created_at).toLocaleDateString()}</div>
+                        </div>
+                        <div class="narrative-summary">
+                            ${narrative.description || 'No description available'}
+                            <br><small>
+                                ${narrative.characters.length} characters, 
+                                ${narrative.acts} acts, 
+                                ${narrative.total_scenes} scenes
+                            </small>
+                        </div>
+                    `;
+                    
+                    listContainer.appendChild(item);
+                });
+            } 
+            catch (error) 
+            {
+                console.error('Failed to load narratives:', error);
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('emptyState').innerHTML = 'Failed to load narratives. Please try again.';
+            }
+        }
+        
+        function playNarrative(narrativeId) 
+        {
+            window.location.href = `/emergent_narrative/play/${narrativeId}`;
+        }
+        
+        // Load narratives when page loads
+        document.addEventListener('DOMContentLoaded', loadNarratives);
+    </script>
+</body>
+</html> 

@@ -17,6 +17,7 @@ from routes.system_routes import router as system_router
 from routes.chat_routes import router as chat_router
 from routes.audio_routes import router as audio_router
 from routes.audiocraft_routes import router as audiocraft_router
+from routes.emergent_narrative_routes import router as emergent_narrative_router
 
 # Create minimal routers for other routes to maintain compatibility
 from fastapi import APIRouter
@@ -51,6 +52,7 @@ app.include_router(chat_router, tags=["chat"])
 app.include_router(audio_router, tags=["audio"])
 app.include_router(voice_training_router, prefix="/neural-voice", tags=["voice-training"])
 app.include_router(audiocraft_router, tags=["audiocraft"])
+app.include_router(emergent_narrative_router, tags=["emergent-narrative"])
 
 # Root redirect
 @app.get('/docs/')
