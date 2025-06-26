@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify, send_file
+from fastapi import APIRouter, Request, File, UploadFile, Form, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
+from typing import Optional
 import uuid
 import os
 import subprocess
@@ -8,10 +10,9 @@ from expression.text_to_speech import generate_tts_audio, speak_text, list_voice
 from perception.speech_recognition import transcribe_audio
 from cognition.llm_interface import run_chat_completion
 from expression.sound_orchestration import play_sound_async
-from flasgger import swag_from
 from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
 
-bp = Blueprint('audio', __name__)
+router = APIRouter()
 
 # Static Swagger spec for TTS endpoint
 tts_spec = {
@@ -50,9 +51,8 @@ tts_spec = {
 }
 
 
-@bp.route('/tts', methods=['POST'])
-@swag_from(tts_spec)
-def text_to_speech():
+@router.post('/tts')
+async def text_to_speech(request: Request):
     """
     Generate TTS audio and either play on rover or return file.
     ---
@@ -85,9 +85,10 @@ def text_to_speech():
         description: Audio spoken on device or WAV file returned
     """
     global current_audio_process
-    data = request.get_json(silent=True)
-    if not data:
-        return jsonify({"status": "error", "message": "Invalid or missing JSON body"}), 400
+    try:
+        data = await request.json()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid or missing JSON body")
 
     text = data.get("text", "").strip()
     voice_id = data.get("voice", DEFAULT_VOICE)
@@ -96,7 +97,7 @@ def text_to_speech():
     speak = data.get("speak", False)
 
     if not text:
-        return jsonify({"status": "error", "message": "No text provided"}), 400
+        raise HTTPException(status_code=400, detail="No text provided")
 
     try:
         tmp_wav = f"/tmp/{uuid.uuid4().hex}.wav"
@@ -106,10 +107,7 @@ def text_to_speech():
             # Get orchestrator for proper state management
             orchestrator = get_pipeline_orchestrator()
             
-            # Transition to audio playback stage
-            orchestrator.transition_to_state(SystemState.EXPRESSING)
-            
-            # Play using Popen for interruptibility
+            # Play using Popen for interruptibility (start aplay subprocess)
             current_audio_process = subprocess.Popen(
                 ["aplay", "-D", AUDIO_DEVICE, tmp_wav],
                 stdout=subprocess.PIPE,
@@ -119,6 +117,9 @@ def text_to_speech():
             # Register process with orchestrator for cleanup tracking
             orchestrator.register_audio_process(current_audio_process)
             
+            # NOW transition to expressing stage (blinking starts only when aplay is actually running)
+            orchestrator.transition_to_state(SystemState.EXPRESSING)
+            
             current_audio_process.wait()
             current_audio_process = None
             
@@ -127,10 +128,10 @@ def text_to_speech():
             # Properly complete the pipeline flow when audio finishes
             orchestrator.complete_pipeline_flow()
 
-            return jsonify({"status": "success", "message": f"Spoken with {voice_id}: {text}"})
+            return JSONResponse(content={"status": "success", "message": f"Spoken with {voice_id}: {text}"})
         else:
             # Return file - no need for orchestrator state change
-            return send_file(tmp_wav, mimetype="audio/wav", as_attachment=True, download_name="tts.wav")
+            return FileResponse(tmp_wav, media_type="audio/wav", filename="tts.wav")
             
     except Exception as e:
         # Handle error properly with orchestrator
@@ -139,11 +140,11 @@ def text_to_speech():
             orchestrator.request_interruption()
         except:
             pass
-        return jsonify({"status": "error", "message": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@bp.route('/v1/audio/transcriptions', methods=['POST'])
-def transcribe_openai_style():
+@router.post('/v1/audio/transcriptions')
+async def transcribe_openai_style(file: UploadFile = File(...)):
     """
     OpenAI-style Whisper transcription endpoint
     ---
@@ -158,23 +159,29 @@ def transcribe_openai_style():
       200:
         description: Transcription in OpenAI format
     """
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded")
 
-    file = request.files['file']
     tmp_path = f"/tmp/{uuid.uuid4().hex}.wav"
-    file.save(tmp_path)
+    with open(tmp_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
 
     try:
         transcript = transcribe_audio(tmp_path)
         os.remove(tmp_path)
-        return jsonify({"text": transcript})
+        return JSONResponse(content={"text": transcript})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@bp.route('/v1/audio/chat_voice', methods=['POST'])
-def transcribe_chat_voice():
+@router.post('/v1/audio/chat_voice')
+async def transcribe_chat_voice(
+    file: UploadFile = File(...),
+    model: Optional[str] = Form(DEFAULT_MODEL),
+    voice: Optional[str] = Form(DEFAULT_VOICE),
+    speak: Optional[bool] = Form(True)
+):
     """
     Transcribe audio, get LLM response, and either speak or return audio.
     ---
@@ -209,18 +216,13 @@ def transcribe_chat_voice():
         description: Either JSON with transcript/reply or WAV audio file
     """
     global current_audio_process
-    if 'file' not in request.files:
-        return jsonify({"error": "Missing audio file"}), 400
-
-    file = request.files['file']
-    model = request.form.get('model', DEFAULT_MODEL)
-    voice = request.form.get('voice', DEFAULT_VOICE)
-    
-    # Default to playing on device for this endpoint
-    speak = request.form.get('speak', 'true').lower() == 'true'
+    if not file:
+        raise HTTPException(status_code=400, detail="Missing audio file")
 
     tmp_audio = f"/tmp/{uuid.uuid4().hex}.wav"
-    file.save(tmp_audio)
+    with open(tmp_audio, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
 
     try:
         # Get orchestrator for proper state management
@@ -249,10 +251,7 @@ def transcribe_chat_voice():
         output_file, tts_processing_time = generate_tts_audio(reply, voice, tmp_output)
         
         if speak:
-            # 4. Speak it!
-            orchestrator.transition_to_state(SystemState.EXPRESSING)
-            
-            # Speak on rover using Popen for interruptibility
+            # 4. Speak it! (start aplay subprocess)
             current_audio_process = subprocess.Popen(
                 ["aplay", "-D", AUDIO_DEVICE, tmp_output],
                 stdout=subprocess.PIPE,
@@ -262,6 +261,9 @@ def transcribe_chat_voice():
             # Register process with orchestrator for cleanup tracking
             orchestrator.register_audio_process(current_audio_process)
             
+            # NOW transition to expressing stage (blinking starts only when aplay is actually running)
+            orchestrator.transition_to_state(SystemState.EXPRESSING)
+            
             current_audio_process.wait()
             current_audio_process = None
             
@@ -270,7 +272,7 @@ def transcribe_chat_voice():
             # Properly complete the pipeline flow when audio finishes
             orchestrator.complete_pipeline_flow()
 
-            return jsonify({
+            return JSONResponse(content={
                 "transcript": transcript,
                 "reply": reply,
                 "voice": voice,
@@ -279,7 +281,7 @@ def transcribe_chat_voice():
         else:
             # 4. Return WAV - transition back to idle
             orchestrator.transition_to_state(SystemState.IDLE)
-            return send_file(tmp_output, mimetype="audio/wav", as_attachment=True, download_name="response.wav")
+            return FileResponse(tmp_output, media_type="audio/wav", filename="response.wav")
 
     except Exception as e:
         # Handle error properly with orchestrator
@@ -288,11 +290,15 @@ def transcribe_chat_voice():
             orchestrator.request_interruption()
         except:
             pass
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@bp.route('/v1/audio/chat', methods=['POST'])
-def transcribe_and_chat():
+@router.post('/v1/audio/chat')
+async def transcribe_and_chat(
+    file: UploadFile = File(...),
+    model: Optional[str] = Form(DEFAULT_MODEL),
+    voice: Optional[str] = Form(DEFAULT_VOICE)
+):
     """
     Transcribe audio and send result to LLM chat, returning assistant's reply.
     ---
@@ -317,15 +323,13 @@ def transcribe_and_chat():
       200:
         description: Assistant's response to transcribed speech
     """
-    if 'file' not in request.files:
-        return jsonify({"error": "Missing audio file"}), 400
-
-    file = request.files['file']
-    model = request.form.get('model', DEFAULT_MODEL)
-    voice = request.form.get('voice', DEFAULT_VOICE)
+    if not file:
+        raise HTTPException(status_code=400, detail="Missing audio file")
 
     tmp_path = f"/tmp/{uuid.uuid4().hex}.wav"
-    file.save(tmp_path)
+    with open(tmp_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
 
     try:
         # Transcribe audio
@@ -338,7 +342,7 @@ def transcribe_and_chat():
 
         reply = run_chat_completion(model, messages, system_message, voice_id=voice)
 
-        return jsonify({
+        return JSONResponse(content={
             "transcript": transcript,
             "model": model,
             "voice": voice,
@@ -346,11 +350,11 @@ def transcribe_and_chat():
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@bp.route('/voices', methods=['GET'])
-def list_voices():
+@router.get('/voices')
+async def list_voices():
     """
     List available TTS voices
     ---
@@ -374,10 +378,10 @@ def list_voices():
     """
     try:
         voices = list_voice_ids()
-        return jsonify({
+        return JSONResponse(content={
             "voices": voices,
             "default_voice": DEFAULT_VOICE,
             "count": len(voices)
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500 
+        raise HTTPException(status_code=500, detail=str(e)) 

@@ -222,17 +222,22 @@ class BuzzerManager:
     def force_stop(self):
         """Force stop buzzer - more aggressive than normal stop"""
         with self.buzzer_lock:
+            # Clear any queued tasks first
+            self.interrupt_current_task()
+            
             if self.buzzer:
                 try:
                     self.buzzer.stop()
-                    # Re-initialize to ensure clean state
-                    self._init_buzzer()
+                    # Don't reinitialize here - that can cause issues
+                    # The buzzer is still functional for future use
                 except Exception as e:
                     logging.error(f"Error in force_stop: {e}")
-                    # Last resort - recreate buzzer
+                    # Only recreate buzzer if we can't stop it
                     try:
                         self.buzzer = TonalBuzzer(13)
-                    except:
+                        logging.info("Buzzer recreated after force_stop error")
+                    except Exception as recreate_error:
+                        logging.error(f"Failed to recreate buzzer: {recreate_error}")
                         self.buzzer = None
     
     def shutdown(self):
@@ -386,8 +391,8 @@ class DisplayManager:
         except Exception as e:
             print(f"Error in display timer: {e}")
         finally:
-            if not self.is_scrolling:
-                self.rainbow_driver.display_number(0)
+            # Don't automatically reset to 0 - let the caller control what to display next
+            pass
     
     def display_number(self, number):
         """Display a number on the 4-digit display"""
@@ -479,10 +484,12 @@ class LEDManager:
             self.blink_events[led_name] = threading.Event()
             
             def _blink():
-                while not self.blink_events[led_name].is_set():
+                # Capture event reference to avoid race condition
+                event = self.blink_events[led_name]
+                while not event.is_set():
                     self.rainbow_driver.button_leds[led_name].on()
                     time.sleep(on_time)
-                    if not self.blink_events[led_name].is_set():
+                    if not event.is_set():
                         self.rainbow_driver.button_leds[led_name].off()
                     time.sleep(off_time)
             
@@ -499,11 +506,13 @@ class LEDManager:
             self.blink_events['all'] = threading.Event()
             
             def _blink_all():
-                while not self.blink_events['all'].is_set():
+                # Capture event reference to avoid race condition
+                event = self.blink_events['all']
+                while not event.is_set():
                     for led in ['A', 'B', 'C']:
                         self.rainbow_driver.button_leds[led].on()
                     time.sleep(on_time)
-                    if not self.blink_events['all'].is_set():
+                    if not event.is_set():
                         for led in ['A', 'B', 'C']:
                             self.rainbow_driver.button_leds[led].off()
                     time.sleep(off_time)

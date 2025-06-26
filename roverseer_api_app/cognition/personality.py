@@ -371,8 +371,43 @@ class PersonalityManager:
         return self.personalities.get(name.lower())
     
     def list_personalities(self) -> List[Dict]:
-        """List all available personalities"""
-        return [p.to_dict() for p in self.personalities.values()]
+        """Return list of all personalities with enhanced model availability info"""
+        personality_list = []
+        for personality in self.personalities.values():
+            personality_dict = personality.to_dict()
+            
+            # Add model availability status
+            try:
+                from cognition.llm_interface import get_available_models
+                available_models = get_available_models()
+                
+                model_available = True
+                fallback_model = None
+                
+                if personality.model_preference:
+                    model_available = personality.model_preference in available_models
+                    if not model_available:
+                        # Show what fallback would be used
+                        fallback_model = self._choose_random_available_model(available_models, personality.model_preference)
+                
+                personality_dict.update({
+                    'model_available': model_available,
+                    'fallback_model': fallback_model,
+                    'status': 'ready' if model_available else 'fallback_ready'
+                })
+                
+            except Exception as e:
+                # Don't let model checking prevent personality from showing
+                DebugLog("⚠️ Error checking model availability for {}: {}", personality.name, e)
+                personality_dict.update({
+                    'model_available': True,  # Assume available to prevent hiding
+                    'fallback_model': None,
+                    'status': 'unknown'
+                })
+            
+            personality_list.append(personality_dict)
+        
+        return personality_list
     
     def switch_to(self, name: str) -> bool:
         """Switch to a different personality"""
@@ -516,6 +551,7 @@ class PersonalityManager:
         """
         Intelligently choose between mini_model and model_preference based on total context size
         Uses the current personality's mini_model_threshold for decision making
+        Enhanced with random fallback when preferred models aren't available
         
         Args:
             max_tokens: Total input context size (user message + conversation history)
@@ -525,8 +561,12 @@ class PersonalityManager:
             Model name to use for the task
         """
         try:
+            # Get available models for validation
+            from cognition.llm_interface import get_available_models
+            available_models = get_available_models()
+            
             if not self.current_personality:
-                fallback_model = default_model or "llama3.2:3b"
+                fallback_model = self._choose_random_available_model(available_models, default_model)
                 DebugLog("🔧 No current personality, using fallback model: {}", fallback_model)
                 return fallback_model
             
@@ -536,26 +576,29 @@ class PersonalityManager:
             mini_threshold = getattr(personality, 'mini_model_threshold', 1000)
             model_preference = getattr(personality, 'model_preference', None)
             
-            # Always start with preferred model
-            selected_model = model_preference or default_model or "llama3.2:3b"
-            
-            # Check if we should use mini model
+            # Check if we should use mini model first
             has_mini_model = bool(mini_model and isinstance(mini_model, str) and mini_model.strip())
             
             if has_mini_model and max_tokens > mini_threshold:
-                DebugLog("🚀 Using mini model '{}' for large context ({} tokens > {} threshold)", 
-                        mini_model, max_tokens, mini_threshold)
-                return mini_model
+                # Try mini model first if context is large
+                if mini_model in available_models:
+                    DebugLog("🚀 Using mini model '{}' for large context ({} tokens > {} threshold)", 
+                            mini_model, max_tokens, mini_threshold)
+                    return mini_model
+                else:
+                    DebugLog("⚠️ Mini model '{}' not available, falling back to full model", mini_model)
             
-            # Log which model we're using and why
-            if has_mini_model:
-                DebugLog("🧠 Using full model '{}' for normal context ({} tokens <= {} threshold)", 
-                        selected_model, max_tokens, mini_threshold)
-            else:
-                DebugLog("🧠 Using full model '{}' (no mini model configured for {})", 
-                        selected_model, personality.name)
+            # Try personality's preferred model
+            if model_preference and model_preference in available_models:
+                DebugLog("🧠 Using personality's preferred model '{}'", model_preference)
+                return model_preference
+            elif model_preference:
+                DebugLog("⚠️ Personality's preferred model '{}' not available, choosing random fallback", model_preference)
             
-            return selected_model
+            # If preferred model not available, choose intelligently from available models
+            fallback_model = self._choose_random_available_model(available_models, default_model)
+            DebugLog("🎲 Chosen random fallback model '{}' for personality '{}'", fallback_model, personality.name)
+            return fallback_model
             
         except Exception as e:
             # If anything goes wrong, fall back to safe defaults
@@ -563,6 +606,47 @@ class PersonalityManager:
             print(f"⚠️  Error in choose_model for personality {getattr(self.current_personality, 'name', 'unknown')}: {e}")
             print(f"   Falling back to: {fallback_model}")
             return fallback_model
+    
+    def _choose_random_available_model(self, available_models: List[str], default_model: Optional[str] = None) -> str:
+        """
+        Intelligently choose a random model from available models with preference hierarchy
+        
+        Args:
+            available_models: List of available model names
+            default_model: Preferred default model
+            
+        Returns:
+            Selected model name
+        """
+        if not available_models:
+            return default_model or "llama3.2:3b"
+        
+        # Priority order for random selection
+        # 1. Default model if available
+        if default_model and default_model in available_models:
+            return default_model
+        
+        # 2. Filter out personality entries and system models for cleaner selection
+        clean_models = [m for m in available_models if not m.startswith("PERSONALITY:")]
+        
+        if not clean_models:
+            # Fallback to first available if no clean models
+            return available_models[0]
+        
+        # 3. Prefer smaller, more responsive models for personalities
+        preferred_patterns = ["llama3.2:3b", "llama3.2:1b", "qwen", "phi", "gemma"]
+        
+        for pattern in preferred_patterns:
+            matching_models = [m for m in clean_models if pattern.lower() in m.lower()]
+            if matching_models:
+                selected = random.choice(matching_models)
+                DebugLog("🎯 Selected preferred pattern '{}' model: {}", pattern, selected)
+                return selected
+        
+        # 4. If no preferred patterns, choose randomly from available
+        selected = random.choice(clean_models)
+        DebugLog("🎲 Randomly selected model from {} available: {}", len(clean_models), selected)
+        return selected
 
 
 # Global personality manager instance

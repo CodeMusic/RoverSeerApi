@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RoverSeer AudioCraft Studio</title>
+    <style>
+        body 
+        {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #1a1a1a; 
+            color: #ffffff; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        /* Navigation Header */
+        .header { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .back-header-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        
+        .back-arrow {
+            color: white; 
+            text-decoration: none; 
+            font-size: 24px; 
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-arrow:hover {
+            color: #e0e0e0;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .header {
+                background: #1c1c1e;
+                color: white;
+                padding: 15px 10px 10px 10px;
+                padding-top: max(15px, env(safe-area-inset-top));
+                flex-direction: column;
+                gap: 10px;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            
+            .back-header-link {
+                flex-direction: column;
+                text-align: center;
+                gap: 5px;
+            }
+            
+            .studio-container {
+                padding: 10px !important;
+            }
+        }
+        
+        .studio-container 
+        {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            gap: 30px;
+            grid-template-columns: 1fr;
+            padding: 20px;
+        }
+        
+        .studio-header 
+        {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .studio-header h1 
+        {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 3rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .studio-header p 
+        {
+            color: #b0b0b0;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+        
+        .cognitive-section 
+        {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .cognitive-section:hover 
+        {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .section-header 
+        {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 15px;
+        }
+        
+        .section-icon 
+        {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .section-title 
+        {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+            color: #ffffff;
+        }
+        
+        .perception-controls 
+        {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: 1fr;
+        }
+        
+        .input-group 
+        {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .input-label 
+        {
+            font-weight: 500;
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+        
+        .stimulus-input 
+        {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 12px;
+            padding: 15px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .stimulus-input:focus 
+        {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .expression-button 
+        {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+        
+        .expression-button:hover 
+        {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .expression-button:disabled 
+        {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .manifestation-area 
+        {
+            background: #222;
+            border: 2px dashed #444;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .manifestation-placeholder 
+        {
+            color: #888;
+            font-style: italic;
+        }
+        
+        .manifestation-content 
+        {
+            display: none;
+        }
+        
+        .audio-player 
+        {
+            width: 100%;
+            margin-top: 15px;
+            background: #333;
+            border-radius: 8px;
+        }
+        
+        .consciousness-feedback 
+        {
+            background: #1a4a3a;
+            border: 1px solid #2a6a4a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #90ee90;
+        }
+        
+        .parameter-grid 
+        {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .parameter-input 
+        {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+        
+        .parameter-input:focus 
+        {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        /* Loading animation */
+        .synaptic-loading 
+        {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: synapse-fire 1s ease-in-out infinite;
+        }
+        
+        @keyframes synapse-fire 
+        {
+            to 
+            { 
+                transform: rotate(360deg); 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/" class="back-header-link">
+            <div class="back-arrow">←</div>
+            Back to Home
+        </a>
+    </div>
+
+    <div class="studio-container">
+        <div class="studio-header">
+            <h1>AudioCraft Neural Studio</h1>
+            <p>Auditory manifestation through cognitive processing</p>
+        </div>
+        
+        <!-- Sound Effects Synthesis Section -->
+        <div class="cognitive-section">
+            <div class="section-header">
+                <div class="section-icon">🎵</div>
+                <h2 class="section-title">Sound Effects Synthesis</h2>
+            </div>
+            
+            <div class="perception-controls">
+                <div class="input-group">
+                    <label class="input-label">Auditory Stimulus Description</label>
+                    <textarea 
+                        id="soundEffectPrompt" 
+                        class="stimulus-input" 
+                        placeholder="Describe the sound effect you want to manifest... (e.g., 'thunderstorm with heavy rain and wind', 'mechanical robot footsteps on metal', 'magical spell casting with sparkles')"
+                    ></textarea>
+                </div>
+                
+                <div class="parameter-grid">
+                    <div class="input-group">
+                        <label class="input-label">Duration (seconds)</label>
+                        <input type="number" id="soundDuration" class="parameter-input" value="5" min="1" max="30">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Intensity Level</label>
+                        <select id="soundIntensity" class="parameter-input">
+                            <option value="subtle">Subtle</option>
+                            <option value="moderate" selected>Moderate</option>
+                            <option value="intense">Intense</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button 
+                    id="generateSoundEffect" 
+                    class="expression-button"
+                    onclick="generateSoundEffect()"
+                >
+                    Synthesize Sound Effect
+                </button>
+            </div>
+            
+            <div id="soundEffectResult" class="manifestation-area">
+                <div class="manifestation-placeholder">
+                    Sound effect manifestation will appear here after neural processing...
+                </div>
+            </div>
+        </div>
+        
+        <!-- Music Generation Section -->
+        <div class="cognitive-section">
+            <div class="section-header">
+                <div class="section-icon">🎼</div>
+                <h2 class="section-title">Musical Generation</h2>
+            </div>
+            
+            <div class="perception-controls">
+                <div class="input-group">
+                    <label class="input-label">Musical Concept Description</label>
+                    <textarea 
+                        id="musicPrompt" 
+                        class="stimulus-input" 
+                        placeholder="Describe the music you want to create... (e.g., 'uplifting piano melody with subtle strings', 'dark electronic ambient with deep bass', 'acoustic guitar folk song with warm feeling')"
+                    ></textarea>
+                </div>
+                
+                <div class="parameter-grid">
+                    <div class="input-group">
+                        <label class="input-label">Duration (seconds)</label>
+                        <input type="number" id="musicDuration" class="parameter-input" value="30" min="10" max="120">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Genre</label>
+                        <select id="musicGenre" class="parameter-input">
+                            <option value="ambient">Ambient</option>
+                            <option value="electronic">Electronic</option>
+                            <option value="acoustic" selected>Acoustic</option>
+                            <option value="orchestral">Orchestral</option>
+                            <option value="experimental">Experimental</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Tempo</label>
+                        <select id="musicTempo" class="parameter-input">
+                            <option value="slow">Slow (60-80 BPM)</option>
+                            <option value="moderate" selected>Moderate (80-120 BPM)</option>
+                            <option value="fast">Fast (120-140 BPM)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Emotional Resonance</label>
+                        <select id="musicMood" class="parameter-input">
+                            <option value="happy">Joyful</option>
+                            <option value="calm" selected>Peaceful</option>
+                            <option value="melancholic">Contemplative</option>
+                            <option value="energetic">Energetic</option>
+                            <option value="mysterious">Mysterious</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button 
+                    id="generateMusic" 
+                    class="expression-button"
+                    onclick="generateMusic()"
+                >
+                    Manifest Musical Consciousness
+                </button>
+            </div>
+            
+            <div id="musicResult" class="manifestation-area">
+                <div class="manifestation-placeholder">
+                    Musical manifestation will emerge here through cognitive synthesis...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AudioCraft Sound Orchestration Integration
+        async function triggerAudioCraftSound(soundType) 
+        {
+            try 
+            {
+                await fetch(`/audiocraft/sound_feedback/${soundType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } 
+            catch (error) 
+            {
+                console.log('Sound orchestration not available:', error);
+            }
+        }
+
+        async function generateSoundEffect() 
+        {
+            const button = document.getElementById('generateSoundEffect');
+            const resultArea = document.getElementById('soundEffectResult');
+            const prompt = document.getElementById('soundEffectPrompt').value.trim();
+            
+            if (!prompt) 
+            {
+                alert('Please provide a description for the sound effect');
+                return;
+            }
+            
+            // Start tone feedback
+            triggerAudioCraftSound('sound_start');
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="synaptic-loading"></span> Processing auditory synthesis...';
+            
+            resultArea.innerHTML = '<div class="consciousness-feedback">Engaging neural pathways for sound effect synthesis...</div>';
+            
+            // Processing tone feedback
+            setTimeout(() => triggerAudioCraftSound('sound_processing'), 500);
+            
+            try 
+            {
+                const response = await fetch('/audiocraft/synthesize_sound', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        duration: parseInt(document.getElementById('soundDuration').value),
+                        intensity: document.getElementById('soundIntensity').value
+                    })
+                });
+                
+                if (response.ok) 
+                {
+                    // Success tone feedback
+                    triggerAudioCraftSound('sound_complete');
+                    
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    // Check if this is real AudioCraft or fallback
+                    const status = response.headers.get('X-AudioCraft-Status');
+                    const error = response.headers.get('X-AudioCraft-Error');
+                    const message = response.headers.get('X-AudioCraft-Message');
+                    
+                    let statusMessage = '';
+                    if (status === 'fallback') {
+                        statusMessage = `
+                            <div style="color: #ff9800; background: #2a1810; border: 1px solid #ff9800; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <strong>⚠️ Using Fallback Audio</strong><br/>
+                                <strong>Error:</strong> ${error}<br/>
+                                <strong>Message:</strong> ${message}
+                            </div>
+                        `;
+                    } else if (status === 'success') {
+                        statusMessage = `
+                            <div style="color: #4caf50; background: #1a2a1a; border: 1px solid #4caf50; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <strong>✅ Real AudioCraft Generation</strong><br/>
+                                ${message}
+                            </div>
+                        `;
+                    }
+                    
+                    resultArea.innerHTML = `
+                        ${statusMessage}
+                        <div class="consciousness-feedback">Sound effect processing complete!</div>
+                        <audio controls class="audio-player" src="${audioUrl}">
+                            Your browser does not support audio playback.
+                        </audio>
+                    `;
+                } 
+                else 
+                {
+                    // Error tone feedback
+                    triggerAudioCraftSound('sound_error');
+                    
+                    const error = await response.text();
+                    resultArea.innerHTML = `<div style="color: #ff6b6b;">Neural synthesis error: ${error}</div>`;
+                }
+            } 
+            catch (error) 
+            {
+                // Error tone feedback
+                triggerAudioCraftSound('sound_error');
+                
+                resultArea.innerHTML = `<div style="color: #ff6b6b;">Connection error: ${error.message}</div>`;
+            } 
+            finally 
+            {
+                button.disabled = false;
+                button.innerHTML = 'Synthesize Sound Effect';
+            }
+        }
+        
+        async function generateMusic() 
+        {
+            const button = document.getElementById('generateMusic');
+            const resultArea = document.getElementById('musicResult');
+            const prompt = document.getElementById('musicPrompt').value.trim();
+            
+            if (!prompt) 
+            {
+                alert('Please provide a description for the music');
+                return;
+            }
+            
+            // Start tone feedback (more complex for music)
+            triggerAudioCraftSound('music_start');
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="synaptic-loading"></span> Manifesting musical consciousness...';
+            
+            resultArea.innerHTML = '<div class="consciousness-feedback">Engaging creative neural networks for musical synthesis...</div>';
+            
+            // Processing tone feedback (musical sequence)
+            setTimeout(() => triggerAudioCraftSound('music_processing'), 800);
+            
+            try 
+            {
+                const response = await fetch('/audiocraft/generate_music', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        duration: parseInt(document.getElementById('musicDuration').value),
+                        genre: document.getElementById('musicGenre').value,
+                        tempo: document.getElementById('musicTempo').value,
+                        mood: document.getElementById('musicMood').value
+                    })
+                });
+                
+                if (response.ok) 
+                {
+                    // Success tone feedback (harmonious completion)
+                    triggerAudioCraftSound('music_complete');
+                    
+                    const blob = await response.blob();
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    // Check if this is real AudioCraft or fallback
+                    const status = response.headers.get('X-AudioCraft-Status');
+                    const error = response.headers.get('X-AudioCraft-Error');
+                    const message = response.headers.get('X-AudioCraft-Message');
+                    
+                    let statusMessage = '';
+                    if (status === 'fallback') {
+                        statusMessage = `
+                            <div style="color: #ff9800; background: #2a1810; border: 1px solid #ff9800; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <strong>⚠️ Using Fallback Audio</strong><br/>
+                                <strong>Error:</strong> ${error}<br/>
+                                <strong>Message:</strong> ${message}
+                            </div>
+                        `;
+                    } else if (status === 'success') {
+                        statusMessage = `
+                            <div style="color: #4caf50; background: #1a2a1a; border: 1px solid #4caf50; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <strong>✅ Real AudioCraft Generation</strong><br/>
+                                ${message}
+                            </div>
+                        `;
+                    }
+                    
+                    resultArea.innerHTML = `
+                        ${statusMessage}
+                        <div class="consciousness-feedback">Musical generation complete!</div>
+                        <audio controls class="audio-player" src="${audioUrl}">
+                            Your browser does not support audio playback.
+                        </audio>
+                    `;
+                } 
+                else 
+                {
+                    // Error tone feedback (dissonant sequence)
+                    triggerAudioCraftSound('music_error');
+                    
+                    const error = await response.text();
+                    resultArea.innerHTML = `<div style="color: #ff6b6b;">Musical synthesis error: ${error}</div>`;
+                }
+            } 
+            catch (error) 
+            {
+                // Error tone feedback (dissonant sequence)
+                triggerAudioCraftSound('music_error');
+                
+                resultArea.innerHTML = `<div style="color: #ff6b6b;">Connection error: ${error.message}</div>`;
+            } 
+            finally 
+            {
+                button.disabled = false;
+                button.innerHTML = 'Manifest Musical Consciousness';
+            }
+        }
+    </script>
+</body>
+</html> 

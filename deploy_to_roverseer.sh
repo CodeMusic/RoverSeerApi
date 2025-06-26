@@ -34,6 +34,15 @@ rsync -avz --delete \
   --exclude='Thumbs.db' \
   -e "ssh $SSH_OPTS" roverseer_api_app/ $REMOTE_HOST:~/roverseer_api_app/
 
+# Upload FastAPI requirements and core files
+echo "⚡ Uploading FastAPI migration files..."
+scp $SSH_OPTS requirements_fastapi.txt $REMOTE_HOST:~/
+scp $SSH_OPTS fastapi_core.py $REMOTE_HOST:~/roverseer_api_app/
+
+# Verify temporal_perspective.py was uploaded properly
+echo "✅ Verifying temporal_perspective.py..."
+ssh $SSH_OPTS $REMOTE_HOST "ls -la ~/roverseer_api_app/perception/temporal_perspective.py || echo '❌ temporal_perspective.py not found'"
+
 # Upload voice training system - exclude macOS system files
 echo "🎤 Uploading voice training system..."
 ssh $SSH_OPTS $REMOTE_HOST "mkdir -p ~/texty"
@@ -73,6 +82,10 @@ echo "🔧 Setting permissions..."
 ssh $SSH_OPTS $REMOTE_HOST "chmod +x ~/custom_drivers/rainbow_driver.py"
 ssh $SSH_OPTS $REMOTE_HOST "chmod +x ~/texty/train.py"
 
+# Install FastAPI dependencies
+echo "⚡ Installing FastAPI dependencies..."
+ssh $SSH_OPTS $REMOTE_HOST "pip install -r ~/requirements_fastapi.txt"
+
 # Clean up any existing training locks/PIDs and macOS files
 echo "🧹 Cleaning up previous training sessions and system files..."
 ssh $SSH_OPTS $REMOTE_HOST "rm -f /tmp/training.lock /tmp/training.pid /tmp/training.log"
@@ -89,9 +102,10 @@ echo "✅ Checking service status..."
 ssh $SSH_OPTS $REMOTE_HOST "sudo systemctl status roverseer --no-pager -l"
 
 # Test if service is actually responding
-echo "🎯 Testing service endpoints..."
+echo "🎯 Testing FastAPI service endpoints..."
 ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/ > /dev/null && echo '✅ Main interface responding' || echo '❌ Main interface not responding'"
 ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/status_only > /dev/null && echo '✅ Status API responding' || echo '❌ Status API not responding'"
-ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/available-voices > /dev/null && echo '✅ Voice training endpoints responding' || echo '❌ Voice training endpoints not responding'"
+ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/api/docs > /dev/null && echo '✅ FastAPI docs responding' || echo '❌ FastAPI docs not responding'"
+ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/voices > /dev/null && echo '✅ Voice endpoints responding' || echo '❌ Voice endpoints not responding'"
 
 echo "🎉 Deployment complete!" 

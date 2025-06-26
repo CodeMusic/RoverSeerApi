@@ -447,6 +447,22 @@ def play_toggle_right_echo():
             print(f"Error playing toggle right echo: {e}")
 
 
+def play_button_error_sound():
+    """Play a 2-note error sound when button press is ignored (like 'eh oh')"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # "Eh oh" sound - descending minor third interval
+            # E4 to C#4 creates that "uh oh" feeling
+            notes = [Tone("E4"), Tone("C#4")]
+            durations = [0.12, 0.15]  # Second note slightly longer for emphasis
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.03)
+        except Exception as e:
+            print(f"Error playing button error sound: {e}")
+
+
 # -------- SOUND PLAYBACK HELPER -------- #
 def play_sound_async(sound_function, *args, **kwargs):
     """Queue a sound function to play asynchronously"""
@@ -455,4 +471,176 @@ def play_sound_async(sound_function, *args, **kwargs):
     
     if rainbow and hasattr(rainbow, 'buzzer_manager'):
         # Queue the function to run on the buzzer thread
-        rainbow.buzzer_manager.queue_function(sound_function, *args, **kwargs) 
+        rainbow.buzzer_manager.queue_function(sound_function, *args, **kwargs)
+
+
+# -------- AUDIOCRAFT SYNTHESIS FUNCTIONS -------- #
+def play_audiocraft_sound_start_tune():
+    """Play an ascending auditory synthesis initiation tune for sound effects"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Sound effect synthesis - simple ascending triad
+            notes = [Tone("A4"), Tone("C#5"), Tone("E5")]  # A major triad ascending
+            durations = [0.15, 0.15, 0.2]
+            
+            # Play the auditory synthesis initiation
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft sound start tune: {e}")
+
+
+def play_audiocraft_sound_processing_tune():
+    """Play a rhythmic processing pattern for sound effect synthesis"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Alternating pattern representing neural processing
+            notes = [Tone("C5"), Tone("D5"), Tone("C5"), Tone("D5")]
+            durations = [0.1, 0.1, 0.1, 0.1]
+            
+            # Play the processing pattern
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft sound processing tune: {e}")
+
+
+def play_audiocraft_sound_complete_tune():
+    """Play a completion chord for successful sound effect synthesis"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Satisfying resolution - major chord
+            notes = [Tone("E5"), Tone("G5"), Tone("A5")]
+            durations = [0.2, 0.2, 0.4]
+            
+            # Play the completion chord
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft sound complete tune: {e}")
+
+
+def play_audiocraft_sound_error_tune():
+    """Play a descending warning pattern for sound synthesis errors"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Descending warning - minor third intervals
+            notes = [Tone("A3"), Tone("G3"), Tone("F3")]
+            durations = [0.3, 0.3, 0.4]
+            
+            # Play the error warning
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.05)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft sound error tune: {e}")
+
+
+def play_audiocraft_music_start_tune():
+    """Play a complex musical initiation sequence for music generation"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Musical synthesis - major chord progression (more complex than sound effects)
+            notes = [
+                Tone("C4"), Tone("E4"), Tone("G4"), 
+                Tone("C5"), Tone("E5")
+            ]
+            durations = [0.12, 0.12, 0.12, 0.15, 0.25]
+            
+            # Play the musical synthesis initiation
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft music start tune: {e}")
+
+
+def play_audiocraft_music_processing_tune():
+    """Play a melodic sequence representing musical consciousness processing"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Flowing melodic sequence - more notes than sound effects processing
+            notes = [
+                Tone("G4"), Tone("A4"), Tone("B4"), 
+                Tone("A4"), Tone("G4"), Tone("F4")
+            ]
+            durations = [0.08, 0.08, 0.08, 0.08, 0.08, 0.12]
+            
+            # Play the musical processing sequence
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft music processing tune: {e}")
+
+
+def play_audiocraft_music_complete_tune():
+    """Play a triumphant harmonic series for musical generation completion"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Ascending harmonic series - triumphant and musical
+            notes = [
+                Tone("C5"), Tone("E5"), Tone("G5"), 
+                Tone("C6"), Tone("E6")
+            ]
+            durations = [0.15, 0.15, 0.2, 0.25, 0.5]
+            
+            # Play the musical completion fanfare
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft music complete tune: {e}")
+
+
+def play_audiocraft_music_error_tune():
+    """Play a dissonant descending sequence for musical synthesis errors"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Diminished descent - dissonant and unsettling
+            notes = [
+                Tone("Bb4"), Tone("Ab4"), Tone("Gb4"), 
+                Tone("Eb4"), Tone("Db4")
+            ]
+            durations = [0.2, 0.2, 0.25, 0.25, 0.4]
+            
+            # Play the musical error sequence
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.05)
+                
+        except Exception as e:
+            print(f"Error playing AudioCraft music error tune: {e}")
+
+
+def play_streaming_snippet_tone():
+    """Play a brief tone to indicate a new streaming snippet is being spoken"""
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Short, subtle tone pattern to indicate snippet boundary
+            notes = [Tone("F5"), Tone("A5")]
+            durations = [0.05, 0.08]
+            rainbow.buzzer_manager.play_sequence_async(notes, durations, gaps=0.02)
+        except Exception as e:
+            print(f"Error playing streaming snippet tone: {e}") 

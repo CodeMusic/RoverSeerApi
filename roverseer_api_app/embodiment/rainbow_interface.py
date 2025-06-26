@@ -48,13 +48,29 @@ def initialize_hardware():
         print("🔄 Refreshing models and personalities list...")
         refresh_available_models()
         
-        # Re-sync with current personality after hardware init
+        # Enhanced personality and voice synchronization after hardware init
         from cognition.personality import get_personality_manager
         personality_manager = get_personality_manager()
         
         print(f"🔍 Before re-sync: selected_model_index={config.selected_model_index}, available_models count={len(config.available_models)}")
         
+        # Force reload current personality if none is loaded
+        if not personality_manager.current_personality:
+            print("⚠️  No current personality loaded, attempting to load default...")
+            personality_manager._load_current_personality()
+        
         if personality_manager.current_personality:
+            print(f"🎯 Syncing device to personality: {personality_manager.current_personality.name}")
+            
+            # Ensure the personality's voice is set as default
+            if personality_manager.current_personality.voice_id:
+                from config import update_default_voice
+                success = update_default_voice(personality_manager.current_personality.voice_id)
+                if success:
+                    print(f"✅ Default voice updated to: {personality_manager.current_personality.voice_id}")
+                else:
+                    print(f"⚠️  Failed to update default voice to: {personality_manager.current_personality.voice_id}")
+            
             # Find and set the personality index
             personality_entry = f"PERSONALITY:{personality_manager.current_personality.name}"
             try:
@@ -66,8 +82,25 @@ def initialize_hardware():
                 # List what personalities ARE available
                 personality_entries = [m for m in config.available_models if m.startswith("PERSONALITY:")]
                 print(f"   Available personalities: {personality_entries}")
+                
+                # If no personalities available but we have one loaded, try to use its model preference
+                if personality_manager.current_personality.model_preference:
+                    try:
+                        model_index = config.available_models.index(personality_manager.current_personality.model_preference)
+                        config.selected_model_index = model_index
+                        print(f"✅ Fallback: Using personality's preferred model {personality_manager.current_personality.model_preference} (index {model_index})")
+                    except ValueError:
+                        print(f"⚠️  Personality's preferred model {personality_manager.current_personality.model_preference} not available")
+        else:
+            print("⚠️  No personality available after hardware initialization")
+            # Set up a basic working state
+            if config.available_models:
+                config.selected_model_index = 0
+                print(f"🔧 Fallback: Set to first available model: {config.available_models[0]}")
         
         print(f"🔍 After re-sync: selected_model_index={config.selected_model_index}")
+        print(f"🔍 Current default voice: {config.DEFAULT_VOICE}")
+        print(f"🔍 Current personality: {personality_manager.current_personality.name if personality_manager.current_personality else 'None'}")
         
         # Show current selection on startup
         from embodiment.display_manager import scroll_text_on_display
@@ -142,7 +175,8 @@ def setup_button_handlers():
     from expression.sound_orchestration import play_sound_async
     from expression.sound_orchestration import (play_toggle_left_sound, play_toggle_right_sound,
                                                play_toggle_left_echo, play_toggle_right_echo,
-                                               play_confirmation_sound, play_recording_complete_sound)
+                                               play_confirmation_sound, play_recording_complete_sound,
+                                               play_button_error_sound)
     from embodiment.display_manager import scroll_text_on_display, isScrolling, interrupt_scrolling, clear_display
     from memory.usage_logger import get_model_runtime
     from cognition.llm_interface import run_chat_completion
@@ -236,6 +270,7 @@ def setup_button_handlers():
         # Check if system is busy using orchestrator
         if is_system_busy():
             print("Button A ignored - system is busy")
+            play_sound_async(play_button_error_sound)
             return
         
         # Check if we should interrupt audio
@@ -292,6 +327,7 @@ def setup_button_handlers():
         # Check if system is busy using orchestrator
         if is_system_busy():
             print("Button C ignored - system is busy")
+            play_sound_async(play_button_error_sound)
             return
         
         # Check if we should interrupt audio
@@ -347,6 +383,7 @@ def setup_button_handlers():
         # Check if system is busy using orchestrator
         if is_system_busy():
             print("Button B ignored - system is busy")
+            play_sound_async(play_button_error_sound)
             return
         
         # Check if we should interrupt audio
@@ -374,11 +411,13 @@ def setup_button_handlers():
         if current_state.value in ["processing_speech", "contemplating"] and config.recording_in_progress:
             config.DebugLog("Recording blocked in {} state", current_state.value)
             print(f"Button B: Recording blocked in {current_state.value} state")
+            play_sound_async(play_button_error_sound)
             return
 
         if config.recording_in_progress:
             config.DebugLog("Recording already in progress ({})", config.recording_in_progress)
             print(f"Button B: Recording already in progress ({config.recording_in_progress})")
+            play_sound_async(play_button_error_sound)
             return
             
         if all(buttons_pressed.values()):
@@ -768,11 +807,54 @@ def setup_button_handlers():
             # Register the process with orchestrator for cleanup tracking
             orchestrator.register_audio_process(config.current_audio_process)
             
-            # Wait for playback to complete
-            config.current_audio_process.wait()
-            config.current_audio_process = None
+            # CRITICAL FIX: Wait for playback with timeout and error handling
+            try:
+                # Wait for completion with timeout to prevent hanging
+                return_code = config.current_audio_process.wait(timeout=30)  # 30 second timeout
+                
+                if return_code != 0:
+                    # Audio process failed, get error details
+                    stdout, stderr = config.current_audio_process.communicate()
+                    print(f"Audio playback failed with return code {return_code}")
+                    print(f"stderr: {stderr.decode() if stderr else 'No error output'}")
+                    
+                    # Try fallback audio device
+                    print("Trying fallback audio device 'default'")
+                    fallback_process = subprocess.Popen(
+                        ["aplay", "-D", "default", tmp_wav],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE
+                    )
+                    fallback_process.wait(timeout=15)  # Shorter timeout for fallback
+                    
+            except subprocess.TimeoutExpired:
+                print("Audio playback timed out, terminating process")
+                config.current_audio_process.terminate()
+                try:
+                    config.current_audio_process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    config.current_audio_process.kill()
+                    config.current_audio_process.wait()
+                    
+            except Exception as audio_error:
+                print(f"Audio playback error: {audio_error}")
+                # Try to terminate the process
+                try:
+                    if config.current_audio_process and config.current_audio_process.poll() is None:
+                        config.current_audio_process.terminate()
+                        config.current_audio_process.wait(timeout=2)
+                except:
+                    pass
             
-            os.remove(tmp_wav)
+            finally:
+                # Always clean up
+                config.current_audio_process = None
+            
+            # Clean up temp file
+            try:
+                os.remove(tmp_wav)
+            except:
+                pass
             
             # All complete - return to idle
             orchestrator.complete_pipeline_flow()  # EXPRESSING -> IDLE
@@ -831,31 +913,79 @@ def setup_button_handlers():
                 error_clear_thread.daemon = True
                 error_clear_thread.start()
         finally:
-            # Reset recording flag
+            # CRITICAL FIX: Reset recording flag FIRST to re-enable buttons immediately
             config.recording_in_progress = False
+            print("🔧 CLEANUP: Recording flag reset to False")
             
-            # CRITICAL FIX: Force orchestrator back to IDLE state to prevent stuck "busy" condition
+            # ENHANCED FIX: Force orchestrator back to IDLE state with multiple fallback strategies
             try:
                 current_state = orchestrator.get_current_state()
+                print(f"🔧 CLEANUP: Current orchestrator state: {current_state.value}")
+                
                 if current_state.value != "idle" and current_state.value != "interrupted":
                     print(f"🔧 CLEANUP: Forcing orchestrator from {current_state.value} to IDLE")
-                    orchestrator.complete_pipeline_flow()  # Forces transition to IDLE
+                    
+                    # Strategy 1: Try graceful completion
+                    try:
+                        orchestrator.complete_pipeline_flow()
+                        print("🔧 CLEANUP: Graceful completion successful")
+                    except Exception as graceful_error:
+                        print(f"🔧 CLEANUP: Graceful completion failed: {graceful_error}")
+                        
+                        # Strategy 2: Try interruption request
+                        try:
+                            orchestrator.request_interruption()
+                            print("🔧 CLEANUP: Interruption request sent")
+                            
+                            # Give it a moment to process
+                            time.sleep(0.1)
+                            
+                            # Check if it worked
+                            final_state = orchestrator.get_current_state()
+                            if final_state.value not in ["idle", "interrupted"]:
+                                print(f"🔧 CLEANUP: Still not idle after interruption ({final_state.value}), trying force reset")
+                                
+                                # Strategy 3: Force reset to idle (last resort)
+                                if hasattr(orchestrator, 'force_reset_to_idle'):
+                                    orchestrator.force_reset_to_idle()
+                                    print("🔧 CLEANUP: Force reset completed")
+                                else:
+                                    print("🔧 CLEANUP: No force reset method available")
+                            else:
+                                print(f"🔧 CLEANUP: Successfully reached {final_state.value} state")
+                                
+                        except Exception as interrupt_error:
+                            print(f"🔧 CLEANUP: Interruption request failed: {interrupt_error}")
+                            print("🔧 CLEANUP: Will attempt hardware reset")
+                            
+                            # Strategy 4: Hardware-level cleanup (ultimate fallback)
+                            try:
+                                if rainbow_driver:
+                                    rainbow_driver.clear_display()
+                                    # Turn off all LEDs to visually indicate reset
+                                    if hasattr(rainbow_driver, 'button_leds'):
+                                        for led in rainbow_driver.button_leds.values():
+                                            led.off()
+                                print("🔧 CLEANUP: Hardware reset completed")
+                            except Exception as hw_error:
+                                print(f"🔧 CLEANUP: Hardware reset failed: {hw_error}")
                 else:
-                    print(f"🔧 CLEANUP: Orchestrator already in {current_state.value} state")
+                    print(f"🔧 CLEANUP: Orchestrator already in appropriate state: {current_state.value}")
+                    
             except Exception as cleanup_error:
-                print(f"🔧 CLEANUP ERROR: Failed to reset orchestrator state: {cleanup_error}")
-                # Last resort - try requesting interruption
-                try:
-                    orchestrator.request_interruption()
-                    print("🔧 CLEANUP: Requested interruption as fallback")
-                except:
-                    print("🔧 CLEANUP: Even interruption request failed!")
+                print(f"🔧 CLEANUP ERROR: Failed to access orchestrator state: {cleanup_error}")
+                print("🔧 CLEANUP: Recording flag still reset, buttons should work")
             
-            # Clear display
+            # Clear display and ensure visual feedback of completion
             if rainbow_driver:
-                rainbow_driver.clear_display()
+                try:
+                    rainbow_driver.clear_display()
+                    print("🔧 CLEANUP: Display cleared")
+                except Exception as display_error:
+                    print(f"🔧 CLEANUP: Display clear failed: {display_error}")
             
-            print("Recording pipeline complete, buttons re-enabled")
+            print("🔧 CLEANUP COMPLETE: Recording pipeline cleanup finished, buttons re-enabled")
+            config.DebugLog("Recording pipeline cleanup complete - recording_in_progress: {}", config.recording_in_progress)
     
     # Setup button handlers with both press and release
     # CRITICAL FIX: Assign our handlers AFTER a brief delay to override template handlers

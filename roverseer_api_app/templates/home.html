@@ -3,72 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>RoverSeer Status</title>
+    <title>RoverSeer Neural Interface</title>
     <style>
-        body 
-        {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
-            background: #f4f4f4; 
-            color: #333; 
-            margin: 20px;
-            -webkit-text-size-adjust: 100%;
-            -webkit-font-smoothing: antialiased;
+        :root {
+            /* Refined black theme with orange and purple accents */
+            --primary-black: #000000;
+            --background-black: #0A0A0A;
+            --surface-black: #1A1A1A;
+            --border-black: #2A2A2A;
+            
+            /* Purple accents - refined and elegant */
+            --accent-purple: #8B5CF6;
+            --accent-purple-light: #A78BFA;
+            --accent-purple-subtle: rgba(139, 92, 246, 0.1);
+            --accent-purple-border: rgba(139, 92, 246, 0.2);
+            
+            /* Orange accents - warm and inviting */
+            --accent-orange: #F97316;
+            --accent-orange-light: #FB923C;
+            --accent-orange-subtle: rgba(249, 115, 22, 0.1);
+            --accent-orange-border: rgba(249, 115, 22, 0.2);
+            
+            /* Text colors */
+            --text-primary: #FFFFFF;
+            --text-secondary: #B3B3B3;
+            --text-muted: #666666;
+            --text-accent: #CCCCCC;
+            
+            /* Gradients */
+            --gradient-purple: linear-gradient(135deg, #8B5CF6, #A78BFA);
+            --gradient-orange: linear-gradient(135deg, #F97316, #FB923C);
+            --gradient-surface: linear-gradient(135deg, #1A1A1A, #2A2A2A);
+            
+            /* Glass effects */
+            --glass-bg: rgba(26, 26, 26, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            
+            /* Shadows */
+            --shadow-subtle: 0 4px 20px rgba(0, 0, 0, 0.5);
+            --shadow-purple: 0 4px 20px rgba(139, 92, 246, 0.3);
+            --shadow-orange: 0 4px 20px rgba(249, 115, 22, 0.3);
         }
-        
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+            background: var(--background-black);
+            background-image: 
+                radial-gradient(circle at 20% 80%, var(--accent-purple-subtle) 0%, transparent 70%),
+                radial-gradient(circle at 80% 20%, var(--accent-orange-subtle) 0%, transparent 70%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Glassmorphism Effects */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .glow-effect {
+            position: relative;
+        }
+
+        .glow-effect::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: var(--gradient-primary);
+            border-radius: inherit;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .glow-effect:hover::before {
+            opacity: 0.7;
+            animation: glow-pulse 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow-pulse {
+            0% { box-shadow: 0 0 20px rgba(138, 92, 245, 0.4); }
+            100% { box-shadow: 0 0 40px rgba(138, 92, 245, 0.8); }
+        }
+
         /* Mobile-first responsive design */
         @media (max-width: 768px) {
             body {
                 margin: 0;
                 padding: 0;
-                background: #000000; /* Black background like iPhone */
+                background: var(--background-black);
             }
             
             .topbar {
-                background: #1c1c1e;
-                color: white;
-                padding: 8px 10px; /* Reduced padding */
-                padding-top: max(8px, env(safe-area-inset-top)); /* Reduced top padding */
+                background: var(--glass-bg);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-bottom: 1px solid var(--glass-border);
+                color: var(--text-primary);
+                padding: 12px 15px;
+                padding-top: max(12px, env(safe-area-inset-top));
                 flex-direction: column;
-                gap: 8px; /* Reduced gap */
+                gap: 10px;
                 position: sticky;
                 top: 0;
                 z-index: 100;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             }
             
             .status-container {
                 justify-content: center;
                 text-align: center;
                 flex-direction: column;
-                gap: 6px; /* Reduced gap */
+                gap: 8px;
                 width: 100%;
             }
             
-            /* Mobile status toggle */
             .mobile-status-toggle {
-                background: #333;
-                color: #87CEEB;
-                border: 1px solid #555;
-                padding: 4px 8px; /* Reduced padding */
-                border-radius: 4px; /* Smaller radius */
-                font-size: 11px; /* Smaller font */
+                background: var(--glass-bg);
+                color: var(--light-purple);
+                border: 1px solid var(--glass-border);
+                padding: 8px 16px;
+                border-radius: 12px;
+                font-size: 12px;
                 cursor: pointer;
-                margin-bottom: 4px; /* Reduced margin */
+                margin-bottom: 6px;
                 transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
             }
             
             .mobile-status-toggle:hover {
-                background: #444;
-                color: #ADD8E6;
+                background: var(--secondary-purple);
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-glow);
             }
             
-            /* Hide site status by default on mobile */
             .status-section {
                 display: none;
                 flex-wrap: wrap;
                 justify-content: center;
-                margin-top: 6px; /* Reduced margin */
-                animation: slideDown 0.3s ease-out;
-                gap: 8px; /* Add gap for better spacing */
+                margin-top: 8px;
+                animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                gap: 10px;
             }
             
             .status-section.mobile-expanded {
@@ -78,345 +170,393 @@
             @keyframes slideDown {
                 from {
                     opacity: 0;
+                    transform: translateY(-10px);
                     max-height: 0;
                 }
                 to {
                     opacity: 1;
-                    max-height: 400px; /* Increased for sensor data */
+                    transform: translateY(0);
+                    max-height: 400px;
                 }
             }
             
-            /* Always show AI pipeline only */
             .essential-status {
                 display: flex;
                 flex-direction: column;
-                gap: 4px; /* Reduced gap */
+                gap: 6px;
                 align-items: center;
             }
             
             .sensor-data {
-                font-size: 11px; /* Smaller font */
-                padding: 4px 6px; /* Reduced padding */
-                gap: 6px; /* Reduced gap */
-                border-radius: 6px; /* Smaller radius */
+                font-size: 11px;
+                padding: 8px 12px;
+                gap: 8px;
+                border-radius: 12px;
                 max-width: 100%;
                 overflow-x: auto;
                 white-space: nowrap;
-                background: #2c5f2d;
-                color: #ffffff;
-                margin-bottom: 4px; /* Add spacing when in collapsed section */
-                display: flex; /* Ensure flex display */
-                flex-wrap: wrap; /* Allow wrapping on small screens */
-                justify-content: center; /* Center items */
+                background: var(--glass-bg);
+                border: 1px solid var(--glass-border);
+                backdrop-filter: blur(10px);
+                color: var(--text-secondary);
+                margin-bottom: 6px;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
             }
             
             .ai-pipeline-status {
-                background: #1e3a8a;
-                color: #ffffff;
+                background: var(--gradient-primary);
+                color: white;
                 margin-left: 0;
-                font-size: 11px; /* Smaller font */
-                padding: 4px 6px; /* Reduced padding */
-                gap: 6px; /* Reduced gap */
-                border-radius: 6px; /* Smaller radius */
+                font-size: 12px;
+                padding: 8px 12px;
+                gap: 8px;
+                border-radius: 12px;
                 max-width: 100%;
                 overflow-x: auto;
                 white-space: nowrap;
-            }
-            
-            .sensor-item {
-                font-size: 10px; /* Smaller font */
-                margin-right: 8px; /* Reduced margin */
-            }
-            
-            .pipeline-item {
-                font-size: 11px; /* Smaller font */
-                gap: 4px; /* Reduced gap */
-            }
-            
-            .status-item {
-                margin: 0 3px 3px 0; /* Reduced margins */
-                font-size: 10px; /* Smaller font */
-            }
-            
-            .refresh {
-                font-size: 14px; /* Smaller refresh icon */
-                margin-top: 4px; /* Add some spacing */
+                box-shadow: var(--shadow-glow);
             }
             
             .chatbox {
-                margin: 0;
-                border-radius: 0;
-                height: calc(100vh - env(safe-area-inset-top) - 80px); /* Adjusted for smaller topbar */
-                max-height: calc(100vh - env(safe-area-inset-top) - 80px);
-                box-shadow: none;
-            }
-            
-            .chat-header {
-                padding: 10px 15px;
-                border-top-left-radius: 0;
-                border-top-right-radius: 0;
-            }
-            
-            .chat-header h2 {
-                font-size: 16px;
-            }
-            
-            .action-buttons {
-                gap: 5px;
-            }
-            
-            .action-buttons button {
-                font-size: 12px;
-                padding: 6px 10px;
-            }
-            
-            .messages-container {
-                padding: 15px 10px;
-                padding-bottom: env(safe-area-inset-bottom);
-            }
-            
-            .message {
-                max-width: 85%; /* Wider on mobile like iMessage */
-                margin-bottom: 8px;
-            }
-            
-            .message-bubble {
-                padding: 8px 12px;
-                border-radius: 16px;
-                font-size: 16px; /* Larger text on mobile */
-                line-height: 1.4;
-            }
-            
-            .message-info {
-                font-size: 10px;
-                margin-top: 2px;
-                padding: 0 8px;
-            }
-            
-            .chat-input-container {
-                padding: 10px;
-                padding-bottom: max(10px, env(safe-area-inset-bottom));
-                background: #f6f6f6;
-            }
-            
-            .chat-controls {
-                gap: 5px;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: 5px;
-            }
-            
-            .chat-controls select, .chat-controls input {
-                font-size: 14px;
-                padding: 8px 10px;
-                white-space: nowrap;
-                min-width: fit-content;
-            }
-            
-            .chat-controls label {
-                white-space: nowrap;
-                font-size: 14px;
-            }
-            
-            .chat-input-form {
-                gap: 8px;
-            }
-            
-            .chat-textarea {
-                font-size: 16px; /* Prevent zoom on iOS */
-                min-height: 44px; /* iOS touch target minimum */
-                border-radius: 22px;
-                padding: 12px 16px;
-            }
-            
-            .send-button {
-                min-width: 44px; /* iOS touch target minimum */
-                height: 44px;
-                border-radius: 22px;
-                font-size: 16px;
-                padding: 0 20px;
-            }
-            
-            /* Custom system message textarea on mobile */
-            #custom-system-group textarea {
-                font-size: 14px;
-                padding: 8px 12px;
-                border-radius: 12px;
-            }
-            
-            /* Hide less important status items on very small screens */
-            @media (max-width: 480px) {
-                .sensor-data {
-                    flex-wrap: wrap;
-                    justify-content: center;
-                }
-                
-                .sensor-item {
-                    margin-bottom: 2px;
-                }
-                
-                .chat-controls {
-                    flex-direction: column;
-                    gap: 8px;
-                }
-                
-                .chat-controls > * {
-                    width: 100%;
-                }
+                margin: 15px;
+                border-radius: 20px;
+                height: calc(100vh - env(safe-area-inset-top) - 140px);
+                max-height: calc(100vh - env(safe-area-inset-top) - 140px);
+                box-shadow: var(--shadow-subtle);
+                border: 1px solid var(--glass-border);
+                overflow: hidden;
             }
         }
-        
-        .topbar 
-        { 
-            background: #333; 
-            color: white; 
-            padding: 8px 10px; /* Reduced padding */
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            flex-wrap: wrap; 
-        }
-        .status-container 
-        { 
-            display: flex; 
-            flex-wrap: wrap; 
-            align-items: center; 
-            gap: 10px; /* Reduced gap */
-        }
-        /* Desktop status section */
+
+        /* Desktop styles */
         @media (min-width: 769px) {
-            .status-section 
-            { 
-                display: flex; 
-                flex-wrap: wrap; 
-                align-items: center; 
-                gap: 10px; /* Add gap for better spacing */
+            body {
+                margin: 20px;
+                padding: 20px;
             }
         }
         
-        .status-item 
-        { 
-            margin-right: 8px; /* Reduced margin */
+        .topbar {
+            background: var(--surface-black);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-black);
+            color: var(--text-primary);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-subtle);
         }
-        .status-link 
-        { 
-            color: #87CEEB; 
-            text-decoration: underline; 
+
+        .topbar strong {
+            font-size: 20px;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
-        .status-link:hover 
-        { 
-            color: #ADD8E6; 
-            text-decoration: underline; 
+
+        .status-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
         }
-        .sensor-data 
-        { 
-            background: #444; 
-            padding: 6px 10px; /* Reduced padding */
-            border-radius: 4px; /* Smaller radius */
-            display: flex; 
-            gap: 12px; /* Reduced gap */
-            margin-bottom: 8px; /* Add spacing when in collapsed section */
-        }
-        .sensor-item 
-        { 
-            display: flex; 
-            align-items: center; 
-            gap: 4px; /* Reduced gap */
-        }
-        .refresh 
-        { 
-            cursor: pointer; 
-            font-size: 16px; /* Smaller refresh icon */
-            margin-top: 4px; /* Add some spacing */
+
+        .status-section {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
         }
         
-        /* AI Pipeline Status - keep minimal */
-        .ai-pipeline-status {
-            background: #555;
-            padding: 6px 10px; /* Reduced padding */
-            border-radius: 4px; /* Smaller radius */
+        .status-item {
+            margin-right: 10px;
+        }
+
+        .status-link {
+            color: var(--light-purple);
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .status-link:hover {
+            color: white;
+            background: var(--secondary-purple);
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+
+        .sensor-data {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
             display: flex;
-            gap: 12px; /* Reduced gap */
-            margin-left: 0; /* Remove left margin */
+            gap: 16px;
+            margin-bottom: 10px;
+        }
+
+        .sensor-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .refresh {
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 6px;
+            transition: transform 0.3s ease;
+        }
+
+        .refresh:hover {
+            transform: rotate(180deg) scale(1.1);
+        }
+        
+        .ai-pipeline-status {
+            background: var(--gradient-primary);
+            padding: 10px 16px;
+            border-radius: 12px;
+            display: flex;
+            gap: 16px;
+            margin-left: 0;
+            color: white;
+            box-shadow: var(--shadow-glow);
         }
         
         .pipeline-item {
             display: flex;
             align-items: center;
-            gap: 4px; /* Reduced gap */
-            font-size: 13px; /* Slightly smaller font */
+            gap: 6px;
+            font-size: 13px;
         }
         
         .pipeline-item .status-indicator {
-            font-size: 11px; /* Smaller indicator */
+            font-size: 12px;
         }
         
         .pipeline-item .detail {
-            font-size: 10px; /* Smaller detail text */
-            color: #ccc;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.8);
         }
         
-        /* Better select styling for visibility */
+        /* Enhanced select styling */
+        select {
+            background: var(--surface-black);
+            border: 1px solid var(--border-black);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: var(--shadow-purple);
+        }
+
         select option {
-            background-color: white;
-            color: black;
-            padding: 4px;
+            background-color: var(--surface-black);
+            color: var(--text-primary);
+            padding: 8px;
         }
-        
+
         select option:hover,
         select option:focus,
         select option:checked {
-            background-color: #007AFF;
+            background-color: var(--accent-purple);
             color: white;
         }
         
-        /* Voice category styling */
         select optgroup {
             font-weight: bold;
-            color: #333;
-            background-color: #f0f0f0;
-            padding: 4px 0;
+            color: var(--accent-purple-light);
+            background-color: var(--background-black);
+            padding: 8px 0;
         }
         
         select optgroup option {
             font-weight: normal;
-            padding-left: 16px;
-            background-color: white;
+            padding-left: 20px;
+            background-color: var(--surface-black);
         }
         
-        /* Ensure personality emojis show properly */
         #voice-select option {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
         }
         
-        /* iPhone Messages Style */
-        .chatbox { background: white; padding: 0; border-radius: 12px; margin-top: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; height: 600px; display: flex; flex-direction: column; }
+        /* Refined black chatbox */
+        .chatbox {
+            background: var(--surface-black);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-black);
+            padding: 0;
+            border-radius: 20px;
+            margin-top: 20px;
+            box-shadow: var(--shadow-subtle);
+            overflow: hidden;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chatbox::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient-glass);
+            z-index: -1;
+            border-radius: inherit;
+        }
         
-        .chat-header { 
-            background: #f6f6f6; 
-            padding: 15px 20px; 
-            border-bottom: 1px solid #e5e5e7;
+        .chat-header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 20px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-radius: 20px 20px 0 0;
         }
         
-        .chat-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
+        .chat-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .action-buttons button {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .action-buttons button:hover {
+            background: var(--secondary-purple);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(138, 92, 245, 0.4);
+        }
+
+        .clear-button {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53) !important;
+        }
+
+        .logs-button {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d) !important;
+        }
+
+        .volume-control {
+            display: inline-flex !important;
+            align-items: center;
+            gap: 8px;
+            background: var(--glass-bg);
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+        }
+
+        #volumeSlider {
+            width: 80px;
+            height: 4px;
+            background: var(--glass-border);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
         
         .messages-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
-            background: #ffffff;
+            padding: 24px;
+            background: transparent;
             display: flex;
             flex-direction: column;
+            scrollbar-width: thin;
+            scrollbar-color: var(--glass-border) transparent;
+        }
+
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 3px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-purple);
         }
         
         .message {
-            max-width: 70%;
-            margin-bottom: 10px;
+            max-width: 75%;
+            margin-bottom: 16px;
             display: flex;
             flex-direction: column;
+            animation: messageSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
         
         .message.user {
@@ -428,253 +568,434 @@
         }
         
         .message-bubble {
-            padding: 10px 14px;
-            border-radius: 18px;
+            padding: 14px 18px;
+            border-radius: 20px;
             position: relative;
             word-wrap: break-word;
+            line-height: 1.4;
+            font-size: 15px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .message-bubble:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
         }
         
         .message.user .message-bubble {
-            background: #007AFF;
+            background: var(--gradient-orange);
             color: white;
+            box-shadow: var(--shadow-orange);
+            border: none;
         }
         
         .message.assistant .message-bubble {
-            background: #E5E5EA;
-            color: black;
+            background: var(--gradient-purple);
+            color: white;
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--accent-purple-border);
+            box-shadow: var(--shadow-purple);
         }
         
         .message-info {
             font-size: 11px;
-            color: #8e8e93;
-            margin-top: 2px;
-            padding: 0 10px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            padding: 0 12px;
+            opacity: 0.8;
         }
-        
-        .message.user .message-info {
-            text-align: right;
-        }
-        
-        .chat-input-container {
-            padding: 15px;
-            background: #f6f6f6;
-            border-top: 1px solid #e5e5e7;
-        }
-        
-        .chat-input-form {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-        
-        .chat-input-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .chat-controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .chat-controls select, .chat-controls input {
-            padding: 6px 10px;
-            border: 1px solid #e5e5e7;
-            border-radius: 8px;
-            background: white;
-            font-size: 14px;
-        }
-        
-        .chat-textarea {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #e5e5e7;
-            border-radius: 20px;
-            resize: none;
-            font-size: 16px;
-            font-family: inherit;
-            outline: none;
-            min-height: 40px;
-            max-height: 120px;
-        }
-        
-        .chat-textarea:focus {
-            border-color: #007AFF;
-        }
-        
-        .send-button {
-            background: #007AFF;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 16px;
-            cursor: pointer;
-            font-weight: 500;
-            white-space: nowrap;
-            flex-shrink: 0;
-            height: 40px;
-        }
-        
-        .send-button:hover {
-            background: #0051D5;
-        }
-        
-        .send-button:disabled {
-            background: #cccccc;
-            color: #666666;
-            cursor: not-allowed;
-        }
-        
-        .send-button:disabled:hover {
-            background: #cccccc;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .clear-button {
-            background: #dc3545;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .clear-button:hover {
-            background: #c82333;
-        }
-        
-        .logs-button {
-            background: #4169e1;
-            color: white;
-            padding: 8px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .logs-button:hover {
-            background: #2950d1;
-        }
-        
-        /* Audio player styling */
-        audio {
-            width: 100%;
-            margin-top: 10px;
-            border-radius: 8px;
-        }
-        
-        /* Think section styling */
-        .think-toggle {
-            display: inline-block;
-            font-size: 11px;
-            color: #007AFF;
-            cursor: pointer;
-            margin-bottom: 5px;
-            user-select: none;
-        }
-        
-        .think-toggle:hover {
-            text-decoration: underline;
-        }
-        
-        .think-content {
-            display: none;
-            background: #f0f0f0;
-            padding: 8px;
-            border-radius: 8px;
-            margin: 5px 0;
-            font-size: 13px;
-            color: #666;
-            font-style: italic;
-        }
-        
-        .think-content.expanded {
-            display: block;
-        }
-        
-        /* Loading animation */
+
+        /* Revolutionary Typing Indicator */
         .typing-indicator {
             display: none;
+            max-width: 75%;
+            margin-bottom: 16px;
             align-self: flex-start;
-            padding: 10px 14px;
-            background: #E5E5EA;
-            border-radius: 18px;
-            margin-bottom: 10px;
+            opacity: 0;
+            transition: all 0.3s ease;
         }
-        
-        .typing-indicator span {
-            display: inline-block;
+
+        .typing-indicator.active {
+            display: flex !important;
+            opacity: 1;
+            animation: typingSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes typingSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .typing-bubble {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 16px 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(20px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .typing-bubble::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(138, 92, 245, 0.1), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .typing-dot {
             width: 8px;
             height: 8px;
-            background: #8e8e93;
+            background: var(--accent-purple);
             border-radius: 50%;
-            margin: 0 2px;
-            animation: typing 1.4s infinite;
+            animation: typingBounce 1.4s infinite ease-in-out;
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
         }
-        
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-        
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-        
-        @keyframes typing {
-            0%, 60%, 100% {
-                transform: translateY(0);
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        .typing-dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.6;
             }
-            30% {
-                transform: translateY(-10px);
-            }
-        }
-        
-        /* Flash animation for status indicator */
-        @keyframes flash {
-            0%, 100% {
+            40% {
+                transform: scale(1.2);
                 opacity: 1;
             }
-            50% {
-                opacity: 0.3;
+        }
+
+        .typing-text {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-left: 6px;
+            opacity: 0.8;
+        }
+        
+        /* Enhanced Chat Input */
+        .chat-input-container {
+            padding: 20px 24px;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            background: var(--surface-black);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-black);
+            border-radius: 0 0 20px 20px;
+        }
+
+        .chat-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .chat-controls::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chat-controls select,
+        .chat-controls input {
+            font-size: 14px;
+            padding: 10px 14px;
+            white-space: nowrap;
+            min-width: fit-content;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .chat-controls label {
+            white-space: nowrap;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-input-form {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-textarea {
+            flex: 1;
+            font-size: 16px;
+            min-height: 48px;
+            max-height: 120px;
+            border-radius: 24px;
+            padding: 14px 20px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            resize: none;
+            outline: none;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .chat-textarea:focus {
+            border-color: var(--secondary-purple);
+            box-shadow: 0 0 20px rgba(138, 92, 245, 0.3);
+        }
+
+        .chat-textarea::placeholder {
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        .send-button {
+            min-width: 48px;
+            height: 48px;
+            border-radius: 24px;
+            font-size: 18px;
+            padding: 0;
+            background: var(--gradient-orange);
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-orange);
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 30px rgba(249, 115, 22, 0.6);
+        }
+
+        .send-button:active {
+            transform: translateY(0) scale(0.95);
+        }
+
+        /* Interaction Mode Styling */
+        .interaction-mode-toggle {
+            margin-bottom: 16px;
+        }
+
+        .interaction-mode-toggle label {
+            background: var(--glass-bg);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .interaction-mode-toggle label:hover {
+            background: var(--secondary-purple);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .interaction-controls {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+        }
+
+        .interaction-header {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--gradient-glass);
+            border-bottom: 1px solid var(--glass-border);
+            transition: all 0.3s ease;
+        }
+
+        .interaction-header:hover {
+            background: var(--secondary-purple);
+            color: white;
+        }
+
+        .interaction-body {
+            padding: 20px;
+        }
+
+        .interaction-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* Custom System Message Styling */
+        #custom-system-group {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        #custom-system-group textarea {
+            font-size: 14px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            backdrop-filter: blur(10px);
+            width: 100%;
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Loading States */
+        .loading-text {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .star-loading {
+            display: flex;
+            gap: 4px;
+        }
+
+        .star-loading .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--secondary-purple);
+            border-radius: 50%;
+            animation: starPulse 1.5s infinite ease-in-out;
+            box-shadow: 0 0 8px rgba(138, 92, 245, 0.6);
+        }
+
+        .star-loading .dot:nth-child(1) { animation-delay: -0.3s; }
+        .star-loading .dot:nth-child(2) { animation-delay: -0.15s; }
+        .star-loading .dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes starPulse {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1.3);
+                opacity: 1;
             }
         }
-    </style>
-    
-    <!-- Template data as JSON to avoid linter conflicts -->
-    <script type="application/json" id="roverseer-data">
-        {
-            "voices": {{ voices | tojson }},
-            "categorizedVoices": {{ categorized_voices | tojson }},
-            "personalities": {{ personalities | tojson }},
-            "currentPersonality": {{ current_personality | tojson if current_personality else 'null' | safe }},
-            "selectedModel": {{ selected_model | tojson }},
-            "selectedVoice": {{ selected_voice | tojson }}
+
+        /* Responsive improvements for mobile */
+        @media (max-width: 480px) {
+            .chat-controls {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .chat-controls > * {
+                width: 100%;
+            }
+
+            .interaction-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-buttons {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+
+            .action-buttons button {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
         }
-    </script>
-    
+
+        /* Enhanced focus states */
+        input:focus,
+        select:focus,
+        textarea:focus,
+        button:focus {
+            outline: 2px solid var(--secondary-purple);
+            outline-offset: 2px;
+        }
+
+        /* Smooth transitions for all interactive elements */
+        * {
+            transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+        }
+    </style>
+
     <script>
         // Configuration
         var STATUS_REFRESH_INTERVAL = 5000; // 5 seconds
         
-        // Parse template data from JSON script
-        var roverseerDataScript = document.getElementById('roverseer-data');
-        var roverseerData = JSON.parse(roverseerDataScript.textContent);
+        // Parse template data from JSON script with error handling
+        var roverseerData = {};
+        try {
+            var roverseerDataScript = document.getElementById('roverseer-data');
+            if (roverseerDataScript && roverseerDataScript.textContent) {
+                roverseerData = JSON.parse(roverseerDataScript.textContent);
+            }
+        } catch (e) {
+            console.error('Error parsing roverseer data:', e);
+            roverseerData = {};
+        }
         
-        // Use the properly escaped template data
-        var availableVoices = roverseerData.voices;
-        var categorizedVoices = roverseerData.categorizedVoices;
-        var availablePersonalities = roverseerData.personalities;
-        var currentPersonalityName = roverseerData.currentPersonality ? roverseerData.currentPersonality.name : null;
+        // Use the properly escaped template data with fallbacks
+        var availableVoices = roverseerData.voices || [];
+        var categorizedVoices = roverseerData.categorizedVoices || {};
+        var availablePersonalities = roverseerData.personalities || [];
+        var currentPersonalityName = (roverseerData.currentPersonality && roverseerData.currentPersonality.name) ? roverseerData.currentPersonality.name : null;
+        
+        // Create personality to voice mapping from parsed data
+        const personalityVoiceMap = {};
+        if (availablePersonalities) {
+            availablePersonalities.forEach(function(personality) {
+                personalityVoiceMap[personality.name] = personality.voice_id;
+            });
+        }
         
         function escapeHtml(text) {
             var div = document.createElement('div');
@@ -731,6 +1052,37 @@
             }
         }
         
+        // Function to load personalities dynamically from API
+        function loadPersonalitiesDynamically() {
+            console.log('🔄 Loading personalities dynamically...');
+            
+            fetch('/system/personalities')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Personalities loaded:', data);
+                    
+                    if (data && data.personalities && data.personalities.length > 0) {
+                        // Update availablePersonalities global variable
+                        availablePersonalities = data.personalities;
+                        
+                        // Update current personality if available
+                        if (data.current) {
+                            currentPersonalityName = data.current;
+                        }
+                        
+                        // Refresh the personality dropdown if personality mode is active
+                        var usePersonality = document.getElementById('use-personality');
+                        if (usePersonality && usePersonality.checked) {
+                            console.log('🔄 Refreshing personality dropdown...');
+                            togglePersonalityMode();
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading personalities:', error);
+                });
+        }
+
         // Auto-scroll to bottom of messages
         window.onload = function() {
             var messagesContainer = document.getElementById('messages-container');
@@ -752,6 +1104,23 @@
                 bubble.classList.remove('needs-processing');
             });
             
+            // Initialize interaction mode state based on checkbox
+            toggleInteractionMode();
+            
+            // Double-check that interaction controls are hidden if checkbox is unchecked
+            const checkbox = document.getElementById('interaction-mode-checkbox');
+            const controls = document.getElementById('interaction-controls');
+            if (!checkbox.checked) {
+                controls.style.display = 'none';
+                console.log('🎭 Interaction controls explicitly hidden on page load');
+            }
+            
+            // Load personalities if not already loaded from server data
+            if (!availablePersonalities || availablePersonalities.length === 0) {
+                console.log('📋 No personalities in server data, loading dynamically...');
+                loadPersonalitiesDynamically();
+            }
+            
             // Start auto-refresh of status every 5 seconds
             setInterval(refreshStatus, STATUS_REFRESH_INTERVAL);
         }
@@ -768,8 +1137,8 @@
         // Store current form selections
         var currentSelections = {
             outputType: 'speak',
-            model: roverseerData.selectedModel,
-            voice: roverseerData.selectedVoice
+            model: roverseerData.selectedModel || 'PenphinMind',
+            voice: roverseerData.selectedVoice || 'en_US-amy'
         };
         
         // Function to toggle between personality and voice mode
@@ -778,6 +1147,7 @@
             var voiceSelect = document.getElementById('voice-select');
             var customSystemGroup = document.getElementById('custom-system-group');
             var systemTextarea = document.getElementById('system-message');
+            var chatHeaderTitle = document.getElementById('chat-header-title');
             
             // Clear current options
             voiceSelect.innerHTML = '';
@@ -787,22 +1157,57 @@
                 customSystemGroup.style.display = 'none';
                 systemTextarea.value = ''; // Clear system message
                 
-                availablePersonalities.forEach(function(personality) {
-                    var option = document.createElement('option');
-                    option.value = personality.voice_id;
-                    option.setAttribute('data-personality', personality.name);
-                    option.textContent = personality.avatar_emoji + ' ' + personality.name;
-                    
-                    // Select current personality if it matches
-                    if (currentPersonalityName && currentPersonalityName === personality.name) {
-                        option.selected = true;
+                // Update header for personality mode
+                if (availablePersonalities && availablePersonalities.length > 0) {
+                    var currentPersonality = availablePersonalities.find(p => p.name === currentPersonalityName);
+                    if (currentPersonality) {
+                        chatHeaderTitle.textContent = `RoverSeer Chat - ${currentPersonality.avatar_emoji} ${currentPersonality.name}`;
+                    } else {
+                        chatHeaderTitle.textContent = `RoverSeer Chat - ${availablePersonalities[0].avatar_emoji} ${availablePersonalities[0].name}`;
                     }
-                    
-                    voiceSelect.appendChild(option);
-                });
+                } else {
+                    chatHeaderTitle.textContent = 'RoverSeer Chat - Personality Mode';
+                }
+                
+                if (availablePersonalities) {
+                    availablePersonalities.forEach(function(personality) {
+                        var option = document.createElement('option');
+                        option.value = personality.voice_id;
+                        option.setAttribute('data-personality', personality.name);
+                        
+                        // Show personality name with status indicator
+                        var displayText = personality.avatar_emoji + ' ' + personality.name;
+                        if (personality.status === 'fallback_ready' && personality.fallback_model) {
+                            displayText += ' (→ ' + personality.fallback_model.split(':')[0] + ')';
+                            option.style.color = '#ff9800'; // Orange for fallback
+                            option.title = `Preferred model not available. Will use: ${personality.fallback_model}`;
+                        } else if (personality.status === 'ready') {
+                            option.style.color = '#4caf50'; // Green for ready
+                            option.title = `Ready with preferred model: ${personality.model_preference || 'system default'}`;
+                        }
+                        
+                        option.textContent = displayText;
+                        
+                        // Select current personality if it matches
+                        if (currentPersonalityName && currentPersonalityName === personality.name) {
+                            option.selected = true;
+                        }
+                        
+                        voiceSelect.appendChild(option);
+                    });
+                }
             } else {
                 // Show voices with categories
                 customSystemGroup.style.display = 'block';
+                
+                // Update header for model mode - show currently selected model
+                var modelSelect = document.querySelector('[name="model"]');
+                if (modelSelect && modelSelect.selectedOptions.length > 0) {
+                    var selectedModelText = modelSelect.selectedOptions[0].textContent;
+                    chatHeaderTitle.textContent = `RoverSeer Chat - ${selectedModelText}`;
+                } else {
+                    chatHeaderTitle.textContent = 'RoverSeer Chat - Model Mode';
+                }
                 
                 // Check if we have categorized voices
                 if (categorizedVoices && categorizedVoices.categorized) {
@@ -880,6 +1285,14 @@
             document.querySelector('[name="model"]').addEventListener('change', function(e) 
             {
                 currentSelections.model = e.target.value;
+                
+                // Update header if not in personality mode
+                var usePersonality = document.getElementById('use-personality').checked;
+                if (!usePersonality) {
+                    var chatHeaderTitle = document.getElementById('chat-header-title');
+                    var selectedModelText = e.target.selectedOptions[0].textContent;
+                    chatHeaderTitle.textContent = `RoverSeer Chat - ${selectedModelText}`;
+                }
             });
             document.querySelector('[name="voice"]').addEventListener('change', function(e) 
             {
@@ -896,6 +1309,11 @@
                     
                     if (personalityName) 
                     {
+                        // Update chat header immediately
+                        var chatHeaderTitle = document.getElementById('chat-header-title');
+                        var personalityEmoji = selectedOption.textContent.split(' ')[0];
+                        chatHeaderTitle.textContent = `RoverSeer Chat - ${selectedOption.textContent}`;
+                        
                         // Fetch personality details to get model preference
                         fetch('/system/personalities')
                             .then(response => response.json())
@@ -927,12 +1345,49 @@
                                     else 
                                     {
                                         console.warn('Personality preferred model not available:', personality.model_preference);
+                                        console.log('Available models:', Array.from(modelSelect.options).map(o => o.value));
+                                        console.log('Personality status:', personality.status);
+                                        console.log('Fallback model:', personality.fallback_model);
+                                        
+                                        // Enhanced fallback strategy with personality manager's logic
+                                        var fallbackModel = personality.fallback_model || roverseerData.selectedModel || 'PenphinMind';
+                                        var fallbackExists = false;
+                                        
+                                        for (var i = 0; i < modelSelect.options.length; i++) 
+                                        {
+                                            if (modelSelect.options[i].value === fallbackModel) 
+                                            {
+                                                fallbackExists = true;
+                                                break;
+                                            }
+                                        }
+                                        
+                                        if (fallbackExists) 
+                                        {
+                                            modelSelect.value = fallbackModel;
+                                            currentSelections.model = fallbackModel;
+                                            console.log('Using intelligent fallback model:', fallbackModel);
+                                        } 
+                                        else if (modelSelect.options.length > 0) 
+                                        {
+                                            // Use first available model as last resort
+                                            modelSelect.value = modelSelect.options[0].value;
+                                            currentSelections.model = modelSelect.options[0].value;
+                                            console.log('Using first available model as fallback:', currentSelections.model);
+                                        }
                                     }
                                 }
+                                else 
+                                {
+                                    // Personality has no model preference - use default
+                                    var modelSelect = document.querySelector('[name="model"]');
+                                    modelSelect.value = roverseerData.selectedModel || 'PenphinMind';
+                                    currentSelections.model = roverseerData.selectedModel || 'PenphinMind';
+                                    console.log('Personality has no model preference, using default:', currentSelections.model);
+                                }
                             })
-                            .catch(error => 
-                            {
-                                console.error('Error fetching personality details:', error);
+                            .catch(error => {
+                                console.error('❌ Error fetching personality details:', error);
                             });
                     }
                 }
@@ -1139,6 +1594,9 @@
             var usePersonality = document.getElementById('use-personality').checked;
             var systemMessage = document.getElementById('system-message').value.trim();
             
+            // Generate a unique request ID to track this specific request
+            var requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+            
             // Validate voice selection - use default if empty
             if (!voice) 
             {
@@ -1160,6 +1618,7 @@
             
             var userDiv = document.createElement('div');
             userDiv.className = 'message user';
+            userDiv.dataset.requestId = requestId; // Store request ID for reference
             userDiv.innerHTML = 
                 '<div class="message-bubble">' + escapeHtml(userInput) + '</div>' +
                 '<div class="message-info">You</div>';
@@ -1169,8 +1628,8 @@
             document.querySelector('[name="user_input"]').value = '';
             document.querySelector('[name="user_input"]').style.height = 'auto';
             
-            // Show typing indicator
-            typingIndicator.style.display = 'block';
+            // Show typing indicator with enhanced styling
+            showTypingIndicator();
             
             // Update status to show activity immediately
             updateAIPipelineStatus({
@@ -1191,15 +1650,34 @@
             formData.append('output_type', outputType);
             formData.append('use_personality', usePersonality);
             formData.append('system_message', systemMessage);
+            formData.append('request_id', requestId); // Add request ID to track
             
             // Debug logging
+            console.log('🔧 FRONTEND DEBUG - Form submission:');
+            console.log('  📝 user_input:', userInput);
+            console.log('  🤖 model:', model);
+            console.log('  🔊 voice:', voice);
+            console.log('  🎵 output_type:', outputType);
+            console.log('  🎭 use_personality:', usePersonality);
+            console.log('  📋 system_message:', systemMessage);
+            console.log('  🔑 request_id:', requestId);
             console.log('Submitting form with voice:', voice);
             console.log('Use personality:', usePersonality);
+            console.log('Request ID:', requestId);
             
-            fetch('/chat_ajax', {
+            // Use fetch with a timeout to handle stuck requests
+            var fetchPromise = fetch('/chat_ajax', {
                 method: 'POST',
                 body: formData
-            })
+            });
+            
+            // Create a timeout promise
+            var timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timed out')), 120000); // 120 second timeout (2 minutes)
+            });
+            
+            // Race between fetch and timeout
+            Promise.race([fetchPromise, timeoutPromise])
             .then(response => 
             {
                 // Check if we got a 429 (Too Many Requests) status
@@ -1214,14 +1692,21 @@
             })
             .then(data => 
             {
-                // Hide typing indicator
-                typingIndicator.style.display = 'none';
+                            // Hide typing indicator with enhanced styling
+            hideTypingIndicator();
+                
+                // Check if we already have a response for this request (prevent duplicates)
+                if (document.querySelector(`.message.assistant[data-request-id="${requestId}"]`)) {
+                    console.warn(`Duplicate response received for request ${requestId}, ignoring`);
+                    return;
+                }
                 
                 if (data.error) 
                 {
                     // Show error message
                     var errorDiv = document.createElement('div');
                     errorDiv.className = 'message assistant';
+                    errorDiv.dataset.requestId = requestId;
                     errorDiv.innerHTML = 
                         '<div class="message-bubble">Error: ' + escapeHtml(data.error) + '</div>' +
                         '<div class="message-info">System</div>';
@@ -1232,6 +1717,7 @@
                     // Add assistant message
                     var assistantDiv = document.createElement('div');
                     assistantDiv.className = 'message assistant';
+                    assistantDiv.dataset.requestId = requestId;
                     
                     var messageContent = processThinkTags(data.reply);
                     
@@ -1309,11 +1795,19 @@
             .catch(error => 
             {
                 console.error('Error:', error);
-                typingIndicator.style.display = 'none';
+                            // Hide typing indicator on error with enhanced styling
+            hideTypingIndicator();
+                
+                // Check if we already have an error message for this request
+                if (document.querySelector(`.message.assistant[data-request-id="${requestId}"]`)) {
+                    console.warn(`Duplicate error response for request ${requestId}, ignoring`);
+                    return;
+                }
                 
                 // Add error message
                 var errorDiv = document.createElement('div');
                 errorDiv.className = 'message assistant';
+                errorDiv.dataset.requestId = requestId;
                 errorDiv.innerHTML = 
                     '<div class="message-bubble">Sorry, an error occurred: ' + escapeHtml(error.toString()) + '</div>' +
                     '<div class="message-info">System</div>';
@@ -1337,6 +1831,98 @@
             });
         }
         
+        // Volume control and hush functions
+        async function setVolume(volume) {
+            try {
+                const response = await fetch('/system/volume', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({volume: parseInt(volume)})
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('volumeDisplay').textContent = data.volume + '%';
+                    console.log('✅ Volume set to:', data.volume + '%');
+                } else {
+                    console.error('❌ Failed to set volume');
+                }
+            } catch (error) {
+                console.error('❌ Error setting volume:', error);
+            }
+        }
+        
+        async function hushAudio() {
+            try {
+                const response = await fetch('/system/hush', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('🤫 Audio hushed:', data.message);
+                    
+                    // Update status to show audio stopped
+                    updateAIPipelineStatus({
+                        status: '🔵',
+                        activity: 'idle',
+                        detail: 'audio stopped'
+                    });
+                    
+                    // Show brief feedback
+                    showStatusMessage('Audio playback stopped', 'success');
+                } else {
+                    console.error('❌ Failed to hush audio');
+                }
+            } catch (error) {
+                console.error('❌ Error hushing audio:', error);
+            }
+        }
+        
+        // Load current volume on page load
+        async function loadCurrentVolume() {
+            try {
+                const response = await fetch('/system/volume');
+                if (response.ok) {
+                    const data = await response.json();
+                    const volumeSlider = document.getElementById('volumeSlider');
+                    const volumeDisplay = document.getElementById('volumeDisplay');
+                    if (volumeSlider && volumeDisplay) {
+                        volumeSlider.value = data.volume;
+                        volumeDisplay.textContent = data.volume + '%';
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Error loading volume:', error);
+            }
+        }
+        
+        // Helper function to show status messages
+        function showStatusMessage(message, type) {
+            // Create or update status message element
+            let statusMsg = document.getElementById('temp-status-message');
+            if (!statusMsg) {
+                statusMsg = document.createElement('div');
+                statusMsg.id = 'temp-status-message';
+                statusMsg.style.cssText = `
+                    position: fixed; top: 20px; right: 20px; z-index: 1000;
+                    padding: 10px 15px; border-radius: 5px; color: white;
+                    font-weight: bold; transition: opacity 0.3s ease;
+                `;
+                document.body.appendChild(statusMsg);
+            }
+            
+            statusMsg.textContent = message;
+            statusMsg.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
+            statusMsg.style.opacity = '1';
+            
+            setTimeout(() => {
+                statusMsg.style.opacity = '0';
+                setTimeout(() => statusMsg.remove(), 300);
+            }, 3000);
+        }
+
         // Mobile status toggle functionality
         function toggleMobileStatus() {
             var statusSection = document.querySelector('.status-section');
@@ -1378,7 +1964,7 @@
         
         // Reset pipeline function
         function resetPipeline() {
-            fetch('/system/reset_pipeline', {
+            fetch('/system/reset-pipeline', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1420,9 +2006,820 @@
             });
         }
         
+        // Force reset system function for stuck states
+        function forceResetSystem() {
+            if (!confirm('⚡ Emergency Reset: This will force-clear all system states and processes. Continue?')) {
+                return;
+            }
+            
+            fetch('/system/force-reset', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('✅ Force reset successful:', data.message);
+                    
+                    // Update status to show idle
+                    updateAIPipelineStatus({
+                        status: '🔵',
+                        activity: 'idle',
+                        detail: ''
+                    });
+                    
+                    // Show success message in chat
+                    var messagesContainer = document.getElementById('messages-container');
+                    var typingIndicator = document.getElementById('typing-indicator');
+                    
+                    var resetDiv = document.createElement('div');
+                    resetDiv.className = 'message assistant';
+                    resetDiv.innerHTML = 
+                        '<div class="message-bubble">⚡ Emergency reset completed. All states cleared.<br>' +
+                        'Details: ' + JSON.stringify(data.reset_details, null, 2).replace(/"/g, '') + '</div>' +
+                        '<div class="message-info">System</div>';
+                    messagesContainer.insertBefore(resetDiv, typingIndicator);
+                    
+                    // Scroll to bottom
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // Re-enable form if it was disabled
+                    document.querySelector('[name="user_input"]').disabled = false;
+                    document.querySelector('.send-button').disabled = false;
+                    
+                } else {
+                    console.error('❌ Force reset failed:', data.message);
+                    alert('Force reset failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error during force reset:', error);
+                alert('Error during force reset: ' + error);
+            });
+        }
+        
         // Setup mobile UI on load and resize
         window.addEventListener('load', setupMobileUI);
         window.addEventListener('resize', setupMobileUI);
+        
+        // Personality/Model synchronization
+        function handlePersonalityChange() {
+            const personalitySelect = document.querySelector('select[name="voice"][data-personality-mode="true"]');
+            if (!personalitySelect) return;
+            
+            personalitySelect.addEventListener('change', function() {
+                const selectedPersonality = this.value;
+                console.log('🎭 Personality changed to:', selectedPersonality);
+                
+                // Find the personality data from the options
+                const option = this.querySelector(`option[value="${selectedPersonality}"]`);
+                const personalityName = option ? option.dataset.personalityName : null;
+                
+                if (personalityName) {
+                    // Switch personality on backend
+                    fetch('/system/personality/switch', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'personality=' + encodeURIComponent(personalityName)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success' && data.model) {
+                            console.log('✅ Personality switched, updating model to:', data.model);
+                            
+                            // Update model select dropdown
+                            const modelSelect = document.querySelector('select[name="model"]');
+                            if (modelSelect) {
+                                modelSelect.value = data.model;
+                                modelSelect.dispatchEvent(new Event('change'));
+                                console.log('🔧 Model dropdown updated to:', data.model);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error switching personality:', error);
+                    });
+                }
+            });
+        }
+        
+        // Initialize personality change handler when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            handlePersonalityChange();
+            console.log('🎭 Personality change handler initialized');
+        });
+        
+        // ======= INTERACTION MODE FUNCTIONS =======
+        
+        var interactionMode = {
+            active: false,
+            roundsRemaining: 0,
+            totalRounds: 0,
+            currentTurn: 'agent1', // 'agent1' or 'agent2'
+            agent1: null,
+            agent2: null,
+            agent1Voice: null,
+            agent2Voice: null,
+            systemMessage: '',
+            conversationHistory: [],
+            intervalId: null
+        };
+        
+        function toggleInteractionPanel() {
+            const controls = document.getElementById('interaction-controls');
+            controls.classList.toggle('collapsed');
+        }
+        
+        function toggleInteractionMode() {
+            const checkbox = document.getElementById('interaction-mode-checkbox');
+            const controls = document.getElementById('interaction-controls');
+            const normalControls = document.querySelector('.chat-input-wrapper');
+            
+            if (checkbox.checked) {
+                controls.style.display = 'block';
+                normalControls.style.display = 'none';
+                // Start with controls collapsed to save space
+                controls.classList.add('collapsed');
+            } else {
+                controls.style.display = 'none';
+                normalControls.style.display = 'flex';
+                
+                // Stop any active interaction
+                if (interactionMode.active) {
+                    stopInteraction();
+                }
+            }
+        }
+        
+        function playInteractionStartSound() {
+            // Play a mystical rune sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode1 = audioContext.createGain();
+            const gainNode2 = audioContext.createGain();
+            
+            // Create mystical chord - C and G (perfect fifth)
+            oscillator1.frequency.setValueAtTime(261.63, audioContext.currentTime); // C4
+            oscillator2.frequency.setValueAtTime(392.00, audioContext.currentTime); // G4
+            
+            oscillator1.type = 'sine';
+            oscillator2.type = 'triangle';
+            
+            // Fade in and out
+            gainNode1.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode1.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.1);
+            gainNode1.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.8);
+            
+            gainNode2.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode2.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.15);
+            gainNode2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.9);
+            
+            oscillator1.connect(gainNode1);
+            oscillator2.connect(gainNode2);
+            gainNode1.connect(audioContext.destination);
+            gainNode2.connect(audioContext.destination);
+            
+            oscillator1.start();
+            oscillator2.start();
+            oscillator1.stop(audioContext.currentTime + 1);
+            oscillator2.stop(audioContext.currentTime + 1);
+        }
+        
+        function updateMiniStatus() {
+            const miniStatus = document.getElementById('interaction-mini-status');
+            if (interactionMode.active) {
+                const agent1Name = getAgentDisplayName(interactionMode.agent1);
+                const agent2Name = getAgentDisplayName(interactionMode.agent2);
+                miniStatus.textContent = `${agent1Name} ↔ ${agent2Name} (${interactionMode.totalRounds - interactionMode.roundsRemaining + 1}/${interactionMode.totalRounds})`;
+            } else {
+                miniStatus.textContent = '';
+            }
+        }
+        
+        function startInteraction() {
+            // Get values from form
+            const agent1Select = document.getElementById('interaction-agent1');
+            const agent2Select = document.getElementById('interaction-agent2');
+            const voice1Select = document.getElementById('interaction-voice1');
+            const voice2Select = document.getElementById('interaction-voice2');
+            const roundsInput = document.getElementById('interaction-rounds');
+            const systemMessageInput = document.getElementById('interaction-system-message');
+            
+            // Validate selections
+            if (agent1Select.value === agent2Select.value) {
+                alert('Please select two different agents for the interaction.');
+                return;
+            }
+            
+            // Play mystical start sound
+            playInteractionStartSound();
+            
+            // Collapse the panel after starting
+            const controls = document.getElementById('interaction-controls');
+            controls.classList.add('collapsed');
+            
+            // Initialize interaction state
+            interactionMode.active = true;
+            interactionMode.agent1 = agent1Select.value;
+            interactionMode.agent2 = agent2Select.value;
+            interactionMode.agent1Voice = voice1Select.value;
+            interactionMode.agent2Voice = voice2Select.value;
+            interactionMode.totalRounds = parseInt(roundsInput.value);
+            interactionMode.roundsRemaining = interactionMode.totalRounds;
+            interactionMode.systemMessage = systemMessageInput.value;
+            interactionMode.currentTurn = 'agent1';
+            interactionMode.conversationHistory = [];
+            
+            // Update UI
+            document.getElementById('interaction-start-btn').disabled = true;
+            document.getElementById('interaction-stop-btn').disabled = false;
+            agent1Select.disabled = true;
+            agent2Select.disabled = true;
+            voice1Select.disabled = true;
+            voice2Select.disabled = true;
+            roundsInput.disabled = true;
+            systemMessageInput.disabled = true;
+            
+            // Disable normal chat input during interaction
+            document.querySelector('[name="user_input"]').disabled = true;
+            document.querySelector('.send-button').disabled = true;
+            
+            // Show status
+            const statusDiv = document.getElementById('interaction-status');
+            statusDiv.classList.add('active');
+            updateInteractionStatus();
+            updateMiniStatus();
+            
+            // Add initial system message to chat
+            const messagesContainer = document.getElementById('messages-container');
+            const typingIndicator = document.getElementById('typing-indicator');
+            
+            const systemDiv = document.createElement('div');
+            systemDiv.className = 'message system';
+            systemDiv.innerHTML = 
+                '<div class="message-bubble">🤝 Starting interaction between ' + 
+                escapeHtml(getAgentDisplayName(interactionMode.agent1)) + ' and ' + 
+                escapeHtml(getAgentDisplayName(interactionMode.agent2)) + 
+                ' for ' + interactionMode.totalRounds + ' rounds</div>' +
+                '<div class="message-info">System</div>';
+            messagesContainer.insertBefore(systemDiv, typingIndicator);
+            
+            // Start with agent1's first message
+            sendInteractionMessage('Hello! I\'m ready to start our conversation.');
+        }
+        
+        function stopInteraction() {
+            interactionMode.active = false;
+            
+            // Play stop interaction sound
+            playInteractionStopSound();
+            
+            // If output type was speak, also play device sound
+            const outputTypeSelect = document.getElementById('interaction-output-type');
+            if (outputTypeSelect && outputTypeSelect.value === 'speak') {
+                // Send a request to play stop sound on device
+                fetch('/interaction/stop-sound', {
+                    method: 'POST'
+                }).catch(error => {
+                    console.error('Error playing device stop sound:', error);
+                });
+            }
+            
+            // Re-enable controls
+            document.getElementById('interaction-start-btn').disabled = false;
+            document.getElementById('interaction-stop-btn').disabled = true;
+            document.getElementById('interaction-agent1').disabled = false;
+            document.getElementById('interaction-agent2').disabled = false;
+            document.getElementById('interaction-voice1').disabled = false;
+            document.getElementById('interaction-voice2').disabled = false;
+            document.getElementById('interaction-rounds').disabled = false;
+            document.getElementById('interaction-system-message').disabled = false;
+            if (outputTypeSelect) outputTypeSelect.disabled = false;
+            
+            // Re-enable normal chat input
+            document.querySelector('[name="user_input"]').disabled = false;
+            document.querySelector('.send-button').disabled = false;
+            
+            // Hide status
+            const statusDiv = document.getElementById('interaction-status');
+            statusDiv.classList.remove('active');
+            updateMiniStatus();
+            
+            // Add completion message
+            const messagesContainer = document.getElementById('messages-container');
+            const typingIndicator = document.getElementById('typing-indicator');
+            
+            const completeDiv = document.createElement('div');
+            completeDiv.className = 'message system';
+            completeDiv.innerHTML = 
+                '<div class="message-bubble">🏁 Interaction completed! Total exchanges: ' + 
+                (interactionMode.totalRounds - interactionMode.roundsRemaining) + '</div>';
+            messagesContainer.insertBefore(completeDiv, typingIndicator);
+            
+            // Collapse the interaction controls
+            const interactionControls = document.getElementById('interaction-controls');
+            const collapseIcon = interactionControls.querySelector('.collapse-icon');
+            const interactionBody = interactionControls.querySelector('.interaction-body');
+            
+            if (interactionBody.style.display !== 'none') {
+                interactionBody.style.display = 'none';
+                collapseIcon.textContent = '▶';
+            }
+            
+            // Update AI pipeline status to idle
+            updateAIPipelineStatus({
+                status: '🔵',
+                activity: 'idle',
+                detail: ''
+            });
+            
+            // Clear conversation history after a short delay
+            setTimeout(() => {
+                interactionMode.conversationHistory = [];
+            }, 1000);
+            
+            // Scroll to show completion message
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function playInteractionStopSound() {
+            // Play a descending completion sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const gainNode = audioContext.createGain();
+            
+            // Create three descending notes
+            const notes = [
+                { freq: 659.25, start: 0 },      // E5
+                { freq: 523.25, start: 0.15 },   // C5
+                { freq: 392, start: 0.3 }         // G4
+            ];
+            
+            notes.forEach(note => {
+                const oscillator = audioContext.createOscillator();
+                oscillator.frequency.setValueAtTime(note.freq, audioContext.currentTime + note.start);
+                oscillator.type = 'sine';
+                
+                oscillator.connect(gainNode);
+                oscillator.start(audioContext.currentTime + note.start);
+                oscillator.stop(audioContext.currentTime + note.start + 0.15);
+            });
+            
+            // Fade out
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.5);
+            gainNode.connect(audioContext.destination);
+        }
+        
+        function updateInteractionStatus() {
+            const statusDiv = document.getElementById('interaction-status');
+            const currentAgent = interactionMode.currentTurn === 'agent1' ? 
+                getAgentDisplayName(interactionMode.agent1) : 
+                getAgentDisplayName(interactionMode.agent2);
+            
+            statusDiv.innerHTML = 
+                '🎭 Interaction Mode Active - Current Turn: ' + escapeHtml(currentAgent) +
+                '<span class="rounds-counter">Round ' + 
+                (interactionMode.totalRounds - interactionMode.roundsRemaining + 1) + 
+                ' of ' + interactionMode.totalRounds + '</span>';
+                
+            updateMiniStatus();
+        }
+        
+        function getAgentDisplayName(agentValue) {
+            // Extract display name from select option
+            const select = document.getElementById('interaction-agent1');
+            const option = select.querySelector(`option[value="${agentValue}"]`);
+            return option ? option.textContent : agentValue;
+        }
+        
+        function sendInteractionMessage(userMessage) {
+            if (!interactionMode.active) return;
+            
+            const currentAgent = interactionMode.currentTurn === 'agent1' ? 
+                interactionMode.agent1 : interactionMode.agent2;
+            const currentVoice = interactionMode.currentTurn === 'agent1' ? 
+                interactionMode.agent1Voice : interactionMode.agent2Voice;
+            const currentAgentDisplay = getAgentDisplayName(currentAgent);
+            
+            // Debug log
+            console.log('🎭 Sending interaction message:', {
+                userMessage: userMessage,
+                currentAgent: currentAgent,
+                currentVoice: currentVoice,
+                currentTurn: interactionMode.currentTurn,
+                roundsRemaining: interactionMode.roundsRemaining
+            });
+            
+            // Add user message to chat (from previous agent)
+            if (userMessage !== 'Hello! I\'m ready to start our conversation.') {
+                const messagesContainer = document.getElementById('messages-container');
+                const typingIndicator = document.getElementById('typing-indicator');
+                
+                const prevAgent = interactionMode.currentTurn === 'agent1' ? 'agent2' : 'agent1';
+                const prevAgentDisplay = getAgentDisplayName(interactionMode.currentTurn === 'agent1' ? 
+                    interactionMode.agent2 : interactionMode.agent1);
+                
+                // Alternate between user and assistant classes based on which agent is speaking
+                // For agent1, use the user class (blue bubbles on right)
+                // For agent2, use the assistant class (gray bubbles on left)
+                const messageClass = prevAgent === 'agent1' ? 'user' : 'assistant';
+                    
+                const userDiv = document.createElement('div');
+                userDiv.className = `message ${messageClass}`;
+                userDiv.innerHTML = 
+                    '<div class="message-bubble">' + processThinkTags(userMessage) + '</div>' +
+                    '<div class="message-info">' + escapeHtml(prevAgentDisplay) + '</div>';
+                messagesContainer.insertBefore(userDiv, typingIndicator);
+            }
+            
+            // Build conversation context
+            let systemMessage = interactionMode.systemMessage || '';
+            if (systemMessage) {
+                systemMessage += '\n\n';
+            }
+            systemMessage += 'You are in a conversation with another AI agent. Respond naturally and engage with their message.';
+            
+            // Play LLM thinking sound
+            playLLMThinkingSound();
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('action', 'chat');
+            formData.append('user_input', userMessage);
+            formData.append('model', currentAgent.replace('PERSONALITY:', ''));
+            formData.append('voice', currentVoice); // Use selected voice
+            
+            // Get selected output type from dropdown
+            const outputTypeSelect = document.getElementById('interaction-output-type');
+            const selectedOutputType = outputTypeSelect ? outputTypeSelect.value : 'text';
+            formData.append('output_type', selectedOutputType);
+            
+            formData.append('use_personality', currentAgent.startsWith('PERSONALITY:'));
+            formData.append('system_message', systemMessage);
+            formData.append('interaction_mode', 'true');
+            formData.append('conversation_history', JSON.stringify(interactionMode.conversationHistory));
+            
+            // Show typing indicator for the current agent
+            const typingIndicator = document.getElementById('typing-indicator');
+            const messagesContainer = document.getElementById('messages-container');
+            
+            // For agent1, use user typing style (right side)
+            // For agent2, use assistant typing style (left side)
+            typingIndicator.className = `typing-indicator ${interactionMode.currentTurn === 'agent1' ? 'user' : 'assistant'}`;
+            
+            // Update typing text to show which agent is thinking
+            const typingText = typingIndicator.querySelector('.typing-text');
+            if (typingText) {
+                const agentName = interactionMode.currentTurn === 'agent1' ? 'Agent 1' : 'Agent 2';
+                typingText.textContent = `${agentName} is thinking...`;
+            }
+            
+            // Show the enhanced typing indicator
+            showTypingIndicator();
+            
+            // Update status
+            updateAIPipelineStatus({
+                status: '🟢',
+                activity: '🤔 ' + currentAgentDisplay + ' thinking',
+                detail: ''
+            });
+            
+            // Scroll to show typing indicator
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Send request
+            fetch('/chat_ajax', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                hideTypingIndicator();
+                typingIndicator.className = 'typing-indicator'; // Reset class
+                
+                if (data.error) {
+                    // Handle error
+                    console.error('Interaction error:', data.error);
+                    alert('Interaction error: ' + data.error);
+                    stopInteraction();
+                    return;
+                }
+                
+                // Play completion sound
+                playLLMCompleteSound();
+                
+                // Add the response to chat
+                const messagesContainer = document.getElementById('messages-container');
+                
+                // Determine the class based on which agent is responding
+                // For agent1, use user class (blue bubbles on right)
+                // For agent2, use assistant class (gray bubbles on left)
+                const messageClass = interactionMode.currentTurn === 'agent1' ? 'user' : 'assistant';
+                
+                const assistantDiv = document.createElement('div');
+                assistantDiv.className = `message ${messageClass}`;
+                
+                // Always process think tags for both agents
+                const processedReply = processThinkTags(data.reply);
+                
+                // Include audio if present
+                let audioHtml = '';
+                if (data.audio_url) {
+                    audioHtml = '<audio controls autoplay>' +
+                        '<source src="' + data.audio_url + '" type="audio/wav">' +
+                        'Your browser does not support the audio element.' +
+                    '</audio>';
+                }
+                
+                assistantDiv.innerHTML = 
+                    '<div class="message-bubble">' + processedReply + audioHtml + '</div>' +
+                    '<div class="message-info">' + escapeHtml(currentAgentDisplay) + '</div>';
+                messagesContainer.insertBefore(assistantDiv, typingIndicator);
+                
+                // Add to conversation history
+                interactionMode.conversationHistory.push([userMessage, data.reply]);
+                
+                // Switch turns
+                if (interactionMode.currentTurn === 'agent2') {
+                    // Round complete
+                    interactionMode.roundsRemaining--;
+                    
+                    if (interactionMode.roundsRemaining <= 0) {
+                        // Interaction complete
+                        console.log('🎭 Interaction complete - no rounds remaining');
+                        stopInteraction();
+                        return;
+                    }
+                }
+                
+                // Switch to other agent
+                interactionMode.currentTurn = interactionMode.currentTurn === 'agent1' ? 'agent2' : 'agent1';
+                updateInteractionStatus();
+                
+                // Continue conversation after a short delay
+                setTimeout(() => {
+                    if (interactionMode.active) {
+                        console.log('🎭 Continuing interaction with response:', data.reply.substring(0, 50) + '...');
+                        sendInteractionMessage(data.reply);
+                    }
+                }, 2000); // 2 second delay between turns
+                
+                // Update status
+                updateAIPipelineStatus({
+                    status: '🔵',
+                    activity: 'idle',
+                    detail: ''
+                });
+                
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Interaction error:', error);
+                hideTypingIndicator();
+                typingIndicator.className = 'typing-indicator'; // Reset class
+                alert('Failed to get response: ' + error.message);
+                stopInteraction();
+            });
+        }
+        
+        // Add LLM thinking and completion sounds
+        function playLLMThinkingSound() {
+            // Play a contemplative sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Soft ascending tone
+            oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
+            oscillator.frequency.linearRampToValueAtTime(523.25, audioContext.currentTime + 0.3); // C5
+            
+            oscillator.type = 'sine';
+            
+            // Gentle fade in and out
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.4);
+        }
+        
+        function playLLMCompleteSound() {
+            // Play a completion sound using Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator1 = audioContext.createOscillator();
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const merger = audioContext.createChannelMerger(2);
+            
+            // Two-note completion chord
+            oscillator1.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+            oscillator2.frequency.setValueAtTime(659.25, audioContext.currentTime); // E5
+            
+            oscillator1.type = 'sine';
+            oscillator2.type = 'sine';
+            
+            // Quick fade in and out
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.05);
+            gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.2);
+            
+            oscillator1.connect(merger, 0, 0);
+            oscillator2.connect(merger, 0, 1);
+            merger.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator1.start();
+            oscillator2.start();
+            oscillator1.stop(audioContext.currentTime + 0.25);
+            oscillator2.stop(audioContext.currentTime + 0.25);
+        }
+        
+        // Sync voice selection when agent changes
+        function syncVoiceWithAgent(agentNum) {
+            const agentSelect = document.getElementById(`interaction-agent${agentNum}`);
+            const voiceSelect = document.getElementById(`interaction-voice${agentNum}`);
+            const selectedAgent = agentSelect.value;
+            
+            // If it's a personality, try to match its voice
+            if (selectedAgent.startsWith('PERSONALITY:')) {
+                const personalityName = selectedAgent.substring(12);
+                
+                if (personalityVoiceMap[personalityName]) {
+                    const preferredVoice = personalityVoiceMap[personalityName];
+                    // Try to select this voice if it exists
+                    for (let option of voiceSelect.options) {
+                        if (option.value === preferredVoice) {
+                            voiceSelect.value = preferredVoice;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Add event listeners when DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Existing initialization
+            handlePersonalityChange();
+            console.log('🎭 Personality change handler initialized');
+            
+            // Add agent change listeners for voice syncing
+            const agent1Select = document.getElementById('interaction-agent1');
+            const agent2Select = document.getElementById('interaction-agent2');
+            
+            if (agent1Select) {
+                agent1Select.addEventListener('change', () => syncVoiceWithAgent(1));
+                // Initial sync
+                syncVoiceWithAgent(1);
+            }
+            
+            if (agent2Select) {
+                agent2Select.addEventListener('change', () => syncVoiceWithAgent(2));
+                // Initial sync
+                syncVoiceWithAgent(2);
+            }
+        });
+        
+        // Add a general loading indicator function that can be used throughout the app
+        function showLoading(targetElement, message = "Loading") 
+        {
+            // Create loading HTML
+            const loadingHtml = `
+                <div class="loading-indicator active">
+                    <div>${message}</div>
+                    <div class="star-loading">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </div>
+            `;
+            
+            // Set loading HTML to target element
+            if (typeof targetElement === 'string') {
+                document.querySelector(targetElement).innerHTML = loadingHtml;
+            } else {
+                targetElement.innerHTML = loadingHtml;
+            }
+        }
+
+        function hideLoading(targetElement) 
+        {
+            // Find loading indicator in target element
+            const loadingIndicator = (typeof targetElement === 'string') 
+                ? document.querySelector(`${targetElement} .loading-indicator`)
+                : targetElement.querySelector('.loading-indicator');
+            
+            // Hide loading indicator if found
+            if (loadingIndicator) {
+                loadingIndicator.classList.remove('active');
+            }
+        }
+
+        /* Enhanced typing indicator management */
+        function updateLoadingIndicators() {
+            // Find all loading indicators except our main typing indicator which is already styled
+            const loadingIndicators = document.querySelectorAll('.loading-indicator, #processing-indicator');
+            
+            loadingIndicators.forEach(indicator => {
+                if (!indicator.classList.contains('enhanced-loading-applied')) {
+                    // Create enhanced loading animation
+                    const loadingContainer = document.createElement('div');
+                    loadingContainer.className = 'loading-text';
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = 'Processing';
+                    
+                    const starLoading = document.createElement('span');
+                    starLoading.className = 'star-loading';
+                    
+                    // Add three dots with enhanced styling
+                    for (let i = 0; i < 3; i++) {
+                        const dot = document.createElement('span');
+                        dot.className = 'dot';
+                        dot.style.setProperty('--index', i);
+                        starLoading.appendChild(dot);
+                    }
+                    
+                    loadingContainer.appendChild(textSpan);
+                    loadingContainer.appendChild(starLoading);
+                    
+                    // Clear the indicator and add our new animation
+                    indicator.innerHTML = '';
+                    indicator.appendChild(loadingContainer);
+                    
+                    // Mark as processed
+                    indicator.classList.add('enhanced-loading-applied');
+                }
+            });
+        }
+        
+        /* Ensure typing indicator works properly */
+        function showTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                console.log('🤔 Showing enhanced typing indicator');
+                typingIndicator.style.display = 'flex';
+                typingIndicator.classList.add('active');
+                
+                // Scroll to show typing indicator
+                typingIndicator.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                console.log('✅ Enhanced typing indicator shown');
+            } else {
+                console.error('❌ Typing indicator element not found!');
+            }
+        }
+        
+        function hideTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                console.log('🤫 Hiding enhanced typing indicator');
+                typingIndicator.style.display = 'none';
+                typingIndicator.classList.remove('active');
+                console.log('✅ Enhanced typing indicator hidden');
+            }
+        }
+
+        // Call this function on page load and whenever new messages are added
+        document.addEventListener('DOMContentLoaded', function() {
+            // Store references to original functions
+            if (typeof addMessageToChat !== 'undefined') {
+                const originalAddMessageToChat = addMessageToChat;
+                addMessageToChat = function(message, isUser, additionalClasses = '') {
+                    originalAddMessageToChat(message, isUser, additionalClasses);
+                    updateLoadingIndicators();
+                };
+            }
+            
+            if (typeof showTypingIndicator !== 'undefined') {
+                const originalShowTypingIndicator = showTypingIndicator;
+                showTypingIndicator = function() {
+                    originalShowTypingIndicator();
+                    updateLoadingIndicators();
+                };
+            }
+            
+            // Initial update of loading indicators
+            updateLoadingIndicators();
+            
+            // Load current volume
+            loadCurrentVolume();
+        });
     </script>
     
     {% if reply_text %}
@@ -1490,14 +2887,23 @@
 
     <div class="chatbox">
         <div class="chat-header">
-            <h2>RoverSeer Chat{% if current_personality %} - {{ current_personality.avatar_emoji }} {{ current_personality.name }}{% endif %}</h2>
+            <h2 id="chat-header-title">RoverSeer Chat{% if current_personality %} - {{ current_personality.avatar_emoji }} {{ current_personality.name }}{% endif %}</h2>
             <div class="action-buttons">
                 <form method="post" style="display: inline;">
                     <input type="hidden" name="action" value="clear_context">
                     <button type="submit" class="clear-button">🗑️ Clear</button>
                 </form>
                 <button onclick="resetPipeline()" class="clear-button" style="background: #ff6b35;">🔧 Reset</button>
+                <button onclick="forceResetSystem()" class="clear-button" style="background: #dc3545;">⚡ Force Reset</button>
+                <button onclick="hushAudio()" class="clear-button" style="background: #e74c3c;">🤫 Hush</button>
+                <div class="volume-control" style="display: inline-flex; align-items: center; margin-left: 10px;">
+                    <span style="margin-right: 5px;">🔊</span>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="50" 
+                           style="width: 80px;" onchange="setVolume(this.value)">
+                    <span id="volumeDisplay" style="margin-left: 5px; font-size: 12px;">50%</span>
+                </div>
                 <button onclick="window.location.href='/system'" class="logs-button">📊 System</button>
+                <button onclick="window.location.href='/audiocraft'" class="logs-button" style="background: #667eea;">🎵 AudioCraft</button>
             </div>
         </div>
         
@@ -1514,32 +2920,166 @@
             {% endfor %}
             
             <div class="typing-indicator" id="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+                <div class="typing-bubble">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                    <div class="typing-text">RoverSeer is thinking...</div>
+                </div>
             </div>
         </div>
         
         <div class="chat-input-container">
-            <form method="post" id="chat_form" class="chat-input-form" onsubmit="handleSubmit(event)">
-            <input type="hidden" name="action" value="chat">
+            <!-- Interaction Mode Toggle -->
+            <div class="interaction-mode-toggle">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" id="interaction-mode-checkbox" onchange="toggleInteractionMode()">
+                    <span style="font-weight: bold;">🎭 Interaction Mode - Have two agents talk to each other</span>
+                </label>
+            </div>
             
+            <!-- Interaction Mode Controls -->
+            <div id="interaction-controls" class="interaction-controls" style="display: none;">
+                <div class="interaction-header" onclick="toggleInteractionPanel()">
+                    <span>🤝 Agent Interaction Configuration</span>
+                    <span>
+                        <span class="interaction-mini-status" id="interaction-mini-status"></span>
+                        <span class="collapse-icon">▼</span>
+                    </span>
+                </div>
+                
+                <div class="interaction-body">
+                    <div class="interaction-row">
+                        <label><span style="color: #007AFF;">●</span> Agent 1:</label>
+                        <select id="interaction-agent1">
+                            {% if categorized_models %}
+                                {% for category_name, models_list in categorized_models.items() %}
+                                    <optgroup label="{{ category_name }}">
+                                        {% for model in models_list %}
+                                            <option value="{{ model.full_name }}">{{ model.display_name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <select id="interaction-voice1" class="voice-select">
+                            {% if categorized_voices %}
+                                {% for category, voice_list in categorized_voices.categorized.items() %}
+                                    <optgroup label="{{ category|title }}">
+                                        {% for voice in voice_list %}
+                                            <option value="{{ voice }}">{{ voice }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            {% else %}
+                                {% for voice in voices %}
+                                    <option value="{{ voice }}">{{ voice }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <div class="interaction-row">
+                        <label><span style="color: #999;">●</span> Agent 2:</label>
+                        <select id="interaction-agent2">
+                            {% if categorized_models %}
+                                {% for category_name, models_list in categorized_models.items() %}
+                                    <optgroup label="{{ category_name }}">
+                                        {% for model in models_list %}
+                                            <option value="{{ model.full_name }}" {% if loop.index0 == 1 %}selected{% endif %}>
+                                                {{ model.display_name }}
+                                            </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <select id="interaction-voice2" class="voice-select">
+                            {% if categorized_voices %}
+                                {% for category, voice_list in categorized_voices.categorized.items() %}
+                                    <optgroup label="{{ category|title }}">
+                                        {% for voice in voice_list %}
+                                            <option value="{{ voice }}" {% if loop.index0 == 1 %}selected{% endif %}>{{ voice }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            {% else %}
+                                {% for voice in voices %}
+                                    <option value="{{ voice }}" {% if loop.index0 == 1 %}selected{% endif %}>{{ voice }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    
+                    <div class="interaction-row">
+                        <label>🔄 Rounds:</label>
+                        <input type="number" id="interaction-rounds" min="1" max="20" value="5">
+                    </div>
+                    
+                    <div class="interaction-row">
+                        <label>🔊 Output:</label>
+                        <select id="interaction-output-type">
+                            <option value="text">📝 Text Only</option>
+                            <option value="speak">🔊 Play on RoverSeer</option>
+                            <option value="audio_file">🎵 Download Audio</option>
+                        </select>
+                    </div>
+                    
+                    <div class="interaction-row">
+                        <label>💭 Context:</label>
+                        <textarea id="interaction-system-message" 
+                                  class="interaction-system-message" 
+                                  placeholder="Optional: Add context for the conversation (e.g., 'Discuss philosophy', 'Debate technology')"></textarea>
+                    </div>
+                    
+                    <div id="interaction-status" class="interaction-status"></div>
+                    
+                    <div class="interaction-buttons">
+                        <button id="interaction-start-btn" class="interaction-button start" onclick="startInteraction()">
+                            ▶️ Start Interaction
+                        </button>
+                        <button id="interaction-stop-btn" class="interaction-button stop" onclick="stopInteraction()" disabled>
+                            ⏹️ Stop Interaction
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Normal Chat Input -->
+            <form method="post" id="chat_form" class="chat-input-form" onsubmit="handleSubmit(event)">
+                <input type="hidden" name="action" value="chat">
+                
                 <div class="chat-input-wrapper">
                     <div class="chat-controls">
                         <select name="output_type" title="Output Type">
                             <option value="speak">🔊 RoverSeer</option>
                             <option value="audio_file">🎵 Local Audio</option>
                             <option value="text">📝 Text Only</option>
-            </select>
-            
+                        </select>
+                        
                         <select name="model" title="AI Model">
-                {% for tag in models %}
-                    <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
-                        {{ tag.display_name }}
-                    </option>
-                {% endfor %}
-            </select>
-            
+                            {% if categorized_models %}
+                                {% for category_name, models_list in categorized_models.items() %}
+                                    <optgroup label="{{ category_name }}">
+                                        {% for model in models_list %}
+                                            <option value="{{ model.full_name }}" {% if model.full_name == selected_model %}selected{% endif %}>
+                                                {{ model.display_name }}
+                                            </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Fallback to flat list if no categorization -->
+                                {% for tag in models %}
+                                    <option value="{{ tag.full_name }}" {% if tag.full_name == selected_model %}selected{% endif %}>
+                                        {{ tag.display_name }}
+                                    </option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        
                         <label style="display: flex; align-items: center; gap: 5px;">
                             <input type="checkbox" id="use-personality" name="use_personality" checked onchange="togglePersonalityMode()">
                             <span style="white-space: nowrap;">Use Personality</span>
@@ -1561,18 +3101,33 @@
                         ></textarea>
                     </div>
                     
-                    <textarea 
-                        name="user_input" 
-                        class="chat-textarea" 
-                        placeholder="Type a message..."
-                        oninput="autoResize(this)"
-                        onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey || !event.shiftKey)) { event.preventDefault(); document.getElementById('chat_form').requestSubmit(); }"
-                    ></textarea>
+                    <div class="chat-message-row" style="display: flex; gap: 12px; align-items: flex-end; margin-top: 12px;">
+                        <textarea 
+                            name="user_input" 
+                            class="chat-textarea" 
+                            style="flex: 1;"
+                            placeholder="Type a message..."
+                            oninput="autoResize(this)"
+                            onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey || !event.shiftKey)) { event.preventDefault(); document.getElementById('chat_form').requestSubmit(); }"
+                        ></textarea>
+                        
+                        <button type="submit" class="send-button">Send</button>
+                    </div>
                 </div>
-                
-                <button type="submit" class="send-button">Send</button>
-        </form>
+            </form>
         </div>
     </div>
+
+    <!-- Data for JavaScript -->
+    <script type="application/json" id="roverseer-data">
+    {
+        "voices": {{ voices | tojson }},
+        "categorizedVoices": {{ categorized_voices | tojson }},
+        "personalities": {{ personalities | tojson }},
+        "currentPersonality": {{ current_personality | tojson }},
+        "selectedModel": {{ selected_model | tojson }},
+        "selectedVoice": {{ selected_voice | tojson }}
+    }
+    </script>
 </body>
 </html> 

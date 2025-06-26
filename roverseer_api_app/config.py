@@ -3,6 +3,8 @@ import subprocess
 import re
 from pathlib import Path
 import json
+import uuid
+from datetime import datetime
 
 
 # -------- PERSISTENT CONFIG MANAGEMENT -------- #
@@ -75,12 +77,18 @@ def detect_usb_audio_device():
     try:
         result = subprocess.run(['aplay', '-l'], stdout=subprocess.PIPE, text=True)
         for line in result.stdout.splitlines():
-            if 'USB Audio' in line:
+            # Check for various USB audio device patterns
+            if any(pattern in line for pattern in ['USB Audio', 'UACDemo', 'PnP Sound Device']):
                 match = re.search(r'card (\d+):', line)
                 if match:
-                    return f"plughw:{match.group(1)},0"
+                    card_id = match.group(1)
+                    device_name = f"plughw:{card_id},0"
+                    print(f"Detected USB audio device: {device_name} from line: {line.strip()}")
+                    return device_name
     except Exception as e:
         print(f"Audio detection failed: {e}")
+    
+    print("No USB audio device found, using 'default'")
     return "default"
 
 
@@ -161,6 +169,84 @@ DEFAULT_MODEL = "tinydolphin:1.1b"
 LOGICAL_MODEL = "DolphinSeek-R1:latest"
 CREATIVE_MODEL = "DolphinSeek-R1:latest"
 
+# -------- OLLAMA SERVER CONFIGURATION -------- #
+# Remote Ollama server configuration
+REMOTE_OLLAMA_ENABLED = get_config_value("remote_ollama_enabled", True)  # Enable by default
+REMOTE_OLLAMA_HOST = get_config_value("remote_ollama_host", "M2cBook.local")
+REMOTE_OLLAMA_PORT = get_config_value("remote_ollama_port", 11434)
+LOCAL_OLLAMA_HOST = "localhost"
+LOCAL_OLLAMA_PORT = 11434
+
+# Connection timeout for server availability checks
+OLLAMA_CONNECTION_TIMEOUT = 3  # seconds
+
+# LLM Request timeout configuration
+LLM_REQUEST_TIMEOUT = get_config_value("llm_request_timeout", 120)  # 2 minutes default
+LLM_STREAMING_TIMEOUT = get_config_value("llm_streaming_timeout", 300)  # 5 minutes for streaming
+
+def get_ollama_base_url(prefer_remote=True):
+    """
+    Get the Ollama base URL with automatic fallback.
+    
+    Args:
+        prefer_remote: If True, tries remote first, then local. If False, uses local only.
+    
+    Returns:
+        tuple: (base_url, is_remote)
+    """
+    if prefer_remote and REMOTE_OLLAMA_ENABLED:
+        remote_url = f"http://{REMOTE_OLLAMA_HOST}:{REMOTE_OLLAMA_PORT}"
+        
+        # Test remote server availability
+        try:
+            import requests
+            response = requests.get(f"{remote_url}/api/tags", timeout=OLLAMA_CONNECTION_TIMEOUT)
+            if response.status_code == 200:
+                print(f"🌐 Using remote Ollama server: {REMOTE_OLLAMA_HOST}")
+                return remote_url, True
+        except Exception as e:
+            print(f"🔄 Remote Ollama server ({REMOTE_OLLAMA_HOST}) unavailable: {e}")
+    
+    # Fallback to local server
+    local_url = f"http://{LOCAL_OLLAMA_HOST}:{LOCAL_OLLAMA_PORT}"
+    print(f"🏠 Using local Ollama server: {LOCAL_OLLAMA_HOST}")
+    return local_url, False
+
+def update_remote_ollama_config(enabled=None, host=None, port=None):
+    """Update remote Ollama configuration"""
+    global REMOTE_OLLAMA_ENABLED, REMOTE_OLLAMA_HOST, REMOTE_OLLAMA_PORT
+    
+    if enabled is not None:
+        REMOTE_OLLAMA_ENABLED = enabled
+        set_config_value("remote_ollama_enabled", enabled)
+    
+    if host is not None:
+        REMOTE_OLLAMA_HOST = host
+        set_config_value("remote_ollama_host", host)
+    
+    if port is not None:
+        REMOTE_OLLAMA_PORT = port
+        set_config_value("remote_ollama_port", port)
+    
+    return True
+
+def test_remote_ollama_connection():
+    """Test remote Ollama server connection"""
+    if not REMOTE_OLLAMA_ENABLED:
+        return False, "Remote Ollama is disabled"
+    
+    try:
+        import requests
+        remote_url = f"http://{REMOTE_OLLAMA_HOST}:{REMOTE_OLLAMA_PORT}"
+        response = requests.get(f"{remote_url}/api/tags", timeout=OLLAMA_CONNECTION_TIMEOUT)
+        if response.status_code == 200:
+            models = response.json().get("models", [])
+            return True, f"Connected to {REMOTE_OLLAMA_HOST} with {len(models)} models available"
+    except Exception as e:
+        return False, f"Connection failed: {str(e)}"
+    
+    return False, "Unknown error"
+
 # Model selection state
 available_models = []
 selected_model_index = 0
@@ -172,6 +258,31 @@ MAX_BUTTON_HISTORY = 4  # Max number of button chat exchanges to retain
 # Conversation storage
 history = []
 button_history = []
+
+# -------- CONVERSATION THREAD TRACKING -------- #
+# Current conversation thread ID - changes when context is reset
+current_conversation_thread_id = str(uuid.uuid4())
+conversation_thread_start_time = datetime.now()
+
+def generate_new_conversation_thread():
+    """Generate a new conversation thread ID when context is reset"""
+    global current_conversation_thread_id, conversation_thread_start_time
+    current_conversation_thread_id = str(uuid.uuid4())
+    conversation_thread_start_time = datetime.now()
+    print(f"🔄 New conversation thread: {current_conversation_thread_id[:8]}...")
+    return current_conversation_thread_id
+
+def get_current_conversation_thread():
+    """Get the current conversation thread ID"""
+    return current_conversation_thread_id
+
+def get_conversation_thread_info():
+    """Get conversation thread information including start time"""
+    return {
+        'thread_id': current_conversation_thread_id,
+        'start_time': conversation_thread_start_time,
+        'message_count': len(history)
+    }
 
 # -------- PROCESSING STATE -------- #
 recording_in_progress = False
@@ -192,6 +303,17 @@ def update_max_concurrent_requests(max_requests):
 
 # -------- SOUND CONFIGURATION -------- #
 TICK_TYPE = "music"  # "clock" or "music"
+
+# -------- TEMPORAL PERSPECTIVE CONFIGURATION -------- #
+USE_TEMPORAL_PERSPECTIVE = get_config_value("use_temporal_perspective", True)
+TIMER_SOUND_EFFECTS = get_config_value("timer_sound_effects", True)
+TEMPORAL_OSCILLATION_PATTERN = get_config_value("temporal_oscillation_pattern", {
+    "interval": 1.0,
+    "marker_positions": [0],
+    "skip_positions": [],
+    "double_beat_positions": [3],
+    "flicker_positions": [6]
+})
 
 # -------- EXPERIMENTAL FEATURES -------- #
 USE_EXPERIMENTAL_RAINBOW_STRIP = False  # Enable APA102 7-LED strip features (experimental on Pi 5)

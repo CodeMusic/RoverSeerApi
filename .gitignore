@@ -1,2 +1,4 @@
 /roverseer_api_app/__pycache__
 *.pyc
+.DS_Store
+.DS_Store

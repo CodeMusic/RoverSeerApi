@@ -1,8 +1,12 @@
-from flask import Blueprint, request, jsonify, send_file
+from fastapi import APIRouter, Request, Form, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, FileResponse
+from typing import Optional, Dict, Any, List
 import uuid
 import time
 import json
+import asyncio
 
+import config
 from config import DEFAULT_MODEL, DEFAULT_VOICE, current_audio_process
 from cognition.llm_interface import run_chat_completion
 from cognition.bicameral_mind import bicameral_chat_direct
@@ -10,12 +14,14 @@ from expression.text_to_speech import generate_tts_audio, speak_text
 from memory.usage_logger import log_penphin_mind_usage
 from embodiment.rainbow_interface import start_system_processing, stop_system_processing
 from expression.sound_orchestration import play_sound_async, play_bicameral_connection_tune
+from embodiment.sensors import get_ai_pipeline_status
+from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
 
-bp = Blueprint('chat', __name__)
+router = APIRouter()
 
 
-@bp.route('/chat', methods=['POST'])
-def chat_unified():
+@router.post('/chat')
+async def chat_unified(request: Request):
     """
     Chat with Ollama and return text, audio file, or speak on device.
     ---
@@ -62,9 +68,13 @@ def chat_unified():
         description: Response in requested format
     """
     global current_audio_process
-    data = request.get_json(silent=True)
+    try:
+        data = await request.json()
+    except:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+    
     if not data or "messages" not in data:
-        return jsonify({"error": "Missing messages"}), 400
+        raise HTTPException(status_code=400, detail="Missing messages")
 
     model = data.get("model", DEFAULT_MODEL)
     messages = data.get("messages", [])
@@ -116,7 +126,7 @@ def chat_unified():
         # For text-only response, stop LEDs
         if output_type == "text":
             stop_system_processing()
-            return jsonify({
+            return JSONResponse(content={
                 "id": f"chatcmpl-{uuid.uuid4().hex[:8]}",
                 "object": "chat.completion",
                 "created": int(time.time()),
@@ -133,7 +143,7 @@ def chat_unified():
                 }
             })
         
-        # For audio outputs, generate TTS
+        # For audio outputs, generate TTS normally
         if output_type in ["audio_file", "speak"]:
             # Play voice intro before TTS (only when speaking)
             if output_type == "speak":
@@ -171,7 +181,7 @@ def chat_unified():
                 # Stop all LEDs after playback
                 stop_system_processing()
 
-                return jsonify({
+                return JSONResponse(content={
                     "status": "success",
                     "model": model,
                     "spoken_text": reply,
@@ -179,15 +189,15 @@ def chat_unified():
                 })
             else:  # audio_file
                 # Return audio file
-                return send_file(tmp_wav, mimetype="audio/wav", as_attachment=True, download_name="chat_tts.wav")
+                return FileResponse(tmp_wav, media_type="audio/wav", filename="chat_tts.wav")
 
     except Exception as e:
         stop_system_processing()
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@bp.route('/insight', methods=['POST'])
-def insight():
+@router.post('/insight')
+async def insight(request: Request):
     """
     Quick single-prompt chat with optional system role.
     ---
@@ -217,7 +227,7 @@ def insight():
     """
     data = request.get_json(silent=True)
     if not data or "prompt" not in data:
-        return jsonify({"status": "error", "message": "Missing prompt"}), 400
+        return JSONResponse({"status": "error", "message": "Missing prompt"}), 400
 
     # Get personality manager
     from cognition.personality import get_personality_manager
@@ -244,13 +254,13 @@ def insight():
 
     try:
         reply = run_chat_completion(model, messages, system_message)
-        return jsonify({"response": reply})
+        return JSONResponse({"response": reply})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return JSONResponse({"status": "error", "message": str(e)}), 500
 
 
-@bp.route('/bicameral_chat', methods=['POST'])
-def bicameral_chat():
+@router.post('/bicameral_chat')
+async def bicameral_chat(request: Request):
     """
     Two-agent bicameral mind system that converges perspectives, with random convergence role assignment.
     ---
@@ -289,7 +299,7 @@ def bicameral_chat():
     global current_audio_process
     data = request.get_json(silent=True)
     if not data or "prompt" not in data:
-        return jsonify({"status": "error", "message": "Missing prompt"}), 400
+        return JSONResponse({"status": "error", "message": "Missing prompt"}), 400
 
     prompt = data.get("prompt", "").strip()
     system = data.get("system", "").strip()
@@ -309,7 +319,7 @@ def bicameral_chat():
         voice = DEFAULT_VOICE
 
     if not prompt:
-        return jsonify({"status": "error", "message": "No prompt provided"}), 400
+        return JSONResponse({"status": "error", "message": "No prompt provided"}), 400
 
     try:
         # Start LLM processing indicator - this is text input with voice output
@@ -345,7 +355,7 @@ def bicameral_chat():
             # Stop all LEDs
             stop_system_processing()
             
-            return jsonify({
+            return JSONResponse({
                 "status": "success",
                 "original_prompt": prompt,
                 "final_synthesis": final_response,
@@ -361,24 +371,24 @@ def bicameral_chat():
         stop_system_processing()
         error_msg = str(e)
         if "Connection refused" in error_msg:
-            return jsonify({
+            return JSONResponse({
                 "status": "error",
                 "message": "Failed to connect to Ollama service. Please ensure Ollama is running."
             }), 500
         elif "model not found" in error_msg.lower():
-            return jsonify({
+            return JSONResponse({
                 "status": "error",
                 "message": f"Model not found: {error_msg}"
             }), 500
         else:
-            return jsonify({
+            return JSONResponse({
                 "status": "error",
                 "message": f"Bicameral processing failed: {error_msg}"
             }), 500
 
 
-@bp.route('/v1/chat/completions', methods=['POST'])
-def openai_compatible_chat():
+@router.post('/v1/chat/completions')
+async def openai_compatible_chat(request: Request):
     """
     OpenAI-compatible chat completions endpoint that aliases to our chat system.
     ---
@@ -465,7 +475,7 @@ def openai_compatible_chat():
     """
     data = request.get_json(silent=True)
     if not data or "messages" not in data:
-        return jsonify({"error": {"message": "Missing messages", "type": "invalid_request_error"}}), 400
+        return JSONResponse({"error": {"message": "Missing messages", "type": "invalid_request_error"}}), 400
 
     model = data.get("model", DEFAULT_MODEL)
     messages = data.get("messages", [])
@@ -526,7 +536,7 @@ def openai_compatible_chat():
             stop_system_processing()
         
         # Return OpenAI-compatible response format
-        return jsonify({
+        return JSONResponse({
             "id": f"chatcmpl-{uuid.uuid4().hex[:8]}",
             "object": "chat.completion",
             "created": int(time.time()),
@@ -549,9 +559,344 @@ def openai_compatible_chat():
         if pipeline_stages.get('llm_active'):
             stop_system_processing()
         
-        return jsonify({
+        return JSONResponse({
             "error": {
                 "message": str(e),
                 "type": "internal_server_error"
             }
-        }), 500 
+        }), 500
+
+
+@router.post('/chat_ajax')
+async def chat_ajax(request: Request):
+    """AJAX endpoint for chat requests that returns JSON"""
+    # Check if we've reached the max concurrent requests
+    # Count active requests (including button recording)
+    active_count = config.active_request_count
+    if config.recording_in_progress:
+        active_count += 1
+    
+    if active_count >= config.MAX_CONCURRENT_REQUESTS:
+        raise HTTPException(
+            status_code=429,
+            detail=f"RoverSeer has reached the maximum concurrent requests limit ({config.MAX_CONCURRENT_REQUESTS}). Please wait a moment and try again."
+        )
+    
+    # CRITICAL FIX: Check orchestrator state instead of just counting requests
+    orchestrator = get_pipeline_orchestrator()
+    
+    if orchestrator.is_system_busy():
+        current_state = orchestrator.get_current_state()
+        raise HTTPException(
+            status_code=429,
+            detail=f"RoverSeer is currently busy ({current_state.value}). Please wait a moment and try again."
+        )
+    
+    # Increment active request count
+    config.active_request_count += 1
+    
+    # Get form data from FastAPI request
+    try:
+        form_data = await request.form()
+        
+        output_type = form_data.get('output_type')
+        voice = form_data.get('voice')
+        system = form_data.get('system')  # May be None now
+        user_input = form_data.get('user_input')
+        model = form_data.get('model')
+        use_personality = form_data.get('use_personality', 'true').lower() == 'true'
+        custom_system_message = form_data.get('system_message', '').strip()
+        request_id = form_data.get('request_id', '')  # Get request ID from form
+        
+        # Check for interaction mode
+        interaction_mode = form_data.get('interaction_mode', 'false').lower() == 'true'
+        conversation_history = []
+        if interaction_mode:
+            try:
+                conversation_history = json.loads(form_data.get('conversation_history', '[]'))
+            except:
+                conversation_history = []
+    except Exception as e:
+        config.active_request_count -= 1
+        raise HTTPException(status_code=400, detail=f"Failed to parse form data: {str(e)}")
+    
+    #🐛 DEBUG: Log all received parameters
+    print(f"🐛 CHAT_AJAX DEBUG:")
+    print(f"  📝 user_input: {user_input}")
+    print(f"  🤖 model: {model}")
+    print(f"  🔊 voice: {voice}")
+    print(f"  🎭 use_personality: {use_personality}")
+    print(f"  💬 output_type: '{output_type}' (type: {type(output_type)})")
+    print(f"  ⚙️ system: {system}")
+    print(f"  📋 custom_system_message: {custom_system_message}")
+    print(f"  🤝 interaction_mode: {interaction_mode}")
+    print(f"  📚 conversation_history length: {len(conversation_history)}")
+    print(f"  🔑 request_id: {request_id}")
+    
+    # Ensure we explicitly handle the output_type routing
+    if output_type == "audio_file":
+        print("🔧 AUDIO ROUTING: Detected audio_file - should generate local audio file")
+    elif output_type == "speak":
+        print("🔧 AUDIO ROUTING: Detected speak - should play on RoverSeer device")
+    elif output_type == "text":
+        print("🔧 AUDIO ROUTING: Detected text - should return text only")
+    else:
+        print(f"🔧 AUDIO ROUTING: Unknown output_type '{output_type}' - defaulting to text")
+    
+    print(f"🔧 AUDIO ROUTING DECISION: Will {'generate audio file' if output_type == 'audio_file' else 'play on device' if output_type == 'speak' else 'return text only'}")
+    
+    # Check if we need to switch personality based on voice
+    from cognition.personality import get_personality_manager
+    personality_manager = get_personality_manager()
+    
+    # Only handle personality switching if use_personality is true
+    if use_personality and voice:
+        personality_found = False
+        for personality in personality_manager.personalities.values():
+            if personality.voice_id == voice:
+                personality_found = True
+                if not personality_manager.current_personality or personality_manager.current_personality.name != personality.name:
+                    success = personality_manager.switch_to(personality.name)
+                    if success:
+                        # Update DEFAULT_VOICE to match
+                        from config import update_default_voice
+                        update_default_voice(voice)
+                break
+    
+    # Validate voice - use default if empty
+    if not voice:
+        voice = DEFAULT_VOICE
+        print(f"Warning: Empty voice provided, using default: {voice}")
+    
+    if not user_input:
+        config.active_request_count -= 1  # Decrement on early return
+        raise HTTPException(status_code=400, detail="No input provided")
+    
+    # Debug logging
+    print(f"AJAX Chat request - User: {user_input}, Model: {model}, Output: {output_type}")
+    
+    reply_text = ""
+    audio_url = None
+    error = None
+    
+    try:
+        # Get orchestrator and ensure proper pipeline flow
+        orchestrator = get_pipeline_orchestrator()
+        
+        # Start LLM processing - transition to CONTEMPLATING state
+        print(f"🔧 Starting LLM processing - transitioning to CONTEMPLATING state")
+        orchestrator.transition_to_state(SystemState.CONTEMPLATING)
+        
+        # Check if PenphinMind is selected
+        if model.lower() == "penphinmind":
+            # Use bicameral_chat_direct function
+            try:
+                reply = bicameral_chat_direct(user_input, system, voice)
+            except Exception as e:
+                reply = f"Bicameral processing error: {e}"
+            
+            # Store PenphinMind identity in history for consistency
+            history_info = "🧠 PenphinMind"
+            config.history.append((user_input, reply, history_info))
+            reply_text = reply
+            
+            # Complete pipeline flow for PenphinMind
+            orchestrator.complete_pipeline_flow()
+        else:
+            # Normal single model flow
+            # Build message history with model context
+            messages = []
+            
+            # For interaction mode, use provided conversation history
+            if interaction_mode and conversation_history:
+                for user_msg, asst_msg in conversation_history:
+                    messages.append({"role": "user", "content": user_msg})
+                    messages.append({"role": "assistant", "content": asst_msg})
+            else:
+                # Use global history
+                for user_msg, ai_reply, _ in config.history[-config.MAX_HISTORY:]:
+                    messages.append({"role": "user", "content": user_msg})
+                    messages.append({"role": "assistant", "content": ai_reply})
+            
+            messages.append({"role": "user", "content": user_input})
+
+            try:
+                # Get system message from personality or use provided one
+                if use_personality and personality_manager.current_personality:
+                    # Generate context-aware system message from current personality
+                    context = {
+                        "time_of_day": "day",  # Could be enhanced with actual time
+                        "user_name": None,  # Could be enhanced if we track users
+                    }
+                    system_message = personality_manager.current_personality.generate_system_message(context)
+                    print(f"Using personality system message for {personality_manager.current_personality.name}")
+                elif not use_personality and custom_system_message:
+                    # Use the custom system message provided by user
+                    system_message = custom_system_message
+                    print(f"Using custom system message")
+                else:
+                    # Use provided system message or default
+                    system_message = system or "You are RoverSeer, a helpful assistant."
+                    print(f"Using {'provided' if system else 'default'} system message")
+                
+                # Run LLM
+                reply = run_chat_completion(model, messages, system_message, voice_id=voice)
+                
+                # Log response for analytics with voice model context
+                from helpers.logging_helper import LoggingHelper
+                LoggingHelper.log_llm_usage(model, system_message, user_input, reply, voice_id=voice)
+
+                # LLM complete, advance to next stage based on output type
+                print(f"🔧 LLM complete, advancing to next stage for output type: {output_type}")
+                
+                # TTS and audio generation
+                if output_type == "speak":
+                    # Import needed for TTS
+                    from expression.text_to_speech import speak_text
+                    
+                    # Transition to TTS stage
+                    orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
+                    
+                    # Debug: Check reply content before TTS
+                    print(f"🔧 DEBUG: About to call speak_text with reply length: {len(reply) if reply else 'None'}")
+                    print(f"🔧 DEBUG: Reply content preview: {reply[:50] if reply else 'None'}...")
+                    print(f"🔧 DEBUG: Voice: {voice}")
+                    
+                    # Use text_to_speech speak_text function which handles the rest of the pipeline
+                    speak_text(reply, voice)
+                    
+                    print(f"🔧 DEBUG: speak_text completed successfully")
+                    
+                    reply_text = reply
+                    print("🔧 AUDIO ROUTING: Spoke on RoverSeer device, returning text response to frontend")
+                elif output_type == "audio_file":
+                    # Import needed for TTS generation
+                    from expression.text_to_speech import generate_tts_audio
+                    import uuid
+                    import os
+                    
+                    # Transition to TTS stage
+                    orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
+                    
+                    # Generate TTS and save to tmp directory (same pattern as fastapi_core.py)
+                    try:
+                        # Generate TTS to a temp file like fastapi_core.py does
+                        temp_filename = f"{uuid.uuid4().hex}.wav"
+                        temp_path = f"/tmp/{temp_filename}"
+                        
+                        # TTS generation
+                        output_file, tts_processing_time = generate_tts_audio(reply, voice, temp_path)
+                        print(f"✅ Audio file generated: {output_file}")
+                        
+                        # Complete pipeline flow for audio file mode
+                        orchestrator.complete_pipeline_flow()
+                        
+                        # Set the audio URL for the frontend to download
+                        audio_url = f"/tmp_static/{temp_filename}"
+                        reply_text = reply
+                        print("🔧 AUDIO ROUTING: Generated audio file for download")
+                        
+                    except Exception as e:
+                        print(f"❌ TTS generation failed: {e}")
+                        reply_text = f"{reply}\n\n(Audio generation failed: {e})"
+                        orchestrator.complete_pipeline_flow()  # Reset on error
+                else:
+                    # Text only - complete pipeline and return to idle
+                    print(f"🔧 Text-only mode, completing pipeline flow")
+                    orchestrator.complete_pipeline_flow()
+                    reply_text = reply
+
+                # Determine what to show in history - match the frontend logic
+                history_info = model  # Default fallback
+                
+                if use_personality and personality_manager.current_personality:
+                    # If using personality mode, show personality name with emoji
+                    history_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
+                else:
+                    # Check if this model is associated with any personality
+                    for personality in personality_manager.personalities.values():
+                        if personality.model_preference == model:
+                            history_info = f"{personality.avatar_emoji} {personality.name}"
+                            break
+                    # If no personality association found, keep the model name as fallback
+                
+                # Don't add to history if in interaction mode
+                if not interaction_mode:
+                    config.history.append((user_input, reply_text, history_info))
+                    
+            except Exception as e:
+                reply_text = f"Request failed: {e}"
+                # Save error to history with model name
+                if not interaction_mode:
+                    config.history.append((user_input, reply_text, model))
+            
+    except Exception as e:
+        error = str(e)
+        reply_text = f"Request failed: {e}"
+        print(f"🔧 Error in chat_ajax: {e}")
+        
+        # Make sure to reset orchestrator on error
+        try:
+            orchestrator = get_pipeline_orchestrator()
+            current_state = orchestrator.get_current_state()
+            print(f"🔧 Error occurred, orchestrator in state: {current_state.value}")
+            orchestrator.complete_pipeline_flow()  # Reset to idle
+            print(f"🔧 Orchestrator reset to idle after error")
+        except Exception as reset_error:
+            print(f"🔧 Failed to reset orchestrator after error: {reset_error}")
+    finally:
+        # Always decrement active request count
+        config.active_request_count -= 1
+        
+        # Ensure orchestrator is in a clean state
+        try:
+            orchestrator = get_pipeline_orchestrator()
+            current_state = orchestrator.get_current_state()
+            print(f"🔧 Finally block - orchestrator state: {current_state.value}")
+            if current_state.value not in ["idle", "interrupted"]:
+                print(f"🔧 Finally block - forcing orchestrator to idle from {current_state.value}")
+                orchestrator.complete_pipeline_flow()
+        except Exception as final_error:
+            print(f"🔧 Error in finally block: {final_error}")
+    
+    # Get updated AI pipeline status
+    ai_pipeline = get_ai_pipeline_status()
+    
+    # Get personality info for frontend display based on which model actually handled this request
+    personality_data = None
+    
+    # Determine which personality should be displayed for this specific request
+    if use_personality and personality_manager.current_personality:
+        # If using personality mode and we have a current personality, show it
+        personality_data = {
+            'name': personality_manager.current_personality.name,
+            'avatar_emoji': personality_manager.current_personality.avatar_emoji
+        }
+    elif model.lower() == "penphinmind":
+        # Special case for PenphinMind - show PenphinMind identity
+        personality_data = {
+            'name': 'PenphinMind',
+            'avatar_emoji': '🧠'
+        }
+    else:
+        # For regular models, check if this model is associated with any personality
+        # This handles cases where someone selected a model directly but it's a personality's preferred model
+        for personality in personality_manager.personalities.values():
+            if personality.model_preference == model:
+                personality_data = {
+                    'name': personality.name,
+                    'avatar_emoji': personality.avatar_emoji
+                }
+                break
+        
+        # If no personality association found, don't show personality data (will fall back to model name)
+    
+    return JSONResponse(content={
+        "reply": reply_text,
+        "audio_url": audio_url,
+        "model": model,
+        "error": error,
+        "ai_pipeline": ai_pipeline,
+        "personality": personality_data,
+        "request_id": request_id  # Include request ID in response
+    }) 

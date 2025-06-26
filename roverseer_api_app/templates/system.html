@@ -482,6 +482,384 @@
             font-size: 12px;
             color: #333;
         }
+        
+        /* Conversation group styles */
+        .conversation-group { 
+            background: #f8f9fa; 
+            border: 2px solid #e9ecef; 
+            border-radius: 8px; 
+            margin: 15px 0; 
+            transition: all 0.3s ease;
+        }
+        .conversation-group:hover { 
+            border-color: #4169e1; 
+            box-shadow: 0 2px 8px rgba(65, 105, 225, 0.2);
+        }
+        .conversation-group.expanded { 
+            border-color: #4169e1; 
+            background: #ffffff;
+        }
+        .conversation-header { 
+            padding: 15px; 
+            cursor: pointer; 
+            border-bottom: none;
+            transition: background-color 0.2s;
+        }
+        .conversation-header:hover { 
+            background: #f0f4ff; 
+        }
+        .conversation-group.expanded .conversation-header {
+            border-bottom: 2px solid #e9ecef;
+            background: #f8f9fa;
+        }
+        .conversation-title { 
+            font-weight: bold; 
+            color: #333; 
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .conversation-meta { 
+            display: flex; 
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 12px; 
+            color: #666; 
+            margin-bottom: 8px;
+        }
+        .conversation-summary { 
+            font-size: 14px; 
+            color: #555; 
+            font-style: italic;
+            margin-top: 8px;
+        }
+        .conversation-entries { 
+            padding: 0 15px 15px 15px; 
+            display: none; 
+        }
+        .conversation-group.expanded .conversation-entries { 
+            display: block; 
+        }
+        .thread-id-badge {
+            background: #e8f4fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: normal;
+        }
+        .conversation-stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 8px;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: #666;
+        }
+        .participants-list {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .participant-badge {
+            background: #f0f8ff;
+            color: #4169e1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .models-list {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .model-badge {
+            background: #f5f5f5;
+            color: #666;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+        }
+        .conversation-entry {
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            margin: 10px 0;
+            transition: all 0.2s;
+        }
+        .conversation-entry:hover {
+            border-color: #4169e1;
+            box-shadow: 0 1px 4px rgba(65, 105, 225, 0.15);
+        }
+        
+        /* Loading animation for conversations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Add this enhanced loading animation CSS */
+        .loading-animation 
+        {
+            display: inline-block;
+            position: relative;
+            font-size: 1.2em;
+            height: 1.5em;
+            width: 3em;
+            text-align: center;
+            font-family: monospace;
+        }
+
+        .loading-animation .dot 
+        {
+            display: inline-block;
+            position: relative;
+            width: 0.5em;
+            height: 0.5em;
+            margin: 0 0.1em;
+            animation: dot-to-star 3s infinite;
+            opacity: 0.8;
+            transform-origin: center;
+        }
+
+        .loading-animation .dot:nth-child(1) 
+        {
+            animation-delay: 0s;
+        }
+
+        .loading-animation .dot:nth-child(2) 
+        {
+            animation-delay: 0.5s;
+        }
+
+        .loading-animation .dot:nth-child(3) 
+        {
+            animation-delay: 1s;
+        }
+
+        @keyframes dot-to-star 
+        {
+            0%, 100% 
+            {
+                content: ".";
+                transform: translateY(0);
+            }
+            20% 
+            {
+                content: ".";
+                transform: translateY(-10px);
+            }
+            30% 
+            {
+                content: "✧";
+                transform: translateY(-15px) rotate(72deg);
+            }
+            40% 
+            {
+                content: "★";
+                transform: translateY(-15px) rotate(144deg);
+            }
+            50% 
+            {
+                content: "★";
+                transform: translateY(-15px) rotate(216deg);
+            }
+            60% 
+            {
+                content: "★";
+                transform: translateY(-15px) rotate(288deg);
+            }
+            70% 
+            {
+                content: "★";
+                transform: translateY(-15px) rotate(360deg);
+            }
+            80% 
+            {
+                content: ".";
+                transform: translateY(0) scale(1.2);
+            }
+            90% 
+            {
+                content: ".";
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Conversation section styling with enhanced animation */
+        .conversation-section {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #fff;
+        }
+
+        .conversation-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .filter-controls select, .filter-controls button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .filter-controls button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .conversation-display {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 15px;
+            height: 500px;
+        }
+
+        .conversation-list, .conversation-details {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #fafafa;
+        }
+
+        .conversation-list {
+            height: 100%;
+        }
+
+        .conversation-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .conversation-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .conversation-item.selected {
+            background-color: #e0f7fa;
+        }
+
+        .conversation-item .meta {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .loading-animation-container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Enhanced message display for conversation details */
+        .conversation-thread {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .thread-info {
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .thread-info h3 {
+            margin: 0 0 10px 0;
+        }
+
+        .thread-info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .conversation-messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* iPhone-style message bubbles */
+        .message {
+            max-width: 80%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-self: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 10px 14px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-bubble {
+            background: #0084ff;
+            color: white;
+            border-top-right-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: #e5e5ea;
+            color: black;
+            border-top-left-radius: 4px;
+        }
+
+        .message-info {
+            font-size: 11px;
+            color: #8e8e93;
+            margin-top: 4px;
+            padding: 0 10px;
+        }
+
+        .message.user .message-info {
+            text-align: right;
+        }
+
+        .message-meta {
+            font-size: 10px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .empty-message, .error-message {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error-message {
+            color: #f44336;
+        }
     </style>
     
     <!-- Template data as JSON to avoid linter conflicts -->
@@ -608,8 +986,25 @@
         
         function loadPersonalities() {
             fetch('/system/personalities')
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Personality response status:', response.status);
+                    console.log('Personality response headers:', response.headers.get('content-type'));
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    // Check if response is actually JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error(`Expected JSON, got: ${contentType}`);
+                    }
+                    
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Personality data received:', data);
+                    
                     if (data.status === 'success') {
                         const select = document.getElementById('personality-select');
                         const currentSpan = document.getElementById('current-personality');
@@ -633,10 +1028,24 @@
                         if (data.current) {
                             loadPersonalityDetails();
                         }
+                        
+                        console.log('✅ Personalities loaded successfully');
+                    } else {
+                        throw new Error(data.message || 'Unknown error from API');
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading personalities:', error);
+                    console.error('❌ Error loading personalities:', error);
+                    
+                    // Show error in UI
+                    const currentSpan = document.getElementById('current-personality');
+                    currentSpan.textContent = 'Error loading';
+                    currentSpan.style.color = '#dc3545';
+                    
+                    // Try to show helpful error message
+                    if (error.message.includes('Unexpected token')) {
+                        console.error('🚨 JSON parsing error - likely receiving HTML instead of JSON');
+                    }
                 });
         }
         
@@ -1872,7 +2281,10 @@
                                 <div style="border: 1px solid #ddd; border-radius: 5px; padding: 8px; margin-bottom: 8px; background: #fafafa;">
                                     <div style="display: flex; justify-content: space-between; align-items: center;">
                                         <strong style="font-size: 13px;">${moodName}</strong>
-                                        <button onclick="deleteMoodFromEdit('${moodName}')" style="background: #dc3545; color: white; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px;">Delete</button>
+                                        <div>
+                                            <button onclick="editMoodFromPersonalityView('${moodName}')" style="background: #ffc107; color: black; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px; margin-right: 3px;">Edit</button>
+                                            <button onclick="deleteMoodFromEdit('${moodName}')" style="background: #dc3545; color: white; border: none; padding: 2px 5px; border-radius: 3px; cursor: pointer; font-size: 10px;">Delete</button>
+                                        </div>
                                     </div>
                                     <div style="font-size: 10px; color: #666; margin-top: 3px;">
                                         ${moodData.context_triggers.join(', ')} (${moodData.trigger_probability})
@@ -2032,6 +2444,16 @@
                 console.error('Error deleting mood:', error);
                 showStatusMessage('Error deleting mood: ' + error, 'error');
             });
+        }
+        
+        function editMoodFromPersonalityView(moodName) {
+            // Simply call the existing editMood function and ensure form visibility
+            editMood(moodName);
+            
+            // Also ensure the mood form button container is hidden when editing
+            document.getElementById('add-mood-button-container').style.display = 'none';
+            
+            showStatusMessage(`Editing mood "${moodName}"`, 'info');
         }
         
         function editMood(moodName) {
@@ -2260,6 +2682,1000 @@
         }
         
         // Load containers when page loads
+        
+        // ======= CONVERSATION THREADING FUNCTIONS =======
+        
+        function loadConversations(date = null, logType = 'llm_usage') {
+            // Show loading state
+            const mainContent = document.querySelector('.main-content');
+            const loadingHtml = `
+                <h2>💬 Conversations</h2>
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto;"></div>
+                    Loading conversations...
+                </div>
+            `;
+            mainContent.innerHTML = loadingHtml;
+            
+            // Build API URL with parameters
+            let url = '/system/conversations';
+            const params = new URLSearchParams();
+            if (date) params.append('date', date);
+            if (logType) params.append('type', logType);
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    displayConversations(data.conversations, data.date);
+                })
+                .catch(error => {
+                    console.error('Error loading conversations:', error);
+                    mainContent.innerHTML = `
+                        <h2>💬 Conversations</h2>
+                        <div style="color: #dc3545; text-align: center; padding: 40px;">
+                            <strong>Error loading conversations:</strong> ${error.message}
+                        </div>
+                    `;
+                });
+        }
+        
+        function displayConversations(conversations, date) {
+            const mainContent = document.querySelector('.main-content');
+            
+            if (!conversations || conversations.length === 0) {
+                mainContent.innerHTML = `
+                    <h2>💬 Conversations</h2>
+                    <div class="log-info">
+                        📋 Conversations are automatically grouped by thread ID. Each conversation thread starts when context is cleared or the system restarts.
+                    </div>
+                    <p class="no-logs">No conversations found for ${date || 'today'}</p>
+                `;
+                return;
+            }
+            
+            let conversationsHtml = `
+                <h2>💬 Conversations (${conversations.length})</h2>
+                <div class="log-info">
+                    📋 Conversations are automatically grouped by thread ID. Click any conversation to view its detailed exchanges.
+                </div>
+                <div class="conversations-container">
+            `;
+            
+            conversations.forEach((conversation, index) => {
+                const shortId = conversation.thread_id.substring(0, 8) + '...';
+                const duration = calculateDuration(conversation.start_time, conversation.end_time);
+                const safeThreadId = conversation.thread_id.replace(/[^a-zA-Z0-9]/g, '_'); // Safe ID for HTML elements
+                
+                conversationsHtml += `
+                    <div class="conversation-group" id="conversation-${safeThreadId}">
+                        <div class="conversation-header" onclick="toggleConversation('${conversation.thread_id}')">
+                            <div class="conversation-title">
+                                <span>🔗 Conversation ${index + 1}</span>
+                                <span class="thread-id-badge">${shortId}</span>
+                            </div>
+                            <div class="conversation-meta">
+                                <span>⏱️ ${duration}</span>
+                                <span>💬 ${conversation.message_count} messages</span>
+                                <span>📅 ${formatTime(conversation.start_time)} - ${formatTime(conversation.end_time)}</span>
+                            </div>
+                            <div class="conversation-stats">
+                                <div class="stat-item">
+                                    <span>🎭 Participants:</span>
+                                    <div class="participants-list">
+                                        ${conversation.participants.map(p => `<span class="participant-badge">${p}</span>`).join('')}
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <span>🤖 Models:</span>
+                                    <div class="models-list">
+                                        ${conversation.models_used.map(m => `<span class="model-badge">${m}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="conversation-entries" id="entries-${safeThreadId}">
+                            <div class="loading-placeholder" style="text-align: center; padding: 20px; color: #666;">
+                                Loading conversation details...
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            conversationsHtml += '</div>';
+            mainContent.innerHTML = conversationsHtml;
+        }
+        
+        function toggleConversation(threadId) {
+            const safeThreadId = threadId.replace(/[^a-zA-Z0-9]/g, '_'); // Convert to safe ID for DOM
+            const conversationGroup = document.getElementById(`conversation-${safeThreadId}`);
+            const entriesDiv = document.getElementById(`entries-${safeThreadId}`);
+            
+            if (conversationGroup.classList.contains('expanded')) {
+                // Collapse
+                conversationGroup.classList.remove('expanded');
+            } else {
+                // Expand and load details if not already loaded
+                conversationGroup.classList.add('expanded');
+                
+                if (entriesDiv.querySelector('.loading-placeholder')) {
+                    loadConversationDetails(threadId);
+                }
+            }
+        }
+        
+        function loadConversationDetails(threadId) {
+            const entriesDiv = document.getElementById(`entries-${threadId}`);
+            
+            fetch(`/system/conversation/${threadId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        entriesDiv.innerHTML = `<div style="color: #dc3545; padding: 15px;">Error: ${data.error}</div>`;
+                        return;
+                    }
+                    
+                    displayConversationEntries(data, entriesDiv);
+                })
+                .catch(error => {
+                    console.error('Error loading conversation details:', error);
+                    entriesDiv.innerHTML = `<div style="color: #dc3545; padding: 15px;">Error loading details: ${error.message}</div>`;
+                });
+        }
+        
+        function displayConversationEntries(conversation, entriesDiv) {
+            if (!conversation.entries || conversation.entries.length === 0) {
+                entriesDiv.innerHTML = '<div style="padding: 15px; color: #666;">No entries found in this conversation.</div>';
+                return;
+            }
+            
+            let entriesHtml = `
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 12px; color: #666;">
+                    📊 <strong>Thread Summary:</strong> ${conversation.total_entries} total entries, ${conversation.message_count} messages
+                    from ${formatTime(conversation.start_time)} to ${formatTime(conversation.end_time)}
+                </div>
+            `;
+            
+            conversation.entries.forEach((entry, index) => {
+                entriesHtml += `
+                    <div class="conversation-entry log-entry" data-type="${entry.type}" onclick="toggleLogEntry('conv-${entry.type}-${index}')">
+                        ${renderConversationEntry(entry, index)}
+                    </div>
+                `;
+            });
+            
+            entriesDiv.innerHTML = entriesHtml;
+        }
+        
+        function renderConversationEntry(entry, index) {
+            const entryId = `conv-${entry.type}-${index}`;
+            
+            if (entry.type === 'llm_usage') {
+                return `
+                    <div class="log-entry-summary">
+                        <div style="flex: 1;">
+                            <div>
+                                <strong>${entry.model}</strong> 
+                                <span style="color: #666;">(${entry.personality})</span>
+                                <span class="log-entry-meta">${formatTime(entry.timestamp)} - ${entry.runtime.toFixed(2)}s</span>
+                                
+                                ${entry.mood_data && entry.mood_data.moods_activated ? `
+                                    <span title="Mood system activated: ${entry.mood_data.moods_activated.join(', ')}" style="background: #e8f5e8; color: #2e7d32; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px;">
+                                        🧠${entry.mood_data.moods_activated.length}
+                                    </span>
+                                ` : ''}
+                                
+                                ${entry.has_tags ? `
+                                    <span title="Response contains personality/mood tags" style="background: #f0f8ff; color: #1976d2; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-left: 5px;">
+                                        🏷️
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="log-entry-preview">
+                                ${entry.user_prompt.length > 80 ? 
+                                    `User: "${entry.user_prompt.substring(0, 80)}..."` : 
+                                    `User: "${entry.user_prompt}"`
+                                }
+                            </div>
+                        </div>
+                        <button class="play-button" data-text="${entry.llm_reply}" data-voice="${entry.voice_id || 'null'}" onclick="playLogEntry(event, '${entryId}'); return false;">Play</button>
+                    </div>
+                    <div class="log-entry-details" id="details-${entryId}">
+                        <p><strong>User:</strong> ${entry.user_prompt}</p>
+                        <p><strong>System:</strong> ${entry.system_message}</p>
+                        <p><strong>Reply:</strong> ${entry.llm_reply}</p>
+                        ${entry.voice_id ? `<p><strong>Voice:</strong> ${entry.voice_id}</p>` : ''}
+                    </div>
+                `;
+            } else if (entry.type === 'penphin_mind') {
+                return `
+                    <div class="log-entry-summary">
+                        <div style="flex: 1;">
+                            <div>
+                                <strong>🧠 PenphinMind</strong>
+                                <span class="log-entry-meta">${formatTime(entry.timestamp)} - ${entry.total_time.toFixed(2)}s</span>
+                            </div>
+                            <div class="log-entry-preview">
+                                ${entry.original_prompt.length > 80 ? 
+                                    `"${entry.original_prompt.substring(0, 80)}..."` : 
+                                    `"${entry.original_prompt}"`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="log-entry-details" id="details-${entryId}">
+                        <p><strong>Prompt:</strong> ${entry.original_prompt}</p>
+                        <p><strong>Logical:</strong> ${entry.logical_response}</p>
+                        <p><strong>Creative:</strong> ${entry.creative_response}</p>
+                        <p><strong>Final:</strong> ${entry.final_synthesis}</p>
+                    </div>
+                `;
+            }
+            
+            return `<div class="log-entry-summary">Unknown entry type: ${entry.type}</div>`;
+        }
+        
+        function calculateDuration(startTime, endTime) {
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            const diffMs = end - start;
+            
+            if (diffMs < 60000) {
+                return `${Math.round(diffMs / 1000)}s`;
+            } else if (diffMs < 3600000) {
+                return `${Math.round(diffMs / 60000)}m`;
+            } else {
+                return `${Math.round(diffMs / 3600000)}h`;
+            }
+        }
+        
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString();
+        }
+        
+        // Handle conversation log type selection
+        function handleLogTypeClick(logType) {
+            if (logType === 'conversations') {
+                // Store original content before switching to conversation view
+                const mainContent = document.querySelector('.main-content');
+                if (!mainContent.getAttribute('data-original-content')) {
+                    mainContent.setAttribute('data-original-content', mainContent.innerHTML);
+                }
+                
+                loadConversations();
+                return false; // Prevent default link behavior
+            }
+            
+            // For other log types, proceed normally
+            return true;
+        }
+        
+        // ======= END CONVERSATION THREADING FUNCTIONS =======
+
+        function updateMaxRequests() {
+            const maxRequests = document.getElementById('max-requests').value;
+            
+            fetch('/system/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'max_concurrent_requests': maxRequests
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Max concurrent requests updated');
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Error: ' + error, 'error');
+            });
+        }
+
+        // Add streaming TTS toggle handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const streamingTtsToggle = document.getElementById('streaming-tts');
+            if (streamingTtsToggle) {
+                streamingTtsToggle.addEventListener('change', function() {
+                    fetch('/system/settings/streaming_tts', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showToast(`Streaming TTS ${data.streaming_tts_enabled ? 'enabled' : 'disabled'}`);
+                        } else {
+                            showToast('Error: ' + data.message, 'error');
+                            // Reset toggle to previous state
+                            streamingTtsToggle.checked = !streamingTtsToggle.checked;
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error: ' + error, 'error');
+                        // Reset toggle to previous state
+                        streamingTtsToggle.checked = !streamingTtsToggle.checked;
+                    });
+                });
+            }
+        });
+
+        // Conversation loading function with enhanced animation
+        function loadConversationDetails(threadId, date) 
+        {
+            var detailsDiv = document.getElementById('conversation-details');
+            
+            // Show fancy loading animation
+            detailsDiv.innerHTML = `
+                <div class="loading-animation-container">
+                    <span>Loading conversation details</span>
+                    <span class="loading-animation">
+                        <span class="dot" style="--index: 0;"></span>
+                        <span class="dot" style="--index: 1;"></span>
+                        <span class="dot" style="--index: 2;"></span>
+                    </span>
+                </div>
+            `;
+            
+            // Build URL with date parameter if provided
+            var url = '/system/conversation/' + threadId;
+            if (date) {
+                url += '?date=' + date;
+            }
+            
+            // Add debug logging
+            console.log('Loading conversation details from URL:', url);
+            
+            // Fetch conversation details with retry logic
+            fetchWithRetry(url, {
+                retries: 3,
+                retryDelay: 1000
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Conversation details loaded:', data);
+                
+                if (!data || !data.entries || data.entries.length === 0) {
+                    detailsDiv.innerHTML = '<div class="empty-message">No conversation details available</div>';
+                    return;
+                }
+                
+                // Format conversation details as a chat-like interface
+                var html = '<div class="conversation-thread">';
+                
+                // Add thread information
+                html += '<div class="thread-info">';
+                html += '<h3>Conversation Thread: ' + data.thread_id + '</h3>';
+                html += '<p>Started: ' + formatTimestamp(data.start_time) + '</p>';
+                html += '<p>Messages: ' + data.entries.length + '</p>';
+                
+                if (data.participants && data.participants.length > 0) {
+                    html += '<p>Participants: ' + data.participants.join(', ') + '</p>';
+                }
+                
+                if (data.models_used && data.models_used.length > 0) {
+                    html += '<p>Models: ' + data.models_used.join(', ') + '</p>';
+                }
+                
+                html += '</div>';
+                
+                // Add the actual conversation
+                html += '<div class="conversation-messages">';
+                
+                data.entries.forEach(function(entry, index) {
+                    var role = entry.role || (index % 2 === 0 ? 'user' : 'assistant');
+                    var content = entry.content || entry.response || entry.user_prompt || '';
+                    var timestamp = entry.timestamp ? formatTimestamp(entry.timestamp) : '';
+                    var model = entry.model || '';
+                    
+                    html += '<div class="message ' + role + '">';
+                    html += '<div class="message-bubble">' + escapeHtml(content) + '</div>';
+                    html += '<div class="message-info">';
+                    
+                    if (role === 'user') {
+                        html += 'User';
+                    } else {
+                        html += model || 'Assistant';
+                    }
+                    
+                    if (timestamp) {
+                        html += ' • ' + timestamp;
+                    }
+                    
+                    html += '</div>';
+                    html += '</div>';
+                });
+                
+                html += '</div>'; // end conversation-messages
+                html += '</div>'; // end conversation-thread
+                
+                detailsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading conversation details:', error);
+                detailsDiv.innerHTML = '<div class="error-message">Error loading conversation details: ' + error.message + '</div>';
+            });
+        }
+
+        // Helper function for fetch with retry
+        function fetchWithRetry(url, options = {}) {
+            const { retries = 3, retryDelay = 1000 } = options;
+            
+            return new Promise((resolve, reject) => {
+                const attempt = (attemptsLeft) => {
+                    fetch(url)
+                        .then(resolve)
+                        .catch((error) => {
+                            console.warn(`Fetch attempt failed, ${attemptsLeft} attempts left. Error:`, error);
+                            
+                            if (attemptsLeft === 0) {
+                                reject(error);
+                                return;
+                            }
+                            
+                            setTimeout(() => {
+                                attempt(attemptsLeft - 1);
+                            }, retryDelay);
+                        });
+                };
+                
+                attempt(retries);
+            });
+        }
+
+        // Helper function to format timestamps
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString();
+            } catch (e) {
+                return timestamp; // Return as-is if parsing fails
+            }
+        }
+
+        // Enhanced conversation viewer JavaScript
+        function refreshConversations() {
+            var dateFilterElement = document.getElementById('conversation-date-filter');
+            var dateFilter = dateFilterElement ? dateFilterElement.value : '';
+            var listDiv = document.querySelector('.conversation-list');
+            
+            // Show loading animation
+            listDiv.innerHTML = `
+                <div class="loading-animation-container">
+                    <span>Loading conversations</span>
+                    <span class="loading-animation">
+                        <span class="dot" style="--index: 0;"></span>
+                        <span class="dot" style="--index: 1;"></span>
+                        <span class="dot" style="--index: 2;"></span>
+                    </span>
+                </div>
+            `;
+            
+            // Build URL with date parameter
+            var url = '/system/conversations';
+            if (dateFilter) {
+                url += '?date=' + dateFilter;
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data || !data.conversations || Object.keys(data.conversations).length === 0) {
+                        listDiv.innerHTML = '<div class="empty-message">No conversations available</div>';
+                        return;
+                    }
+                    
+                    var html = '';
+                    
+                    // Convert object to array for sorting
+                    var conversationArray = Object.values(data.conversations);
+                    
+                    // Sort by start_time descending (most recent first)
+                    conversationArray.sort((a, b) => {
+                        return new Date(b.start_time) - new Date(a.start_time);
+                    });
+                    
+                    conversationArray.forEach(function(conversation) {
+                        var startTime = formatTimestamp(conversation.start_time);
+                        var messageCount = conversation.message_count;
+                        
+                        html += `<div class="conversation-item" onclick="loadConversationDetails('${conversation.thread_id}', '${dateFilter}')">`;
+                        html += `<strong>Conversation #${conversation.thread_id.substring(0, 8)}...</strong>`;
+                        html += `<div class="meta">`;
+                        html += `Started: ${startTime}<br>`;
+                        html += `Messages: ${messageCount}`;
+                        
+                        if (conversation.participants && conversation.participants.length > 0) {
+                            html += `<br>With: ${conversation.participants.join(', ')}`;
+                        }
+                        
+                        html += `</div></div>`;
+                    });
+                    
+                    listDiv.innerHTML = html;
+                    
+                    // Auto-select first conversation if none selected
+                    if (conversationArray.length > 0 && !document.querySelector('.conversation-item.selected')) {
+                        var firstItem = document.querySelector('.conversation-item');
+                        if (firstItem) {
+                            firstItem.classList.add('selected');
+                            loadConversationDetails(conversationArray[0].thread_id, dateFilter);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading conversations:', error);
+                    listDiv.innerHTML = '<div class="error-message">Error loading conversations: ' + error.message + '</div>';
+                });
+        }
+
+        function loadConversationDetails(threadId, date) {
+            var detailsDiv = document.getElementById('conversation-details');
+            
+            // Highlight selected conversation
+            document.querySelectorAll('.conversation-item').forEach(function(item) {
+                item.classList.remove('selected');
+            });
+            
+            document.querySelectorAll('.conversation-item').forEach(function(item) {
+                if (item.textContent.includes(threadId.substring(0, 8))) {
+                    item.classList.add('selected');
+                }
+            });
+            
+            // Show fancy loading animation
+            detailsDiv.innerHTML = `
+                <div class="loading-animation-container">
+                    <span>Loading conversation details</span>
+                    <span class="loading-animation">
+                        <span class="dot" style="--index: 0;"></span>
+                        <span class="dot" style="--index: 1;"></span>
+                        <span class="dot" style="--index: 2;"></span>
+                    </span>
+                </div>
+            `;
+            
+            // Build URL with date parameter if provided
+            var url = '/system/conversation/' + threadId;
+            if (date) {
+                url += '?date=' + date;
+            }
+            
+            // Add debug logging
+            console.log('Loading conversation details from URL:', url);
+            
+            // Fetch conversation details with retry logic
+            fetchWithRetry(url, {
+                retries: 3,
+                retryDelay: 1000
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Conversation details loaded:', data);
+                
+                if (!data || !data.entries || data.entries.length === 0) {
+                    detailsDiv.innerHTML = '<div class="empty-message">No conversation details available</div>';
+                    return;
+                }
+                
+                // Format conversation details as a chat-like interface
+                var html = '<div class="conversation-thread">';
+                
+                // Add thread information
+                html += '<div class="thread-info">';
+                html += '<h3>Conversation Thread: ' + data.thread_id + '</h3>';
+                html += '<p>Started: ' + formatTimestamp(data.start_time) + '</p>';
+                html += '<p>Messages: ' + data.entries.length + '</p>';
+                
+                if (data.participants && data.participants.length > 0) {
+                    html += '<p>Participants: ' + data.participants.join(', ') + '</p>';
+                }
+                
+                if (data.models_used && data.models_used.length > 0) {
+                    html += '<p>Models: ' + data.models_used.join(', ') + '</p>';
+                }
+                
+                html += '</div>';
+                
+                // Add the actual conversation
+                html += '<div class="conversation-messages">';
+                
+                data.entries.forEach(function(entry) {
+                    var role = entry.role || 'unknown';
+                    var content = entry.content || '';
+                    var timestamp = entry.timestamp ? formatTimestamp(entry.timestamp) : '';
+                    var model = entry.model || '';
+                    var personality = entry.personality || '';
+                    var runtime = entry.runtime ? (entry.runtime.toFixed(2) + 's') : '';
+                    
+                    html += '<div class="message ' + role + '">';
+                    html += '<div class="message-bubble">' + escapeHtml(content) + '</div>';
+                    html += '<div class="message-info">';
+                    
+                    if (role === 'user') {
+                        html += 'User';
+                    } else if (model) {
+                        if (personality && personality !== 'default') {
+                            html += personality;
+                        } else {
+                            html += model;
+                        }
+                    } else {
+                        html += 'Assistant';
+                    }
+                    
+                    if (timestamp) {
+                        html += ' • ' + timestamp;
+                    }
+                    
+                    if (runtime) {
+                        html += ' • ' + runtime;
+                    }
+                    
+                    html += '</div>';
+                    html += '</div>';
+                });
+                
+                html += '</div>'; // end conversation-messages
+                html += '</div>'; // end conversation-thread
+                
+                detailsDiv.innerHTML = html;
+                
+                // Scroll to bottom to show most recent messages
+                var messagesContainer = detailsDiv.querySelector('.conversation-messages');
+                if (messagesContainer) {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading conversation details:', error);
+                detailsDiv.innerHTML = '<div class="error-message">Error loading conversation details: ' + error.message + '</div>';
+            });
+        }
+
+        // Helper function for fetch with retry
+        function fetchWithRetry(url, options = {}) {
+            const { retries = 3, retryDelay = 1000 } = options;
+            
+            return new Promise((resolve, reject) => {
+                const attempt = (attemptsLeft) => {
+                    fetch(url)
+                        .then(resolve)
+                        .catch((error) => {
+                            console.warn(`Fetch attempt failed, ${attemptsLeft} attempts left. Error:`, error);
+                            
+                            if (attemptsLeft === 0) {
+                                reject(error);
+                                return;
+                            }
+                            
+                            setTimeout(() => {
+                                attempt(attemptsLeft - 1);
+                            }, retryDelay);
+                        });
+                };
+                
+                attempt(retries);
+            });
+        }
+
+        // Helper function to format timestamps
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            
+            try {
+                const date = new Date(timestamp);
+                return date.toLocaleString();
+            } catch (e) {
+                return timestamp; // Return as-is if parsing fails
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load conversations on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshConversations();
+            loadOllamaConfig(); // Load Ollama configuration when page loads
+        });
+
+        // -------- OLLAMA CONFIGURATION FUNCTIONS -------- //
+        
+        function loadOllamaConfig() {
+            fetch('/system/ollama/config')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('remote-ollama-enabled').checked = data.remote_enabled;
+                        document.getElementById('remote-ollama-host').value = data.remote_host;
+                        document.getElementById('remote-ollama-port').value = data.remote_port;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading Ollama configuration:', error);
+                });
+            
+            // Also load current server status
+            refreshOllamaStatus();
+        }
+        
+        function refreshOllamaStatus() {
+            fetch('/system/ollama/status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const statusText = `Currently using: ${data.current_server.type} server (${data.current_server.url})`;
+                        document.getElementById('ollama-current-server').textContent = statusText;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('ollama-current-server').textContent = 'Error loading server status';
+                    console.error('Error loading Ollama status:', error);
+                });
+        }
+        
+        function saveOllamaConfig() {
+            const enabled = document.getElementById('remote-ollama-enabled').checked;
+            const host = document.getElementById('remote-ollama-host').value.trim();
+            const port = parseInt(document.getElementById('remote-ollama-port').value);
+            
+            if (!host && enabled) {
+                alert('Please enter a remote host');
+                return;
+            }
+            
+            const data = {
+                enabled: enabled,
+                host: host,
+                port: port
+            };
+            
+            fetch('/system/ollama/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = data.message;
+                statusDiv.className = `status-message ${data.status}`;
+                statusDiv.style.display = 'block';
+                
+                if (data.status === 'success') {
+                    refreshOllamaStatus();
+                }
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = 'Error updating configuration: ' + error;
+                statusDiv.className = 'status-message error';
+                statusDiv.style.display = 'block';
+            });
+        }
+        
+        function testOllamaServers() {
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = 'Testing...';
+            
+            fetch('/system/ollama/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const resultsDiv = document.getElementById('ollama-test-results');
+                    const remoteDiv = document.getElementById('remote-test-result');
+                    const localDiv = document.getElementById('local-test-result');
+                    
+                    // Show remote server result
+                    remoteDiv.textContent = `🌐 Remote Server: ${data.servers.remote.message}`;
+                    remoteDiv.style.background = data.servers.remote.available ? '#d4edda' : '#f8d7da';
+                    remoteDiv.style.color = data.servers.remote.available ? '#155724' : '#721c24';
+                    remoteDiv.style.border = data.servers.remote.available ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
+                    
+                    // Show local server result
+                    localDiv.textContent = `🏠 Local Server: ${data.servers.local.message}`;
+                    localDiv.style.background = data.servers.local.available ? '#d4edda' : '#f8d7da';
+                    localDiv.style.color = data.servers.local.available ? '#155724' : '#721c24';
+                    localDiv.style.border = data.servers.local.available ? '1px solid #c3e6cb' : '1px solid #f5c6cb';
+                    
+                    resultsDiv.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                const statusDiv = document.getElementById('status-message');
+                statusDiv.textContent = 'Error testing servers: ' + error;
+                statusDiv.className = 'status-message error';
+                statusDiv.style.display = 'block';
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.textContent = '🔍 Test Servers';
+            });
+        }
+        
+        // ========= OLLAMA MODEL LIBRARY FUNCTIONS ========= //
+        
+        async function searchOllamaModels() {
+            const searchInput = document.getElementById('model-search-input');
+            const sizeFilter = document.getElementById('model-size-filter');
+            const resultsDiv = document.getElementById('ollama-models-results');
+            const loadingDiv = document.getElementById('models-loading');
+            const modelsListDiv = document.getElementById('models-list');
+            
+            const searchQuery = searchInput.value.trim();
+            const sizeFilterValue = sizeFilter.value;
+            
+            // Show loading state
+            resultsDiv.style.display = 'block';
+            loadingDiv.style.display = 'block';
+            modelsListDiv.innerHTML = '';
+            
+            try {
+                const url = new URL('/system/ollama/models', window.location.origin);
+                if (searchQuery) url.searchParams.append('search', searchQuery);
+                if (sizeFilterValue !== 'all') url.searchParams.append('size', sizeFilterValue);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                loadingDiv.style.display = 'none';
+                
+                if (response.ok && data.models) {
+                    displayOllamaModels(data.models);
+                } else {
+                    modelsListDiv.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">
+                        <p>Error: ${data.error || 'Failed to fetch models'}</p>
+                    </div>`;
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                modelsListDiv.innerHTML = `<div style="color: #dc3545; text-align: center; padding: 20px;">
+                    <p>Network error: ${error.message}</p>
+                </div>`;
+            }
+        }
+        
+        function displayOllamaModels(models) {
+            const modelsListDiv = document.getElementById('models-list');
+            
+            if (models.length === 0) {
+                modelsListDiv.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;">
+                    <p>No models found matching your criteria.</p>
+                </div>`;
+                return;
+            }
+            
+            let html = '';
+            models.forEach(model => {
+                const sizeClass = model.size_category === 'small' ? 'success' : 
+                                model.size_category === 'medium' ? 'warning' : 
+                                model.size_category === 'large' ? 'danger' : 'secondary';
+                
+                html += `
+                    <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 10px; background: white;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <h5 style="margin: 0 0 5px 0; color: #333;">${model.name}</h5>
+                                <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">${model.description}</p>
+                                <div style="display: flex; gap: 10px; align-items: center;">
+                                    <span class="badge badge-${sizeClass}" style="background: ${getSizeBadgeColor(model.size_category)}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">
+                                        ${model.size_category.toUpperCase()}
+                                    </span>
+                                    <span style="color: #666; font-size: 12px;">
+                                        Tags: ${model.tags.slice(0, 3).join(', ')}${model.tags.length > 3 ? '...' : ''}
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="margin-left: 15px;">
+                                <select id="tag-select-${model.name.replace(/[^a-zA-Z0-9]/g, '_')}" style="margin-bottom: 8px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px;">
+                                    ${model.tags.map(tag => `<option value="${tag}">${tag}</option>`).join('')}
+                                </select>
+                                <br>
+                                <button onclick="downloadOllamaModel('${model.name}')" 
+                                        style="background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;">
+                                    📥 Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            modelsListDiv.innerHTML = html;
+        }
+        
+        function getSizeBadgeColor(sizeCategory) {
+            switch(sizeCategory) {
+                case 'small': return '#28a745';
+                case 'medium': return '#ffc107';
+                case 'large': return '#dc3545';
+                default: return '#6c757d';
+            }
+        }
+        
+        async function downloadOllamaModel(modelName) {
+            const selectId = `tag-select-${modelName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const tagSelect = document.getElementById(selectId);
+            const selectedTag = tagSelect ? tagSelect.value : 'latest';
+            
+            const progressDiv = document.getElementById('download-progress');
+            const statusDiv = document.getElementById('download-status');
+            
+            // Show progress section
+            progressDiv.style.display = 'block';
+            statusDiv.textContent = `Starting download of ${modelName}:${selectedTag}...`;
+            
+            try {
+                const response = await fetch('/system/ollama/models/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        model_name: modelName,
+                        tag: selectedTag
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <div style="color: #28a745;">✅ ${data.message}</div>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            Monitor progress in your terminal with: <code>ollama ps</code>
+                        </div>
+                    `;
+                    
+                    // Hide progress after 10 seconds
+                    setTimeout(() => {
+                        progressDiv.style.display = 'none';
+                    }, 10000);
+                } else {
+                    statusDiv.innerHTML = `<div style="color: #dc3545;">❌ ${data.error}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div style="color: #dc3545;">❌ Network error: ${error.message}</div>`;
+            }
+        }
+
     </script>
 </head>
 <body>
@@ -2318,10 +3734,17 @@
             
             <h3>📁 Log Types</h3>
             {% for log_type in log_types %}
-                <a href="/system?log_type={{ log_type.id }}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" 
-                   class="log-type {% if selected_log_type == log_type.id %}active{% endif %}">
-                    {{ log_type.icon }} {{ log_type.name }}
-                </a>
+                {% if log_type.id == 'conversations' %}
+                    <a href="#" onclick="handleLogTypeClick('conversations'); return false;" 
+                       class="log-type {% if selected_log_type == log_type.id %}active{% endif %}">
+                        {{ log_type.icon }} {{ log_type.name }}
+                    </a>
+                {% else %}
+                    <a href="/system?log_type={{ log_type.id }}{% if sort_by %}&sort_by={{ sort_by }}{% endif %}" 
+                       class="log-type {% if selected_log_type == log_type.id %}active{% endif %}">
+                        {{ log_type.icon }} {{ log_type.name }}
+                    </a>
+                {% endif %}
             {% endfor %}
             
             <h3 style="margin-top: 20px;">⚙️ System</h3>
@@ -2809,11 +4232,22 @@
                         
                         <div class="setting-item">
                             <label for="new-personality-model">Preferred Model (optional)</label>
-                            <select id="new-personality-model">
-                                <option value="">System Default</option>
-                                {% for model in available_models %}
-                                    <option value="{{ model }}">{{ extract_short_model_name(model) }}</option>
-                                {% endfor %}
+                            <select id="new-personality-model" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                                <option value="">Select preferred model (optional)</option>
+                                {% if categorized_models %}
+                                    {% for category_name, models_list in categorized_models.items() %}
+                                        <optgroup label="{{ category_name }}">
+                                            {% for model in models_list %}
+                                                <option value="{{ model.full_name }}">{{ model.display_name }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Fallback to flat list if no categorization -->
+                                    {% for model in available_models %}
+                                        <option value="{{ model }}">{{ extract_short_model_name(model) }}</option>
+                                    {% endfor %}
+                                {% endif %}
                             </select>
                         </div>
                         
@@ -2971,6 +4405,125 @@
                                 Controls how many web requests can be processed simultaneously. Set to 1 for single-threaded operation (recommended for Raspberry Pi). Higher values allow parallel processing on more powerful systems.
                             </p>
                         </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>🎤 Speech & Audio Settings</h3>
+                        <div class="setting-item">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="streaming-tts" {% if streaming_tts_enabled %}checked{% endif %} style="margin: 0;">
+                                <span style="font-weight: bold;">Enable Streaming Speech</span>
+                            </label>
+                            <div style="margin-top: 10px; color: #666; font-size: 14px;">
+                                <p style="margin: 0 0 8px 0;">
+                                    When enabled, RoverSeer starts speaking as soon as it completes sentences, rather than waiting for the entire response. This makes conversations feel more natural and responsive.
+                                </p>
+                                <div style="margin-top: 8px; color: #888; font-size: 12px;">
+                                    <div><strong>Disabled:</strong> Generate entire text, then speak it all at once</div>
+                                    <div><strong>Enabled:</strong> Stream text into buffer, speak sentences as they're completed</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>🌐 Ollama Server Configuration</h3>
+                        
+                        <!-- Current Server Status -->
+                        <div id="ollama-status-display" style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span id="ollama-current-server">Loading server status...</span>
+                                <button onclick="refreshOllamaStatus()" style="background: #4CAF50; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">🔄 Refresh</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Remote Server Configuration -->
+                        <div class="setting-item">
+                            <label>
+                                <input type="checkbox" id="remote-ollama-enabled" style="margin-right: 10px;">
+                                Enable Remote Ollama Server
+                            </label>
+                            <p style="margin: 5px 0; color: #666; font-size: 12px;">
+                                When enabled, RoverSeer will try the remote server first, then fallback to local.
+                            </p>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="remote-ollama-host">Remote Host</label>
+                            <input type="text" id="remote-ollama-host" placeholder="e.g., M2cBook.local" style="width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label for="remote-ollama-port">Remote Port</label>
+                            <input type="number" id="remote-ollama-port" min="1" max="65535" value="11434" style="width: 100px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        </div>
+                        
+                        <div class="setting-item">
+                            <button onclick="saveOllamaConfig()">Update Configuration</button>
+                            <button onclick="testOllamaServers()" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">🔍 Test Servers</button>
+                        </div>
+                        
+                        <!-- Test Results -->
+                        <div id="ollama-test-results" style="margin-top: 15px; display: none;">
+                            <h4>Server Test Results:</h4>
+                            <div id="remote-test-result" style="padding: 8px; margin: 5px 0; border-radius: 5px;"></div>
+                            <div id="local-test-result" style="padding: 8px; margin: 5px 0; border-radius: 5px;"></div>
+                        </div>
+                        
+                        <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                            Configure a more powerful remote machine (like M2cBook.local) to handle LLM processing. The system will automatically use the remote server when available and fallback to local processing when needed.
+                        </p>
+                    </div>
+                    
+                    <div class="settings-group">
+                        <h3>📦 Ollama Model Library</h3>
+                        
+                        <!-- Search and Filter Controls -->
+                        <div style="margin-bottom: 15px;">
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                <input type="text" id="model-search-input" placeholder="Search models..." 
+                                       style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                <select id="model-size-filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                    <option value="all">All Sizes</option>
+                                    <option value="small">Small (≤7B)</option>
+                                    <option value="medium">Medium (8B-14B)</option>
+                                    <option value="large">Large (≥30B)</option>
+                                </select>
+                                <button onclick="searchOllamaModels()" 
+                                        style="background: #4169e1; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                                    🔍 Search
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Results -->
+                        <div id="ollama-models-results" style="display: none;">
+                            <h4>Available Models</h4>
+                            <div id="models-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa;">
+                                <!-- Models will be populated here -->
+                            </div>
+                            <div id="models-loading" style="text-align: center; padding: 20px; display: none;">
+                                <div class="loading-animation">
+                                    <span class="dot"></span>
+                                    <span class="dot"></span>
+                                    <span class="dot"></span>
+                                </div>
+                                <p>Searching Ollama library...</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Download Progress -->
+                        <div id="download-progress" style="display: none; margin-top: 15px; padding: 15px; background: #e8f5e8; border: 1px solid #c3e6c3; border-radius: 5px;">
+                            <h4 style="margin: 0 0 10px 0;">📥 Download in Progress</h4>
+                            <div id="download-status">Starting download...</div>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">
+                                Downloads run in the background. Check your terminal or Ollama logs for progress.
+                            </p>
+                        </div>
+                        
+                        <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                            Browse and download models from the Ollama library. Models are downloaded directly to your Ollama installation and become available immediately.
+                        </p>
                     </div>
                     
                     <div id="status-message" class="status-message"></div>

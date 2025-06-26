@@ -1,9 +1,15 @@
-from flask import Blueprint, request, jsonify, send_file, redirect, render_template, url_for
+from fastapi import APIRouter, Request, Form, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
+from fastapi.templating import Jinja2Templates
+from typing import Optional, List, Dict, Any
 import requests
 import json
 import subprocess
 import config
 import os
+from datetime import datetime
+import logging
+import asyncio
 
 from config import history, MAX_HISTORY, DEFAULT_MODEL, DEFAULT_VOICE
 from config import DebugLog  # Add DebugLog import
@@ -14,28 +20,63 @@ from cognition.llm_interface import run_chat_completion
 from expression.text_to_speech import list_voice_ids, get_categorized_voices
 from memory.usage_logger import (
     load_model_stats as get_model_stats, get_recent_errors, parse_log_file, 
-    get_available_log_dates as get_available_dates
+    get_available_log_dates as get_available_dates, group_logs_by_conversation, get_conversation_summary
 )
 from helpers.text_processing_helper import TextProcessingHelper
 from embodiment.rainbow_interface import start_system_processing, stop_system_processing, get_rainbow_driver
 from embodiment.display_manager import scroll_text_on_display
 from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
 
-bp = Blueprint('system', __name__)
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")
 
 
-@bp.route('/docs/')
-def redirect_docs():
-    return redirect("/docs", code=302)
+def categorize_models_by_param_size(models_with_display_names):
+    """Categorize models by parameter size for organized dropdown"""
+    categories = {
+        'Small Models (≤ 2B)': [],
+        'Medium Models (3B - 8B)': [],
+        'Large Models (≥ 13B)': [],
+        'Special Models': []
+    }
+    
+    for model in models_with_display_names:
+        model_name = model['full_name'].lower()
+        
+        # Special models category
+        if 'penphinmind' in model_name:
+            categories['Special Models'].append(model)
+        # Small models
+        elif any(size in model_name for size in ['0.5b', '1b', '1.1b', '1.5b', '1.6b', '1.7b', '2b']):
+            categories['Small Models (≤ 2B)'].append(model)
+        # Medium models  
+        elif any(size in model_name for size in ['3b', '4b', '7b', '8b']):
+            categories['Medium Models (3B - 8B)'].append(model)
+        # Large models
+        elif any(size in model_name for size in ['13b', '14b', '16b', '20b', '30b', '34b', '40b', '70b', '180b']):
+            categories['Large Models (≥ 13B)'].append(model)
+        else:
+            # Default to medium for unknown sizes
+            categories['Medium Models (3B - 8B)'].append(model)
+    
+    # Remove empty categories
+    return {k: v for k, v in categories.items() if v}
 
 
-@bp.route("/static/<filename>")
-def serve_static(filename):
-    return send_file(f"/tmp/{filename}")
+@router.get('/docs/')
+async def redirect_docs():
+    return RedirectResponse("/api/docs", status_code=302)
 
 
-@bp.route("/", methods=['GET', 'POST'])
-def home():
+@router.get("/tmp_static/{filename}")
+async def serve_temp_static(filename: str):
+    """Serve temporary audio files from /tmp/ directory"""
+    return FileResponse(f"/tmp/{filename}")
+
+
+@router.get("/", response_class=None)
+@router.post("/", response_class=None) 
+async def home(request: Request, action: Optional[str] = Form(None)):
     """Main home page with system status and chat interface"""
     statuses = check_tcp_ports()
     models = get_available_models()
@@ -68,462 +109,100 @@ def home():
             'display_name': short_name
         })
     
+    # Categorize models by parameter size for organized dropdowns
+    categorized_models = categorize_models_by_param_size(models_with_display_names)
+    
     sensor_data = get_sensor_data()
     
-    # Set defaults based on personality or system defaults
-    selected_model = personality_model or DEFAULT_MODEL
+    # Set defaults based on personality or system defaults with proper model index sync
+    # Check if we have a valid selected_model_index and available models
+    if (hasattr(config, 'selected_model_index') and 
+        hasattr(config, 'available_models') and 
+        config.available_models and 
+        0 <= config.selected_model_index < len(config.available_models)):
+        # Use the indexed model from config
+        selected_model = config.available_models[config.selected_model_index]
+        print(f"🔧 Using indexed model: {selected_model} (index {config.selected_model_index})")
+    else:
+        # Validate personality model preference exists in available models
+        if personality_model and personality_model in models:
+            selected_model = personality_model
+            print(f"🔧 Using valid personality model: {selected_model}")
+        else:
+            selected_model = DEFAULT_MODEL
+            if personality_model:
+                print(f"🔧 Personality model '{personality_model}' not available, using default: {selected_model}")
+            else:
+                print(f"🔧 No personality model set, using default: {selected_model}")
+        
+        # Update config to match this selection if possible
+        if selected_model in models:
+            try:
+                config.selected_model_index = models.index(selected_model)
+                config.available_models = models
+                print(f"🔧 Updated config index to {config.selected_model_index} for {selected_model}")
+            except (ValueError, AttributeError):
+                print(f"🔧 Could not update config index for {selected_model}")
+    
     selected_voice = personality_voice or DEFAULT_VOICE
     
     reply_text = ""
     audio_url = None
     
-    # Handle clear context action
-    if request.method == 'POST' and request.form.get('action') == 'clear_context':
-        history.clear()
-        return redirect('/')
+    # Handle POST actions
+    if request.method == "POST" and action:
+        if action == "clear_context":
+            history.clear()
+            # Generate new conversation thread ID when context is cleared
+            from config import generate_new_conversation_thread
+            generate_new_conversation_thread()
+            return RedirectResponse("/", status_code=302)
+        elif action == "chat":
+            # This will be handled by chat routes
+            pass
     
-    if request.method == 'POST' and request.form.get('action') == 'chat':
-        output_type = request.form.get('output_type')
-        voice = request.form.get('voice')
-        
-        # Validate voice - use default if empty
-        if not voice:
-            voice = DEFAULT_VOICE
-            print(f"Warning: Empty voice provided, using default: {voice}")
-            
-        selected_voice = voice
-        system = request.form.get('system')
-        user_input = request.form.get('user_input')
-        model = request.form.get('model')
-        selected_model = model
-        
-        # Debug logging
-        print(f"Chat request - User: {user_input}, Model: {model}, Output: {output_type}")
-
-        # Check if PenphinMind is selected
-        if model.lower() == "penphinmind":
-            try:
-                reply_text = bicameral_chat_direct(user_input, system, voice)
-                # Get personality info for history
-                personality_info = "🧠 PenphinMind"
-                if personality_manager.current_personality:
-                    personality_info = personality_manager.get_display_name_for_model("PenphinMind")
-                history.append((user_input, reply_text, personality_info))
-            except Exception as e:
-                reply_text = f"Bicameral processing error: {e}"
-        else:
-            # Normal flow
-            messages = []
-            for user_msg, ai_reply, _ in history[-MAX_HISTORY:]:
-                messages.append({"role": "user", "content": user_msg})
-                messages.append({"role": "assistant", "content": ai_reply})
-            messages.append({"role": "user", "content": user_input})
-
-            try:
-                # Get system message from personality or use provided one
-                if use_personality and personality_manager.current_personality:
-                    # Generate context-aware system message from current personality
-                    context = {
-                        "time_of_day": "day",  # Could be enhanced with actual time
-                        "user_name": None,  # Could be enhanced if we track users
-                    }
-                    system_message = personality_manager.current_personality.generate_system_message(context)
-                    DebugLog("Using personality system message for {}: {}...", personality_manager.current_personality.name, system_message[:100])
-                elif not use_personality and custom_system_message:
-                    # Use the custom system message provided by user
-                    system_message = custom_system_message
-                    DebugLog("Using custom system message: {}...", system_message[:100])
-                else:
-                    # Use provided system message or default
-                    system_message = system or "You are RoverSeer, a helpful assistant."
-                    DebugLog("Using {} system message: {}...", 'provided' if system else 'default', system_message[:100])
-
-                if output_type == 'text':
-                    # For text-only
-                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                    reply_text = reply
-                    # Stop LED for text-only output
-                    stop_system_processing()
-                    
-                elif output_type == 'audio_file':
-                    from expression.text_to_speech import generate_tts_audio
-                    import uuid
-                    
-                    # For audio output
-                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                    
-                    # Transition to TTS stage
-                    stop_system_processing()
-                    start_system_processing('C')
-                    
-                    tmp_audio = f"{uuid.uuid4().hex}.wav"
-                    output_file, _ = generate_tts_audio(reply, voice, f"/tmp/{tmp_audio}")
-                    
-                    # Stop LED after TTS
-                    stop_system_processing()
-                    
-                    audio_url = url_for('system.serve_static', filename=tmp_audio)
-                    reply_text = reply
-                        
-                else:  # speak
-                    from expression.text_to_speech import speak_text
-                    
-                    # For spoken output
-                    reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                    
-                    # Transition to TTS stage
-                    stop_system_processing()
-                    start_system_processing('C')
-                    
-                    speak_text(reply, voice)
-                    
-                    # Note: speak_text handles the aplay stage internally
-                    reply_text = reply
-
-                # Get personality info for history with mini-model detection
-                personality_info = model
-                if personality_manager.current_personality:
-                    personality_info = personality_manager.get_display_name_for_model(model)
-                history.append((user_input, reply_text, personality_info))
-            except Exception as e:
-                reply_text = f"Request failed: {e}"
-
-    return render_template('home.html', 
-                          statuses=statuses, 
-                          reply_text=reply_text, 
-                          audio_url=audio_url, 
-                          history=history, 
-                          models=models_with_display_names, 
-                          selected_model=selected_model, 
-                          voices=voices,  # Keep for backward compatibility
-                          selected_voice=selected_voice, 
-                          sensor_data=sensor_data, 
-                          model_stats=model_stats,
-                          ai_pipeline=get_ai_pipeline_status(),
-                          current_personality=current_personality,
-                          personalities=personalities_list,
-                          categorized_voices=categorized_voices)  # Add categorized voices
+    # Template context
+    context = {
+        "request": request,
+        "statuses": statuses,
+        "models": models_with_display_names,
+        "categorized_models": categorized_models,
+        "voices": voices,
+        "categorized_voices": categorized_voices,
+        "personalities": personalities_list,
+        "current_personality": current_personality,
+        "sensor_data": sensor_data,
+        "ai_pipeline": get_ai_pipeline_status(),
+        "history": history,
+        "selected_model": selected_model,
+        "selected_voice": selected_voice
+    }
+    
+    return templates.TemplateResponse("home.html", context)
 
 
-@bp.route("/status_only", methods=['GET'])
-def status_only():
+@router.get("/status_only")
+async def status_only():
     """Return just the status data as JSON for AJAX updates"""
-    return jsonify({
+    return JSONResponse(content={
         "tcp_status": check_tcp_ports(),
         "sensor_data": get_sensor_data(),
         "ai_pipeline": get_ai_pipeline_status()
     })
 
 
-@bp.route("/chat_ajax", methods=['POST'])
-def chat_ajax():
-    """AJAX endpoint for chat requests that returns JSON"""
-    # Check if we've reached the max concurrent requests
-    
-    # Count active requests (including button recording)
-    active_count = config.active_request_count
-    if config.recording_in_progress:
-        active_count += 1
-    
-    if active_count >= config.MAX_CONCURRENT_REQUESTS:
-        return jsonify({
-            "error": f"RoverSeer has reached the maximum concurrent requests limit ({config.MAX_CONCURRENT_REQUESTS}). Please wait a moment and try again.",
-            "ai_pipeline": get_ai_pipeline_status()
-        }), 429  # 429 Too Many Requests
-    
-    # CRITICAL FIX: Check orchestrator state instead of just counting requests
-    orchestrator = get_pipeline_orchestrator()
-    
-    if orchestrator.is_system_busy():
-        current_state = orchestrator.get_current_state()
-        return jsonify({
-            "error": f"RoverSeer is currently busy ({current_state.value}). Please wait a moment and try again.",
-            "ai_pipeline": get_ai_pipeline_status()
-        }), 429  # 429 Too Many Requests
-    
-    # Increment active request count
-    config.active_request_count += 1
-    
-    output_type = request.form.get('output_type')
-    voice = request.form.get('voice')
-    system = request.form.get('system')  # May be None now
-    user_input = request.form.get('user_input')
-    model = request.form.get('model')
-    use_personality = request.form.get('use_personality', 'true').lower() == 'true'
-    custom_system_message = request.form.get('system_message', '').strip()
-    
-    # 🐛 DEBUG: Log all received parameters
-    print(f"🐛 CHAT_AJAX DEBUG:")
-    print(f"  📝 user_input: {user_input}")
-    print(f"  🤖 model: {model}")
-    print(f"  🔊 voice: {voice}")
-    print(f"  🎭 use_personality: {use_personality}")
-    print(f"  💬 output_type: {output_type}")
-    print(f"  ⚙️ system: {system}")
-    print(f"  📋 custom_system_message: {custom_system_message}")
-    
-    # Check if we need to switch personality based on voice
-    from cognition.personality import get_personality_manager
-    personality_manager = get_personality_manager()
-    
-    # 🐛 DEBUG: Show current personality state
-    current_name = personality_manager.current_personality.name if personality_manager.current_personality else "None"
-    print(f"  🎭 Current personality: {current_name}")
-    print(f"  📊 Total personalities available: {len(personality_manager.personalities)}")
-    
-    # Only handle personality switching if use_personality is true
-    if use_personality and voice:
-        DebugLog("Looking for personality with voice {}", voice)
-        personality_found = False
-        for personality in personality_manager.personalities.values():
-            if personality.voice_id == voice:
-                DebugLog("Found personality {} for voice {}", personality.name, voice)
-                personality_found = True
-                if not personality_manager.current_personality or personality_manager.current_personality.name != personality.name:
-                    DebugLog("Switching to personality {}", personality.name)
-                    success = personality_manager.switch_to(personality.name)
-                    if success:
-                        DebugLog("✅ Successfully switched to personality {}", personality.name)
-                        # Update DEFAULT_VOICE to match
-                        from config import update_default_voice
-                        update_default_voice(voice)
-                    else:
-                        DebugLog("❌ Failed to switch to personality {}", personality.name)
-                else:
-                    DebugLog("Already using personality {}", personality.name)
-                break
-        
-        if not personality_found:
-            DebugLog("❌ No personality found for voice {}. Available personalities:", voice)
-            for p in personality_manager.personalities.values():
-                DebugLog("  - {} (voice: {})", p.name, p.voice_id)
-    else:
-        if use_personality:
-            DebugLog("Use personality is true but no voice provided")
-        else:
-            DebugLog("Use personality is false, using current personality or default")
-    
-    # Validate voice - use default if empty
-    if not voice:
-        voice = DEFAULT_VOICE
-        print(f"Warning: Empty voice provided, using default: {voice}")
-    
-    if not user_input:
-        config.active_request_count -= 1  # Decrement on early return
-        return jsonify({"error": "No input provided"}), 400
-    
-    # Debug logging
-    print(f"AJAX Chat request - User: {user_input}, Model: {model}, Output: {output_type}")
-    
-    reply_text = ""
-    audio_url = None
-    error = None
-    
-    try:
-        # Get orchestrator and ensure proper pipeline flow
-        orchestrator = get_pipeline_orchestrator()
-        
-        # Start LLM processing - transition to CONTEMPLATING state
-        print(f"🔧 Starting LLM processing - transitioning to CONTEMPLATING state")
-        orchestrator.transition_to_state(SystemState.CONTEMPLATING)
-        
-        # Check if PenphinMind is selected
-        if model.lower() == "penphinmind":
-            # Use bicameral_chat_direct function
-            try:
-                reply = bicameral_chat_direct(user_input, system, voice)
-            except Exception as e:
-                reply = f"Bicameral processing error: {e}"
-            
-            # Store PenphinMind identity in history for consistency
-            history_info = "🧠 PenphinMind"
-            history.append((user_input, reply, history_info))
-            reply_text = reply
-        else:
-            # Normal single model flow
-            # Build message history with model context
-            messages = []
-            for user_msg, ai_reply, _ in history[-MAX_HISTORY:]:
-                messages.append({"role": "user", "content": user_msg})
-                messages.append({"role": "assistant", "content": ai_reply})
-            messages.append({"role": "user", "content": user_input})
-
-            try:
-                # Get system message from personality or use provided one
-                if use_personality and personality_manager.current_personality:
-                    # Generate context-aware system message from current personality
-                    context = {
-                        "time_of_day": "day",  # Could be enhanced with actual time
-                        "user_name": None,  # Could be enhanced if we track users
-                    }
-                    system_message = personality_manager.current_personality.generate_system_message(context)
-                    DebugLog("Using personality system message for {}: {}...", personality_manager.current_personality.name, system_message[:100])
-                elif not use_personality and custom_system_message:
-                    # Use the custom system message provided by user
-                    system_message = custom_system_message
-                    DebugLog("Using custom system message: {}...", system_message[:100])
-                else:
-                    # Use provided system message or default
-                    system_message = system or "You are RoverSeer, a helpful assistant."
-                    DebugLog("Using {} system message: {}...", 'provided' if system else 'default', system_message[:100])
-                
-                # Run LLM
-                reply = run_chat_completion(model, messages, system_message, voice_id=voice)
-                
-                # Log response for analytics with voice model context
-                from memory.usage_logger import log_llm_usage
-                log_llm_usage(model, system_message, user_input, reply, voice_id=voice)
-
-                # LLM complete, advance to next stage based on output type
-                print(f"🔧 LLM complete, advancing to next stage for output type: {output_type}")
-                
-                # TTS and audio generation
-                if output_type == "speak":
-                    # Import needed for TTS
-                    from expression.text_to_speech import speak_text
-                    
-                    # Transition to TTS stage
-                    orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
-                    
-                    # Use text_to_speech speak_text function which handles the rest of the pipeline
-                    speak_text(reply, voice)
-                    
-                    reply_text = reply
-                elif output_type == "audio_file":
-                    # Import needed for TTS generation
-                    from expression.text_to_speech import generate_tts_audio
-                    import uuid
-                    
-                    # Transition to TTS stage
-                    orchestrator.advance_pipeline_flow()  # CONTEMPLATING -> SYNTHESIZING
-                    
-                    # Generate TTS and return audio file
-                    try:
-                        # Generate TTS directly to a unique temp file
-                        temp_filename = f"response_{uuid.uuid4().hex}.wav"
-                        temp_path = f"/tmp/{temp_filename}"
-                        
-                        # TTS generation
-                        output_file, tts_processing_time = generate_tts_audio(reply, voice, temp_path)
-                        print(f"✅ Audio file generated: {output_file}")
-                        
-                        # Return the temp file path for serving
-                        audio_url = f"/static/{temp_filename}"
-                        reply_text = reply
-                        
-                        # TTS complete, return to idle for audio file mode
-                        orchestrator.complete_pipeline_flow()
-                        
-                    except Exception as e:
-                        print(f"❌ TTS generation failed: {e}")
-                        DebugLog("TTS generation failed: {}", e)
-                        reply_text = f"{reply}\n\n(Audio generation failed: {e})"
-                        orchestrator.complete_pipeline_flow()  # Reset on error
-                else:
-                    # Text only - complete pipeline and return to idle
-                    print(f"🔧 Text-only mode, completing pipeline flow")
-                    orchestrator.complete_pipeline_flow()
-                    reply_text = reply
-
-                # Determine what to show in history - match the frontend logic
-                history_info = model  # Default fallback
-                
-                if use_personality and personality_manager.current_personality:
-                    # If using personality mode, show personality name with emoji
-                    history_info = f"{personality_manager.current_personality.avatar_emoji} {personality_manager.current_personality.name}"
-                else:
-                    # Check if this model is associated with any personality
-                    for personality in personality_manager.personalities.values():
-                        if personality.model_preference == model:
-                            history_info = f"{personality.avatar_emoji} {personality.name}"
-                            break
-                    # If no personality association found, keep the model name as fallback
-                
-                history.append((user_input, reply_text, history_info))
-            except Exception as e:
-                reply_text = f"Request failed: {e}"
-                # Save error to history with model name
-                history.append((user_input, reply_text, model))
-            
-    except Exception as e:
-        error = str(e)
-        reply_text = f"Request failed: {e}"
-        print(f"🔧 Error in chat_ajax: {e}")
-        
-        # Make sure to reset orchestrator on error
-        try:
-            orchestrator = get_pipeline_orchestrator()
-            current_state = orchestrator.get_current_state()
-            print(f"🔧 Error occurred, orchestrator in state: {current_state.value}")
-            orchestrator.complete_pipeline_flow()  # Reset to idle
-            print(f"🔧 Orchestrator reset to idle after error")
-        except Exception as reset_error:
-            print(f"🔧 Failed to reset orchestrator after error: {reset_error}")
-    finally:
-        # Always decrement active request count
-        config.active_request_count -= 1
-        
-        # Ensure orchestrator is in a clean state
-        try:
-            orchestrator = get_pipeline_orchestrator()
-            current_state = orchestrator.get_current_state()
-            print(f"🔧 Finally block - orchestrator state: {current_state.value}")
-            if current_state.value not in ["idle", "interrupted"]:
-                print(f"🔧 Finally block - forcing orchestrator to idle from {current_state.value}")
-                orchestrator.complete_pipeline_flow()
-        except Exception as final_error:
-            print(f"🔧 Error in finally block: {final_error}")
-    
-    # Get updated AI pipeline status
-    ai_pipeline = get_ai_pipeline_status()
-    
-    # Get personality info for frontend display based on which model actually handled this request
-    personality_data = None
-    
-    # Determine which personality should be displayed for this specific request
-    if use_personality and personality_manager.current_personality:
-        # If using personality mode and we have a current personality, show it
-        personality_data = {
-            'name': personality_manager.current_personality.name,
-            'avatar_emoji': personality_manager.current_personality.avatar_emoji
-        }
-    elif model.lower() == "penphinmind":
-        # Special case for PenphinMind - show PenphinMind identity
-        personality_data = {
-            'name': 'PenphinMind',
-            'avatar_emoji': '🧠'
-        }
-    else:
-        # For regular models, check if this model is associated with any personality
-        # This handles cases where someone selected a model directly but it's a personality's preferred model
-        for personality in personality_manager.personalities.values():
-            if personality.model_preference == model:
-                personality_data = {
-                    'name': personality.name,
-                    'avatar_emoji': personality.avatar_emoji
-                }
-                break
-        
-        # If no personality association found, don't show personality data (will fall back to model name)
-    
-    return jsonify({
-        "reply": reply_text,
-        "audio_url": audio_url,
-        "model": model,
-        "error": error,
-        "ai_pipeline": ai_pipeline,
-        "personality": personality_data
-    })
-
-
-@bp.route('/system')
-def system():
+@router.get('/system')
+async def system(request: Request, 
+                log_type: Optional[str] = None,
+                date: Optional[str] = None,
+                sort_by: str = "fastest",
+                view: str = "logs",
+                model: Optional[str] = None):
     """Display system page with top performing models and system viewer, plus model information"""
-    selected_log_type = request.args.get('log_type', None)
-    selected_date = request.args.get('date', None)
-    sort_by = request.args.get('sort_by', 'fastest')  # 'fastest' or 'usage'
-    view_mode = request.args.get('view', 'logs')  # 'logs', 'models', 'model_detail', 'commands', 'settings', or 'training_activity'
-    model_name = request.args.get('model', None)  # For individual model details
+    selected_log_type = log_type
+    selected_date = date
+    view_mode = view
+    model_name = model
     
     log_entries = []
     available_dates = []
@@ -536,8 +215,24 @@ def system():
     current_voice = DEFAULT_VOICE
     current_concurrent = config.MAX_CONCURRENT_REQUESTS
     
+    # Get streaming TTS status
+    from cognition.llm_interface import is_streaming_tts_enabled
+    streaming_tts_enabled = is_streaming_tts_enabled()
+    
     # Get available models for personality creation
     available_models = get_available_models()
+    
+    # Process models to include short names for display
+    models_with_display_names = []
+    for model in available_models:
+        short_name = TextProcessingHelper.extract_short_model_name(model)
+        models_with_display_names.append({
+            'full_name': model,
+            'display_name': short_name
+        })
+    
+    # Categorize models by parameter size for organized dropdowns  
+    categorized_models = categorize_models_by_param_size(models_with_display_names)
     
     # Handle different view modes
     if view_mode == 'models':
@@ -619,6 +314,7 @@ def system():
     
     # Available log types
     log_types = [
+        {"id": "conversations", "name": "Conversations", "icon": "💬"},
         {"id": "llm_usage", "name": "LLM Usage", "icon": "🤖"},
         {"id": "asr_usage", "name": "ASR Usage", "icon": "🎤"},
         {"id": "tts_usage", "name": "TTS Usage", "icon": "🔊"},
@@ -645,17 +341,22 @@ def system():
                           categorized_voices=categorized_voices,  # Add categorized voices
                           current_voice=current_voice,
                           current_concurrent=current_concurrent,
-                          available_models=available_models)  # Add available models
+                          available_models=available_models,
+                          categorized_models=categorized_models,
+                          streaming_tts_enabled=streaming_tts_enabled)  # Add streaming TTS status
 
 
-@bp.route('/models', methods=['GET'])
-def list_models():
+@router.get('/models')
+async def list_models():
     """List available Ollama models with comprehensive metadata from Ollama API"""
     try:
-        # Get models from Ollama
-        res = requests.get("http://roverseer.local:11434/api/tags")
+        # Get models from Ollama using the dynamic URL configuration
+        from config import get_ollama_base_url
+        ollama_url, is_remote = get_ollama_base_url()
+        
+        res = requests.get(f"{ollama_url}/api/tags")
         if not res.ok:
-            return jsonify({"error": "Failed to fetch models from Ollama"}), 500
+            return JSONResponse(content={"error": f"Failed to fetch models from {'remote' if is_remote else 'local'} Ollama server"}), 500
             
         tags_data = res.json()
         models_info = []
@@ -759,81 +460,83 @@ def list_models():
                         sorted_models.append(model)
                         break
         
-        return jsonify({
+        return JSONResponse(content={
             "models": sorted_models,
             "count": len(sorted_models)
         })
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500 
+        return JSONResponse(content={"error": str(e)})
 
 
-@bp.route('/system/command', methods=['POST'])
-def system_command():
+@router.post('/system/command')
+async def system_command(request: Request):
     """Handle system commands like restarting services and containers"""
-    command_type = request.form.get('type')
-    target = request.form.get('target')
+    form = await request.form()
+    command_type = form.get('type')
+    target = form.get('target')
     
     if command_type == 'service':
         try:
             subprocess.run(['sudo', 'systemctl', 'restart', target], check=True)
-            return jsonify({"status": "success", "message": f"Service {target} restarted successfully"})
+            return JSONResponse(content={"status": "success", "message": f"Service {target} restarted successfully"})
         except subprocess.CalledProcessError as e:
-            return jsonify({"status": "error", "message": f"Failed to restart service: {str(e)}"}), 500
+            return JSONResponse(content={"status": "error", "message": f"Failed to restart service: {str(e)}"}), 500
             
     elif command_type == 'container':
         try:
             subprocess.run(['docker', 'restart', target], check=True)
-            return jsonify({"status": "success", "message": f"Container {target} restarted successfully"})
+            return JSONResponse(content={"status": "success", "message": f"Container {target} restarted successfully"})
         except subprocess.CalledProcessError as e:
-            return jsonify({"status": "error", "message": f"Failed to restart container: {str(e)}"}), 500
+            return JSONResponse(content={"status": "error", "message": f"Failed to restart container: {str(e)}"}), 500
     
-    return jsonify({"status": "error", "message": "Invalid command type"}), 400
+    return JSONResponse(content={"status": "error", "message": "Invalid command type"}), 400
 
-@bp.route('/system/containers', methods=['GET'])
-def list_containers():
+@router.get('/system/containers')
+async def list_containers():
     """Get list of running Docker containers"""
     try:
         result = subprocess.run(['docker', 'ps', '--format', '{{.Names}}'], 
                               capture_output=True, text=True, check=True)
         containers = result.stdout.strip().split('\n')
-        return jsonify({"status": "success", "containers": containers})
+        return JSONResponse(content={"status": "success", "containers": containers})
     except subprocess.CalledProcessError as e:
-        return jsonify({"status": "error", "message": f"Failed to list containers: {str(e)}"}), 500 
+        return JSONResponse(content={"status": "error", "message": f"Failed to list containers: {str(e)}"}), 500 
 
-@bp.route('/system/settings', methods=['POST'])
-def update_settings():
+@router.post('/system/settings')
+async def update_settings(request: Request):
     """Update system settings like default voice"""
-    setting_type = request.form.get('type')
+    form = await request.form()
+    setting_type = form.get('type')
     
     if setting_type == 'voice':
-        new_voice = request.form.get('value')
+        new_voice = form.get('value')
         if new_voice:
             from config import update_default_voice
             if update_default_voice(new_voice):
-                return jsonify({"status": "success", "message": f"Default voice updated to {new_voice}"})
+                return JSONResponse(content={"status": "success", "message": f"Default voice updated to {new_voice}"})
             else:
-                return jsonify({"status": "error", "message": "Failed to update voice"}), 500
+                return JSONResponse(content={"status": "error", "message": "Failed to update voice"}), 500
                 
     elif setting_type == 'concurrent_requests':
         try:
-            max_requests = int(request.form.get('value'))
+            max_requests = int(form.get('value'))
             if max_requests < 1 or max_requests > 10:
-                return jsonify({"status": "error", "message": "Value must be between 1 and 10"}), 400
+                return JSONResponse(content={"status": "error", "message": "Value must be between 1 and 10"}), 400
                 
             from config import update_max_concurrent_requests
             if update_max_concurrent_requests(max_requests):
-                return jsonify({"status": "success", "message": f"Maximum concurrent requests updated to {max_requests}"})
+                return JSONResponse(content={"status": "success", "message": f"Maximum concurrent requests updated to {max_requests}"})
             else:
-                return jsonify({"status": "error", "message": "Failed to update concurrent requests"}), 500
+                return JSONResponse(content={"status": "error", "message": "Failed to update concurrent requests"}), 500
         except ValueError:
-            return jsonify({"status": "error", "message": "Invalid number"}), 400
+            return JSONResponse(content={"status": "error", "message": "Invalid number"}), 400
     
-    return jsonify({"status": "error", "message": "Invalid setting type"}), 400
+    return JSONResponse(content={"status": "error", "message": "Invalid setting type"}), 400
 
 
-@bp.route('/system/personalities', methods=['GET'])
-def get_personalities():
+@router.get('/system/personalities')
+async def get_personalities():
     """Get list of available personalities"""
     from cognition.personality import get_personality_manager
     
@@ -841,20 +544,21 @@ def get_personalities():
     personalities = personality_manager.list_personalities()
     current = personality_manager.current_personality.name if personality_manager.current_personality else None
     
-    return jsonify({
+    return JSONResponse(content={
         "status": "success",
         "personalities": personalities,
         "current": current
     })
 
 
-@bp.route('/system/personality/switch', methods=['POST'])
-def switch_personality():
+@router.post('/system/personality/switch')
+async def switch_personality(request: Request):
     """Switch to a different personality"""
-    personality_name = request.form.get('personality')
+    form = await request.form()
+    personality_name = form.get('personality')
     
     if not personality_name:
-        return jsonify({"status": "error", "message": "Missing personality name"}), 400
+        return JSONResponse(content={"status": "error", "message": "Missing personality name"}), 400
     
     from cognition.personality import get_personality_manager
     personality_manager = get_personality_manager()
@@ -869,13 +573,48 @@ def switch_personality():
         
         # Update the device's selected model index if personality has a model preference
         if personality.model_preference:
-            # Find the index of this model in available models
+            # Find the index of this model in available models with validation
             try:
-                model_index = config.available_models.index(personality.model_preference)
-                config.selected_model_index = model_index
-                print(f"Updated device model index to {model_index} for model {personality.model_preference}")
-            except ValueError:
-                print(f"Personality's preferred model {personality.model_preference} not found in available models")
+                # Get fresh model list in case models changed
+                available_models = get_available_models()
+                if personality.model_preference in available_models:
+                    config.selected_model_index = available_models.index(personality.model_preference)
+                    config.available_models = available_models  # Update config
+                    print(f"✅ Updated model index to {config.selected_model_index} for {personality.model_preference}")
+                else:
+                    print(f"⚠️ Personality's model {personality.model_preference} not found in available models")
+                    # Use personality manager's intelligent fallback selection
+                    fallback_model = personality_manager.choose_model(512, DEFAULT_MODEL)
+                    if fallback_model in available_models:
+                        config.selected_model_index = available_models.index(fallback_model)
+                        config.available_models = available_models
+                        print(f"🎲 Using intelligent fallback model: {fallback_model} at index {config.selected_model_index}")
+                    else:
+                        # Last resort - use first available model
+                        config.selected_model_index = 0
+                        config.available_models = available_models
+                        print(f"🔧 Last resort - using first model at index 0: {available_models[0] if available_models else 'none'}")
+            except (ValueError, AttributeError) as e:
+                print(f"❌ Error updating model index: {e}")
+                config.selected_model_index = 0  # Safe fallback
+        else:
+            # Personality has no model preference - use intelligent selection
+            try:
+                available_models = get_available_models()
+                # Use personality manager's intelligent fallback selection
+                fallback_model = personality_manager.choose_model(512, DEFAULT_MODEL)
+                if fallback_model in available_models:
+                    config.selected_model_index = available_models.index(fallback_model)
+                    config.available_models = available_models
+                    print(f"🎲 Personality has no preference, using intelligent selection: {fallback_model} at index {config.selected_model_index}")
+                else:
+                    # Fallback to first available model if intelligent selection fails
+                    config.selected_model_index = 0
+                    config.available_models = available_models
+                    print(f"🔧 Intelligent selection failed, using first model at index 0: {available_models[0] if available_models else 'none'}")
+            except Exception as e:
+                print(f"❌ Error setting intelligent model: {e}")
+                config.selected_model_index = 0
         
         # Trigger display update to show the new personality name
         rainbow_driver = get_rainbow_driver()
@@ -886,37 +625,37 @@ def switch_personality():
             print(f"🎯 Displaying personality switch: {display_text}")
             scroll_text_on_display(display_text, scroll_speed=0.15)
         
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "message": f"Switched to {personality.name}",
             "voice": personality.voice_id,
-            "model": personality.model_preference,
+            "model": config.available_models[config.selected_model_index] if hasattr(config, 'available_models') and hasattr(config, 'selected_model_index') and config.available_models and 0 <= config.selected_model_index < len(config.available_models) else personality.model_preference,
             "intro": personality.get_intro_message()
         })
     else:
-        return jsonify({"status": "error", "message": f"Personality '{personality_name}' not found"}), 404
+        return JSONResponse(content={"status": "error", "message": f"Personality '{personality_name}' not found"}), 404
 
 
-@bp.route('/system/personality/current', methods=['GET'])
-def get_current_personality():
+@router.get('/system/personality/current')
+async def get_current_personality():
     """Get details about the current personality"""
     from cognition.personality import get_personality_manager
     
     personality_manager = get_personality_manager()
     if personality_manager.current_personality:
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "personality": personality_manager.current_personality.to_dict()
         })
     else:
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "personality": None
         })
 
 
-@bp.route('/system/personality/create', methods=['POST'])
-def create_personality():
+@router.post('/system/personality/create')
+async def create_personality(request: Request):
     """Create a new custom personality"""
     data = request.get_json()
     
@@ -924,7 +663,7 @@ def create_personality():
     required_fields = ['name', 'voice_id', 'system_message']
     for field in required_fields:
         if not data.get(field):
-            return jsonify({
+            return JSONResponse(content={
                 "status": "error", 
                 "message": f"Missing required field: {field}"
             }), 400
@@ -944,24 +683,24 @@ def create_personality():
     )
     
     if success:
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "message": f"Personality '{data['name']}' created successfully"
         })
     else:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Personality '{data['name']}' already exists"
         }), 400
 
 
-@bp.route('/system/personality/delete', methods=['POST'])
-def delete_personality():
+@router.post('/system/personality/delete')
+async def delete_personality(request: Request):
     """Delete a custom personality"""
     data = request.get_json()
     
     if not data.get('name'):
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": "Missing personality name"
         }), 400
@@ -970,19 +709,19 @@ def delete_personality():
     personality_manager = get_personality_manager()
     
     if personality_manager.delete_custom_personality(data['name']):
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "message": f"Personality '{data['name']}' deleted successfully"
         })
     else:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Cannot delete personality '{data['name']}' (either doesn't exist or is a default personality)"
         }), 400
 
 
-@bp.route('/system/personality/update', methods=['POST'])
-def update_personality_custom():
+@router.post('/system/personality/update')
+async def update_personality_custom(request: Request):
     """Update an existing custom personality"""
     data = request.get_json()
     
@@ -990,7 +729,7 @@ def update_personality_custom():
     required_fields = ['old_name', 'name', 'voice_id', 'system_message']
     for field in required_fields:
         if not data.get(field):
-            return jsonify({
+            return JSONResponse(content={
                 "status": "error", 
                 "message": f"Missing required field: {field}"
             }), 400
@@ -1011,24 +750,24 @@ def update_personality_custom():
     )
     
     if success:
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "message": f"Personality '{data['name']}' updated successfully"
         })
     else:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Failed to update personality (not found, not custom, or name conflict)"
         }), 400
 
 
-@bp.route('/system/personality', methods=['GET'])
-def get_personality():
+@router.get('/system/personality')
+async def get_personality(type: Optional[str] = None):
     """Get personality text for a specific type"""
-    personality_type = request.args.get('type')
+    personality_type = type
     
     if not personality_type:
-        return jsonify({"status": "error", "message": "No personality type specified"}), 400
+        return JSONResponse(content={"status": "error", "message": "No personality type specified"}), 400
     
     # Import config functions
     import config
@@ -1044,19 +783,20 @@ def get_personality():
         voice_id = personality_type[6:]  # Remove 'voice:' prefix
         personality = config.VOICE_PERSONALITIES.get(voice_id, "")
     else:
-        return jsonify({"status": "error", "message": "Invalid personality type"}), 400
+        return JSONResponse(content={"status": "error", "message": "Invalid personality type"}), 400
     
-    return jsonify({"status": "success", "personality": personality})
+    return JSONResponse(content={"status": "success", "personality": personality})
 
 
-@bp.route('/system/personality', methods=['POST'])
-def update_personality():
+@router.post('/system/personality')
+async def update_personality(request: Request):
     """Update personality text for a specific type"""
-    personality_type = request.form.get('type')
-    personality_text = request.form.get('personality')
+    form = await request.form()
+    personality_type = form.get('type')
+    personality_text = form.get('personality')
     
     if not personality_type or not personality_text:
-        return jsonify({"status": "error", "message": "Missing type or personality text"}), 400
+        return JSONResponse(content={"status": "error", "message": "Missing type or personality text"}), 400
     
     # Import config functions
     import config
@@ -1065,65 +805,65 @@ def update_personality():
     if personality_type == 'default':
         if config.update_personality('default', personality_text):
             config.DEFAULT_PERSONALITY = personality_text
-            return jsonify({"status": "success", "message": "Default personality updated"})
+            return JSONResponse(content={"status": "success", "message": "Default personality updated"})
     elif personality_type == 'web':
         if config.update_personality('web', personality_text):
             config.WEB_PERSONALITY = personality_text
-            return jsonify({"status": "success", "message": "Web personality updated"})
+            return JSONResponse(content={"status": "success", "message": "Web personality updated"})
     elif personality_type == 'device':
         if config.update_personality('device', personality_text):
             config.DEVICE_PERSONALITY = personality_text
-            return jsonify({"status": "success", "message": "Device personality updated"})
+            return JSONResponse(content={"status": "success", "message": "Device personality updated"})
     elif personality_type.startswith('voice:'):
         # Voice personalities are hardcoded and cannot be edited
-        return jsonify({"status": "error", "message": "Voice-specific personalities cannot be edited"}), 400
+        return JSONResponse(content={"status": "error", "message": "Voice-specific personalities cannot be edited"}), 400
     else:
-        return jsonify({"status": "error", "message": "Invalid personality type"}), 400
+        return JSONResponse(content={"status": "error", "message": "Invalid personality type"}), 400
     
-    return jsonify({"status": "error", "message": "Failed to update personality"}), 500
+    return JSONResponse(content={"status": "error", "message": "Failed to update personality"}), 500
 
 
 # Simple personality endpoints for RoverCub compatibility
-@bp.route('/personalities', methods=['GET'])
-def get_personalities_simple():
+@router.get('/personalities')
+async def get_personalities_simple():
     """Get list of available personalities (RoverCub compatible endpoint)"""
     return get_personalities()
 
 
-@bp.route('/personalities/switch', methods=['POST'])
-def switch_personality_simple():
+@router.post('/personalities/switch')
+async def switch_personality_simple(request: Request):
     """Switch to a different personality (RoverCub compatible endpoint)"""
     return switch_personality()
 
 
-@bp.route('/personalities/current', methods=['GET'])
-def get_current_personality_simple():
+@router.get('/personalities/current')
+async def get_current_personality_simple():
     """Get current personality (RoverCub compatible endpoint)"""
     return get_current_personality()
 
 
 # Add contextual moods API endpoints
-@bp.route('/system/personality/<personality_name>/moods', methods=['GET'])
-def get_personality_moods(personality_name):
+@router.get('/system/personality/{personality_name}/moods')
+async def get_personality_moods(personality_name: str):
     """Get all moods for a specific personality"""
     from cognition.contextual_moods import contextual_moods
     
     try:
         moods = contextual_moods.list_personality_moods(personality_name)
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "personality": personality_name,
             "moods": moods
         })
     except Exception as e:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Error loading moods: {str(e)}"
         }), 500
 
 
-@bp.route('/system/personality/<personality_name>/moods', methods=['POST'])
-def create_personality_mood(personality_name):
+@router.post('/system/personality/{personality_name}/moods')
+async def create_personality_mood(personality_name: str, request: Request):
     """Create a new mood for a personality"""
     data = request.get_json()
     
@@ -1131,7 +871,7 @@ def create_personality_mood(personality_name):
     required_fields = ['mood_name', 'trigger_probability', 'context_triggers', 'mood_influences']
     for field in required_fields:
         if field not in data:
-            return jsonify({
+            return JSONResponse(content={
                 "status": "error",
                 "message": f"Missing required field: {field}"
             }), 400
@@ -1150,20 +890,20 @@ def create_personality_mood(personality_name):
         
         contextual_moods.save_custom_moods()
         
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "message": f"Mood '{data['mood_name']}' created for {personality_name}"
         })
         
     except Exception as e:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Error creating mood: {str(e)}"
         }), 500
 
 
-@bp.route('/system/personality/<personality_name>/moods/<mood_name>', methods=['PUT'])
-def update_personality_mood(personality_name, mood_name):
+@router.put('/system/personality/{personality_name}/moods/{mood_name}')
+async def update_personality_mood(personality_name: str, mood_name: str, request: Request):
     """Update an existing mood for a personality"""
     data = request.get_json()
     
@@ -1187,20 +927,20 @@ def update_personality_mood(personality_name, mood_name):
         
         contextual_moods.save_custom_moods()
         
-        return jsonify({
+        return JSONResponse(content={
             "status": "success",
             "message": f"Mood '{mood_name}' updated for {personality_name}"
         })
         
     except Exception as e:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Error updating mood: {str(e)}"
         }), 500
 
 
-@bp.route('/system/personality/<personality_name>/moods/<mood_name>', methods=['DELETE'])
-def delete_personality_mood(personality_name, mood_name):
+@router.delete('/system/personality/{personality_name}/moods/{mood_name}')
+async def delete_personality_mood(personality_name: str, mood_name: str):
     """Delete a mood from a personality"""
     try:
         from cognition.contextual_moods import contextual_moods
@@ -1216,46 +956,151 @@ def delete_personality_mood(personality_name, mood_name):
                 
                 contextual_moods.save_custom_moods()
                 
-                return jsonify({
+                return JSONResponse(content={
                     "status": "success",
                     "message": f"Mood '{mood_name}' deleted from {personality_name}"
                 })
         
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Mood '{mood_name}' not found or cannot be deleted"
         }), 404
         
     except Exception as e:
-        return jsonify({
+        return JSONResponse(content={
             "status": "error",
             "message": f"Error deleting mood: {str(e)}"
         }), 500 
 
 
-@bp.route('/system/reset_pipeline', methods=['POST'])
-def reset_pipeline_state():
-    """Force reset the pipeline orchestrator when it gets stuck"""
+@router.post('/system/reset-pipeline')
+async def reset_pipeline():
+    """Force reset the AI pipeline to idle state"""
     try:
+        # Get the orchestrator
         from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
         
         orchestrator = get_pipeline_orchestrator()
-        current_state_before = orchestrator.get_current_state()
+        current_state = orchestrator.get_current_state()
         
-        print(f"🔧 Force resetting pipeline state from: {current_state_before.value}")
+        print(f"🔧 FORCE RESET: Current state is {current_state.value}")
         
-        # Use the new force reset method
+        # Force reset to idle
         previous_state = orchestrator.force_reset_to_idle()
         
-        return jsonify({
+        # Reset active request count
+        import config
+        old_count = config.active_request_count
+        config.active_request_count = 0
+        
+        # Clear any stuck audio processes
+        try:
+            from expression.text_to_speech import stop_current_audio
+            stop_current_audio()
+        except:
+            pass
+            
+        # Stop any LEDs
+        try:
+            from embodiment.led_control import stop_system_processing
+            stop_system_processing()
+        except:
+            pass
+        
+        return JSONResponse(content={
+            "status": "success", 
+            "message": f"Pipeline reset from {current_state.value} to idle. Request count reset from {old_count} to 0.",
+            "previous_state": current_state.value,
+            "new_state": "idle",
+            "previous_count": old_count
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pipeline reset failed: {str(e)}")
+
+@router.post('/system/force-reset')
+async def force_reset_system():
+    """Emergency system reset - clears all states and processes"""
+    try:
+        import config
+        
+        # Reset request count
+        old_count = config.active_request_count
+        config.active_request_count = 0
+        
+        # Reset recording flag
+        old_recording = config.recording_in_progress
+        config.recording_in_progress = False
+        
+        # Reset orchestrator
+        from embodiment.pipeline_orchestrator import get_pipeline_orchestrator
+        
+        orchestrator = get_pipeline_orchestrator()
+        old_state = orchestrator.get_current_state()
+        previous_state = orchestrator.force_reset_to_idle()
+        
+        # Kill any stuck audio
+        try:
+            import subprocess
+            subprocess.run(["pkill", "-f", "aplay"], check=False)
+        except:
+            pass
+            
+        # Stop LEDs
+        try:
+            from embodiment.led_control import stop_system_processing
+            stop_system_processing()
+        except:
+            pass
+        
+        return JSONResponse(content={
             "status": "success",
-            "message": f"Pipeline reset from {previous_state.value} to idle",
-            "previous_state": previous_state.value,
-            "current_state": "idle"
+            "message": "Emergency system reset completed",
+            "reset_details": {
+                "request_count": f"{old_count} → 0",
+                "recording_flag": f"{old_recording} → False", 
+                "orchestrator_state": f"{old_state.value} → idle"
+            }
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Force reset failed: {str(e)}")
+
+
+@router.post('/system/ollama/models/download')
+async def download_ollama_model(request: Request):
+    """Download a model from Ollama library"""
+    try:
+        data = request.get_json()
+        model_name = data.get('model_name')
+        tag = data.get('tag', 'latest')
+        
+        if not model_name:
+            raise HTTPException(status_code=400, detail="Model name required")
+            
+        full_model_name = f"{model_name}:{tag}"
+        
+        # Start download in background
+        import subprocess
+        import threading
+        
+        def download_model():
+            try:
+                subprocess.run(['ollama', 'pull', full_model_name], 
+                             capture_output=True, text=True, check=True)
+                print(f"✅ Model {full_model_name} downloaded successfully")
+            except subprocess.CalledProcessError as e:
+                print(f"❌ Failed to download {full_model_name}: {e.stderr}")
+        
+        download_thread = threading.Thread(target=download_model)
+        download_thread.daemon = True
+        download_thread.start()
+        
+        return JSONResponse(content={
+            "status": "started", 
+            "message": f"Download started for {full_model_name}",
+            "model": full_model_name
         })
         
     except Exception as e:
-        return jsonify({
-            "status": "error", 
-            "message": f"Failed to reset pipeline: {str(e)}"
-        }), 500 
+        return JSONResponse(content={
+            "error": str(e)
+        })

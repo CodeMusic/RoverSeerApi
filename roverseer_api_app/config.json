@@ -1,5 +1,8 @@
 {
   "default_voice": "en_GB-alan",
+  "current_personality": "GlaDOS",
   "debug_logging": true,
-  "current_personality": "Pengu"
+  "streaming_tts_enabled": false,
+  "max_concurrent_requests": 1
+
 }

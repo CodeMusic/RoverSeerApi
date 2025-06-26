@@ -242,16 +242,17 @@ def speak_text(text, voice_id=DEFAULT_VOICE):
     config.active_voice = voice_id
     
     try:
-        output_file, _ = generate_tts_audio(text, voice_id)
-        
         # Get orchestrator for proper state management
         from embodiment.pipeline_orchestrator import get_pipeline_orchestrator, SystemState
         orchestrator = get_pipeline_orchestrator()
         
-        # Transition to audio playback stage
-        orchestrator.transition_to_state(SystemState.EXPRESSING)
+        # Generate TTS audio (this happens during SYNTHESIZING stage)
+        output_file, _ = generate_tts_audio(text, voice_id)
         
-        # Play audio on device
+        # TTS generation complete, advance to next stage
+        orchestrator.advance_pipeline_flow()  # SYNTHESIZING -> EXPRESSING
+        
+        # Play audio on device (start aplay subprocess)
         audio_process = subprocess.Popen(
             ["aplay", "-D", AUDIO_DEVICE, output_file],
             stdout=subprocess.PIPE,

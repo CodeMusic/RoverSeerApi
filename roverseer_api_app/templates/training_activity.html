@@ -10,20 +10,92 @@
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             color: #e0e0e0;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             min-height: 100vh;
+        }
+
+        /* Navigation Header */
+        .header { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .back-header-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        
+        .back-arrow {
+            color: white; 
+            text-decoration: none; 
+            font-size: 24px; 
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .back-arrow:hover {
+            color: #e0e0e0;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .header {
+                background: #1c1c1e;
+                color: white;
+                padding: 15px 10px 10px 10px;
+                padding-top: max(15px, env(safe-area-inset-top));
+                flex-direction: column;
+                gap: 10px;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            
+            .back-header-link {
+                flex-direction: column;
+                text-align: center;
+                gap: 5px;
+            }
+            
+            .container {
+                margin: 10px !important;
+                padding: 15px !important;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+            
+            select, button {
+                min-height: 44px;
+                font-size: 16px;
+            }
         }
 
         .container {
             max-width: 1400px;
-            margin: 0 auto;
+            margin: 20px auto;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 15px;
             padding: 20px;
             border: 1px solid #4a5568;
         }
 
-        .header {
+        .header-title {
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
@@ -229,8 +301,15 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <a href="/" class="back-header-link">
+            <div class="back-arrow">←</div>
+            Back to Home
+        </a>
+    </div>
+    
     <div class="container">
-        <div class="header">
+        <div class="header-title">
             <h1>{{ title }}</h1>
             <p>Real-time monitoring of neural voice synthesis training processes</p>
         </div>

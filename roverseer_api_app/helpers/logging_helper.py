@@ -81,6 +81,14 @@ class LoggingHelper:
         LoggingHelper.ensure_log_dir()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # Get current conversation thread ID
+        try:
+            from config import get_current_conversation_thread
+            conversation_thread_id = get_current_conversation_thread()
+        except:
+            # Fallback to a default thread ID if config not available
+            conversation_thread_id = "unknown"
+        
         # If personality not provided, try to get it from the current personality manager
         if not personality:
             try:
@@ -93,9 +101,10 @@ class LoggingHelper:
             except:
                 personality = "default"
         
-        # Enhanced log entry with mood details
+        # Enhanced log entry with mood details and conversation thread ID
         log_entry = {
             "timestamp": timestamp,
+            "conversation_thread_id": conversation_thread_id,
             "model": model_name,
             "personality": personality,
             "voice_id": voice_id,
@@ -160,20 +169,29 @@ class LoggingHelper:
     @staticmethod
     def log_penphin_mind_usage(original_prompt, logical_response, creative_response, final_synthesis, total_time):
         """
-        Log PenphinMind bicameral processing to daily file in JSON format
+        Log PenphinMind (bicameral) usage to daily file in JSON format
         
         Args:
             original_prompt (str): The original user prompt
-            logical_response (str): Response from logical mind
-            creative_response (str): Response from creative mind
+            logical_response (str): Response from logical model
+            creative_response (str): Response from creative model  
             final_synthesis (str): Final synthesized response
-            total_time (float): Total processing time in seconds
+            total_time (float): Total processing time
         """
         LoggingHelper.ensure_log_dir()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # Get current conversation thread ID
+        try:
+            from config import get_current_conversation_thread
+            conversation_thread_id = get_current_conversation_thread()
+        except:
+            # Fallback to a default thread ID if config not available
+            conversation_thread_id = "unknown"
+        
         log_entry = {
             "timestamp": timestamp,
+            "conversation_thread_id": conversation_thread_id,
             "original_prompt": original_prompt,
             "logical_response": logical_response,
             "creative_response": creative_response,

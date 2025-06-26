@@ -261,8 +261,9 @@ class PipelineOrchestrator:
     def _cleanup_state(self, state: SystemState):
         """Cleanup operations when leaving a state"""
         try:
-            # Use existing BuzzerManager clear_queue_and_interrupt
-            if self.rainbow_driver and hasattr(self.rainbow_driver, 'buzzer_manager'):
+            # Only interrupt buzzer tasks if we're leaving a state that might have ongoing audio
+            # Don't clear the buzzer on every state transition as it breaks normal operation
+            if state in [SystemState.EXPRESSING, SystemState.INTERRUPTED] and self.rainbow_driver and hasattr(self.rainbow_driver, 'buzzer_manager'):
                 self.rainbow_driver.buzzer_manager.clear_queue_and_interrupt()
             
             # Clean up any state-specific processes
@@ -278,6 +279,16 @@ class PipelineOrchestrator:
                         except:
                             pass
                 del self.state.active_processes['audio_process']
+            
+            # Clear display when leaving certain states
+            if state in [SystemState.LISTENING, SystemState.PROCESSING_SPEECH,
+                        SystemState.CONTEMPLATING, SystemState.SYNTHESIZING]:
+                # Force clear display to prevent stuck 'REC' or other messages
+                try:
+                    from embodiment.display_manager import force_clear_display
+                    force_clear_display()
+                except Exception as e:
+                    self.logger.error(f"Error clearing display: {e}")
             
             # Special cleanup for EXPRESSING state (audio playback)
             if state == SystemState.EXPRESSING:
@@ -299,15 +310,17 @@ class PipelineOrchestrator:
         self.logger.warning("Performing force cleanup of stuck processes")
         
         try:
-            # Use existing BuzzerManager force_stop
+            # Use existing BuzzerManager clear_queue_and_interrupt (less aggressive than force_stop)
             if self.rainbow_driver and hasattr(self.rainbow_driver, 'buzzer_manager'):
-                self.rainbow_driver.buzzer_manager.force_stop()
+                self.rainbow_driver.buzzer_manager.clear_queue_and_interrupt()
+                # Don't use force_stop here as it can break the buzzer permanently
             
-            # Kill any lingering audio processes
+            # Kill any lingering audio and TTS processes
             import subprocess
             try:
                 subprocess.run(['pkill', '-f', 'aplay'], timeout=2)
                 subprocess.run(['pkill', '-f', 'arecord'], timeout=2)
+                subprocess.run(['pkill', '-f', 'piper'], timeout=2)  # Kill hanging TTS processes
             except:
                 pass
             
@@ -318,6 +331,13 @@ class PipelineOrchestrator:
             # Use existing ActivityLEDManager set_all_leds_off
             if self.rainbow_driver and hasattr(self.rainbow_driver, 'rgb_led_manager'):
                 self.rainbow_driver.rgb_led_manager.set_all_leds_off()
+            
+            # Force clear the display to prevent stuck messages
+            try:
+                from embodiment.display_manager import force_clear_display
+                force_clear_display()
+            except Exception as e:
+                self.logger.error(f"Error clearing display during force cleanup: {e}")
             
             # Clear active processes
             self.state.active_processes.clear()

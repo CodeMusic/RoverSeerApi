@@ -127,6 +127,7 @@ def parse_log_file(log_type, date=None):
                         entries.append({
                             'type': 'llm_usage',
                             'timestamp': entry['timestamp'],
+                            'conversation_thread_id': entry.get('conversation_thread_id', 'unknown'),
                             'model': entry['model'],
                             'personality': entry.get('personality', 'default'),
                             'voice_id': entry.get('voice_id'),
@@ -146,6 +147,7 @@ def parse_log_file(log_type, date=None):
                         entries.append({
                             'type': 'asr_usage',
                             'timestamp': entry['timestamp'],
+                            'conversation_thread_id': entry.get('conversation_thread_id', 'unknown'),
                             'processing_time': entry['processing_time'],
                             'text': entry['text'],
                             'id': f"{entry['timestamp']}_asr"
@@ -155,21 +157,23 @@ def parse_log_file(log_type, date=None):
                         entries.append({
                             'type': 'tts_usage',
                             'timestamp': entry['timestamp'],
+                            'conversation_thread_id': entry.get('conversation_thread_id', 'unknown'),
                             'voice_id': entry['voice_id'],
                             'processing_time': entry['processing_time'],
                             'text': entry['text'],
-                            'id': f"{entry['timestamp']}_{entry['voice_id']}"
+                            'id': f"{entry['timestamp']}_tts"
                         })
                         
                     elif log_type == 'penphin_mind':
                         entries.append({
                             'type': 'penphin_mind',
                             'timestamp': entry['timestamp'],
-                            'total_time': entry['total_time'],
+                            'conversation_thread_id': entry.get('conversation_thread_id', 'unknown'),
                             'original_prompt': entry['original_prompt'],
+                            'logical_response': entry['logical_response'],
+                            'creative_response': entry['creative_response'],
                             'final_synthesis': entry['final_synthesis'],
-                            'logical_response': entry.get('logical_response', ''),
-                            'creative_response': entry.get('creative_response', ''),
+                            'total_time': entry['total_time'],
                             'id': f"{entry['timestamp']}_penphin"
                         })
                         
@@ -177,21 +181,124 @@ def parse_log_file(log_type, date=None):
                         entries.append({
                             'type': 'errors',
                             'timestamp': entry['timestamp'],
-                            'error_type': entry['type'],
-                            'message': entry['message'],
+                            'conversation_thread_id': entry.get('conversation_thread_id', 'unknown'),
+                            'error_type': entry.get('error_type', 'Unknown'),
+                            'message': entry.get('message', ''),
                             'context': entry.get('context', {}),
                             'id': f"{entry['timestamp']}_error"
                         })
-                        
+                
                 except json.JSONDecodeError:
+                    # Skip malformed lines
                     continue
-                    
     except Exception as e:
-        print(f"Error parsing {log_type} log: {e}")
-        return []
+        print(f"Error parsing log file {log_file}: {e}")
     
-    # Return entries in reverse order (newest first)
-    return entries[::-1]
+    return entries
+
+
+def group_logs_by_conversation(entries):
+    """Group log entries by conversation thread ID"""
+    conversations = {}
+    
+    for entry in entries:
+        thread_id = entry.get('conversation_thread_id', 'unknown')
+        if thread_id not in conversations:
+            conversations[thread_id] = {
+                'thread_id': thread_id,
+                'entries': [],
+                'start_time': entry['timestamp'],
+                'end_time': entry['timestamp'],
+                'message_count': 0,
+                'participants': set(),
+                'models_used': set()
+            }
+        
+        conversations[thread_id]['entries'].append(entry)
+        conversations[thread_id]['end_time'] = entry['timestamp']  # Entries should be chronological
+        
+        # Count LLM messages for conversation depth
+        if entry.get('type') == 'llm_usage':
+            conversations[thread_id]['message_count'] += 1
+            conversations[thread_id]['participants'].add(entry.get('personality', 'default'))
+            conversations[thread_id]['models_used'].add(entry.get('model', 'unknown'))
+    
+    # Convert sets to lists for JSON serialization
+    for thread_id in conversations:
+        conversations[thread_id]['participants'] = list(conversations[thread_id]['participants'])
+        conversations[thread_id]['models_used'] = list(conversations[thread_id]['models_used'])
+    
+    return conversations
+
+
+def get_conversation_summary(thread_id, date=None):
+    """Get a summary of a specific conversation thread with properly formatted entries for display"""
+    llm_entries = parse_log_file('llm_usage', date)
+    penphin_entries = parse_log_file('penphin_mind', date)
+    
+    # Combine and filter by thread ID
+    all_entries = llm_entries + penphin_entries
+    conversation_entries = [entry for entry in all_entries if entry.get('conversation_thread_id') == thread_id]
+    
+    if not conversation_entries:
+        return None
+    
+    # Sort by timestamp
+    conversation_entries.sort(key=lambda x: x['timestamp'])
+    
+    # Transform entries for UI display with consistent structure
+    ui_entries = []
+    
+    for entry in conversation_entries:
+        ui_entry = {
+            'timestamp': entry.get('timestamp'),
+            'model': entry.get('model', ''),
+            'role': 'assistant',  # Default role
+            'content': '',
+            'personality': entry.get('personality', 'default')
+        }
+        
+        if 'llm_reply' in entry:
+            ui_entry['content'] = entry['llm_reply']
+        elif 'final_synthesis' in entry:
+            ui_entry['content'] = entry['final_synthesis']
+        elif 'response' in entry:
+            ui_entry['content'] = entry['response']
+        
+        # Add user prompt as a separate entry if it exists
+        if 'user_prompt' in entry and entry['user_prompt']:
+            user_entry = {
+                'timestamp': entry.get('timestamp'),
+                'role': 'user',
+                'content': entry['user_prompt']
+            }
+            ui_entries.append(user_entry)
+        
+        # Only add assistant entries that have content
+        if ui_entry['content']:
+            ui_entries.append(ui_entry)
+    
+    # Extract first and last timestamps for conversation range
+    start_time = conversation_entries[0]['timestamp'] if conversation_entries else None
+    end_time = conversation_entries[-1]['timestamp'] if conversation_entries else None
+    
+    # Count unique models used
+    models_used = list(set(entry.get('model', '') for entry in conversation_entries if 'model' in entry))
+    models_used = [m for m in models_used if m]  # Remove empty models
+    
+    # Extract unique personalities used
+    personalities = list(set(entry.get('personality', '') for entry in conversation_entries if 'personality' in entry))
+    personalities = [p for p in personalities if p]  # Remove empty personalities
+    
+    return {
+        'thread_id': thread_id,
+        'start_time': start_time,
+        'end_time': end_time,
+        'entries': ui_entries,
+        'message_count': len(ui_entries),
+        'models_used': models_used,
+        'participants': personalities
+    }
 
 
 def get_available_log_dates(log_type):
