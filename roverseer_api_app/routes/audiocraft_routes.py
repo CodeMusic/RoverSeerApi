@@ -5,6 +5,8 @@ from typing import Optional
 import uuid
 import os
 import subprocess
+import asyncio
+import signal
 from expression.sound_orchestration import play_sound_async
 from expression.sound_orchestration import (
     play_audiocraft_sound_start_tune,
@@ -18,7 +20,15 @@ from expression.sound_orchestration import (
 )
 
 router = APIRouter()
-templates = Jinja2Templates(directory="roverseer_api_app/templates")
+templates = Jinja2Templates(directory="templates")
+
+# Global variable to track AudioCraft loading status
+audiocraft_status = {
+    "loading": False,
+    "loaded": False,
+    "error": None,
+    "last_attempt": None
+}
 
 @router.get('/audiocraft')
 async def audiocraft_studio(request: Request):
@@ -26,6 +36,13 @@ async def audiocraft_studio(request: Request):
     AudioCraft Studio - Testing page for sound effects and music generation
     """
     return templates.TemplateResponse("audiocraft.html", {"request": request})
+
+@router.get('/audiocraft/status')
+async def audiocraft_loading_status():
+    """
+    Check AudioCraft loading status
+    """
+    return JSONResponse(content=audiocraft_status)
 
 @router.post('/audiocraft/sound_feedback/{sound_type}')
 async def audiocraft_sound_feedback(sound_type: str):
@@ -58,44 +75,10 @@ async def audiocraft_sound_feedback(sound_type: str):
 @router.post('/audiocraft/synthesize_sound')
 async def synthesize_sound_effect(request: Request):
     """
-    Generate sound effects using AudioCraft synthesis
-    ---
-    consumes:
-      - application/json
-    produces:
-      - audio/wav
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          properties:
-            prompt:
-              type: string
-              example: "thunderstorm with heavy rain and wind"
-              required: true
-            duration:
-              type: integer
-              example: 5
-              default: 5
-            intensity:
-              type: string
-              enum: [subtle, moderate, intense]
-              default: moderate
-    responses:
-      200:
-        description: Sound effect audio file
-        content:
-          audio/wav:
-            schema:
-              type: string
-              format: binary
-      400:
-        description: Invalid request
-      500:
-        description: Processing error
+    Generate sound effects using AudioCraft synthesis with timeout handling
     """
+    global audiocraft_status
+    
     try:
         data = await request.json()
     except:
@@ -112,79 +95,59 @@ async def synthesize_sound_effect(request: Request):
         # Generate unique filename for this request
         tmp_wav = f"/tmp/sound_effect_{uuid.uuid4().hex}.wav"
         
-        # Try real AudioCraft integration first
-        success, error_msg = generate_real_audiocraft_audio(tmp_wav, prompt, duration, "sound_effect")
+        # Try real AudioCraft integration with timeout
+        audiocraft_status["loading"] = True
+        success, error_msg = await asyncio.wait_for(
+            asyncio.to_thread(generate_real_audiocraft_audio, tmp_wav, prompt, duration, "sound_effect"),
+            timeout=120.0  # 2 minute timeout
+        )
+        audiocraft_status["loading"] = False
         
         if not success:
             print(f"⚠️  Real AudioCraft failed: {error_msg}")
             print("⚠️  Using improved placeholder instead")
+            audiocraft_status["error"] = error_msg
             generate_placeholder_audio(tmp_wav, duration, "sound_effect")
             
             # Add error info to response headers so frontend can see it
             response = FileResponse(tmp_wav, media_type="audio/wav", filename="sound_effect_placeholder.wav")
             response.headers['X-AudioCraft-Status'] = 'fallback'
             response.headers['X-AudioCraft-Error'] = error_msg.replace('\n', ' ').replace('\r', ' ')
-            response.headers['X-AudioCraft-Message'] = 'Using improved placeholder audio - AudioCraft not available'
+            response.headers['X-AudioCraft-Message'] = 'Using improved placeholder audio - AudioCraft loading or unavailable'
             return response
         else:
             # Real AudioCraft success
+            audiocraft_status["loaded"] = True
+            audiocraft_status["error"] = None
             response = FileResponse(tmp_wav, media_type="audio/wav", filename="sound_effect.wav")
             response.headers['X-AudioCraft-Status'] = 'success'
             response.headers['X-AudioCraft-Message'] = 'Generated with real AudioCraft'
             return response
         
+    except asyncio.TimeoutError:
+        audiocraft_status["loading"] = False
+        audiocraft_status["error"] = "AudioCraft model loading timed out (may still be loading in background)"
+        
+        # Generate fallback audio
+        generate_placeholder_audio(tmp_wav, duration, "sound_effect")
+        response = FileResponse(tmp_wav, media_type="audio/wav", filename="sound_effect_timeout.wav")
+        response.headers['X-AudioCraft-Status'] = 'timeout'
+        response.headers['X-AudioCraft-Error'] = 'Model loading timed out'
+        response.headers['X-AudioCraft-Message'] = 'AudioCraft is still loading models in background. Try again in a few minutes.'
+        return response
+        
     except Exception as e:
+        audiocraft_status["loading"] = False
+        audiocraft_status["error"] = str(e)
         raise HTTPException(status_code=500, detail=f"Sound effect synthesis error: {str(e)}")
 
 @router.post('/audiocraft/generate_music')
 async def generate_musical_consciousness(request: Request):
     """
-    Generate music using AudioCraft synthesis
-    ---
-    consumes:
-      - application/json
-    produces:
-      - audio/wav
-    parameters:
-      - in: body
-        name: body
-        required: true
-        schema:
-          type: object
-          properties:
-            prompt:
-              type: string
-              example: "uplifting piano melody with subtle strings"
-              required: true
-            duration:
-              type: integer
-              example: 30
-              default: 30
-            genre:
-              type: string
-              enum: [ambient, electronic, acoustic, orchestral, experimental]
-              default: acoustic
-            tempo:
-              type: string
-              enum: [slow, moderate, fast]
-              default: moderate
-            mood:
-              type: string
-              enum: [happy, calm, melancholic, energetic, mysterious]
-              default: calm
-    responses:
-      200:
-        description: Generated music audio file
-        content:
-          audio/wav:
-            schema:
-              type: string
-              format: binary
-      400:
-        description: Invalid request
-      500:
-        description: Processing error
+    Generate music using AudioCraft synthesis with timeout handling
     """
+    global audiocraft_status
+    
     try:
         data = await request.json()
     except:
@@ -206,28 +169,50 @@ async def generate_musical_consciousness(request: Request):
         # Enhance the prompt with additional parameters
         enhanced_prompt = f"{prompt}, {genre} style, {tempo} tempo, {mood} mood"
         
-        # Try real AudioCraft integration first
-        success, error_msg = generate_real_audiocraft_audio(tmp_wav, enhanced_prompt, duration, "music")
+        # Try real AudioCraft integration with timeout
+        audiocraft_status["loading"] = True
+        success, error_msg = await asyncio.wait_for(
+            asyncio.to_thread(generate_real_audiocraft_audio, tmp_wav, enhanced_prompt, duration, "music"),
+            timeout=180.0  # 3 minute timeout for music (longer than sound effects)
+        )
+        audiocraft_status["loading"] = False
         
         if not success:
             print(f"⚠️  Real AudioCraft failed: {error_msg}")
             print("⚠️  Using improved placeholder instead")
+            audiocraft_status["error"] = error_msg
             generate_placeholder_audio(tmp_wav, duration, "music")
             
             # Add error info to response headers so frontend can see it
             response = FileResponse(tmp_wav, media_type="audio/wav", filename="music_placeholder.wav")
             response.headers['X-AudioCraft-Status'] = 'fallback'
             response.headers['X-AudioCraft-Error'] = error_msg.replace('\n', ' ').replace('\r', ' ')
-            response.headers['X-AudioCraft-Message'] = 'Using improved placeholder audio - AudioCraft not available'
+            response.headers['X-AudioCraft-Message'] = 'Using improved placeholder audio - AudioCraft loading or unavailable'
             return response
         else:
             # Real AudioCraft success
+            audiocraft_status["loaded"] = True
+            audiocraft_status["error"] = None
             response = FileResponse(tmp_wav, media_type="audio/wav", filename="generated_music.wav")
             response.headers['X-AudioCraft-Status'] = 'success'
             response.headers['X-AudioCraft-Message'] = 'Generated with real AudioCraft'
             return response
         
+    except asyncio.TimeoutError:
+        audiocraft_status["loading"] = False
+        audiocraft_status["error"] = "AudioCraft model loading timed out (may still be loading in background)"
+        
+        # Generate fallback audio
+        generate_placeholder_audio(tmp_wav, duration, "music")
+        response = FileResponse(tmp_wav, media_type="audio/wav", filename="music_timeout.wav")
+        response.headers['X-AudioCraft-Status'] = 'timeout'
+        response.headers['X-AudioCraft-Error'] = 'Model loading timed out'
+        response.headers['X-AudioCraft-Message'] = 'AudioCraft is still loading models in background. Try again in a few minutes.'
+        return response
+        
     except Exception as e:
+        audiocraft_status["loading"] = False
+        audiocraft_status["error"] = str(e)
         raise HTTPException(status_code=500, detail=f"Music generation error: {str(e)}")
 
 
@@ -236,6 +221,8 @@ def generate_real_audiocraft_audio(output_path, prompt, duration, audio_type):
     Generate audio using real AudioCraft MusicGen/AudioGen models
     Returns (success: bool, error_message: str)
     """
+    global audiocraft_status
+    
     try:
         # Try importing AudioCraft
         from audiocraft.models import MusicGen
@@ -244,6 +231,7 @@ def generate_real_audiocraft_audio(output_path, prompt, duration, audio_type):
         import torchaudio
         
         print(f"🎵 Generating {audio_type} with real AudioCraft: '{prompt}' ({duration}s)")
+        audiocraft_status["loading"] = True
         
         # Load the appropriate model based on audio type
         if audio_type == "sound_effect":
@@ -276,15 +264,21 @@ def generate_real_audiocraft_audio(output_path, prompt, duration, audio_type):
             os.rename(output_path.replace('.wav', '.wav'), output_path)
         
         print(f"✅ Real AudioCraft generation complete: {output_path}")
+        audiocraft_status["loading"] = False
+        audiocraft_status["loaded"] = True
         return True, "Success"
         
     except ImportError as e:
         error_msg = f"AudioCraft import failed: {str(e)}"
         print(f"ℹ️  {error_msg}")
+        audiocraft_status["loading"] = False
+        audiocraft_status["error"] = error_msg
         return False, error_msg
     except Exception as e:
         error_msg = f"AudioCraft generation failed: {str(e)}"
         print(f"⚠️  {error_msg}")
+        audiocraft_status["loading"] = False
+        audiocraft_status["error"] = error_msg
         return False, error_msg
 
 

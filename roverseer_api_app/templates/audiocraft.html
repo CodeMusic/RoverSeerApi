@@ -455,6 +455,59 @@
             }
         }
 
+        // Check AudioCraft loading status
+        async function checkAudioCraftStatus() {
+            try {
+                const response = await fetch('/audiocraft/status');
+                const status = await response.json();
+                return status;
+            } catch (error) {
+                console.error('Failed to check AudioCraft status:', error);
+                return { loading: false, loaded: false, error: 'Status check failed' };
+            }
+        }
+
+        // Show loading indicator with status updates
+        function showLoadingStatus(resultArea, type = 'sound') {
+            const loadingMessages = {
+                sound: [
+                    'Initializing AudioCraft models...',
+                    'Loading sound generation neural networks...',
+                    'Preparing auditory synthesis pipeline...',
+                    'This may take 2-3 minutes on first use...'
+                ],
+                music: [
+                    'Initializing AudioCraft models...',
+                    'Loading music generation neural networks...',
+                    'Preparing musical consciousness pipeline...',
+                    'This may take 3-5 minutes on first use...'
+                ]
+            };
+            
+            let messageIndex = 0;
+            const messages = loadingMessages[type];
+            
+            function updateMessage() {
+                if (messageIndex < messages.length) {
+                    resultArea.innerHTML = `
+                        <div class="consciousness-feedback">
+                            <div style="color: #ff9800; font-size: 14px; margin-bottom: 10px;">
+                                ⏳ AudioCraft is loading AI models (first time setup)
+                            </div>
+                            <div>${messages[messageIndex]}</div>
+                            <div style="margin-top: 10px; font-size: 12px; color: #888;">
+                                Status check ${messageIndex + 1}/${messages.length}
+                            </div>
+                        </div>
+                    `;
+                    messageIndex++;
+                    setTimeout(updateMessage, 10000); // Update every 10 seconds
+                }
+            }
+            
+            updateMessage();
+        }
+
         async function generateSoundEffect() 
         {
             const button = document.getElementById('generateSoundEffect');
@@ -473,7 +526,13 @@
             button.disabled = true;
             button.innerHTML = '<span class="synaptic-loading"></span> Processing auditory synthesis...';
             
-            resultArea.innerHTML = '<div class="consciousness-feedback">Engaging neural pathways for sound effect synthesis...</div>';
+            // Check if AudioCraft is already loaded
+            const status = await checkAudioCraftStatus();
+            if (status.loading) {
+                showLoadingStatus(resultArea, 'sound');
+            } else {
+                resultArea.innerHTML = '<div class="consciousness-feedback">Engaging neural pathways for sound effect synthesis...</div>';
+            }
             
             // Processing tone feedback
             setTimeout(() => triggerAudioCraftSound('sound_processing'), 500);
@@ -512,6 +571,14 @@
                                 <strong>⚠️ Using Fallback Audio</strong><br/>
                                 <strong>Error:</strong> ${error}<br/>
                                 <strong>Message:</strong> ${message}
+                            </div>
+                        `;
+                    } else if (status === 'timeout') {
+                        statusMessage = `
+                            <div style="color: #ff9800; background: #2a1810; border: 1px solid #ff9800; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <strong>⏳ AudioCraft Loading Timeout</strong><br/>
+                                <strong>Message:</strong> ${message}<br/>
+                                <strong>Note:</strong> AudioCraft may still be loading models in the background. Try again in a few minutes.
                             </div>
                         `;
                     } else if (status === 'success') {
@@ -572,7 +639,13 @@
             button.disabled = true;
             button.innerHTML = '<span class="synaptic-loading"></span> Manifesting musical consciousness...';
             
-            resultArea.innerHTML = '<div class="consciousness-feedback">Engaging creative neural networks for musical synthesis...</div>';
+            // Check if AudioCraft is already loaded
+            const status = await checkAudioCraftStatus();
+            if (status.loading) {
+                showLoadingStatus(resultArea, 'music');
+            } else {
+                resultArea.innerHTML = '<div class="consciousness-feedback">Engaging creative neural networks for musical synthesis...</div>';
+            }
             
             // Processing tone feedback (musical sequence)
             setTimeout(() => triggerAudioCraftSound('music_processing'), 800);
@@ -613,6 +686,14 @@
                                 <strong>⚠️ Using Fallback Audio</strong><br/>
                                 <strong>Error:</strong> ${error}<br/>
                                 <strong>Message:</strong> ${message}
+                            </div>
+                        `;
+                    } else if (status === 'timeout') {
+                        statusMessage = `
+                            <div style="color: #ff9800; background: #2a1810; border: 1px solid #ff9800; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+                                <strong>⏳ AudioCraft Loading Timeout</strong><br/>
+                                <strong>Message:</strong> ${message}<br/>
+                                <strong>Note:</strong> AudioCraft may still be loading models in the background. Try again in a few minutes.
                             </div>
                         `;
                     } else if (status === 'success') {

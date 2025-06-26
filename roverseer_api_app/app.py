@@ -50,7 +50,7 @@ app.include_router(system_router, tags=["system"])
 app.include_router(chat_router, tags=["chat"])
 app.include_router(audio_router, tags=["audio"])
 app.include_router(voice_training_router, prefix="/neural-voice", tags=["voice-training"])
-app.include_router(audiocraft_router, prefix="/audiocraft", tags=["audiocraft"])
+app.include_router(audiocraft_router, tags=["audiocraft"])
 
 # Root redirect
 @app.get('/docs/')
