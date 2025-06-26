@@ -806,38 +806,85 @@
             transform: translateY(0) scale(0.95);
         }
 
-        /* Interaction Mode Styling */
+        /* Interaction Mode Styling - Compact Version */
         .interaction-mode-toggle {
-            margin-bottom: 16px;
+            margin-bottom: 8px;
         }
 
         .interaction-mode-toggle label {
             background: var(--glass-bg);
-            padding: 12px 16px;
-            border-radius: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
             border: 1px solid var(--glass-border);
             cursor: pointer;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
+            font-size: 14px;
         }
 
         .interaction-mode-toggle label:hover {
             background: var(--secondary-purple);
             color: white;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
+        /* Compact interaction status bar when running */
+        .interaction-status-bar {
+            background: linear-gradient(135deg, var(--primary-purple), var(--secondary-purple));
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .interaction-status-bar .status-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .interaction-status-bar .status-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .interaction-status-bar button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .interaction-status-bar button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Compact configuration panel */
         .interaction-controls {
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            margin-bottom: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
             backdrop-filter: blur(20px);
             overflow: hidden;
         }
 
+        .interaction-controls.collapsed .interaction-body {
+            display: none;
+        }
+
         .interaction-header {
-            padding: 16px 20px;
+            padding: 10px 16px;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
@@ -845,6 +892,7 @@
             background: var(--gradient-glass);
             border-bottom: 1px solid var(--glass-border);
             transition: all 0.3s ease;
+            font-size: 14px;
         }
 
         .interaction-header:hover {
@@ -853,15 +901,33 @@
         }
 
         .interaction-body {
-            padding: 20px;
+            padding: 16px;
         }
 
         .interaction-row {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             flex-wrap: wrap;
+        }
+
+        .interaction-row label {
+            min-width: 80px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .interaction-row select,
+        .interaction-row input {
+            font-size: 13px;
+            padding: 6px 8px;
+        }
+
+        .interaction-row textarea {
+            font-size: 13px;
+            padding: 8px;
+            min-height: 50px;
         }
 
         /* Custom System Message Styling */
@@ -2128,6 +2194,80 @@
             conversationHistory: [],
             intervalId: null
         };
+
+        // Audio queue system for interaction mode
+        var audioQueue = {
+            queue: [],
+            currentAudio: null,
+            isPlaying: false,
+            
+            enqueue: function(audioElement, messageDiv) {
+                this.queue.push({ audio: audioElement, messageDiv: messageDiv });
+                this.processQueue();
+            },
+            
+            processQueue: function() {
+                if (this.isPlaying || this.queue.length === 0) {
+                    return;
+                }
+                
+                const { audio, messageDiv } = this.queue.shift();
+                this.currentAudio = audio;
+                this.isPlaying = true;
+                
+                // Add playing indicator to message
+                if (messageDiv) {
+                    const indicator = document.createElement('div');
+                    indicator.className = 'audio-playing-indicator';
+                    indicator.innerHTML = '🔊 Playing...';
+                    indicator.style.cssText = 'font-size: 12px; color: #4CAF50; margin-top: 5px;';
+                    messageDiv.appendChild(indicator);
+                }
+                
+                // Set up event listeners
+                audio.addEventListener('ended', () => {
+                    this.onAudioEnded(messageDiv);
+                });
+                
+                audio.addEventListener('error', () => {
+                    console.error('Audio playback error');
+                    this.onAudioEnded(messageDiv);
+                });
+                
+                // Start playing
+                audio.play().catch(error => {
+                    console.error('Error starting audio playback:', error);
+                    this.onAudioEnded(messageDiv);
+                });
+            },
+            
+            onAudioEnded: function(messageDiv) {
+                this.isPlaying = false;
+                this.currentAudio = null;
+                
+                // Remove playing indicator
+                if (messageDiv) {
+                    const indicator = messageDiv.querySelector('.audio-playing-indicator');
+                    if (indicator) {
+                        indicator.remove();
+                    }
+                }
+                
+                // Process next item in queue
+                setTimeout(() => {
+                    this.processQueue();
+                }, 500); // Small delay between audio files
+            },
+            
+            clear: function() {
+                this.queue = [];
+                if (this.currentAudio) {
+                    this.currentAudio.pause();
+                    this.currentAudio = null;
+                }
+                this.isPlaying = false;
+            }
+        };
         
         function toggleInteractionPanel() {
             const controls = document.getElementById('interaction-controls');
@@ -2137,6 +2277,7 @@
         function toggleInteractionMode() {
             const checkbox = document.getElementById('interaction-mode-checkbox');
             const controls = document.getElementById('interaction-controls');
+            const statusBar = document.getElementById('interaction-status-bar');
             const normalControls = document.querySelector('.chat-input-wrapper');
             
             if (checkbox.checked) {
@@ -2146,11 +2287,15 @@
                 controls.classList.add('collapsed');
             } else {
                 controls.style.display = 'none';
+                statusBar.style.display = 'none';
                 normalControls.style.display = 'flex';
                 
-                // Stop any active interaction
+                // Stop any active interaction and clear audio queue
                 if (interactionMode.active) {
                     stopInteraction();
+                } else {
+                    // Clear audio queue even if no active interaction
+                    audioQueue.clear();
                 }
             }
         }
@@ -2190,14 +2335,18 @@
             oscillator2.stop(audioContext.currentTime + 1);
         }
         
-        function updateMiniStatus() {
-            const miniStatus = document.getElementById('interaction-mini-status');
+        function updateCompactStatus() {
+            const progressElement = document.getElementById('interaction-progress');
+            const turnElement = document.getElementById('current-turn-indicator');
+            
             if (interactionMode.active) {
-                const agent1Name = getAgentDisplayName(interactionMode.agent1);
-                const agent2Name = getAgentDisplayName(interactionMode.agent2);
-                miniStatus.textContent = `${agent1Name} ↔ ${agent2Name} (${interactionMode.totalRounds - interactionMode.roundsRemaining + 1}/${interactionMode.totalRounds})`;
-            } else {
-                miniStatus.textContent = '';
+                const currentRound = interactionMode.totalRounds - interactionMode.roundsRemaining + 1;
+                progressElement.textContent = `🤝 Round ${currentRound}/${interactionMode.totalRounds}`;
+                
+                const currentAgent = interactionMode.currentTurn === 'agent1' ? 
+                    getAgentDisplayName(interactionMode.agent1) : 
+                    getAgentDisplayName(interactionMode.agent2);
+                turnElement.textContent = `🔄 ${currentAgent} thinking...`;
             }
         }
         
@@ -2219,9 +2368,11 @@
             // Play mystical start sound
             playInteractionStartSound();
             
-            // Collapse the panel after starting
+            // Show compact status bar and collapse the panel after starting
             const controls = document.getElementById('interaction-controls');
+            const statusBar = document.getElementById('interaction-status-bar');
             controls.classList.add('collapsed');
+            statusBar.style.display = 'flex';
             
             // Initialize interaction state
             interactionMode.active = true;
@@ -2238,6 +2389,9 @@
             // Update UI
             document.getElementById('interaction-start-btn').disabled = true;
             document.getElementById('interaction-stop-btn').disabled = false;
+            
+            // Update status bar
+            updateCompactStatus();
             agent1Select.disabled = true;
             agent2Select.disabled = true;
             voice1Select.disabled = true;
@@ -2249,11 +2403,9 @@
             document.querySelector('[name="user_input"]').disabled = true;
             document.querySelector('.send-button').disabled = true;
             
-            // Show status
-            const statusDiv = document.getElementById('interaction-status');
-            statusDiv.classList.add('active');
+            // Update status display
             updateInteractionStatus();
-            updateMiniStatus();
+            updateCompactStatus();
             
             // Add initial system message to chat
             const messagesContainer = document.getElementById('messages-container');
@@ -2275,6 +2427,13 @@
         
         function stopInteraction() {
             interactionMode.active = false;
+            
+            // Clear audio queue
+            audioQueue.clear();
+            
+            // Hide status bar
+            const statusBar = document.getElementById('interaction-status-bar');
+            statusBar.style.display = 'none';
             
             // Play stop interaction sound
             playInteractionStopSound();
@@ -2305,10 +2464,8 @@
             document.querySelector('[name="user_input"]').disabled = false;
             document.querySelector('.send-button').disabled = false;
             
-            // Hide status
-            const statusDiv = document.getElementById('interaction-status');
-            statusDiv.classList.remove('active');
-            updateMiniStatus();
+            // Clear status
+            updateCompactStatus();
             
             // Add completion message
             const messagesContainer = document.getElementById('messages-container');
@@ -2381,13 +2538,8 @@
                 getAgentDisplayName(interactionMode.agent1) : 
                 getAgentDisplayName(interactionMode.agent2);
             
-            statusDiv.innerHTML = 
-                '🎭 Interaction Mode Active - Current Turn: ' + escapeHtml(currentAgent) +
-                '<span class="rounds-counter">Round ' + 
-                (interactionMode.totalRounds - interactionMode.roundsRemaining + 1) + 
-                ' of ' + interactionMode.totalRounds + '</span>';
-                
-            updateMiniStatus();
+            // Update compact status bar
+            updateCompactStatus();
         }
         
         function getAgentDisplayName(agentValue) {
@@ -2532,19 +2684,31 @@
                 // Always process think tags for both agents
                 const processedReply = processThinkTags(data.reply);
                 
-                // Include audio if present
-                let audioHtml = '';
+                // Handle audio if present
+                let audioElement = null;
                 if (data.audio_url) {
-                    audioHtml = '<audio controls autoplay>' +
+                    audioElement = new Audio(data.audio_url);
+                    // Add audio controls to the message but don't autoplay
+                    const audioHtml = '<audio controls style="width: 100%; margin-top: 8px;">' +
                         '<source src="' + data.audio_url + '" type="audio/wav">' +
                         'Your browser does not support the audio element.' +
                     '</audio>';
+                    
+                    assistantDiv.innerHTML = 
+                        '<div class="message-bubble">' + processedReply + audioHtml + '</div>' +
+                        '<div class="message-info">' + escapeHtml(currentAgentDisplay) + '</div>';
+                } else {
+                    assistantDiv.innerHTML = 
+                        '<div class="message-bubble">' + processedReply + '</div>' +
+                        '<div class="message-info">' + escapeHtml(currentAgentDisplay) + '</div>';
                 }
                 
-                assistantDiv.innerHTML = 
-                    '<div class="message-bubble">' + processedReply + audioHtml + '</div>' +
-                    '<div class="message-info">' + escapeHtml(currentAgentDisplay) + '</div>';
                 messagesContainer.insertBefore(assistantDiv, typingIndicator);
+                
+                // Add to audio queue for sequential playback
+                if (audioElement) {
+                    audioQueue.enqueue(audioElement, assistantDiv);
+                }
                 
                 // Add to conversation history
                 interactionMode.conversationHistory.push([userMessage, data.reply]);
@@ -2934,26 +3098,35 @@
         <div class="chat-input-container">
             <!-- Interaction Mode Toggle -->
             <div class="interaction-mode-toggle">
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                     <input type="checkbox" id="interaction-mode-checkbox" onchange="toggleInteractionMode()">
-                    <span style="font-weight: bold;">🎭 Interaction Mode - Have two agents talk to each other</span>
+                    <span>🎭 Interaction Mode</span>
                 </label>
             </div>
             
-            <!-- Interaction Mode Controls -->
-            <div id="interaction-controls" class="interaction-controls" style="display: none;">
+            <!-- Compact Status Bar (shown when interaction is active) -->
+            <div id="interaction-status-bar" class="interaction-status-bar" style="display: none;">
+                <div class="status-left">
+                    <span id="interaction-progress">🤝 Round 1/5</span>
+                    <span id="current-turn-indicator">🔄 Agent 1 thinking...</span>
+                </div>
+                <div class="status-right">
+                    <button onclick="stopInteraction()">⏹️ Stop</button>
+                    <button onclick="toggleInteractionPanel()">⚙️ Settings</button>
+                </div>
+            </div>
+            
+            <!-- Interaction Mode Configuration (collapsible) -->
+            <div id="interaction-controls" class="interaction-controls collapsed" style="display: none;">
                 <div class="interaction-header" onclick="toggleInteractionPanel()">
-                    <span>🤝 Agent Interaction Configuration</span>
-                    <span>
-                        <span class="interaction-mini-status" id="interaction-mini-status"></span>
-                        <span class="collapse-icon">▼</span>
-                    </span>
+                    <span>⚙️ Configure Agents</span>
+                    <span class="collapse-icon">▼</span>
                 </div>
                 
                 <div class="interaction-body">
                     <div class="interaction-row">
-                        <label><span style="color: #007AFF;">●</span> Agent 1:</label>
-                        <select id="interaction-agent1">
+                        <label>Agent 1:</label>
+                        <select id="interaction-agent1" style="flex: 1;">
                             {% if categorized_models %}
                                 {% for category_name, models_list in categorized_models.items() %}
                                     <optgroup label="{{ category_name }}">
@@ -2964,7 +3137,7 @@
                                 {% endfor %}
                             {% endif %}
                         </select>
-                        <select id="interaction-voice1" class="voice-select">
+                        <select id="interaction-voice1" style="flex: 1;">
                             {% if categorized_voices %}
                                 {% for category, voice_list in categorized_voices.categorized.items() %}
                                     <optgroup label="{{ category|title }}">
@@ -2982,8 +3155,8 @@
                     </div>
                     
                     <div class="interaction-row">
-                        <label><span style="color: #999;">●</span> Agent 2:</label>
-                        <select id="interaction-agent2">
+                        <label>Agent 2:</label>
+                        <select id="interaction-agent2" style="flex: 1;">
                             {% if categorized_models %}
                                 {% for category_name, models_list in categorized_models.items() %}
                                     <optgroup label="{{ category_name }}">
@@ -2996,7 +3169,7 @@
                                 {% endfor %}
                             {% endif %}
                         </select>
-                        <select id="interaction-voice2" class="voice-select">
+                        <select id="interaction-voice2" style="flex: 1;">
                             {% if categorized_voices %}
                                 {% for category, voice_list in categorized_voices.categorized.items() %}
                                     <optgroup label="{{ category|title }}">
@@ -3014,33 +3187,28 @@
                     </div>
                     
                     <div class="interaction-row">
-                        <label>🔄 Rounds:</label>
-                        <input type="number" id="interaction-rounds" min="1" max="20" value="5">
-                    </div>
-                    
-                    <div class="interaction-row">
-                        <label>🔊 Output:</label>
-                        <select id="interaction-output-type">
+                        <label>Rounds:</label>
+                        <input type="number" id="interaction-rounds" min="1" max="20" value="5" style="width: 60px;">
+                        
+                        <label style="margin-left: 16px;">Output:</label>
+                        <select id="interaction-output-type" style="flex: 1;">
                             <option value="text">📝 Text Only</option>
                             <option value="speak">🔊 Play on RoverSeer</option>
                             <option value="audio_file">🎵 Download Audio</option>
                         </select>
                     </div>
                     
-                    <div class="interaction-row">
-                        <label>💭 Context:</label>
+                    <div class="interaction-row" style="flex-direction: column; align-items: stretch;">
+                        <label>Context (optional):</label>
                         <textarea id="interaction-system-message" 
-                                  class="interaction-system-message" 
-                                  placeholder="Optional: Add context for the conversation (e.g., 'Discuss philosophy', 'Debate technology')"></textarea>
+                                  placeholder="e.g., 'Discuss philosophy', 'Debate technology'"></textarea>
                     </div>
                     
-                    <div id="interaction-status" class="interaction-status"></div>
-                    
-                    <div class="interaction-buttons">
-                        <button id="interaction-start-btn" class="interaction-button start" onclick="startInteraction()">
+                    <div class="interaction-buttons" style="display: flex; gap: 8px; justify-content: center; margin-top: 12px;">
+                        <button id="interaction-start-btn" class="interaction-button start" onclick="startInteraction()" style="flex: 1;">
                             ▶️ Start Interaction
                         </button>
-                        <button id="interaction-stop-btn" class="interaction-button stop" onclick="stopInteraction()" disabled>
+                        <button id="interaction-stop-btn" class="interaction-button stop" onclick="stopInteraction()" disabled style="flex: 1;">
                             ⏹️ Stop Interaction
                         </button>
                     </div>
