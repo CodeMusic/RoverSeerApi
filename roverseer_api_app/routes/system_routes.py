@@ -68,6 +68,12 @@ async def redirect_docs():
     return RedirectResponse("/api/docs", status_code=302)
 
 
+@router.get("/static/{filename}")
+async def serve_static(filename: str):
+    """Serve static files from /tmp/ directory (original route for compatibility)"""
+    return FileResponse(f"/tmp/{filename}")
+
+
 @router.get("/tmp_static/{filename}")
 async def serve_temp_static(filename: str):
     """Serve temporary audio files from /tmp/ directory"""
@@ -322,28 +328,29 @@ async def system(request: Request,
         {"id": "errors", "name": "Error Logs", "icon": "⚠️"}
     ]
     
-    return render_template('system.html', 
-                          top_models=top_models, 
-                          log_types=log_types, 
-                          selected_log_type=selected_log_type,
-                          selected_date=selected_date,
-                          available_dates=available_dates,
-                          log_entries=log_entries,
-                          sort_by=sort_by,
-                          sort_label=sort_label,
-                          sort_metric=sort_metric,
-                          view_mode=view_mode,
-                          all_models_data=all_models_data,
-                          model_detail=model_detail,
-                          model_name=model_name,
-                          extract_short_model_name=TextProcessingHelper.extract_short_model_name,
-                          voices=voices,
-                          categorized_voices=categorized_voices,  # Add categorized voices
-                          current_voice=current_voice,
-                          current_concurrent=current_concurrent,
-                          available_models=available_models,
-                          categorized_models=categorized_models,
-                          streaming_tts_enabled=streaming_tts_enabled)  # Add streaming TTS status
+    return templates.TemplateResponse('system.html', {
+                          "request": request,
+                          "top_models": top_models, 
+                          "log_types": log_types, 
+                          "selected_log_type": selected_log_type,
+                          "selected_date": selected_date,
+                          "available_dates": available_dates,
+                          "log_entries": log_entries,
+                          "sort_by": sort_by,
+                          "sort_label": sort_label,
+                          "sort_metric": sort_metric,
+                          "view_mode": view_mode,
+                          "all_models_data": all_models_data,
+                          "model_detail": model_detail,
+                          "model_name": model_name,
+                          "extract_short_model_name": TextProcessingHelper.extract_short_model_name,
+                          "voices": voices,
+                          "categorized_voices": categorized_voices,  # Add categorized voices
+                          "current_voice": current_voice,
+                          "current_concurrent": current_concurrent,
+                          "available_models": available_models,
+                          "categorized_models": categorized_models,
+                          "streaming_tts_enabled": streaming_tts_enabled})  # Add streaming TTS status
 
 
 @router.get('/models')
@@ -657,7 +664,7 @@ async def get_current_personality():
 @router.post('/system/personality/create')
 async def create_personality(request: Request):
     """Create a new custom personality"""
-    data = request.get_json()
+    data = await request.json()
     
     # Validate required fields
     required_fields = ['name', 'voice_id', 'system_message']
@@ -697,7 +704,7 @@ async def create_personality(request: Request):
 @router.post('/system/personality/delete')
 async def delete_personality(request: Request):
     """Delete a custom personality"""
-    data = request.get_json()
+    data = await request.json()
     
     if not data.get('name'):
         return JSONResponse(content={
@@ -723,7 +730,7 @@ async def delete_personality(request: Request):
 @router.post('/system/personality/update')
 async def update_personality_custom(request: Request):
     """Update an existing custom personality"""
-    data = request.get_json()
+    data = await request.json()
     
     # Validate required fields
     required_fields = ['old_name', 'name', 'voice_id', 'system_message']
@@ -865,7 +872,7 @@ async def get_personality_moods(personality_name: str):
 @router.post('/system/personality/{personality_name}/moods')
 async def create_personality_mood(personality_name: str, request: Request):
     """Create a new mood for a personality"""
-    data = request.get_json()
+    data = await request.json()
     
     # Validate required fields
     required_fields = ['mood_name', 'trigger_probability', 'context_triggers', 'mood_influences']
@@ -905,7 +912,7 @@ async def create_personality_mood(personality_name: str, request: Request):
 @router.put('/system/personality/{personality_name}/moods/{mood_name}')
 async def update_personality_mood(personality_name: str, mood_name: str, request: Request):
     """Update an existing mood for a personality"""
-    data = request.get_json()
+    data = await request.json()
     
     try:
         from cognition.contextual_moods import contextual_moods
@@ -1104,3 +1111,50 @@ async def download_ollama_model(request: Request):
         return JSONResponse(content={
             "error": str(e)
         })
+
+
+@router.get('/system/conversations')
+async def get_conversations(date: Optional[str] = None):
+    """Get list of conversations, optionally filtered by date"""
+    try:
+        from memory.usage_logger import parse_log_file, group_logs_by_conversation
+        
+        # Get LLM usage entries
+        llm_entries = parse_log_file('llm_usage', date)
+        
+        # Group by conversation threads
+        conversations = group_logs_by_conversation(llm_entries)
+        
+        return JSONResponse(content={
+            "status": "success",
+            "conversations": conversations,
+            "date": date
+        })
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"Error loading conversations: {str(e)}"
+        }), 500
+
+
+@router.get('/system/conversation/{thread_id}')
+async def get_conversation_details(thread_id: str, date: Optional[str] = None):
+    """Get detailed entries for a specific conversation thread"""
+    try:
+        from memory.usage_logger import get_conversation_summary
+        
+        # Get detailed conversation data
+        conversation = get_conversation_summary(thread_id, date)
+        
+        if not conversation:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "Conversation not found"
+            }), 404
+        
+        return JSONResponse(content=conversation)
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error", 
+            "message": f"Error loading conversation details: {str(e)}"
+        }), 500

@@ -3756,6 +3756,10 @@
                class="log-type {% if view_mode == 'settings' %}active{% endif %}">
                🔧 Settings
             </a>
+            <a href="/system?view=conversations" 
+               class="log-type {% if view_mode == 'conversations' %}active{% endif %}">
+               💬 Conversations
+            </a>
             <a href="/system?view=voice_training" 
                class="log-type {% if view_mode == 'voice_training' %}active{% endif %}">
                🧠 Voice Training
@@ -4639,6 +4643,36 @@
                     <div id="training-status-message" class="status-message"></div>
                 </div>
             
+            {% elif view_mode == 'conversations' %}
+                <h2>💬 Conversation Viewer</h2>
+                <p>Browse and explore detailed conversation histories grouped by thread.</p>
+                
+                <div class="settings-section">
+                    <!-- Date Filter -->
+                    <div class="settings-group">
+                        <h3>📅 Filter Options</h3>
+                        <div class="setting-item">
+                            <label for="conversation-date-filter">Date Filter</label>
+                            <input type="date" id="conversation-date-filter" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                            <button onclick="refreshConversations()" style="background: #4169e1; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Conversation Display -->
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; min-height: 500px;">
+                        <div class="conversation-list" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f8f9fa;">
+                            <div style="text-align: center; padding: 20px; color: #666;">
+                                Loading conversations...
+                            </div>
+                        </div>
+                        <div class="conversation-details" id="conversation-details" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white;">
+                            <div style="text-align: center; padding: 20px; color: #666; font-style: italic;">
+                                Select a conversation from the left to view details
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
             {% else %}
                 <h2>RoverSeer System</h2>
                 <p>Select a log type from the sidebar to view entries, or explore model information.</p>
@@ -4648,6 +4682,7 @@
                         <li style="margin: 10px 0;"><a href="/system?view=models&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🤖 View All Models</a></li>
                         <li style="margin: 10px 0;"><a href="/system?log_type=llm_usage&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🤖 View LLM Usage Logs</a></li>
                         <li style="margin: 10px 0;"><a href="/system?log_type=penphin_mind&sort_by={{ sort_by }}" style="color: #4169e1; text-decoration: none;">🧠 View PenphinMind Logs</a></li>
+                        <li style="margin: 10px 0;"><a href="/system?view=conversations" style="color: #4169e1; text-decoration: none;">💬 View Conversations</a></li>
                     </ul>
                 </div>
             {% endif %}

@@ -15,12 +15,12 @@ from cognition.model_management import initialize_model_list
 # Import route modules (converted to FastAPI)
 from routes.system_routes import router as system_router
 from routes.chat_routes import router as chat_router
+from routes.audio_routes import router as audio_router
+from routes.audiocraft_routes import router as audiocraft_router
 
 # Create minimal routers for other routes to maintain compatibility
 from fastapi import APIRouter
-audio_router = APIRouter()
 voice_training_router = APIRouter() 
-audiocraft_router = APIRouter()
 
 # Create FastAPI application
 app = FastAPI(
