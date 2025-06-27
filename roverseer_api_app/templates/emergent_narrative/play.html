@@ -550,6 +550,7 @@
         let isProcessing = false;
         let debugMode = false;
         let autoAdvanceTimer = null;
+        let currentSceneInfo = null; // Store current scene character assignments
         
         function toggleDebug() {
             debugMode = !debugMode;
@@ -614,9 +615,10 @@
                     actInfo.innerHTML = '<strong>Current Act:</strong> Not started';
                 }
                 
-                // Update scene info
+                // Update scene info and store for character assignment
                 const sceneInfo = document.getElementById('sceneInfo');
                 if (status.current_scene_info) {
+                    currentSceneInfo = status.current_scene_info; // Store for character styling
                     sceneInfo.innerHTML = `
                         <strong>Scene ${status.current_scene_info.number}:</strong> 
                         ${status.current_scene_info.description}
@@ -627,6 +629,7 @@
                         </small>
                     `;
                 } else {
+                    currentSceneInfo = null;
                     sceneInfo.innerHTML = '<strong>Current Scene:</strong> Not started';
                 }
                 
@@ -826,8 +829,20 @@
                     // Remove typing indicator
                     hideTypingIndicator();
                     
-                    // Add interaction to display
-                    addInteractionToDisplay(result);
+                    // If scene advanced to a new scene, clear the interactions display
+                    if (result.narrative_advanced) {
+                        updateDebugInfo('Scene advanced - clearing interactions display for new scene');
+                        const container = document.getElementById('interactionsDisplay');
+                        container.innerHTML = '<div class="empty-theater">New scene starting...</div>';
+                        
+                        // Brief delay before adding the new interaction to show scene transition
+                        setTimeout(() => {
+                            addInteractionToDisplay(result);
+                        }, 500);
+                    } else {
+                        // Add interaction to current scene
+                        addInteractionToDisplay(result);
+                    }
                     
                     // Handle audio if provided
                     if (result.audio_url) {
@@ -916,10 +931,20 @@
                 emptyState.remove();
             }
             
-            // Determine character type and get character info
-            const characters = narrativeData.characters;
-            const character = characters.find(c => c.name === result.character);
-            const isCharacterA = result.character === characters[0].name;
+            // Determine character type based on current scene assignments
+            let isCharacterA = false;
+            if (currentSceneInfo && currentSceneInfo.characters) {
+                // Use actual scene character assignments if available
+                const sceneCharacterA = currentSceneInfo.characters[0];
+                isCharacterA = result.character === sceneCharacterA;
+                updateDebugInfo(`Character assignment: ${result.character} is ${isCharacterA ? 'A' : 'B'} (Scene A: ${sceneCharacterA}, Scene B: ${currentSceneInfo.characters[1] || 'Unknown'})`);
+            } else {
+                // Fallback to alternating pattern
+                const existingMessages = container.querySelectorAll('.interaction-message');
+                const messageCount = existingMessages.length;
+                isCharacterA = messageCount % 2 === 0;
+                updateDebugInfo(`Character assignment fallback: ${result.character} is ${isCharacterA ? 'A' : 'B'} (message #${messageCount})`);
+            }
             const characterInitials = result.character.split(' ').map(n => n[0]).join('').toUpperCase();
             
             const messageDiv = document.createElement('div');

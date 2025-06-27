@@ -698,9 +698,20 @@ async def advance_narrative(request: Request, narrative_id: str):
         
         if scene_completed:
             logger.info(f"Scene {current_scene.scene_number} completed! Advancing narrative...")
+            old_scene_number = current_scene.scene_number
+            old_act = narrative.current_act
+            old_scene = narrative.current_scene
+            
             narrative_advanced = narrative.advance_narrative()
             if narrative_advanced:
                 logger.info(f"Advanced to next scene/act. New position: Act {narrative.current_act}, Scene {narrative.current_scene}")
+                
+                # Get the new scene and log character assignments
+                new_current_scene = narrative.get_current_scene()
+                if new_current_scene:
+                    new_char_a = narrative.get_character_by_id(new_current_scene.character_a_id)
+                    new_char_b = narrative.get_character_by_id(new_current_scene.character_b_id)
+                    logger.info(f"NEW SCENE CHARACTERS: Scene {new_current_scene.scene_number} - {new_char_a.name if new_char_a else 'Unknown'} & {new_char_b.name if new_char_b else 'Unknown'}")
         
         # Save narrative state
         narrative.save_to_file(narrative_file)
