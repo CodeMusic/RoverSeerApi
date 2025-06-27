@@ -15,7 +15,7 @@ from expression.text_to_speech import generate_tts_audio, speak_text
 LLM_REQUEST_TIMEOUT = get_config_value("llm_request_timeout", 120)  # 2 minutes default
 LLM_STREAMING_TIMEOUT = get_config_value("llm_streaming_timeout", 300)  # 5 minutes for streaming
 
-def run_chat_completion(model, messages, system_message=None, skip_logging=False, voice_id=None):
+def run_chat_completion(model, messages, system_message=None, skip_logging=False, voice_id=None, temperature=None):
     """Run a chat completion request against Ollama with display and sound feedback"""
     
     # Check if streaming TTS is enabled
@@ -125,20 +125,26 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
         # If streaming TTS is enabled and voice_id is provided, use streaming mode
         if streaming_tts_enabled and voice_id:
             return _run_streaming_chat_completion(model, messages, stop_timer, start_time, voice_id, 
-                                                  skip_logging, system_message, user_prompt, current_personality)
+                                                  skip_logging, system_message, user_prompt, current_personality, temperature)
         else:
             # Get the appropriate Ollama server URL
             ollama_url, is_remote = config.get_ollama_base_url()
             
             # Use regular non-streaming mode
+            request_data = {
+                "model": model, 
+                "messages": messages,
+                "stream": False
+            }
+            
+            # Add temperature if specified
+            if temperature is not None:
+                request_data["options"] = {"temperature": temperature}
+            
             response = requests.post(
                 f"{ollama_url}/api/chat",
                 headers={"Content-Type": "application/json"},
-                json={
-                    "model": model, 
-                    "messages": messages,
-                    "stream": False
-                },
+                json=request_data,
                 timeout=LLM_REQUEST_TIMEOUT
             )
             response.raise_for_status()
@@ -236,7 +242,7 @@ def run_chat_completion(model, messages, system_message=None, skip_logging=False
 
 
 def _run_streaming_chat_completion(model, messages, stop_timer, start_time, voice_id, 
-                                 skip_logging, system_message, user_prompt, current_personality):
+                                 skip_logging, system_message, user_prompt, current_personality, temperature=None):
     """Streaming version of chat completion with sentence-by-sentence TTS"""
     
     # Prepare TTS thread control
@@ -306,14 +312,20 @@ def _run_streaming_chat_completion(model, messages, stop_timer, start_time, voic
         ollama_url, is_remote = config.get_ollama_base_url()
         
         # Start streaming request
+        request_data = {
+            "model": model, 
+            "messages": messages,
+            "stream": True
+        }
+        
+        # Add temperature if specified
+        if temperature is not None:
+            request_data["options"] = {"temperature": temperature}
+            
         response = requests.post(
             f"{ollama_url}/api/chat",
             headers={"Content-Type": "application/json"},
-            json={
-                "model": model, 
-                "messages": messages,
-                "stream": True
-            },
+            json=request_data,
             stream=True,
             timeout=LLM_STREAMING_TIMEOUT
         )

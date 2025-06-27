@@ -1963,6 +1963,64 @@
                 console.error('❌ Error loading volume:', error);
             }
         }
+
+        // Buzzer sound effects toggle
+        async function toggleBuzzerSoundEffects(enabled) {
+            const buzzerIcon = document.getElementById('buzzerIcon');
+            
+            try {
+                const response = await fetch('/system/buzzer_effects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled })
+                });
+                
+                if (response.ok) {
+                    // Update icon based on state
+                    buzzerIcon.textContent = enabled ? '🔊' : '🔇';
+                    console.log(`🔊 Buzzer sound effects ${enabled ? 'enabled' : 'disabled'}`);
+                    
+                    // Play a confirmation sound if enabling
+                    if (enabled) {
+                        playInteractionStartSound();
+                    }
+                } else {
+                    console.error('Failed to update buzzer settings');
+                    // Revert toggle if request failed
+                    document.getElementById('buzzerToggle').checked = !enabled;
+                }
+            } catch (error) {
+                console.error('Error toggling buzzer effects:', error);
+                // Revert toggle if request failed
+                document.getElementById('buzzerToggle').checked = !enabled;
+            }
+        }
+
+        // Load current buzzer setting
+        async function loadCurrentBuzzerSetting() {
+            try {
+                const response = await fetch('/system/buzzer_effects');
+                if (response.ok) {
+                    const data = await response.json();
+                    const buzzerToggle = document.getElementById('buzzerToggle');
+                    const buzzerIcon = document.getElementById('buzzerIcon');
+                    
+                    if (buzzerToggle && buzzerIcon) {
+                        buzzerToggle.checked = data.enabled;
+                        buzzerIcon.textContent = data.enabled ? '🔊' : '🔇';
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load buzzer setting:', error);
+                // Default to enabled if we can't load the setting
+                const buzzerToggle = document.getElementById('buzzerToggle');
+                const buzzerIcon = document.getElementById('buzzerIcon');
+                if (buzzerToggle && buzzerIcon) {
+                    buzzerToggle.checked = true;
+                    buzzerIcon.textContent = '🔊';
+                }
+            }
+        }
         
         // Helper function to show status messages
         function showStatusMessage(message, type) {
@@ -2983,6 +3041,9 @@
             
             // Load current volume
             loadCurrentVolume();
+            
+            // Load current buzzer setting
+            loadCurrentBuzzerSetting();
         });
     </script>
     
@@ -3065,6 +3126,14 @@
                     <input type="range" id="volumeSlider" min="0" max="100" value="50" 
                            style="width: 80px;" onchange="setVolume(this.value)">
                     <span id="volumeDisplay" style="margin-left: 5px; font-size: 12px;">50%</span>
+                </div>
+                <div class="buzzer-control" style="display: inline-flex; align-items: center; margin-left: 10px;">
+                    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; color: var(--text-secondary);">
+                        <input type="checkbox" id="buzzerToggle" onchange="toggleBuzzerSoundEffects(this.checked)" 
+                               style="margin: 0; cursor: pointer;">
+                        <span id="buzzerIcon">🔇</span>
+                        <span>Buzzer SFX</span>
+                    </label>
                 </div>
                 <button onclick="window.location.href='/system'" class="logs-button">📊 System</button>
                 <button onclick="window.location.href='/audiocraft'" class="logs-button" style="background: #667eea;">🎵 AudioCraft</button>

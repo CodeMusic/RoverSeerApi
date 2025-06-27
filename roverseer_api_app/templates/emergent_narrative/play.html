@@ -202,6 +202,11 @@
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
         
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
         .message-timestamp {
             font-size: 0.7rem;
             color: #8E8E93;
@@ -551,6 +556,9 @@
         let debugMode = false;
         let autoAdvanceTimer = null;
         let currentSceneInfo = null; // Store current scene character assignments
+        let characterColorMap = new Map(); // Map character names to their assigned colors
+        let lastAudioUrl = null; // Store the last audio URL for replay
+        let messageAudioMap = new Map(); // Map message elements to their audio URLs
         
         function toggleDebug() {
             debugMode = !debugMode;
@@ -631,6 +639,9 @@
                     
                     // Log character assignments for debugging
                     updateDebugInfo(`Scene ${status.current_scene_info.number} characters: ${status.current_scene_info.characters.join(' & ')}`);
+                    
+                    // Update character colors for the current scene
+                    updateCharacterColorsForScene();
                 } else {
                     currentSceneInfo = null;
                     sceneInfo.innerHTML = '<strong>Current Scene:</strong> Not started';
@@ -837,6 +848,20 @@
                         // showNotification('Character assignments automatically corrected', 'info');
                     }
                     
+                    // Show notification if influences were cleared
+                    if (result.influences_cleared) {
+                        updateDebugInfo('🌟 INFLUENCES CLEARED: All consciousness influences reset for new scene');
+                        // Show brief visual notification in influence section
+                        const influenceSection = document.getElementById('activeInfluences');
+                        if (influenceSection) {
+                            influenceSection.innerHTML = '<div style="color: #4caf50; font-style: italic; animation: fadeIn 0.5s;">✨ All influences cleared for new scene</div>';
+                            setTimeout(() => {
+                                // This will get updated by the next status refresh
+                                updateNarrativeStatus();
+                            }, 2000);
+                        }
+                    }
+                    
                     // Remove typing indicator
                     hideTypingIndicator();
                     
@@ -857,17 +882,24 @@
                         setTimeout(() => {
                             // Force refresh of current scene info for character assignments
                             updateNarrativeStatus().then(() => {
-                                addInteractionToDisplay(result);
+                                const messageElement = addInteractionToDisplay(result);
+                                // Ensure colors are updated for the new scene
+                                updateCharacterColorsForScene();
+                                
+                                // Handle audio for new scene
+                                if (result.audio_url) {
+                                    setTimeout(() => playAudioFromUrl(result.audio_url, messageElement), 100);
+                                }
                             });
                         }, 500);
                     } else {
                         // Add interaction to current scene
-                        addInteractionToDisplay(result);
-                    }
-                    
-                    // Handle audio if provided
-                    if (result.audio_url) {
-                        playAudioFromUrl(result.audio_url);
+                        const messageElement = addInteractionToDisplay(result);
+                        
+                        // Handle audio for current scene interaction
+                        if (result.audio_url) {
+                            setTimeout(() => playAudioFromUrl(result.audio_url, messageElement), 100);
+                        }
                     }
                     
                     updateNarrativeStatus();
@@ -1001,6 +1033,8 @@
             }, 100);
             
             container.scrollTop = container.scrollHeight;
+            
+            return messageDiv; // Return the message element for audio attachment
         }
         
         async function loadExistingInteractions() {
@@ -1036,9 +1070,120 @@
             }
         }
         
-        function playAudioFromUrl(url) {
-            const audio = new Audio(url);
-            audio.play().catch(e => console.log('Audio playback failed:', e));
+        function playAudioFromUrl(url, messageElement = null) {
+            if (!url) return;
+            
+            try {
+                const audio = new Audio(url);
+                lastAudioUrl = url; // Store for replay
+                
+                if (messageElement) {
+                    messageAudioMap.set(messageElement, url);
+                    addReplayButtonToMessage(messageElement, url);
+                }
+                
+                updateDebugInfo(`Playing audio: ${url}`);
+                audio.play().catch(e => {
+                    console.log('Audio playback failed:', e);
+                    updateDebugInfo(`Audio playback failed: ${e.message}`);
+                });
+                
+                // Update the global replay button state
+                updateGlobalReplayButton();
+                
+            } catch (e) {
+                console.error('Error creating audio element:', e);
+                updateDebugInfo(`Error creating audio: ${e.message}`);
+            }
+        }
+        
+        function addReplayButtonToMessage(messageElement, audioUrl) {
+            // Check if replay button already exists
+            if (messageElement.querySelector('.replay-button')) {
+                return;
+            }
+            
+            const replayButton = document.createElement('button');
+            replayButton.className = 'replay-button';
+            replayButton.innerHTML = '🔊';
+            replayButton.title = 'Replay audio';
+            replayButton.style.cssText = `
+                background: rgba(0, 0, 0, 0.5);
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                color: white;
+                cursor: pointer;
+                font-size: 12px;
+                margin-left: 8px;
+                opacity: 0.7;
+                transition: opacity 0.2s;
+            `;
+            
+            replayButton.addEventListener('mouseenter', function() {
+                this.style.opacity = '1';
+            });
+            
+            replayButton.addEventListener('mouseleave', function() {
+                this.style.opacity = '0.7';
+            });
+            
+            replayButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                playAudioFromUrl(audioUrl);
+                updateDebugInfo(`Replaying audio for message`);
+            });
+            
+            // Add to the message bubble
+            const messageBubble = messageElement.querySelector('.message-bubble');
+            if (messageBubble) {
+                messageBubble.appendChild(replayButton);
+            }
+        }
+        
+        function updateGlobalReplayButton() {
+            let replayButton = document.getElementById('global-audio-replay');
+            
+            if (!replayButton && lastAudioUrl) {
+                // Create global replay button
+                replayButton = document.createElement('button');
+                replayButton.id = 'global-audio-replay';
+                replayButton.className = 'control-button';
+                replayButton.innerHTML = '🔊 Replay Last Audio';
+                replayButton.style.cssText = `
+                    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                    margin-top: 10px;
+                    width: 100%;
+                `;
+                
+                replayButton.addEventListener('click', function() {
+                    if (lastAudioUrl) {
+                        playAudioFromUrl(lastAudioUrl);
+                        updateDebugInfo('Replaying last audio from global button');
+                    }
+                });
+                
+                // Add to controls section
+                const controlsSection = document.querySelector('.controls-section');
+                if (controlsSection) {
+                    controlsSection.appendChild(replayButton);
+                }
+            }
+            
+            if (replayButton) {
+                if (lastAudioUrl) {
+                    replayButton.disabled = false;
+                    replayButton.style.opacity = '1';
+                } else {
+                    replayButton.disabled = true;
+                    replayButton.style.opacity = '0.5';
+                    // Hide the button if no audio has ever been played
+                    if (messageAudioMap.size === 0) {
+                        replayButton.style.display = 'none';
+                    }
+                }
+            }
         }
         
         async function applyInfluence() {
@@ -1073,65 +1218,7 @@
             }
         }
         
-        // Color customization functions
-        function setupColorPickers() {
-            const colorPickers = document.querySelectorAll('.character-color-picker');
-            colorPickers.forEach(picker => {
-                picker.addEventListener('change', function() {
-                    const characterIndex = parseInt(this.dataset.characterIndex);
-                    updateCharacterColor(characterIndex, this.value);
-                });
-            });
-        }
-        
-        function updateCharacterColor(characterIndex, color) {
-            const characterClass = characterIndex === 0 ? 'character-a' : 'character-b';
-            const isLightColor = isColorLight(color);
-            const textColor = isLightColor ? '#000000' : '#FFFFFF';
-            
-            // Create or update CSS rule for this character
-            let styleSheet = document.getElementById('dynamic-character-styles');
-            if (!styleSheet) {
-                styleSheet = document.createElement('style');
-                styleSheet.id = 'dynamic-character-styles';
-                document.head.appendChild(styleSheet);
-            }
-            
-            // Update bubble colors
-            const rules = `
-                .${characterClass} .message-bubble {
-                    background: ${color} !important;
-                    color: ${textColor} !important;
-                }
-                .${characterClass} .character-avatar {
-                    background: ${color} !important;
-                    color: ${textColor} !important;
-                }
-            `;
-            
-            // Replace or add the rules
-            const existingRules = styleSheet.textContent;
-            const updatedRules = existingRules.replace(
-                new RegExp(`\\.${characterClass}[^}]*}[^}]*}`, 'g'), 
-                ''
-            ) + rules;
-            
-            styleSheet.textContent = updatedRules;
-        }
-        
-        function isColorLight(color) {
-            // Convert hex to RGB
-            const hex = color.replace('#', '');
-            const r = parseInt(hex.substr(0, 2), 16);
-            const g = parseInt(hex.substr(2, 2), 16);
-            const b = parseInt(hex.substr(4, 2), 16);
-            
-            // Calculate luminance
-            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            return luminance > 0.5;
-        }
-        
-        // Initialize color pickers when page loads
+        // Initialize dynamic scene-based character colors when page loads
         document.addEventListener('DOMContentLoaded', function() {
             updateDebugInfo('Page loaded, initializing...');
             updateDebugInfo(`Narrative ID: ${narrativeId}`);
@@ -1140,7 +1227,6 @@
             updateNarrativeStatus();
             startStatusUpdates();
             loadExistingInteractions();
-            setupColorPickers();
             
             // Add auto-advance mode change listener
             document.getElementById('autoAdvanceMode').addEventListener('change', function() {
@@ -1189,6 +1275,12 @@
                     // Clear the interactions display
                     const container = document.getElementById('interactionsDisplay');
                     container.innerHTML = '<div class="empty-theater">Narrative interactions will appear here when the story begins...</div>';
+                    
+                    // Clear audio state
+                    lastAudioUrl = null;
+                    messageAudioMap.clear();
+                    updateGlobalReplayButton();
+                    updateDebugInfo('Audio state cleared on reset');
                     
                     // Update status
                     updateNarrativeStatus();
@@ -1268,6 +1360,148 @@
                 autoAdvanceTimer = null;
                 updateDebugInfo('Auto-advance stopped');
             }
+        }
+
+        function updateCharacterColorsForScene() {
+            if (!currentSceneInfo || !currentSceneInfo.characters) {
+                return;
+            }
+            
+            const sceneCharA = currentSceneInfo.characters[0];
+            const sceneCharB = currentSceneInfo.characters[1];
+            
+            updateDebugInfo(`Updating colors for scene characters: ${sceneCharA} & ${sceneCharB}`);
+            
+            // Get or assign colors for these characters
+            if (!characterColorMap.has(sceneCharA)) {
+                characterColorMap.set(sceneCharA, '#007AFF'); // Default blue for first character
+            }
+            if (!characterColorMap.has(sceneCharB)) {
+                characterColorMap.set(sceneCharB, '#48484A'); // Default gray for second character  
+            }
+            
+            const colorA = characterColorMap.get(sceneCharA);
+            const colorB = characterColorMap.get(sceneCharB);
+            
+            // Update the CSS styling for current scene characters
+            updateCharacterStylesForScene(colorA, colorB);
+            
+            // Update the color picker section to show current scene characters
+            updateColorPickersForScene(sceneCharA, sceneCharB, colorA, colorB);
+        }
+        
+        function updateCharacterStylesForScene(colorA, colorB) {
+            const isLightColorA = isColorLight(colorA);
+            const isLightColorB = isColorLight(colorB);
+            const textColorA = isLightColorA ? '#000000' : '#FFFFFF';
+            const textColorB = isLightColorB ? '#000000' : '#FFFFFF';
+            
+            // Create or update CSS rule for current scene characters
+            let styleSheet = document.getElementById('dynamic-scene-character-styles');
+            if (!styleSheet) {
+                styleSheet = document.createElement('style');
+                styleSheet.id = 'dynamic-scene-character-styles';
+                document.head.appendChild(styleSheet);
+            }
+            
+            const rules = `
+                .character-a .message-bubble {
+                    background: ${colorA} !important;
+                    color: ${textColorA} !important;
+                }
+                .character-a .character-avatar {
+                    background: ${colorA} !important;
+                    color: ${textColorA} !important;
+                }
+                .character-b .message-bubble {
+                    background: ${colorB} !important;
+                    color: ${textColorB} !important;
+                }
+                .character-b .character-avatar {
+                    background: ${colorB} !important;
+                    color: ${textColorB} !important;
+                }
+            `;
+            
+            styleSheet.textContent = rules;
+        }
+        
+        function updateColorPickersForScene(charA, charB, colorA, colorB) {
+            // Update the color picker section to show current scene's characters
+            const panelHeaders = document.querySelectorAll('.panel-header');
+            let colorSection = null;
+            
+            panelHeaders.forEach(header => {
+                if (header.textContent.includes('Character Colors')) {
+                    colorSection = header.closest('.controls-section');
+                }
+            });
+            
+            if (!colorSection) {
+                updateDebugInfo('Could not find Character Colors section');
+                return;
+            }
+            
+            const panelContent = colorSection.querySelector('div[style*="flex-direction: column"]');
+            if (!panelContent) {
+                updateDebugInfo('Could not find color panel content area');
+                return;
+            }
+            
+            updateDebugInfo(`Updating color pickers for ${charA} & ${charB}`);
+            
+            panelContent.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <input type="color" 
+                           id="scene-color-a" 
+                           value="${colorA}"
+                           style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;"
+                           onchange="updateSceneCharacterColor('${charA}', this.value, true)">
+                    <div>
+                        <div style="font-weight: 600;">${charA}</div>
+                        <div style="font-size: 0.8rem; color: #888;">Character A (Current Scene)</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="color" 
+                           id="scene-color-b" 
+                           value="${colorB}"
+                           style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;"
+                           onchange="updateSceneCharacterColor('${charB}', this.value, false)">
+                    <div>
+                        <div style="font-weight: 600;">${charB}</div>
+                        <div style="font-size: 0.8rem; color: #888;">Character B (Current Scene)</div>
+                    </div>
+                </div>
+                <div style="margin-top: 12px; padding: 8px; background: #333; border-radius: 6px; font-size: 0.8rem; color: #aaa;">
+                    💡 Colors update automatically when scenes change to new character combinations
+                </div>
+            `;
+        }
+        
+        function updateSceneCharacterColor(characterName, color, isCharacterA) {
+            // Store the color for this character
+            characterColorMap.set(characterName, color);
+            updateDebugInfo(`Updated color for ${characterName}: ${color}`);
+            
+            // Update the styling
+            if (isCharacterA) {
+                updateCharacterStylesForScene(color, characterColorMap.get(currentSceneInfo.characters[1]) || '#48484A');
+            } else {
+                updateCharacterStylesForScene(characterColorMap.get(currentSceneInfo.characters[0]) || '#007AFF', color);
+            }
+        }
+        
+        function isColorLight(color) {
+            // Convert hex to RGB
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            
+            // Calculate luminance
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.5;
         }
     </script>
 </body>

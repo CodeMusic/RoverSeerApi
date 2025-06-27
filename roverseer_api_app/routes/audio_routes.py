@@ -5,7 +5,7 @@ import uuid
 import os
 import subprocess
 
-from config import DEFAULT_VOICE, DEFAULT_MODEL, MIC_DEVICE, AUDIO_DEVICE, current_audio_process
+from config import DEFAULT_VOICE, DEFAULT_MODEL, MIC_DEVICE, AUDIO_DEVICE, current_audio_process, DEVICE_PERSONALITY
 from expression.text_to_speech import generate_tts_audio, speak_text, list_voice_ids
 from perception.speech_recognition import transcribe_audio
 from cognition.llm_interface import run_chat_completion
@@ -236,7 +236,7 @@ async def transcribe_chat_voice(
         # 2. LLM reply
         orchestrator.transition_to_state(SystemState.CONTEMPLATING)
         messages = [{"role": "user", "content": transcript}]
-        system_message = "You are RoverSeer, a helpful voice assistant."
+        system_message = DEVICE_PERSONALITY
         reply = run_chat_completion(model, messages, system_message, voice_id=voice)
 
         # Play voice intro before TTS (only when speaking)
@@ -338,7 +338,7 @@ async def transcribe_and_chat(
 
         # Send to LLM
         messages = [{"role": "user", "content": transcript}]
-        system_message = "You are RoverSeer, a helpful assistant responding to transcribed audio."
+        system_message = DEVICE_PERSONALITY
 
         reply = run_chat_completion(model, messages, system_message, voice_id=voice)
 

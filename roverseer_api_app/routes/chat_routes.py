@@ -106,7 +106,8 @@ async def chat_unified(request: Request):
     else:
         # No personality active, use defaults
         if not system_message:
-            system_message = "You are RoverSeer, a helpful assistant."
+            from config import DEFAULT_PERSONALITY
+            system_message = DEFAULT_PERSONALITY
     
     # Final fallback to config default if still no voice
     if not voice:
@@ -247,7 +248,8 @@ async def insight(request: Request):
     if not model:
         model = DEFAULT_MODEL
     if not system_message:
-        system_message = "You are RoverSeer, an insightful assistant."
+        from config import DEFAULT_PERSONALITY
+        system_message = DEFAULT_PERSONALITY
     
     prompt = data["prompt"].strip()
     messages = [{"role": "user", "content": prompt}]
@@ -512,7 +514,8 @@ async def openai_compatible_chat(request: Request):
             system_message = manager.current_personality.generate_system_message(context)
             print(f"DEBUG openai_compatible_chat: Using personality system message for {manager.current_personality.name}")
         else:
-            system_message = "You are RoverSeer, a helpful voice assistant. Keep responses concise and conversational."
+            from config import DEFAULT_PERSONALITY
+            system_message = DEFAULT_PERSONALITY
 
     # Use personality's voice if not specified
     voice = data.get("voice")
@@ -736,7 +739,8 @@ async def chat_ajax(request: Request):
                     print(f"Using custom system message")
                 else:
                     # Use provided system message or default
-                    system_message = system or "You are RoverSeer, a helpful assistant."
+                    from config import DEFAULT_PERSONALITY
+                    system_message = system or DEFAULT_PERSONALITY
                     print(f"Using {'provided' if system else 'default'} system message")
                 
                 # Run LLM

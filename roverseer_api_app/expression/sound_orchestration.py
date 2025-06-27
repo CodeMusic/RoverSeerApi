@@ -4,15 +4,27 @@ import hashlib
 import threading
 from gpiozero.tones import Tone
 
-from config import TICK_TYPE
+from config import TICK_TYPE, BUZZER_SOUND_EFFECTS
 
 # Threading event to track when tunes are playing
 tune_playing = threading.Event()
 
 
+def is_buzzer_enabled():
+    """Check if buzzer sound effects are enabled"""
+    try:
+        from config import get_config_value
+        return get_config_value("buzzer_sound_effects", True)
+    except:
+        return True  # Default to enabled if config can't be read
+
+
 # -------- TUNE FUNCTIONS -------- #
 def play_neural_training_start_tune(voice_name=None):
     """Play an ascending neural network activation tune when starting voice training"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -66,6 +78,9 @@ def play_neural_training_start_tune(voice_name=None):
 
 def play_neural_training_status_tune():
     """Play a brief neural processing tune for training status checks"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -86,6 +101,9 @@ def play_neural_training_status_tune():
 
 def play_neural_training_complete_tune():
     """Play a triumphant neural synthesis completion tune"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -112,6 +130,9 @@ def play_neural_training_complete_tune():
 
 def play_neural_training_error_tune():
     """Play a descending neural disconnection tune for training errors"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -133,6 +154,9 @@ def play_neural_training_error_tune():
 
 def play_startup_tune():
     """Play an ascending startup tune when the system initializes - welcoming and optimistic"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -163,6 +187,9 @@ def play_startup_tune():
 
 def play_ollama_tune(model_name=None):
     """Play a curious ascending tune when starting Ollama requests - uses model name to guide composition"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -218,6 +245,9 @@ def play_ollama_tune(model_name=None):
 
 def play_ollama_complete_tune():
     """Play a victorious tune when Ollama completes successfully"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -233,6 +263,9 @@ def play_ollama_complete_tune():
 
 def play_transcribe_tune():
     """Play a puzzle-solving pattern for transcription requests"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -248,6 +281,9 @@ def play_transcribe_tune():
 
 def play_tts_tune(voice_name=None):
     """Play an announcing fanfare for TTS requests - unique tune based on voice model"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -324,6 +360,9 @@ def play_tts_tune(voice_name=None):
 
 def play_bicameral_connection_tune():
     """Play a unique connecting tune representing two hemispheres joining - three-part harmony"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -369,6 +408,9 @@ def play_bicameral_connection_tune():
 # -------- BUTTON SOUND EFFECTS -------- #
 def play_toggle_left_sound():
     """Play a descending sound for toggling left/previous"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -382,6 +424,9 @@ def play_toggle_left_sound():
 
 def play_toggle_right_sound():
     """Play an ascending sound for toggling right/next"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -395,6 +440,9 @@ def play_toggle_right_sound():
 
 def play_confirmation_sound():
     """Play a confirmation sound for recording start"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -409,6 +457,9 @@ def play_confirmation_sound():
 
 def play_recording_complete_sound():
     """Play a sound when recording completes"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -423,6 +474,9 @@ def play_recording_complete_sound():
 
 def play_toggle_left_echo():
     """Play a quieter echo of the toggle left sound on release"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -436,6 +490,9 @@ def play_toggle_left_echo():
 
 def play_toggle_right_echo():
     """Play a quieter echo of the toggle right sound on release"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -449,6 +506,9 @@ def play_toggle_right_echo():
 
 def play_button_error_sound():
     """Play a 2-note error sound when button press is ignored (like 'eh oh')"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -466,6 +526,9 @@ def play_button_error_sound():
 # -------- SOUND PLAYBACK HELPER -------- #
 def play_sound_async(sound_function, *args, **kwargs):
     """Queue a sound function to play asynchronously"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -477,6 +540,9 @@ def play_sound_async(sound_function, *args, **kwargs):
 # -------- AUDIOCRAFT SYNTHESIS FUNCTIONS -------- #
 def play_audiocraft_sound_start_tune():
     """Play an ascending auditory synthesis initiation tune for sound effects"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -495,6 +561,9 @@ def play_audiocraft_sound_start_tune():
 
 def play_audiocraft_sound_processing_tune():
     """Play a rhythmic processing pattern for sound effect synthesis"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -513,6 +582,9 @@ def play_audiocraft_sound_processing_tune():
 
 def play_audiocraft_sound_complete_tune():
     """Play a completion chord for successful sound effect synthesis"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -531,6 +603,9 @@ def play_audiocraft_sound_complete_tune():
 
 def play_audiocraft_sound_error_tune():
     """Play a descending warning pattern for sound synthesis errors"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -549,6 +624,9 @@ def play_audiocraft_sound_error_tune():
 
 def play_audiocraft_music_start_tune():
     """Play a complex musical initiation sequence for music generation"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -570,6 +648,9 @@ def play_audiocraft_music_start_tune():
 
 def play_audiocraft_music_processing_tune():
     """Play a melodic sequence representing musical consciousness processing"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -591,6 +672,9 @@ def play_audiocraft_music_processing_tune():
 
 def play_audiocraft_music_complete_tune():
     """Play a triumphant harmonic series for musical generation completion"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -612,6 +696,9 @@ def play_audiocraft_music_complete_tune():
 
 def play_audiocraft_music_error_tune():
     """Play a dissonant descending sequence for musical synthesis errors"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     
@@ -633,6 +720,9 @@ def play_audiocraft_music_error_tune():
 
 def play_streaming_snippet_tone():
     """Play a brief tone to indicate a new streaming snippet is being spoken"""
+    if not is_buzzer_enabled():
+        return
+        
     from embodiment.rainbow_interface import get_rainbow_driver
     rainbow = get_rainbow_driver()
     

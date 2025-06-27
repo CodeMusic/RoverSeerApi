@@ -307,6 +307,7 @@ TICK_TYPE = "music"  # "clock" or "music"
 # -------- TEMPORAL PERSPECTIVE CONFIGURATION -------- #
 USE_TEMPORAL_PERSPECTIVE = get_config_value("use_temporal_perspective", True)
 TIMER_SOUND_EFFECTS = get_config_value("timer_sound_effects", True)
+BUZZER_SOUND_EFFECTS = get_config_value("buzzer_sound_effects", True)
 TEMPORAL_OSCILLATION_PATTERN = get_config_value("temporal_oscillation_pattern", {
     "interval": 1.0,
     "marker_positions": [0],

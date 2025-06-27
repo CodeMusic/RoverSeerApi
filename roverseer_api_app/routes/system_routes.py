@@ -1158,3 +1158,75 @@ async def get_conversation_details(thread_id: str, date: Optional[str] = None):
             "status": "error", 
             "message": f"Error loading conversation details: {str(e)}"
         }), 500
+
+
+@router.get('/system/volume')
+async def get_volume():
+    """Get current system volume setting"""
+    try:
+        from embodiment.rainbow_interface import get_rainbow_driver
+        rainbow_driver = get_rainbow_driver()
+        
+        current_volume = 50  # Default volume
+        if rainbow_driver and hasattr(rainbow_driver, 'current_volume'):
+            current_volume = rainbow_driver.current_volume
+        
+        return JSONResponse(content={"volume": current_volume})
+        
+    except Exception as e:
+        logging.error(f"Error getting volume: {e}")
+        return JSONResponse(content={"volume": 50})  # Default fallback
+
+
+@router.post('/system/volume')
+async def set_volume(request: Request):
+    """Set system volume"""
+    try:
+        body = await request.json()
+        volume = int(body.get('volume', 50))
+        volume = max(0, min(100, volume))  # Clamp between 0-100
+        
+        from embodiment.rainbow_interface import get_rainbow_driver
+        rainbow_driver = get_rainbow_driver()
+        
+        if rainbow_driver and hasattr(rainbow_driver, 'set_volume'):
+            rainbow_driver.set_volume(volume)
+        
+        return JSONResponse(content={"status": "success", "volume": volume})
+        
+    except Exception as e:
+        logging.error(f"Error setting volume: {e}")
+        return JSONResponse(content={"status": "error", "message": str(e)}), 500
+
+
+@router.get('/system/buzzer_effects')
+async def get_buzzer_effects():
+    """Get current buzzer sound effects setting"""
+    try:
+        # Check the config for buzzer sound effects setting
+        buzzer_enabled = getattr(config, 'BUZZER_SOUND_EFFECTS', True)
+        return JSONResponse(content={"enabled": buzzer_enabled})
+        
+    except Exception as e:
+        logging.error(f"Error getting buzzer effects setting: {e}")
+        return JSONResponse(content={"enabled": True})  # Default to enabled
+
+
+@router.post('/system/buzzer_effects')
+async def set_buzzer_effects(request: Request):
+    """Set buzzer sound effects on/off"""
+    try:
+        body = await request.json()
+        enabled = bool(body.get('enabled', True))
+        
+        # Update the config setting
+        config.BUZZER_SOUND_EFFECTS = enabled
+        
+        # Log the change
+        logging.info(f"🔊 Buzzer sound effects {'enabled' if enabled else 'disabled'}")
+        
+        return JSONResponse(content={"status": "success", "enabled": enabled})
+        
+    except Exception as e:
+        logging.error(f"Error setting buzzer effects: {e}")
+        return JSONResponse(content={"status": "error", "message": str(e)}), 500

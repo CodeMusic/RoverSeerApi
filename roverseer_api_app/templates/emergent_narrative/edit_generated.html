@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Review AI-Generated Narrative</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #1a1a1a; 
+            color: #ffffff; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .header { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .edit-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .edit-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .edit-header h1 {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.2rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .edit-header p {
+            color: #b0b0b0;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        
+        .generated-info {
+            background: #1a2e1a;
+            border: 1px solid #4caf50;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .content-section {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        .section-header {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+        }
+        
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .character-card {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .character-card:hover {
+            border-color: #4caf50;
+        }
+        
+        .character-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .character-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex: 1;
+        }
+        
+        .character-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .act-card {
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .scene-card {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            margin-left: 20px;
+        }
+        
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .action-button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .create-button {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+        
+        .create-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+        
+        .regenerate-button {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+        }
+        
+        .regenerate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 152, 0, 0.4);
+        }
+        
+        .cancel-button {
+            background: #555;
+            color: white;
+        }
+        
+        .cancel-button:hover {
+            background: #666;
+        }
+        
+        .ai-generated-tag {
+            background: #4caf50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        @media (max-width: 768px) {
+            .character-details, .two-column {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/emergent_narrative">← Back to Narratives</a>
+        <div>
+            <a href="/emergent_narrative/ai_generate" style="color: #4caf50; text-decoration: none;">Generate Another</a>
+        </div>
+    </div>
+
+    <div class="edit-container">
+        <div class="edit-header">
+            <h1>🤖 Review Generated Narrative</h1>
+            <p>AI has generated your narrative structure. Review and edit as needed before creating.</p>
+        </div>
+
+        <div class="generated-info">
+            <span class="ai-generated-tag">AI Generated</span>
+            ✨ Your narrative has been automatically created with characters, themes, and scenes. 
+            Everything is editable below!
+        </div>
+
+        <!-- Story Setup -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title">Story Foundation</h2>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Narrative Title</label>
+                <input type="text" id="narrativeTitle" class="form-input" value="{{ narrative.title }}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea id="narrativeDescription" class="form-textarea">{{ narrative.description }}</textarea>
+            </div>
+        </div>
+
+        <!-- Characters -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title">Generated Characters</h2>
+            </div>
+            
+            <div id="charactersContainer">
+                {% for character in narrative.characters %}
+                <div class="character-card" data-character-id="{{ character.id }}">
+                    <div class="character-header">
+                        <div class="character-name">{{ character.name }}</div>
+                        <span class="ai-generated-tag">AI Generated</span>
+                    </div>
+                    
+                    <div class="character-details">
+                        <div class="form-group">
+                            <label class="form-label">Name</label>
+                            <input type="text" class="form-input character-name-input" 
+                                   value="{{ character.name }}" onchange="updateCharacter('{{ character.id }}', 'name', this.value)">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">AI Model</label>
+                            <select class="form-select" onchange="updateCharacter('{{ character.id }}', 'model', this.value)">
+                                {% if categorized_models %}
+                                    {% for category_name, models_list in categorized_models.items() %}
+                                        <optgroup label="{{ category_name }}">
+                                            {% for model in models_list %}
+                                                <option value="{{ model.full_name }}" {% if model.full_name == character.model %}selected{% endif %}>
+                                                    {{ model.display_name }}
+                                                </option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Voice</label>
+                            <select class="form-select" onchange="updateCharacter('{{ character.id }}', 'voice', this.value)">
+                                {% if categorized_voices %}
+                                    {% for category, voice_list in categorized_voices.categorized.items() %}
+                                        <optgroup label="{{ category|title }}">
+                                            {% for voice in voice_list %}
+                                                <option value="{{ voice }}" {% if voice == character.voice %}selected{% endif %}>{{ voice }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Personality Archetype</label>
+                            <select class="form-select" onchange="updateCharacter('{{ character.id }}', 'personality_archetype', this.value)">
+                                <option value="contemplative" {% if character.personality_archetype.value == 'contemplative' %}selected{% endif %}>Contemplative</option>
+                                <option value="analytical" {% if character.personality_archetype.value == 'analytical' %}selected{% endif %}>Analytical</option>
+                                <option value="creative" {% if character.personality_archetype.value == 'creative' %}selected{% endif %}>Creative</option>
+                                <option value="empathetic" {% if character.personality_archetype.value == 'empathetic' %}selected{% endif %}>Empathetic</option>
+                                <option value="logical" {% if character.personality_archetype.value == 'logical' %}selected{% endif %}>Logical</option>
+                                <option value="intuitive" {% if character.personality_archetype.value == 'intuitive' %}selected{% endif %}>Intuitive</option>
+                                <option value="assertive" {% if character.personality_archetype.value == 'assertive' %}selected{% endif %}>Assertive</option>
+                                <option value="rebellious" {% if character.personality_archetype.value == 'rebellious' %}selected{% endif %}>Rebellious</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">System Message (Character Consciousness)</label>
+                        <textarea class="form-textarea" onchange="updateCharacter('{{ character.id }}', 'system_message', this.value)"
+                                  style="min-height: 120px;">{{ character.system_message }}</textarea>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Story Structure -->
+        <div class="content-section">
+            <div class="section-header">
+                <h2 class="section-title">Generated Story Structure</h2>
+            </div>
+            
+            <div id="actsContainer">
+                {% for act in narrative.acts %}
+                <div class="act-card" data-act-id="{{ act.id }}">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Act {{ act.act_number }}</strong> Theme
+                            <span class="ai-generated-tag">AI Generated</span>
+                        </label>
+                        <input type="text" class="form-input" value="{{ act.theme }}"
+                               onchange="updateAct('{{ act.id }}', 'theme', this.value)">
+                    </div>
+                    
+                    <div style="margin-left: 20px;">
+                        <h4>Scenes:</h4>
+                        {% for scene in act.scenes %}
+                        <div class="scene-card" data-scene-id="{{ scene.id }}">
+                            <div class="form-group">
+                                <label class="form-label">Scene {{ scene.scene_number }} Description</label>
+                                <input type="text" class="form-input" value="{{ scene.description }}"
+                                       onchange="updateScene('{{ act.id }}', '{{ scene.id }}', 'description', this.value)">
+                            </div>
+                            
+                            <div class="two-column">
+                                <div class="form-group">
+                                    <label class="form-label">Character A</label>
+                                    <select class="form-select" onchange="updateScene('{{ act.id }}', '{{ scene.id }}', 'character_a_id', this.value)">
+                                        {% for character in narrative.characters %}
+                                        <option value="{{ character.id }}" {% if character.id == scene.character_a_id %}selected{% endif %}>
+                                            {{ character.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Character B</label>
+                                    <select class="form-select" onchange="updateScene('{{ act.id }}', '{{ scene.id }}', 'character_b_id', this.value)">
+                                        {% for character in narrative.characters %}
+                                        <option value="{{ character.id }}" {% if character.id == scene.character_b_id %}selected{% endif %}>
+                                            {{ character.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Interaction Cycles</label>
+                                <input type="number" class="form-input" min="1" max="20" value="{{ scene.interaction_cycles }}"
+                                       onchange="updateScene('{{ act.id }}', '{{ scene.id }}', 'interaction_cycles', parseInt(this.value))">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-button cancel-button" onclick="cancelGeneration()">
+                Cancel
+            </button>
+            
+            <button class="action-button regenerate-button" onclick="regenerateNarrative()">
+                🔄 Regenerate with AI
+            </button>
+            
+            <button class="action-button create-button" onclick="finalizeNarrative()">
+                ✨ Create This Narrative
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const narrativeId = "{{ narrative.id }}";
+        let narrativeData = {{ narrative.to_dict() | tojson | safe }};
+
+        function updateCharacter(characterId, field, value) {
+            // Find character in narrativeData and update
+            const character = narrativeData.characters.find(c => c.id === characterId);
+            if (character) {
+                character[field] = value;
+            }
+            
+            // Update character name display if name changed
+            if (field === 'name') {
+                const card = document.querySelector(`[data-character-id="${characterId}"]`);
+                if (card) {
+                    const nameDisplay = card.querySelector('.character-name');
+                    if (nameDisplay) {
+                        nameDisplay.textContent = value;
+                    }
+                }
+            }
+        }
+
+        function updateAct(actId, field, value) {
+            const act = narrativeData.acts.find(a => a.id === actId);
+            if (act) {
+                act[field] = value;
+            }
+        }
+
+        function updateScene(actId, sceneId, field, value) {
+            const act = narrativeData.acts.find(a => a.id === actId);
+            if (act) {
+                const scene = act.scenes.find(s => s.id === sceneId);
+                if (scene) {
+                    scene[field] = value;
+                }
+            }
+        }
+
+        async function finalizeNarrative() {
+            // Update title and description
+            narrativeData.title = document.getElementById('narrativeTitle').value;
+            narrativeData.description = document.getElementById('narrativeDescription').value;
+
+            try {
+                const response = await fetch('/emergent_narrative/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(narrativeData)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Delete the temporary generated narrative
+                    await fetch(`/emergent_narrative/delete/${narrativeId}`, { method: 'DELETE' });
+                    
+                    // Redirect to the new narrative
+                    window.location.href = `/emergent_narrative/play/${result.narrative_id}`;
+                } else {
+                    const error = await response.text();
+                    alert(`Failed to create narrative: ${error}`);
+                }
+            } catch (error) {
+                alert(`Error creating narrative: ${error.message}`);
+            }
+        }
+
+        function cancelGeneration() {
+            if (confirm('Are you sure you want to cancel? All generated content will be lost.')) {
+                // Delete the temporary narrative
+                fetch(`/emergent_narrative/delete/${narrativeId}`, { method: 'DELETE' })
+                    .then(() => {
+                        window.location.href = '/emergent_narrative';
+                    });
+            }
+        }
+
+        function regenerateNarrative() {
+            if (confirm('This will generate a completely new narrative. Continue?')) {
+                window.location.href = '/emergent_narrative/ai_generate';
+            }
+        }
+    </script>
+</body>
+</html> 

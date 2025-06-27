@@ -51,18 +51,102 @@ class CharacterMemory:
         }
         self.memories.append(memory_entry)
     
-    def get_context_for_scene(self, max_memories: int = 5) -> str:
-        """Generate contextual awareness for character"""
+    def get_context_for_scene(self, max_memories: int = 10) -> str:
+        """Generate contextual awareness for character with comprehensive history"""
         if not self.memories:
-            return "This character has no prior interactions."
+            return "You have no prior conversation experience in this narrative."
         
         recent_memories = self.memories[-max_memories:]
-        context_fragments = []
+        
+        # Group memories by conversation partners and acts
+        partner_conversations = {}
+        act_summaries = {}
         
         for memory in recent_memories:
-            context_fragments.append(f"Previous interaction: {memory['interaction'].get('content', '')}")
+            interaction = memory.get('interaction', {})
+            
+            # Handle both old and new memory formats
+            if 'conversation_partner' in interaction:
+                # New comprehensive format
+                partner = interaction['conversation_partner']
+                act_num = interaction.get('act_number', 'Unknown')
+                scene_num = interaction.get('scene_number', 'Unknown')
+                my_response = interaction.get('my_response', interaction.get('content', ''))
+                scene_desc = interaction.get('scene_description', '')
+                
+                if partner not in partner_conversations:
+                    partner_conversations[partner] = []
+                
+                partner_conversations[partner].append({
+                    'act': act_num,
+                    'scene': scene_num,
+                    'response': my_response,
+                    'scene_description': scene_desc,
+                    'timestamp': interaction.get('timestamp', memory.get('timestamp', ''))
+                })
+                
+                # Track act themes
+                if act_num != 'Unknown':
+                    act_theme = interaction.get('act_theme', '')
+                    if act_num not in act_summaries:
+                        act_summaries[act_num] = {
+                            'theme': act_theme,
+                            'conversations': 0,
+                            'partners': set()
+                        }
+                    act_summaries[act_num]['conversations'] += 1
+                    act_summaries[act_num]['partners'].add(partner)
+            else:
+                # Old simple format - convert for compatibility
+                content = interaction.get('content', '')
+                partner = interaction.get('other_character', 'Unknown')
+                
+                if partner not in partner_conversations:
+                    partner_conversations[partner] = []
+                
+                partner_conversations[partner].append({
+                    'act': 'Previous',
+                    'scene': 'Unknown',
+                    'response': content,
+                    'scene_description': '',
+                    'timestamp': memory.get('timestamp', '')
+                })
         
-        return "\n".join(context_fragments)
+        # Build contextual summary
+        context_parts = []
+        
+        # Act-level summary
+        if act_summaries:
+            context_parts.append("Your narrative experience by act:")
+            for act_num, act_info in sorted(act_summaries.items()):
+                partners_list = ', '.join(sorted(act_info['partners']))
+                context_parts.append(f"  Act {act_num} ({act_info['theme']}): {act_info['conversations']} conversations with {partners_list}")
+        
+        # Partner-specific conversation summaries
+        if partner_conversations:
+            context_parts.append("\nYour conversation history by partner:")
+            
+            for partner, convos in partner_conversations.items():
+                context_parts.append(f"\n  With {partner}:")
+                
+                # Show recent conversations with this partner
+                recent_convos = convos[-3:]  # Last 3 conversations with this partner
+                for convo in recent_convos:
+                    act_scene = f"Act {convo['act']}, Scene {convo['scene']}" if convo['act'] != 'Previous' else "Previous conversation"
+                    context_parts.append(f"    {act_scene}: \"{convo['response'][:100]}{'...' if len(convo['response']) > 100 else ''}\"")
+                    if convo['scene_description']:
+                        context_parts.append(f"      (Scene context: {convo['scene_description']})")
+        
+        # Emotional state and relationships
+        if self.emotional_state != "neutral":
+            context_parts.append(f"\nYour current emotional state: {self.emotional_state}")
+        
+        if self.relationships:
+            context_parts.append("\nYour relationships:")
+            for char_id, relationship in self.relationships.items():
+                context_parts.append(f"  {char_id}: {relationship}")
+        
+        return "\n".join(context_parts) if context_parts else "You have limited conversation experience in this narrative."
 
 
 @dataclass
@@ -355,7 +439,7 @@ class EmergentNarrative:
         # Get valid character IDs for auto-repair
         valid_character_ids = [char.id for char in narrative.characters]
         
-        # Smart character assignment function for load-time repairs
+        # Smart character assignment function for  load-time repairs
         def get_smart_character_assignment(scene_number: int, character_count: int, is_character_a: bool):
             """Assign characters in a rotating pattern to ensure variety across scenes"""
             if character_count < 2:

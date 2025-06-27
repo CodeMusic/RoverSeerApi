@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from typing import List, Dict, Any, Optional
 import logging
+import uuid
 
 # Import our models
 import sys
@@ -723,7 +724,19 @@ async def advance_narrative(request: Request, narrative_id: str):
         current_character = char_a if interactions_count % 2 == 0 else char_b
         other_character = char_b if current_character == char_a else char_a
         
-        logger.info(f"Turn {interactions_count}: {current_character.name} speaks to {other_character.name}")
+        logger.info(f"TURN DEBUG: Scene {current_scene.scene_number}, interactions_count = {interactions_count}")
+        logger.info(f"TURN DEBUG: char_a = {char_a.name} ({char_a.id}), char_b = {char_b.name} ({char_b.id})")
+        logger.info(f"TURN DEBUG: Turn {interactions_count}: {current_character.name} speaks to {other_character.name}")
+        logger.info(f"TURN DEBUG: Logic: interactions_count {interactions_count} % 2 == 0? {interactions_count % 2 == 0} -> Character {'A' if interactions_count % 2 == 0 else 'B'}")
+        
+        # Additional check for potential same-character-twice bug
+        if interactions_count > 0 and current_scene.interactions:
+            last_interaction = current_scene.interactions[-1]
+            last_character_id = last_interaction['character_id']
+            if last_character_id == current_character.id:
+                logger.error(f"POTENTIAL BUG: Same character ({current_character.name}) speaking twice in a row!")
+                logger.error(f"Last interaction character_id: {last_character_id}, Current character_id: {current_character.id}")
+                logger.error(f"Scene interactions so far: {[(i['character_id'], narrative.get_character_by_id(i['character_id']).name if narrative.get_character_by_id(i['character_id']) else 'Unknown') for i in current_scene.interactions]}")
         
         # Build context for the current character
         context = build_character_context(narrative, current_scene, current_character, other_character)
@@ -743,32 +756,51 @@ async def advance_narrative(request: Request, narrative_id: str):
             metadata={'turn': interactions_count, 'influence': influence.word_of_influence if influence else None}
         )
         
-        # Update character memory
-        current_character.memory.add_memory({
-            'type': 'interaction',
-            'scene_id': current_scene.id,
-            'other_character': other_character.name,
-            'content': response_text,
-            'emotional_impact': 'neutral'  # Could be enhanced with sentiment analysis
-        })
-        
-        # Process influence countdown
-        if influence:
-            influence.apply_to_cycle()
-            if not influence.is_active():
-                narrative.active_influences = [inf for inf in narrative.active_influences if inf.is_active()]
-        
         # Check scene completion AFTER adding the interaction
         new_interactions_count = len(current_scene.interactions)
         scene_completed = current_scene.is_completed()
-        narrative_advanced = False
         
         logger.info(f"Scene progress: {new_interactions_count} interactions = {current_scene.completed_cycles}/{current_scene.interaction_cycles} cycles")
         logger.info(f"Scene completion check: {new_interactions_count} interactions, requires {current_scene.interaction_cycles * 2}, completed: {scene_completed}")
         
+        # Update character memory with comprehensive context
+        current_act = narrative.get_current_act()
+        required_interactions = current_scene.interaction_cycles * 2
+        current_character.memory.add_memory({
+            'type': 'scene_interaction',
+            'act_number': current_act.act_number if current_act else 0,
+            'act_theme': current_act.theme if current_act else 'Unknown',
+            'scene_id': current_scene.id,
+            'scene_number': current_scene.scene_number,
+            'scene_description': current_scene.description,
+            'conversation_partner': other_character.name,
+            'conversation_partner_id': other_character.id,
+            'my_response': response_text,
+            'scene_progress': f"{len(current_scene.interactions)}/{required_interactions}",
+            'interactions_remaining': required_interactions - len(current_scene.interactions),
+            'emotional_impact': 'neutral',  # Could be enhanced with sentiment analysis
+            'scene_completed': scene_completed,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        # Note: Influences will be cleared when scene completes (no per-cycle countdown)
+        
+        # Continue with narrative advancement logic
+        narrative_advanced = False
+        influences_cleared = False
+        
         if scene_completed:
             logger.info(f"Scene {current_scene.scene_number} completed! Advancing narrative...")
             old_scene_number = current_scene.scene_number
+            
+            # Clear all influences when scene completes
+            if narrative.active_influences:
+                cleared_influences = [inf.word_of_influence for inf in narrative.active_influences]
+                logger.info(f"Scene complete - clearing all influences: {cleared_influences}")
+                narrative.active_influences = []
+                influences_cleared = True
+            else:
+                logger.info("Scene complete - no active influences to clear")
             
             narrative_advanced = narrative.advance_narrative()
             if narrative_advanced:
@@ -792,6 +824,19 @@ async def advance_narrative(request: Request, narrative_id: str):
                     
                     if new_scene_repairs:
                         logger.info("Smart auto-repaired new scene character assignments")
+                    
+                    # Prevent same character from going twice in a row across scene boundaries
+                    if current_scene.interactions:
+                        last_speaker_id = current_scene.interactions[-1]['character_id']
+                        new_first_speaker_id = new_current_scene.character_a_id  # char_a always goes first in new scenes
+                        
+                        if last_speaker_id == new_first_speaker_id and len(available_char_ids) >= 2:
+                            logger.info(f"ANTI-REPEAT: Last speaker {narrative.get_character_by_id(last_speaker_id).name if narrative.get_character_by_id(last_speaker_id) else 'Unknown'} would go first in new scene - swapping character assignments")
+                            # Swap A and B to ensure different speaker goes first
+                            temp_id = new_current_scene.character_a_id
+                            new_current_scene.character_a_id = new_current_scene.character_b_id
+                            new_current_scene.character_b_id = temp_id
+                            logger.info(f"ANTI-REPEAT: Swapped characters - new first speaker: {narrative.get_character_by_id(new_current_scene.character_a_id).name if narrative.get_character_by_id(new_current_scene.character_a_id) else 'Unknown'}")
                     
                     new_char_a = narrative.get_character_by_id(new_current_scene.character_a_id)
                     new_char_b = narrative.get_character_by_id(new_current_scene.character_b_id)
@@ -834,6 +879,7 @@ async def advance_narrative(request: Request, narrative_id: str):
             'audio_url': audio_url,
             'output_mode': output_mode,
             'influence_applied': influence.word_of_influence if influence else None,
+            'influences_cleared': influences_cleared,  # Let frontend know if influences were cleared
             'auto_repairs_made': repairs_made  # Let frontend know if repairs happened
         })
         
@@ -842,31 +888,104 @@ async def advance_narrative(request: Request, narrative_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 def build_character_context(narrative: EmergentNarrative, scene: Scene, character: Character, other_character: Character) -> str:
-    """Build context for character's AI interaction"""
+    """Build comprehensive context for character's AI interaction including full conversation history"""
     current_act = narrative.get_current_act()
     
-    context = f"""You are {character.name}. {character.system_message}
+    # Calculate scene progress
+    current_interactions = len(scene.interactions)
+    required_interactions = scene.interaction_cycles * 2
+    completed_cycles = scene.completed_cycles
+    remaining_interactions = required_interactions - current_interactions
+    
+    # Determine progress description
+    if remaining_interactions == 1:
+        progress_note = "This conversation will conclude after your next exchange."
+    elif remaining_interactions == 2:
+        progress_note = f"This conversation has {remaining_interactions} exchanges remaining before concluding."
+    elif remaining_interactions <= 0:
+        progress_note = "This conversation should be concluding now."
+    else:
+        progress_note = f"This conversation has {remaining_interactions} exchanges remaining (currently {completed_cycles}/{scene.interaction_cycles} cycles complete)."
+    
+    # Build comprehensive conversation history for this character
+    character_full_history = get_character_conversation_history(narrative, character)
+    
+    # Enhanced system message that combines original + scene context
+    enhanced_system_message = f"""{character.system_message}
 
-CURRENT SITUATION:
-- You are in Act {current_act.act_number}: {current_act.theme}
+SCENE AWARENESS:
+- You are currently in Act {current_act.act_number}: "{current_act.theme}"
 - Scene {scene.scene_number}: {scene.description}
-- You are interacting with {other_character.name}
+- You are conversing with {other_character.name}
+- {progress_note}
+- Your goal is to engage meaningfully within this scene's context while staying true to your character."""
 
-YOUR MEMORY:
-{character.memory.get_context_for_scene()}
+    context = f"""You are {character.name}. 
 
-RECENT SCENE INTERACTIONS:
+{enhanced_system_message}
+
+YOUR COMPLETE CONVERSATION HISTORY:
+{character_full_history}
+
+CURRENT SCENE INTERACTIONS:
 """
     
-    # Add recent interactions from this scene
-    recent_interactions = scene.interactions[-6:]  # Last 6 interactions
-    for interaction in recent_interactions:
-        char = narrative.get_character_by_id(interaction['character_id'])
-        context += f"\n{char.name}: {interaction['content']}"
+    # Add all interactions from current scene for immediate context
+    if scene.interactions:
+        for interaction in scene.interactions:
+            char = narrative.get_character_by_id(interaction['character_id'])
+            char_name = char.name if char else 'Unknown'
+            context += f"\n{char_name}: {interaction['content']}"
+    else:
+        context += "\n(This scene is just beginning - no interactions yet)"
     
-    context += f"\n\nRespond as {character.name}. Keep your response conversational and in-character. Do not exceed 3 sentences."
+    context += f"""\n\nSCENE PROGRESS: {current_interactions}/{required_interactions} total exchanges completed
+{progress_note}
+
+Respond as {character.name}. Stay in character, acknowledge the conversation history when relevant, and be aware that this scene has a natural conclusion point. Keep your response conversational and under 3 sentences."""
     
     return context
+
+def get_character_conversation_history(narrative: EmergentNarrative, character: Character) -> str:
+    """Get complete conversation history for a character across all scenes they participated in"""
+    history_sections = []
+    
+    # Go through all acts and scenes to find where this character participated
+    for act in narrative.acts:
+        act_conversations = []
+        
+        for scene in act.scenes:
+            # Check if this character was in this scene
+            if scene.character_a_id == character.id or scene.character_b_id == character.id:
+                # Find the other character in this scene
+                other_char_id = scene.character_b_id if scene.character_a_id == character.id else scene.character_a_id
+                other_char = narrative.get_character_by_id(other_char_id)
+                other_char_name = other_char.name if other_char else "Unknown"
+                
+                # Get interactions from this scene
+                if scene.interactions:
+                    scene_conversation = f"\nScene {scene.scene_number} with {other_char_name}:"
+                    for interaction in scene.interactions:
+                        char = narrative.get_character_by_id(interaction['character_id'])
+                        if char:
+                            # Only include interactions where this character spoke or was spoken to
+                            if interaction['character_id'] == character.id or interaction['character_id'] == other_char_id:
+                                scene_conversation += f"\n  {char.name}: {interaction['content']}"
+                    
+                    if len(scene_conversation.split('\n')) > 1:  # Has actual content
+                        act_conversations.append(scene_conversation)
+        
+        # Add act section if character had conversations in this act
+        if act_conversations:
+            act_section = f"\n--- Act {act.act_number}: {act.theme} ---"
+            act_section += "".join(act_conversations)
+            history_sections.append(act_section)
+    
+    if history_sections:
+        full_history = "".join(history_sections)
+        return f"Here are your previous conversations from this narrative:\n{full_history}\n"
+    else:
+        return "This is your first conversation in this narrative.\n"
 
 async def generate_character_response(character: Character, context: str) -> str:
     """Generate AI response for character"""
@@ -1061,4 +1180,540 @@ async def debug_narrative(narrative_id: str):
         return JSONResponse(content={
             'error': f'Debug endpoint failed: {e}',
             'error_type': type(e).__name__
-        }) 
+        })
+
+@router.get('/emergent_narrative/ai_generate')
+async def ai_generate_page(request: Request):
+    """AI-assisted narrative generation page"""
+    return templates.TemplateResponse("emergent_narrative/ai_generate.html", {
+        "request": request
+    })
+
+@router.get('/emergent_narrative/ai_generation_info')
+async def get_ai_generation_info():
+    """Get information about available AI models for generation"""
+    try:
+        from cognition.llm_interface import get_available_models
+        
+        models = get_available_models()
+        categorized_models = get_categorized_models()
+        
+        # Get the best model for generation (largest available)
+        best_model = get_best_generation_model(models, categorized_models)
+        
+        capability_description = "Perfect for comprehensive narrative generation"
+        if best_model:
+            if any(size in best_model.lower() for size in ['70b', '405b']):
+                capability_description = "Excellent large model - will create rich, detailed narratives"
+            elif any(size in best_model.lower() for size in ['13b', '14b', '20b', '30b', '34b']):
+                capability_description = "Good large model - will create detailed narratives"
+            elif any(size in best_model.lower() for size in ['7b', '8b']):
+                capability_description = "Medium model - will create solid narratives"
+            else:
+                capability_description = "Available model - will create basic narratives"
+        
+        return JSONResponse(content={
+            'selected_model': best_model or 'No suitable models available',
+            'capability_description': capability_description,
+            'available_models': models,
+            'categorized_models': categorized_models,
+            'available_models_count': len(models)
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get AI generation info: {e}")
+        return JSONResponse(content={
+            'selected_model': 'Error detecting models',
+            'capability_description': 'Unable to determine capabilities',
+            'available_models': [],
+            'categorized_models': {},
+            'available_models_count': 0
+        })
+
+def get_best_generation_model(models: List[str], categorized_models: Dict) -> Optional[str]:
+    """Get the best available model for narrative generation (largest model)"""
+    try:
+        # Priority: Large models > Medium models > Small models
+        if 'Large Models (≥ 13B)' in categorized_models and categorized_models['Large Models (≥ 13B)']:
+            # Get the first (usually largest) large model
+            return categorized_models['Large Models (≥ 13B)'][0]['full_name']
+        elif 'Medium Models (3B - 8B)' in categorized_models and categorized_models['Medium Models (3B - 8B)']:
+            # Get the first medium model
+            return categorized_models['Medium Models (3B - 8B)'][0]['full_name']
+        elif 'Small Models (≤ 2B)' in categorized_models and categorized_models['Small Models (≤ 2B)']:
+            # Last resort: small model
+            return categorized_models['Small Models (≤ 2B)'][0]['full_name']
+        elif models:
+            # Fallback: first available model
+            return models[0]
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error selecting best generation model: {e}")
+        return models[0] if models else None
+
+@router.post('/emergent_narrative/ai_generate')
+async def ai_generate_narrative(request: Request):
+    """Generate a complete narrative using AI from minimal input"""
+    try:
+        data = await request.json()
+        logger.info(f"Starting AI narrative generation with data: {data}")
+        
+        story_concept = data.get('story_concept', '')
+        num_characters = data.get('num_characters', 3)
+        num_acts = data.get('num_acts', 3)
+        narrative_tone = data.get('narrative_tone', 'philosophical')
+        scene_length = data.get('scene_length', 'medium')
+        additional_notes = data.get('additional_notes', '')
+        selected_model = data.get('selected_model', '')
+        
+        if not story_concept:
+            raise HTTPException(status_code=400, detail="Story concept is required")
+        
+        if not selected_model:
+            raise HTTPException(status_code=400, detail="AI model selection is required")
+        
+        # Validate the selected model is available
+        models = get_available_models()
+        if selected_model not in models:
+            raise HTTPException(status_code=400, detail=f"Selected model '{selected_model}' is not available")
+        
+        generation_model = selected_model
+        
+        logger.info(f"Using model {generation_model} for narrative generation")
+        
+        # Create the generation prompt
+        generation_prompt = build_generation_prompt(
+            story_concept, num_characters, num_acts, narrative_tone, scene_length, additional_notes
+        )
+        
+        logger.info("Sending generation request to AI model...")
+        
+        # Generate the narrative structure using AI
+        from cognition.llm_interface import run_chat_completion
+        
+        response = run_chat_completion(
+            model=generation_model,
+            messages=[{"role": "user", "content": generation_prompt}],
+            system_message="You are an expert narrative designer and AI consciousness architect. Generate detailed, creative narrative structures with rich character development and compelling themes.",
+            temperature=0.8  # Higher creativity for generation
+        )
+        
+        logger.info(f"Received AI response (length: {len(response)})")
+        
+        # Parse the AI response and create narrative structure
+        narrative_data = parse_ai_generated_narrative(response, story_concept)
+        
+        # Assign models and voices to characters
+        narrative_data = assign_models_and_voices(narrative_data, models, get_available_voices())
+        
+        # Create the narrative
+        narrative_id = str(uuid.uuid4())
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        
+        narrative = EmergentNarrative(
+            id=narrative_id,
+            title=narrative_data['title'],
+            description=narrative_data['description'],
+            characters=[Character.from_dict(char_data) for char_data in narrative_data['characters']],
+            acts=[],
+            state=NarrativeState.DORMANT
+        )
+        
+        # Build acts and scenes
+        for act_data in narrative_data['acts']:
+            act = Act(
+                id=str(uuid.uuid4()),
+                act_number=act_data['act_number'],
+                theme=act_data['theme']
+            )
+            
+            for scene_data in act_data['scenes']:
+                scene = Scene(
+                    id=str(uuid.uuid4()),
+                    act_id=act.id,
+                    scene_number=scene_data['scene_number'],
+                    description=scene_data['description'],
+                    character_a_id=scene_data['character_a_id'],
+                    character_b_id=scene_data['character_b_id'],
+                    interaction_cycles=scene_data['interaction_cycles'],
+                    state="pending"
+                )
+                act.scenes.append(scene)
+            
+            narrative.acts.append(act)
+        
+        # Save the generated narrative
+        narrative.save_to_file(narrative_file)
+        
+        logger.info(f"Successfully generated narrative {narrative_id}: {narrative_data['title']}")
+        
+        return JSONResponse(content={
+            'success': True,
+            'narrative_id': narrative_id,
+            'title': narrative_data['title'],
+            'description': narrative_data['description'],
+            'generation_model': generation_model
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to generate narrative: {e}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def build_generation_prompt(story_concept: str, num_characters: int, num_acts: int, 
+                          narrative_tone: str, scene_length: str, additional_notes: str) -> str:
+    """Build the prompt for AI narrative generation"""
+    
+    # Map scene length to interaction cycles
+    cycles_map = {
+        'short': 2,
+        'medium': 4, 
+        'long': 6
+    }
+    interaction_cycles = cycles_map.get(scene_length, 4)
+    
+    prompt = f"""Create a complete narrative structure for an emergent AI conversation system based on this concept:
+
+STORY CONCEPT: {story_concept}
+
+REQUIREMENTS:
+- {num_characters} distinct characters with unique personalities
+- {num_acts} acts with different thematic focuses
+- Tone/Style: {narrative_tone}
+- Each scene should have {interaction_cycles} interaction cycles (pairs of exchanges)
+{"- Additional requirements: " + additional_notes if additional_notes else ""}
+
+Generate a detailed narrative structure in this EXACT JSON format.
+
+CRITICAL JSON FORMATTING RULES:
+- Use double quotes for all strings
+- No trailing commas before closing brackets or braces
+- No comments or extra text outside the JSON
+- Ensure all braces and brackets are properly matched
+
+{{
+    "title": "Compelling narrative title",
+    "description": "2-3 sentence description of the overall narrative",
+    "characters": [
+        {{
+            "name": "Character Name",
+            "personality_archetype": "contemplative",
+            "system_message": "Detailed character consciousness description - their background, personality, speaking style, knowledge areas, and core traits. Make this rich and specific (200+ words)."
+        }}
+    ],
+    "acts": [
+        {{
+            "act_number": 1,
+            "theme": "Detailed theme description for this act",
+            "scenes": [
+                {{
+                    "scene_number": 1,
+                    "description": "What happens in this specific scene",
+                    "character_a_name": "Character Name A",
+                    "character_b_name": "Character Name B",
+                    "interaction_cycles": {interaction_cycles}
+                }}
+            ]
+        }}
+    ]
+}}
+
+IMPORTANT GUIDELINES:
+1. Make each character truly distinct with unique perspectives and speaking styles
+2. Create meaningful progression across acts - each should explore different aspects
+3. Scene descriptions should be specific and give characters clear context
+4. Character system messages should be detailed, defining their knowledge, personality, and communication style
+5. Ensure variety in character pairings across scenes to explore different dynamics
+6. Make the narrative intellectually engaging and thematically coherent
+7. personality_archetype must be ONE of: contemplative, analytical, creative, empathetic, logical, intuitive, assertive, rebellious
+
+OUTPUT REQUIREMENTS:
+- Generate ONLY valid JSON
+- No markdown code blocks
+- No explanatory text before or after
+- Start with {{ and end with }}
+- Verify JSON syntax before responding
+
+JSON:"""
+
+    return prompt
+
+def parse_ai_generated_narrative(ai_response: str, story_concept: str) -> Dict[str, Any]:
+    """Parse the AI-generated narrative JSON and validate/fix it with robust error handling"""
+    import re
+    import json
+    
+    def clean_json_string(json_str: str) -> str:
+        """Clean and fix common AI-generated JSON formatting issues"""
+        # Remove any leading/trailing whitespace
+        json_str = json_str.strip()
+        
+        # Remove markdown code blocks if present
+        json_str = re.sub(r'^```(?:json)?\s*', '', json_str, flags=re.IGNORECASE)
+        json_str = re.sub(r'\s*```$', '', json_str)
+        
+        # Fix common AI mistakes
+        # 1. Remove trailing commas before closing brackets/braces
+        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        
+        # 2. Fix missing commas between objects/arrays (basic cases)
+        json_str = re.sub(r'}\s*{', '},{', json_str)
+        json_str = re.sub(r']\s*\[', '],[', json_str)
+        json_str = re.sub(r'"\s*"([^:,\]}])', r'","\1', json_str)
+        
+        # 3. Ensure all string values are properly quoted
+        # Fix unquoted values that look like they should be strings
+        json_str = re.sub(r':\s*([a-zA-Z][a-zA-Z0-9\s]+)(?=[,}\]\n])', r': "\1"', json_str)
+        
+        # 4. Fix double quotes in strings (basic escape)
+        json_str = re.sub(r'(:\s*"[^"]*)"([^",}\]]*")', r'\1\"\2', json_str)
+        
+        return json_str
+    
+    def extract_json_from_response(response: str) -> str:
+        """Extract JSON from AI response, handling various formats"""
+        # Try to find complete JSON object
+        json_patterns = [
+            r'\{.*?\}(?=\s*$)',  # Complete JSON to end of string
+            r'\{.*?\}',          # Any JSON object
+        ]
+        
+        for pattern in json_patterns:
+            match = re.search(pattern, response, re.DOTALL)
+            if match:
+                return match.group(0)
+        
+        # If no clear JSON found, try the whole response
+        return response.strip()
+    
+    def try_parse_json(json_str: str) -> Dict[str, Any]:
+        """Try multiple parsing strategies"""
+        parsing_strategies = [
+            lambda s: json.loads(s),  # Direct parsing
+            lambda s: json.loads(clean_json_string(s)),  # Cleaned parsing
+            lambda s: json.loads(re.sub(r'//.*', '', s)),  # Remove comments
+            lambda s: json.loads(re.sub(r',\s*}', '}', re.sub(r',\s*]', ']', s))),  # Remove trailing commas
+        ]
+        
+        last_error = None
+        for i, strategy in enumerate(parsing_strategies):
+            try:
+                result = strategy(json_str)
+                if i > 0:
+                    logger.info(f"JSON parsing succeeded on strategy {i+1}")
+                return result
+            except Exception as e:
+                last_error = e
+                continue
+        
+        raise last_error
+    
+    try:
+        logger.info("Parsing AI-generated narrative JSON...")
+        
+        # Extract JSON from response
+        json_str = extract_json_from_response(ai_response)
+        logger.info(f"Extracted JSON string length: {len(json_str)}")
+        
+        # Try to parse with multiple strategies
+        try:
+            narrative_data = try_parse_json(json_str)
+        except Exception as parse_error:
+            # Log the problematic JSON for debugging
+            logger.error(f"All JSON parsing strategies failed. Error: {parse_error}")
+            logger.error(f"Problematic JSON (first 1000 chars): {json_str[:1000]}")
+            logger.error(f"Full AI response (first 2000 chars): {ai_response[:2000]}")
+            
+            # Try one more desperate attempt - extract just the structure we need
+            try:
+                narrative_data = create_fallback_narrative(ai_response, story_concept)
+                logger.warning("Using fallback narrative creation due to JSON parsing failure")
+            except Exception as fallback_error:
+                raise ValueError(f"AI generated unparseable JSON and fallback failed. Parse error: {parse_error}. Fallback error: {fallback_error}")
+        
+        # Validate and fix the structure
+        narrative_data = validate_and_fix_narrative_structure(narrative_data, story_concept)
+        
+        logger.info("Successfully parsed and validated AI-generated narrative")
+        return narrative_data
+        
+    except Exception as e:
+        logger.error(f"Error processing AI narrative: {e}")
+        raise ValueError(f"Failed to process AI narrative: {e}")
+
+def create_fallback_narrative(ai_response: str, story_concept: str) -> Dict[str, Any]:
+    """Create a basic narrative structure when JSON parsing completely fails"""
+    import re
+    
+    # Try to extract key information using regex
+    title_match = re.search(r'"title":\s*"([^"]+)"', ai_response, re.IGNORECASE)
+    title = title_match.group(1) if title_match else "Generated Narrative"
+    
+    description_match = re.search(r'"description":\s*"([^"]+)"', ai_response, re.IGNORECASE)
+    description = description_match.group(1) if description_match else f"An emergent narrative based on: {story_concept}"
+    
+    # Extract character names
+    character_names = re.findall(r'"name":\s*"([^"]+)"', ai_response, re.IGNORECASE)
+    if not character_names:
+        character_names = ["Character A", "Character B", "Character C"]
+    
+    # Create basic narrative structure
+    characters = []
+    for i, name in enumerate(character_names[:5]):  # Limit to 5 characters
+        characters.append({
+            "name": name,
+            "personality_archetype": "contemplative",
+            "system_message": f"You are {name}, a thoughtful participant in this narrative conversation.",
+            "id": str(uuid.uuid4())
+        })
+    
+    # Create basic acts and scenes
+    acts = [
+        {
+            "act_number": 1,
+            "theme": f"Introduction and exploration of {story_concept}",
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "description": f"Initial conversation about {story_concept}",
+                    "character_a_name": characters[0]["name"],
+                    "character_b_name": characters[1]["name"] if len(characters) > 1 else characters[0]["name"],
+                    "character_a_id": characters[0]["id"],
+                    "character_b_id": characters[1]["id"] if len(characters) > 1 else characters[0]["id"],
+                    "interaction_cycles": 4
+                }
+            ]
+        }
+    ]
+    
+    return {
+        "title": title,
+        "description": description,
+        "characters": characters,
+        "acts": acts
+    }
+
+def validate_and_fix_narrative_structure(narrative_data: Dict[str, Any], story_concept: str) -> Dict[str, Any]:
+    """Validate and fix the narrative structure"""
+    # Ensure required fields exist
+    if 'title' not in narrative_data:
+        narrative_data['title'] = "Generated Narrative"
+    
+    if 'description' not in narrative_data:
+        narrative_data['description'] = f"An emergent narrative based on: {story_concept}"
+    
+    if 'characters' not in narrative_data or not narrative_data['characters']:
+        raise ValueError("No characters generated")
+    
+    if 'acts' not in narrative_data or not narrative_data['acts']:
+        raise ValueError("No acts generated")
+    
+    # Add IDs to characters for scene assignment
+    for i, character in enumerate(narrative_data['characters']):
+        if 'id' not in character:
+            character['id'] = str(uuid.uuid4())
+        
+        # Ensure required character fields
+        if 'name' not in character:
+            character['name'] = f"Character {i+1}"
+        if 'personality_archetype' not in character:
+            character['personality_archetype'] = "contemplative"
+        if 'system_message' not in character:
+            character['system_message'] = f"You are {character['name']}, a thoughtful participant in this conversation."
+    
+    # Fix scene character assignments by mapping names to IDs
+    character_name_to_id = {char['name']: char['id'] for char in narrative_data['characters']}
+    
+    for act_idx, act in enumerate(narrative_data['acts']):
+        # Ensure act has required fields
+        if 'act_number' not in act:
+            act['act_number'] = act_idx + 1
+        if 'theme' not in act:
+            act['theme'] = f"Act {act['act_number']} exploration"
+        if 'scenes' not in act:
+            act['scenes'] = []
+        
+        for scene_idx, scene in enumerate(act['scenes']):
+            # Ensure scene has required fields
+            if 'scene_number' not in scene:
+                scene['scene_number'] = scene_idx + 1
+            if 'description' not in scene:
+                scene['description'] = f"Scene {scene['scene_number']} conversation"
+            if 'interaction_cycles' not in scene:
+                scene['interaction_cycles'] = 4
+            
+            # Fix character assignments
+            char_a_name = scene.get('character_a_name', '')
+            char_b_name = scene.get('character_b_name', '')
+            
+            # Find character IDs by name, with fallbacks
+            scene['character_a_id'] = character_name_to_id.get(char_a_name, narrative_data['characters'][0]['id'])
+            scene['character_b_id'] = character_name_to_id.get(char_b_name, 
+                narrative_data['characters'][1]['id'] if len(narrative_data['characters']) > 1 else narrative_data['characters'][0]['id'])
+    
+    return narrative_data
+
+def assign_models_and_voices(narrative_data: Dict[str, Any], models: List[str], voices: List[str]) -> Dict[str, Any]:
+    """Assign AI models and voices to characters"""
+    try:
+        # Get different model categories for variety
+        categorized_models = get_categorized_models()
+        available_model_names = []
+        
+        # Collect all models from all categories
+        for category, model_list in categorized_models.items():
+            available_model_names.extend([model['full_name'] for model in model_list])
+        
+        # Fallback to original models if categorization failed
+        if not available_model_names:
+            available_model_names = models
+        
+        # Get a good selection of voices
+        selected_voices = voices[:10] if len(voices) >= 10 else voices  # Take first 10 or all available
+        
+        # Assign to characters
+        for i, character in enumerate(narrative_data['characters']):
+            # Assign model (rotate through available models)
+            character['model'] = available_model_names[i % len(available_model_names)]
+            
+            # Assign voice (rotate through selected voices)
+            character['voice'] = selected_voices[i % len(selected_voices)]
+        
+        return narrative_data
+        
+    except Exception as e:
+        logger.error(f"Error assigning models and voices: {e}")
+        # Fallback assignments
+        for i, character in enumerate(narrative_data['characters']):
+            character['model'] = models[0] if models else 'default'
+            character['voice'] = voices[0] if voices else 'default'
+        
+        return narrative_data
+
+@router.get('/emergent_narrative/edit_generated/{narrative_id}')
+async def edit_generated_narrative(request: Request, narrative_id: str):
+    """Page to review and edit AI-generated narrative before finalizing"""
+    try:
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        
+        models = get_available_models()
+        categorized_models = get_categorized_models()
+        voices = get_available_voices()
+        categorized_voices = get_categorized_voices()
+        
+        return templates.TemplateResponse("emergent_narrative/edit_generated.html", {
+            "request": request,
+            "narrative": narrative,
+            "models": models,
+            "categorized_models": categorized_models,
+            "voices": voices,
+            "categorized_voices": categorized_voices
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to load generated narrative {narrative_id}: {e}")
+        raise HTTPException(status_code=404, detail="Generated narrative not found") 

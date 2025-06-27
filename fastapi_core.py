@@ -19,7 +19,7 @@ from pathlib import Path
 
 # Import existing modules
 sys.path.append(str(Path(__file__).parent))
-from config import *
+from config import history, MAX_HISTORY, DEFAULT_MODEL, DEFAULT_VOICE, DEFAULT_PERSONALITY
 from embodiment.sensors import get_sensor_data, check_tcp_ports, get_ai_pipeline_status
 from cognition.llm_interface import get_available_models, sort_models_by_size, run_chat_completion
 from cognition.bicameral_mind import bicameral_chat_direct
@@ -229,9 +229,9 @@ def create_chat_routes():
                         context = {"time_of_day": "day", "user_name": None}
                         system_msg = personality_manager.current_personality.generate_system_message(context)
                     else:
-                        system_msg = system_message or "You are RoverSeer, a helpful assistant."
+                        system_msg = system_message or DEFAULT_PERSONALITY
                 else:
-                    system_msg = system_message or "You are RoverSeer, a helpful assistant."
+                    system_msg = system_message or DEFAULT_PERSONALITY
                 
                 # Build messages
                 messages = []
