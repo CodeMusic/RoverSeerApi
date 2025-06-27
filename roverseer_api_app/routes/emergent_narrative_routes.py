@@ -472,11 +472,30 @@ async def get_narrative_status(narrative_id: str):
                 char_a = narrative.get_character_by_id(current_scene.character_a_id)
                 char_b = narrative.get_character_by_id(current_scene.character_b_id)
                 
+                # Get scene progress information
+                total_interactions = len(current_scene.interactions)
+                required_interactions = current_scene.interaction_cycles * 2
+                completed_cycles = current_scene.completed_cycles  # Use stored value
+                partial_cycle = total_interactions % 2
+                
+                logger.info(f"DEBUG STATUS: Scene {current_scene.id}, stored completed_cycles = {current_scene.completed_cycles}")
+                logger.info(f"DEBUG STATUS: Total interactions = {total_interactions}, required = {required_interactions}")
+                logger.info(f"DEBUG STATUS: Scene interaction_cycles setting = {current_scene.interaction_cycles}")
+                
+                # Create progress description
+                if partial_cycle > 0:
+                    progress_text = f"{completed_cycles}.5/{current_scene.interaction_cycles}"
+                else:
+                    progress_text = f"{completed_cycles}/{current_scene.interaction_cycles}"
+                
                 current_scene_info = {
                     'number': current_scene.scene_number,
                     'description': current_scene.description,
-                    'completed_cycles': current_scene.completed_cycles,
+                    'completed_cycles': completed_cycles,
                     'total_cycles': current_scene.interaction_cycles,
+                    'total_interactions': total_interactions,
+                    'required_interactions': required_interactions,
+                    'progress_text': progress_text,
                     'characters': [char_a.name if char_a else "Unknown", char_b.name if char_b else "Unknown"]
                 }
             except Exception as scene_info_error:
@@ -486,6 +505,9 @@ async def get_narrative_status(narrative_id: str):
                     'description': getattr(current_scene, 'description', 'Unknown scene'),
                     'completed_cycles': getattr(current_scene, 'completed_cycles', 0),
                     'total_cycles': getattr(current_scene, 'interaction_cycles', 0),
+                    'total_interactions': 0,
+                    'required_interactions': 0,
+                    'progress_text': '0/0',
                     'characters': ['Character A', 'Character B']
                 }
         
@@ -660,15 +682,25 @@ async def advance_narrative(request: Request, narrative_id: str):
             if not influence.is_active():
                 narrative.active_influences = [inf for inf in narrative.active_influences if inf.is_active()]
         
-        # Update completed cycles - each pair of interactions is one cycle
+        # Completed cycles are now updated in add_interaction method
         new_interactions_count = len(current_scene.interactions)
-        current_scene.completed_cycles = (new_interactions_count + 1) // 2  # Round up to count partial cycles
+        
+        logger.info(f"Scene progress: {new_interactions_count} interactions = {current_scene.completed_cycles}/{current_scene.interaction_cycles} cycles")
+        logger.info(f"DEBUG: Scene {current_scene.id}, completed_cycles field = {current_scene.completed_cycles}")
+        logger.info(f"DEBUG: Interaction IDs in scene: {[i.get('id', 'no-id') for i in current_scene.interactions]}")
+        logger.info(f"DEBUG: About to save narrative to {narrative_file}")
         
         # Check if scene/act is complete and advance if needed
         scene_completed = current_scene.is_completed()
         narrative_advanced = False
+        
+        logger.info(f"Scene completion check: {new_interactions_count} interactions, requires {current_scene.interaction_cycles * 2}, completed: {scene_completed}")
+        
         if scene_completed:
+            logger.info(f"Scene {current_scene.scene_number} completed! Advancing narrative...")
             narrative_advanced = narrative.advance_narrative()
+            if narrative_advanced:
+                logger.info(f"Advanced to next scene/act. New position: Act {narrative.current_act}, Scene {narrative.current_scene}")
         
         # Save narrative state
         narrative.save_to_file(narrative_file)

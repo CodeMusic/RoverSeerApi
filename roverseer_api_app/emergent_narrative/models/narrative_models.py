@@ -156,19 +156,33 @@ class Scene:
     
     def is_completed(self) -> bool:
         """Check if scene has fulfilled its narrative purpose"""
-        return self.completed_cycles >= self.interaction_cycles
+        total_interactions = len(self.interactions)
+        required_interactions = self.interaction_cycles * 2  # Each cycle = 2 interactions
+        
+        # Scene is complete when we have enough total interactions
+        is_complete = total_interactions >= required_interactions
+        
+        return is_complete
     
     def add_interaction(self, character_id: str, content: str, metadata: Dict[str, Any] = None) -> None:
         """Record character interaction in scene"""
+        # Calculate which cycle this interaction belongs to
+        current_interaction_count = len(self.interactions)
+        current_cycle = current_interaction_count // 2
+        
         interaction = {
             "id": str(uuid.uuid4()),
             "character_id": character_id,
             "content": content,
             "timestamp": datetime.now().isoformat(),
-            "cycle": self.completed_cycles,
+            "cycle": current_cycle,
             "metadata": metadata or {}
         }
         self.interactions.append(interaction)
+        
+        # Update completed cycles based on new interaction count
+        new_interaction_count = len(self.interactions)
+        self.completed_cycles = new_interaction_count // 2
 
 
 @dataclass
@@ -347,6 +361,14 @@ class EmergentNarrative:
             )
             
             for scene_data in act_data["scenes"]:
+                # Calculate completed_cycles from interactions if not present or incorrect
+                interactions = scene_data.get("interactions", [])
+                stored_completed_cycles = scene_data.get("completed_cycles", 0)
+                calculated_completed_cycles = len(interactions) // 2
+                
+                # Use calculated value if stored value seems wrong
+                completed_cycles = max(stored_completed_cycles, calculated_completed_cycles)
+                
                 scene = Scene(
                     id=scene_data["id"],
                     act_id=scene_data["act_id"],
@@ -355,8 +377,8 @@ class EmergentNarrative:
                     character_a_id=scene_data["character_a_id"],
                     character_b_id=scene_data["character_b_id"],
                     interaction_cycles=scene_data["interaction_cycles"],
-                    completed_cycles=scene_data["completed_cycles"],
-                    interactions=scene_data["interactions"],
+                    completed_cycles=completed_cycles,
+                    interactions=interactions,
                     state=scene_data["state"]
                 )
                 act.scenes.append(scene)

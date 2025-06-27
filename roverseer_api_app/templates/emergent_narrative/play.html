@@ -592,6 +592,11 @@
                 const status = await response.json();
                 updateDebugInfo(`Status data: ${JSON.stringify(status, null, 2)}`);
                 
+                // Extra debug for scene progress
+                if (status.current_scene_info) {
+                    updateDebugInfo(`SCENE PROGRESS DEBUG: ${status.current_scene_info.total_interactions}/${status.current_scene_info.required_interactions} interactions = ${status.current_scene_info.progress_text}`);
+                }
+                
                 // Update status badge
                 const badge = document.getElementById('statusBadge');
                 badge.textContent = status.state.toUpperCase();
@@ -617,7 +622,8 @@
                         ${status.current_scene_info.description}
                         <br><small>
                             ${status.current_scene_info.characters.join(' & ')} 
-                            (${status.current_scene_info.completed_cycles}/${status.current_scene_info.total_cycles} cycles)
+                            (${status.current_scene_info.progress_text} cycles complete)
+                            <br>${status.current_scene_info.total_interactions}/${status.current_scene_info.required_interactions} total exchanges
                         </small>
                     `;
                 } else {
