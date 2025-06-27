@@ -628,6 +628,9 @@
                             <br>${status.current_scene_info.total_interactions}/${status.current_scene_info.required_interactions} total exchanges
                         </small>
                     `;
+                    
+                    // Log character assignments for debugging
+                    updateDebugInfo(`Scene ${status.current_scene_info.number} characters: ${status.current_scene_info.characters.join(' & ')}`);
                 } else {
                     currentSceneInfo = null;
                     sceneInfo.innerHTML = '<strong>Current Scene:</strong> Not started';
@@ -826,6 +829,14 @@
                     console.log('Advance result:', result);
                     updateDebugInfo(`Advance result: ${JSON.stringify(result)}`);
                     
+                    // Show auto-repair notification if repairs were made
+                    if (result.auto_repairs_made) {
+                        updateDebugInfo('✅ SMART AUTO-REPAIR: Character assignments automatically optimized for variety');
+                        updateDebugInfo('🎭 Character rotation ensures different combinations across scenes');
+                        // Optional: Show a brief toast notification to user
+                        // showNotification('Character assignments automatically corrected', 'info');
+                    }
+                    
                     // Remove typing indicator
                     hideTypingIndicator();
                     
@@ -833,11 +844,21 @@
                     if (result.narrative_advanced) {
                         updateDebugInfo('Scene advanced - clearing interactions display for new scene');
                         const container = document.getElementById('interactionsDisplay');
-                        container.innerHTML = '<div class="empty-theater">New scene starting...</div>';
+                        
+                        // Show scene transition message with new characters
+                        let newSceneMessage = '<div class="empty-theater">New scene starting...</div>';
+                        if (result.next_character) {
+                            newSceneMessage = `<div class="empty-theater">🎬 <strong>New Scene</strong><br/>Starting with ${result.next_character}</div>`;
+                        }
+                        
+                        container.innerHTML = newSceneMessage;
                         
                         // Brief delay before adding the new interaction to show scene transition
                         setTimeout(() => {
-                            addInteractionToDisplay(result);
+                            // Force refresh of current scene info for character assignments
+                            updateNarrativeStatus().then(() => {
+                                addInteractionToDisplay(result);
+                            });
                         }, 500);
                     } else {
                         // Add interaction to current scene
@@ -862,13 +883,21 @@
                     console.error('Advance error:', error);
                     updateDebugInfo(`Advance ERROR: ${error}`);
                     
-                    // If it's a character error, try to run a repair
-                    if (error.includes('Scene characters not found')) {
-                        updateDebugInfo('Character ID mismatch detected - running repair...');
-                        await repairNarrativeCharacters();
-                    } else {
-                        alert(`Failed to advance narrative: ${error}`);
+                    // Try to extract more details from the error
+                    let errorMessage = error;
+                    try {
+                        const errorObj = JSON.parse(error);
+                        errorMessage = errorObj.detail || error;
+                    } catch (e) {
+                        // Error is not JSON, use as-is
                     }
+                    
+                    // Show user-friendly error message
+                    alert(`Unable to advance narrative. The system will attempt to auto-repair and continue.\n\nTechnical details: ${errorMessage}`);
+                    
+                    // Attempt automatic repair
+                    updateDebugInfo('Attempting automatic character repair...');
+                    await repairNarrativeCharacters();
                 }
             } catch (error) {
                 hideTypingIndicator();

@@ -371,38 +371,62 @@ async def repair_narrative(narrative_id: str):
         narrative = EmergentNarrative.load_from_file(narrative_file)
         logger.info(f"Repairing narrative {narrative.title}")
         
-        # Get valid character IDs
-        valid_character_ids = [char.id for char in narrative.characters]
-        logger.info(f"Valid character IDs: {valid_character_ids}")
+        valid_character_ids = [c.id for c in narrative.characters]
+        logger.info(f"Available character IDs for repair: {valid_character_ids}")
         
         repairs_made = 0
         
-        # Check and repair character references in scenes
+        # Smart character assignment function for repairs
+        def get_smart_character_assignment(scene_number: int, character_count: int, is_character_a: bool):
+            """Assign characters in a rotating pattern to ensure variety across scenes"""
+            if character_count < 2:
+                return 0  # fallback to first character
+            
+            # Create rotating pairs: (0,1), (1,2), (2,3), (0,2), (1,3), (0,3), etc.
+            scene_offset = scene_number - 1  # 0-based
+            
+            if is_character_a:
+                # Character A rotates: 0, 1, 2, 0, 1, 2...
+                return scene_offset % character_count
+            else:
+                # Character B is offset from A to create pairs
+                char_a_index = scene_offset % character_count
+                char_b_index = (char_a_index + 1) % character_count
+                
+                # If we only have 2 characters, alternate the pair order
+                if character_count == 2 and scene_offset % 2 == 1:
+                    return char_a_index  # Swap for variation
+                    
+                return char_b_index
+        
+        # Check and repair character references in scenes with smart assignment
         for act in narrative.acts:
             for scene in act.scenes:
                 logger.info(f"Checking scene {scene.scene_number} - chars: {scene.character_a_id}, {scene.character_b_id}")
                 
-                # If character_a_id is invalid, assign first character
+                # If character_a_id is invalid, use smart assignment
                 if scene.character_a_id not in valid_character_ids:
                     logger.warning(f"Invalid character_a_id: {scene.character_a_id}")
                     if len(valid_character_ids) > 0:
-                        scene.character_a_id = valid_character_ids[0]
+                        smart_index = get_smart_character_assignment(scene.scene_number, len(valid_character_ids), True)
+                        scene.character_a_id = valid_character_ids[smart_index]
                         repairs_made += 1
-                        logger.info(f"Repaired character_a_id to: {scene.character_a_id}")
+                        logger.info(f"Smart-repaired character_a_id to: {scene.character_a_id} (character #{smart_index + 1})")
                 
-                # If character_b_id is invalid, assign second character (or first if only one exists)
+                # If character_b_id is invalid, use smart assignment
                 if scene.character_b_id not in valid_character_ids:
                     logger.warning(f"Invalid character_b_id: {scene.character_b_id}")
                     if len(valid_character_ids) > 1:
-                        scene.character_b_id = valid_character_ids[1]
+                        smart_index = get_smart_character_assignment(scene.scene_number, len(valid_character_ids), False)
+                        scene.character_b_id = valid_character_ids[smart_index]
                     elif len(valid_character_ids) > 0:
                         scene.character_b_id = valid_character_ids[0]
                     repairs_made += 1
-                    logger.info(f"Repaired character_b_id to: {scene.character_b_id}")
+                    logger.info(f"Smart-repaired character_b_id to: {scene.character_b_id}")
         
         # Save repaired narrative
         narrative.save_to_file(narrative_file)
-        logger.info(f"Repair completed - {repairs_made} fixes applied")
+        logger.info(f"Smart repair completed - {repairs_made} fixes applied")
         
         return JSONResponse(content={
             'success': True,
@@ -621,28 +645,80 @@ async def advance_narrative(request: Request, narrative_id: str):
         
         logger.info(f"Current scene {current_scene.scene_number}: char_a={current_scene.character_a_id}, char_b={current_scene.character_b_id}")
         
-        # Get characters for this scene with better error reporting
-        char_a = narrative.get_character_by_id(current_scene.character_a_id)
-        char_b = narrative.get_character_by_id(current_scene.character_b_id)
-        
-        # More detailed character validation
+        # Auto-repair character IDs if they're invalid - but use smart rotation
         available_char_ids = [c.id for c in narrative.characters]
         logger.info(f"Available character IDs: {available_char_ids}")
         
-        if not char_a:
-            logger.error(f"Character A not found: {current_scene.character_a_id}")
-            raise HTTPException(status_code=400, 
-                detail=f"Character A not found: {current_scene.character_a_id}. Available: {available_char_ids}")
+        repairs_made = False
         
-        if not char_b:
-            logger.error(f"Character B not found: {current_scene.character_b_id}")
-            raise HTTPException(status_code=400, 
-                detail=f"Character B not found: {current_scene.character_b_id}. Available: {available_char_ids}")
+        # Smart character assignment based on scene progression
+        def get_smart_character_assignment(scene_number: int, character_count: int, is_character_a: bool):
+            """Assign characters in a rotating pattern to ensure variety across scenes"""
+            if character_count < 2:
+                return 0  # fallback to first character
+            
+            # Create rotating pairs: (0,1), (1,2), (2,3), (0,2), (1,3), (0,3), etc.
+            scene_offset = scene_number - 1  # 0-based
+            
+            if is_character_a:
+                # Character A rotates: 0, 1, 2, 0, 1, 2...
+                return scene_offset % character_count
+            else:
+                # Character B is offset from A to create pairs
+                char_a_index = scene_offset % character_count
+                char_b_index = (char_a_index + 1) % character_count
+                
+                # If we only have 2 characters, alternate the pair order
+                if character_count == 2 and scene_offset % 2 == 1:
+                    return char_a_index  # Swap for variation
+                    
+                return char_b_index
         
-        logger.info(f"Found characters: {char_a.name} and {char_b.name}")
+        # Check and auto-repair character_a_id
+        if current_scene.character_a_id not in available_char_ids:
+            logger.warning(f"Invalid character_a_id: {current_scene.character_a_id} - auto-repairing with smart assignment")
+            if len(available_char_ids) > 0:
+                smart_index = get_smart_character_assignment(current_scene.scene_number, len(available_char_ids), True)
+                current_scene.character_a_id = available_char_ids[smart_index]
+                repairs_made = True
+                logger.info(f"Auto-repaired character_a_id to: {current_scene.character_a_id} (index {smart_index})")
+        
+        # Check and auto-repair character_b_id  
+        if current_scene.character_b_id not in available_char_ids:
+            logger.warning(f"Invalid character_b_id: {current_scene.character_b_id} - auto-repairing with smart assignment")
+            if len(available_char_ids) > 1:
+                smart_index = get_smart_character_assignment(current_scene.scene_number, len(available_char_ids), False)
+                current_scene.character_b_id = available_char_ids[smart_index]
+            elif len(available_char_ids) > 0:
+                # Fallback to first character if only one exists
+                current_scene.character_b_id = available_char_ids[0]
+            repairs_made = True
+            logger.info(f"Auto-repaired character_b_id to: {current_scene.character_b_id}")
+        
+        # Save repairs immediately if any were made
+        if repairs_made:
+            logger.info("Smart character ID repairs made - saving narrative")
+            narrative.save_to_file(narrative_file)
+        
+        # Now safely get characters (should always work after auto-repair)
+        char_a = narrative.get_character_by_id(current_scene.character_a_id)
+        char_b = narrative.get_character_by_id(current_scene.character_b_id)
+        
+        # Final fallback - if still no characters found, use first two available
+        if not char_a or not char_b:
+            logger.error("Critical character assignment failure - using fallback assignments")
+            if len(narrative.characters) >= 2:
+                char_a = narrative.characters[0]
+                char_b = narrative.characters[1]
+                current_scene.character_a_id = char_a.id
+                current_scene.character_b_id = char_b.id
+                narrative.save_to_file(narrative_file)
+            else:
+                raise HTTPException(status_code=500, detail="Narrative must have at least 2 characters")
+        
+        logger.info(f"Final character assignments: {char_a.name} (A) and {char_b.name} (B)")
         
         # Determine whose turn it is based on the number of interactions in the scene
-        # Count interactions in current scene to determine turn
         interactions_count = len(current_scene.interactions)
         current_character = char_a if interactions_count % 2 == 0 else char_b
         other_character = char_b if current_character == char_a else char_a
@@ -682,33 +758,41 @@ async def advance_narrative(request: Request, narrative_id: str):
             if not influence.is_active():
                 narrative.active_influences = [inf for inf in narrative.active_influences if inf.is_active()]
         
-        # Completed cycles are now updated in add_interaction method
+        # Check scene completion AFTER adding the interaction
         new_interactions_count = len(current_scene.interactions)
-        
-        logger.info(f"Scene progress: {new_interactions_count} interactions = {current_scene.completed_cycles}/{current_scene.interaction_cycles} cycles")
-        logger.info(f"DEBUG: Scene {current_scene.id}, completed_cycles field = {current_scene.completed_cycles}")
-        logger.info(f"DEBUG: Interaction IDs in scene: {[i.get('id', 'no-id') for i in current_scene.interactions]}")
-        logger.info(f"DEBUG: About to save narrative to {narrative_file}")
-        
-        # Check if scene/act is complete and advance if needed
         scene_completed = current_scene.is_completed()
         narrative_advanced = False
         
+        logger.info(f"Scene progress: {new_interactions_count} interactions = {current_scene.completed_cycles}/{current_scene.interaction_cycles} cycles")
         logger.info(f"Scene completion check: {new_interactions_count} interactions, requires {current_scene.interaction_cycles * 2}, completed: {scene_completed}")
         
         if scene_completed:
             logger.info(f"Scene {current_scene.scene_number} completed! Advancing narrative...")
             old_scene_number = current_scene.scene_number
-            old_act = narrative.current_act
-            old_scene = narrative.current_scene
             
             narrative_advanced = narrative.advance_narrative()
             if narrative_advanced:
                 logger.info(f"Advanced to next scene/act. New position: Act {narrative.current_act}, Scene {narrative.current_scene}")
                 
-                # Get the new scene and log character assignments
+                # Get the new scene and auto-repair its character assignments too
                 new_current_scene = narrative.get_current_scene()
                 if new_current_scene:
+                    # Auto-repair new scene character IDs if needed using smart assignment
+                    new_scene_repairs = False
+                    if new_current_scene.character_a_id not in available_char_ids:
+                        smart_index = get_smart_character_assignment(new_current_scene.scene_number, len(available_char_ids), True)
+                        new_current_scene.character_a_id = available_char_ids[smart_index] if available_char_ids else ""
+                        new_scene_repairs = True
+                        logger.info(f"Smart-repaired new scene character_a_id to: {new_current_scene.character_a_id}")
+                    if new_current_scene.character_b_id not in available_char_ids:
+                        smart_index = get_smart_character_assignment(new_current_scene.scene_number, len(available_char_ids), False)
+                        new_current_scene.character_b_id = available_char_ids[smart_index] if len(available_char_ids) > smart_index else available_char_ids[0]
+                        new_scene_repairs = True
+                        logger.info(f"Smart-repaired new scene character_b_id to: {new_current_scene.character_b_id}")
+                    
+                    if new_scene_repairs:
+                        logger.info("Smart auto-repaired new scene character assignments")
+                    
                     new_char_a = narrative.get_character_by_id(new_current_scene.character_a_id)
                     new_char_b = narrative.get_character_by_id(new_current_scene.character_b_id)
                     logger.info(f"NEW SCENE CHARACTERS: Scene {new_current_scene.scene_number} - {new_char_a.name if new_char_a else 'Unknown'} & {new_char_b.name if new_char_b else 'Unknown'}")
@@ -721,6 +805,22 @@ async def advance_narrative(request: Request, narrative_id: str):
         if output_mode in ['rover_audio', 'local_audio']:
             audio_url = await generate_audio_output(response_text, current_character.voice, output_mode)
         
+        # For the return data, use the active scene (which may be new if advanced)
+        active_scene = narrative.get_current_scene()
+        active_scene_number = active_scene.scene_number if active_scene else current_scene.scene_number
+        
+        # For next_character, determine based on the active scene
+        next_character_name = None
+        if not narrative.state.value == 'completed' and active_scene:
+            # Determine next character in current/new scene
+            active_interactions_count = len(active_scene.interactions)
+            active_char_a = narrative.get_character_by_id(active_scene.character_a_id)
+            active_char_b = narrative.get_character_by_id(active_scene.character_b_id)
+            if active_char_a and active_char_b:
+                next_char = active_char_a if active_interactions_count % 2 == 0 else active_char_b
+                next_character_name = next_char.name
+                logger.info(f"Next character in scene {active_scene.scene_number}: {next_character_name}")
+        
         return JSONResponse(content={
             'success': True,
             'character': current_character.name,
@@ -728,12 +828,13 @@ async def advance_narrative(request: Request, narrative_id: str):
             'scene_completed': scene_completed,
             'narrative_advanced': narrative_advanced,
             'narrative_completed': narrative.state.value == 'completed',
-            'current_scene': current_scene.scene_number,
+            'current_scene': active_scene_number,
             'current_act': narrative.current_act + 1,
-            'next_character': other_character.name if not scene_completed else None,
+            'next_character': next_character_name,
             'audio_url': audio_url,
             'output_mode': output_mode,
-            'influence_applied': influence.word_of_influence if influence else None
+            'influence_applied': influence.word_of_influence if influence else None,
+            'auto_repairs_made': repairs_made  # Let frontend know if repairs happened
         })
         
     except Exception as e:

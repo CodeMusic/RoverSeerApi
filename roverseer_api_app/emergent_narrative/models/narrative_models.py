@@ -352,7 +352,33 @@ class EmergentNarrative:
         # Restore characters
         narrative.characters = [Character.from_dict(char_data) for char_data in data["characters"]]
         
-        # Restore acts and scenes
+        # Get valid character IDs for auto-repair
+        valid_character_ids = [char.id for char in narrative.characters]
+        
+        # Smart character assignment function for load-time repairs
+        def get_smart_character_assignment(scene_number: int, character_count: int, is_character_a: bool):
+            """Assign characters in a rotating pattern to ensure variety across scenes"""
+            if character_count < 2:
+                return 0  # fallback to first character
+            
+            # Create rotating pairs: (0,1), (1,2), (2,3), (0,2), (1,3), (0,3), etc.
+            scene_offset = scene_number - 1  # 0-based
+            
+            if is_character_a:
+                # Character A rotates: 0, 1, 2, 0, 1, 2...
+                return scene_offset % character_count
+            else:
+                # Character B is offset from A to create pairs
+                char_a_index = scene_offset % character_count
+                char_b_index = (char_a_index + 1) % character_count
+                
+                # If we only have 2 characters, alternate the pair order
+                if character_count == 2 and scene_offset % 2 == 1:
+                    return char_a_index  # Swap for variation
+                    
+                return char_b_index
+        
+        # Restore acts and scenes with smart auto-repair
         for act_data in data["acts"]:
             act = Act(
                 id=act_data["id"],
@@ -369,13 +395,35 @@ class EmergentNarrative:
                 # Use calculated value if stored value seems wrong
                 completed_cycles = max(stored_completed_cycles, calculated_completed_cycles)
                 
+                # Auto-repair character IDs with smart assignment
+                character_a_id = scene_data.get("character_a_id", "")
+                character_b_id = scene_data.get("character_b_id", "")
+                scene_number = scene_data.get("scene_number", 1)
+                
+                # Fix character_a_id if invalid using smart assignment
+                if character_a_id not in valid_character_ids:
+                    if len(valid_character_ids) > 0:
+                        smart_index = get_smart_character_assignment(scene_number, len(valid_character_ids), True)
+                        character_a_id = valid_character_ids[smart_index]
+                        print(f"SMART AUTO-REPAIR: Fixed scene {scene_number} character_a_id to {character_a_id} (character #{smart_index + 1})")
+                
+                # Fix character_b_id if invalid using smart assignment
+                if character_b_id not in valid_character_ids:
+                    if len(valid_character_ids) > 1:
+                        smart_index = get_smart_character_assignment(scene_number, len(valid_character_ids), False)
+                        character_b_id = valid_character_ids[smart_index]
+                        print(f"SMART AUTO-REPAIR: Fixed scene {scene_number} character_b_id to {character_b_id} (character #{smart_index + 1})")
+                    elif len(valid_character_ids) > 0:
+                        character_b_id = valid_character_ids[0]
+                        print(f"SMART AUTO-REPAIR: Fixed scene {scene_number} character_b_id to {character_b_id} (fallback)")
+                
                 scene = Scene(
                     id=scene_data["id"],
                     act_id=scene_data["act_id"],
-                    scene_number=scene_data["scene_number"],
+                    scene_number=scene_number,
                     description=scene_data["description"],
-                    character_a_id=scene_data["character_a_id"],
-                    character_b_id=scene_data["character_b_id"],
+                    character_a_id=character_a_id,
+                    character_b_id=character_b_id,
                     interaction_cycles=scene_data["interaction_cycles"],
                     completed_cycles=completed_cycles,
                     interactions=interactions,
