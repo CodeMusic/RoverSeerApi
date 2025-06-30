@@ -18,6 +18,13 @@ REMOTE_HOST="codemusic@roverseer.local"
 
 echo "🚀 Deploying RoverSeer with Neural Voice Training to roverseer.local..."
 
+# Optional: Backup user data before deployment
+echo "💾 Creating backup of user data..."
+ssh $SSH_OPTS $REMOTE_HOST "mkdir -p ~/backups/$(date +%Y%m%d_%H%M%S)"
+ssh $SSH_OPTS $REMOTE_HOST "cp -r ~/roverseer_api_app/static/narrative_images ~/backups/$(date +%Y%m%d_%H%M%S)/ 2>/dev/null || true"
+ssh $SSH_OPTS $REMOTE_HOST "cp -r ~/roverseer_api_app/static/character_images ~/backups/$(date +%Y%m%d_%H%M%S)/ 2>/dev/null || true"
+ssh $SSH_OPTS $REMOTE_HOST "cp -r ~/roverseer_api_app/emergent_narrative/data ~/backups/$(date +%Y%m%d_%H%M%S)/ 2>/dev/null || true"
+
 # Upload custom drivers
 echo "📦 Uploading custom drivers..."
 scp $SSH_OPTS custom_drivers/rainbow_driver.py $REMOTE_HOST:~/custom_drivers/
@@ -27,6 +34,8 @@ echo "📦 Uploading roverseer_api_app..."
 rsync -avz --delete \
   --exclude='config.json' \
   --exclude='logs/' \
+  --exclude='static/narrative_images/' \
+  --exclude='static/character_images/' \
   --exclude='.DS_Store' \
   --exclude='._*' \
   --exclude='.AppleDouble' \
@@ -77,6 +86,10 @@ fi
 echo "📁 Setting up voice training directories..."
 ssh $SSH_OPTS $REMOTE_HOST "mkdir -p ~/texty/voice_data ~/texty/output_onnx"
 
+# Create image directories if they don't exist
+echo "🖼️ Setting up image directories..."
+ssh $SSH_OPTS $REMOTE_HOST "mkdir -p ~/roverseer_api_app/static/narrative_images ~/roverseer_api_app/static/character_images"
+
 # Set permissions
 echo "🔧 Setting permissions..."
 ssh $SSH_OPTS $REMOTE_HOST "chmod +x ~/custom_drivers/rainbow_driver.py"
@@ -107,5 +120,11 @@ ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/ > /dev/null && echo '
 ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/status_only > /dev/null && echo '✅ Status API responding' || echo '❌ Status API not responding'"
 ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/api/docs > /dev/null && echo '✅ FastAPI docs responding' || echo '❌ FastAPI docs not responding'"
 ssh $SSH_OPTS $REMOTE_HOST "curl -s http://localhost:5000/voices > /dev/null && echo '✅ Voice endpoints responding' || echo '❌ Voice endpoints not responding'"
+
+# Verify user data preservation
+echo "🔍 Verifying user data preservation..."
+NARRATIVE_COUNT=$(ssh $SSH_OPTS $REMOTE_HOST "ls ~/roverseer_api_app/static/narrative_images/ 2>/dev/null | wc -l" 2>/dev/null || echo "0")
+CHARACTER_COUNT=$(ssh $SSH_OPTS $REMOTE_HOST "ls ~/roverseer_api_app/static/character_images/ 2>/dev/null | wc -l" 2>/dev/null || echo "0")
+echo "📸 Found $NARRATIVE_COUNT narrative images and $CHARACTER_COUNT character images"
 
 echo "🎉 Deployment complete!" 

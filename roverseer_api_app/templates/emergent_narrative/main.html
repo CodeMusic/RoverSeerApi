@@ -230,12 +230,35 @@
             padding: 15px;
             cursor: pointer;
             transition: all 0.3s ease;
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
         }
         
         .narrative-item:hover 
         {
             background: #3a3a3a;
             border-color: #667eea;
+        }
+        
+        .narrative-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #222;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 2rem;
+            border: 2px solid #444;
+        }
+        
+        .narrative-content {
+            flex: 1;
+            min-width: 0;
         }
         
         .narrative-meta 
@@ -293,6 +316,50 @@
         {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .narrative-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .action-btn.play {
+            background: linear-gradient(135deg, #4caf50, #388e3c);
+            color: white;
+        }
+        
+        .action-btn.edit {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+        }
+        
+        .action-btn.delete {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        .action-btn.export {
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            color: white;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
@@ -393,22 +460,66 @@
                 {
                     const item = document.createElement('div');
                     item.className = 'narrative-item';
-                    item.onclick = () => playNarrative(narrative.id);
                     
                     item.innerHTML = `
-                        <div class="narrative-meta">
-                            <div class="narrative-title">${narrative.title}</div>
-                            <div class="narrative-date">${new Date(narrative.created_at).toLocaleDateString()}</div>
+                        <div class="narrative-image">
+                            ${narrative.image_path ? `<img src="${narrative.image_path}" alt="${narrative.title}" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">` : '📖'}
                         </div>
-                        <div class="narrative-summary">
-                            ${narrative.description || 'No description available'}
-                            <br><small>
-                                ${narrative.characters.length} characters, 
-                                ${narrative.acts} acts, 
-                                ${narrative.total_scenes} scenes
-                            </small>
+                        <div class="narrative-content">
+                            <div class="narrative-meta">
+                                <div class="narrative-title">${narrative.title}</div>
+                                <div class="narrative-date">${new Date(narrative.created_at).toLocaleDateString()}</div>
+                            </div>
+                            <div class="narrative-summary">
+                                ${narrative.description || 'No description available'}
+                                <br><small>
+                                    ${narrative.characters.length} characters, 
+                                    ${narrative.acts} acts, 
+                                    ${narrative.total_scenes} scenes
+                                </small>
+                            </div>
+                            <div class="narrative-actions">
+                                <button class="action-btn play" data-narrative-id="${narrative.id}">
+                                    ▶️ Play
+                                </button>
+                                <button class="action-btn edit" data-narrative-id="${narrative.id}">
+                                    ✏️ Edit
+                                </button>
+                                <button class="action-btn export" data-narrative-id="${narrative.id}">
+                                    💾 Export
+                                </button>
+                                <button class="action-btn delete" data-narrative-id="${narrative.id}" data-narrative-title="${narrative.title}">
+                                    🗑️ Delete
+                                </button>
+                            </div>
                         </div>
                     `;
+                    
+                    // Add event listeners
+                    const playBtn = item.querySelector('.action-btn.play');
+                    const editBtn = item.querySelector('.action-btn.edit');
+                    const exportBtn = item.querySelector('.action-btn.export');
+                    const deleteBtn = item.querySelector('.action-btn.delete');
+                    
+                    playBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        playNarrative(narrative.id);
+                    });
+                    
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        editNarrative(narrative.id);
+                    });
+                    
+                    exportBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        exportNarrative(narrative.id);
+                    });
+                    
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteNarrative(narrative.id, narrative.title);
+                    });
                     
                     listContainer.appendChild(item);
                 });
@@ -424,6 +535,40 @@
         function playNarrative(narrativeId) 
         {
             window.location.href = `/emergent_narrative/play/${narrativeId}`;
+        }
+        
+        function editNarrative(narrativeId) 
+        {
+            window.location.href = `/emergent_narrative/edit/${narrativeId}`;
+        }
+        
+        function exportNarrative(narrativeId) 
+        {
+            window.location.href = `/emergent_narrative/export/${narrativeId}`;
+        }
+        
+        async function deleteNarrative(narrativeId, narrativeTitle) 
+        {
+            if (!confirm(`Are you sure you want to delete "${narrativeTitle}"?\n\nThis action cannot be undone. All narrative data, characters, and progress will be permanently lost.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/emergent_narrative/delete/${narrativeId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert(`"${narrativeTitle}" has been deleted successfully.`);
+                    // Reload the narratives list
+                    loadNarratives();
+                } else {
+                    const error = await response.text();
+                    alert(`Failed to delete narrative: ${error}`);
+                }
+            } catch (error) {
+                alert(`Error deleting narrative: ${error.message}`);
+            }
         }
         
         // Load narratives when page loads

@@ -25,6 +25,26 @@
             border-bottom: 1px solid #333;
         }
         
+        .narrative-header-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .narrative-thumbnail {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #333;
+            border: 1px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 1.2rem;
+        }
+        
         .narrative-title {
             font-size: 1.2rem;
             font-weight: 600;
@@ -388,7 +408,16 @@
 <body>
     <div class="header">
         <a href="/emergent_narrative">← Back to Narratives</a>
-        <div class="narrative-title">{{ narrative.title }}</div>
+        <div class="narrative-header-content">
+            <div class="narrative-thumbnail">
+                {% if narrative.image_path %}
+                    <img src="{{ narrative.image_path }}" alt="{{ narrative.title }}" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">
+                {% else %}
+                    {{ narrative.title[:1] }}
+                {% endif %}
+            </div>
+            <div class="narrative-title">{{ narrative.title }}</div>
+        </div>
     </div>
 
     <div class="play-container">
@@ -992,6 +1021,15 @@
                 emptyState.remove();
             }
             
+            // Find the character data to get image path
+            let characterData = null;
+            for (const char of narrativeData.characters) {
+                if (char.name === result.character) {
+                    characterData = char;
+                    break;
+                }
+            }
+            
             // Determine character type based on current scene assignments
             let isCharacterA = false;
             if (currentSceneInfo && currentSceneInfo.characters) {
@@ -1006,14 +1044,22 @@
                 isCharacterA = messageCount % 2 === 0;
                 updateDebugInfo(`Character assignment fallback: ${result.character} is ${isCharacterA ? 'A' : 'B'} (message #${messageCount})`);
             }
-            const characterInitials = result.character.split(' ').map(n => n[0]).join('').toUpperCase();
+            
+            // Create avatar content
+            let avatarContent;
+            if (characterData && characterData.image_path) {
+                avatarContent = `<img src="${characterData.image_path}" alt="${result.character}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            } else {
+                const characterInitials = result.character.split(' ').map(n => n[0]).join('').toUpperCase();
+                avatarContent = characterInitials;
+            }
             
             const messageDiv = document.createElement('div');
             messageDiv.className = `interaction-message character-${isCharacterA ? 'a' : 'b'}`;
             
             messageDiv.innerHTML = `
                 <div class="character-avatar">
-                    ${characterInitials}
+                    ${avatarContent}
                 </div>
                 <div class="message-bubble">
                     ${result.response}

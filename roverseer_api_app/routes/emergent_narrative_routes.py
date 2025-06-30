@@ -8,12 +8,13 @@ import os
 import json
 import asyncio
 from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from typing import List, Dict, Any, Optional
 import logging
 import uuid
+import shutil
 
 # Import our models
 import sys
@@ -32,7 +33,12 @@ logger = logging.getLogger(__name__)
 
 # Storage paths
 NARRATIVES_DIR = os.path.join(os.path.dirname(__file__), '..', 'emergent_narrative', 'logs')
+NARRATIVE_IMAGES_DIR = os.path.join(os.path.dirname(__file__), '..', 'static', 'narrative_images')
+CHARACTER_IMAGES_DIR = os.path.join(os.path.dirname(__file__), '..', 'static', 'character_images')
+
 os.makedirs(NARRATIVES_DIR, exist_ok=True)
+os.makedirs(NARRATIVE_IMAGES_DIR, exist_ok=True)
+os.makedirs(CHARACTER_IMAGES_DIR, exist_ok=True)
 
 def get_available_models() -> List[str]:
     """Get available AI models from main app configuration"""
@@ -140,7 +146,8 @@ async def create_narrative(request: Request):
         # Create narrative instance
         narrative = EmergentNarrative(
             title=data['title'],
-            description=data['description']
+            description=data['description'],
+            image_path=data.get('image_path', '')
         )
         
         # Create characters
@@ -150,7 +157,8 @@ async def create_narrative(request: Request):
                 model=char_data['model'],
                 voice=char_data['voice'],
                 system_message=char_data['system_message'],
-                personality_archetype=CharacterPersonality(char_data.get('personality_archetype', 'contemplative'))
+                personality_archetype=CharacterPersonality(char_data.get('personality_archetype', 'contemplative')),
+                image_path=char_data.get('image_path', '')
             )
             narrative.characters.append(character)
         
@@ -206,9 +214,10 @@ async def list_narratives():
                         'id': narrative.id,
                         'title': narrative.title,
                         'description': narrative.description,
+                        'image_path': narrative.image_path,
                         'created_at': narrative.created_at.isoformat(),
                         'state': narrative.state.value,
-                        'characters': [{'name': char.name, 'id': char.id} for char in narrative.characters],
+                        'characters': [{'name': char.name, 'id': char.id, 'image_path': char.image_path} for char in narrative.characters],
                         'acts': len(narrative.acts),
                         'total_scenes': sum(len(act.scenes) for act in narrative.acts)
                     })
@@ -1034,6 +1043,87 @@ async def generate_audio_output(text: str, voice: str, output_mode: str) -> Opti
         logger.error(f"Failed to generate audio: {e}")
         return None
 
+@router.get('/emergent_narrative/edit/{narrative_id}')
+async def edit_narrative_page(request: Request, narrative_id: str):
+    """Narrative editing page"""
+    try:
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        
+        # Get available models and voices
+        models = get_available_models()
+        categorized_models = get_categorized_models()
+        voices = get_available_voices()
+        categorized_voices = get_categorized_voices()
+        
+        return templates.TemplateResponse("emergent_narrative/edit.html", {
+            "request": request,
+            "narrative": narrative,
+            "models": models,
+            "categorized_models": categorized_models,
+            "voices": voices,
+            "categorized_voices": categorized_voices
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to load narrative for editing {narrative_id}: {e}")
+        raise HTTPException(status_code=404, detail="Narrative not found")
+
+@router.put('/emergent_narrative/edit/{narrative_id}')
+async def update_narrative(request: Request, narrative_id: str):
+    """Update an existing narrative"""
+    try:
+        data = await request.json()
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        
+        # Load existing narrative
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        
+        # Update basic info
+        narrative.title = data.get('title', narrative.title)
+        narrative.description = data.get('description', narrative.description)
+        narrative.image_path = data.get('image_path', narrative.image_path)
+        
+        # Update characters
+        if 'characters' in data:
+            narrative.characters = [Character.from_dict(char_data) for char_data in data['characters']]
+        
+        # Update acts and scenes if provided
+        if 'acts' in data:
+            narrative.acts = []
+            for act_data in data['acts']:
+                act = Act(
+                    id=act_data.get('id', str(uuid.uuid4())),
+                    act_number=act_data['act_number'],
+                    theme=act_data['theme']
+                )
+                
+                if 'scenes' in act_data:
+                    for scene_data in act_data['scenes']:
+                        scene = Scene(
+                            id=scene_data.get('id', str(uuid.uuid4())),
+                            act_id=act.id,
+                            scene_number=scene_data['scene_number'],
+                            description=scene_data['description'],
+                            character_a_id=scene_data['character_a_id'],
+                            character_b_id=scene_data['character_b_id'],
+                            interaction_cycles=scene_data['interaction_cycles'],
+                            state=scene_data.get('state', 'pending')
+                        )
+                        act.scenes.append(scene)
+                
+                narrative.acts.append(act)
+        
+        # Save updated narrative
+        narrative.save_to_file(narrative_file)
+        
+        logger.info(f"Updated narrative {narrative_id}")
+        return JSONResponse(content={'success': True, 'message': 'Narrative updated successfully'})
+        
+    except Exception as e:
+        logger.error(f"Failed to update narrative {narrative_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete('/emergent_narrative/delete/{narrative_id}')
 async def delete_narrative(narrative_id: str):
     """Delete a narrative"""
@@ -1041,6 +1131,16 @@ async def delete_narrative(narrative_id: str):
         narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
         
         if os.path.exists(narrative_file):
+            # Also try to delete associated narrative image
+            try:
+                narrative = EmergentNarrative.load_from_file(narrative_file)
+                if narrative.image_path:
+                    image_file = os.path.join(NARRATIVE_IMAGES_DIR, os.path.basename(narrative.image_path))
+                    if os.path.exists(image_file):
+                        os.remove(image_file)
+            except Exception as img_error:
+                logger.warning(f"Failed to delete narrative image: {img_error}")
+            
             os.remove(narrative_file)
             logger.info(f"Deleted narrative {narrative_id}")
             return JSONResponse(content={'success': True, 'message': 'Narrative deleted'})
@@ -1049,6 +1149,92 @@ async def delete_narrative(narrative_id: str):
             
     except Exception as e:
         logger.error(f"Failed to delete narrative {narrative_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post('/emergent_narrative/upload_narrative_image')
+async def upload_narrative_image(file: UploadFile = File(...)):
+    """Upload an image for a narrative"""
+    try:
+        # Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Generate unique filename
+        file_extension = os.path.splitext(file.filename)[1] if file.filename else '.jpg'
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = os.path.join(NARRATIVE_IMAGES_DIR, unique_filename)
+        
+        # Save file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Return relative path for storage in database
+        relative_path = f"/static/narrative_images/{unique_filename}"
+        
+        return JSONResponse(content={
+            'success': True,
+            'image_path': relative_path,
+            'filename': unique_filename
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to upload narrative image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post('/emergent_narrative/upload_character_image')
+async def upload_character_image(file: UploadFile = File(...)):
+    """Upload an image for a character"""
+    try:
+        # Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Generate unique filename
+        file_extension = os.path.splitext(file.filename)[1] if file.filename else '.jpg'
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = os.path.join(CHARACTER_IMAGES_DIR, unique_filename)
+        
+        # Save file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Return relative path for storage in database
+        relative_path = f"/static/character_images/{unique_filename}"
+        
+        return JSONResponse(content={
+            'success': True,
+            'image_path': relative_path,
+            'filename': unique_filename
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to upload character image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete('/emergent_narrative/delete_image')
+async def delete_image(image_path: str):
+    """Delete an uploaded image"""
+    try:
+        # Extract filename from path
+        filename = os.path.basename(image_path)
+        
+        # Determine which directory to check
+        if '/narrative_images/' in image_path:
+            full_path = os.path.join(NARRATIVE_IMAGES_DIR, filename)
+        elif '/character_images/' in image_path:
+            full_path = os.path.join(CHARACTER_IMAGES_DIR, filename)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid image path")
+        
+        # Delete file if it exists
+        if os.path.exists(full_path):
+            os.remove(full_path)
+            return JSONResponse(content={'success': True, 'message': 'Image deleted'})
+        else:
+            raise HTTPException(status_code=404, detail="Image not found")
+            
+    except Exception as e:
+        logger.error(f"Failed to delete image {image_path}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get('/emergent_narrative/export/{narrative_id}')

@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Edit Emergent Narrative</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #1a1a1a; 
+            color: #ffffff; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .header { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .edit-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .edit-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .edit-header h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .edit-content {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        .edit-warning {
+            background: #ff9800;
+            color: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            font-weight: 500;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+        }
+        
+        .form-input, .form-textarea, .form-select {
+            width: 100%;
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .character-list {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .character-card {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .character-card:hover {
+            border-color: #667eea;
+        }
+        
+        .character-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .character-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex: 1;
+        }
+        
+        .btn-small {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn-small:hover {
+            background: #666;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .edit-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .edit-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .edit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .edit-button.secondary {
+            background: #444;
+            border: 2px solid #666;
+        }
+        
+        .edit-button.secondary:hover {
+            background: #555;
+            border-color: #777;
+        }
+        
+        .add-button {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 15px;
+        }
+        
+        .add-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .section-header {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        
+        .section-description {
+            color: #b0b0b0;
+            line-height: 1.5;
+        }
+        
+        .image-upload-section {
+            background: #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .current-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #222;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            color: #888;
+            font-size: 2rem;
+        }
+        
+        .image-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .upload-btn:hover {
+            background: #45a049;
+        }
+        
+        .remove-image-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .remove-image-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .character-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #333;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 1.5rem;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        
+        .acts-container, .scenes-container {
+            margin-top: 20px;
+        }
+        
+        .act-card, .scene-card {
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .act-header, .scene-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .character-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/emergent_narrative">← Back to Narratives</a>
+    </div>
+    
+    <div class="edit-container">
+        <div class="edit-header">
+            <h1>Edit Narrative</h1>
+        </div>
+        
+        <div class="edit-warning">
+            ⚠️ <strong>Important:</strong> Editing this narrative will modify its structure. Any progress or interactions may be affected. Consider backing up before making major changes.
+        </div>
+        
+        <div class="edit-content">
+            <div class="section-header">
+                <h2 class="section-title">Basic Information</h2>
+                <p class="section-description">Update the core details of your narrative.</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input type="text" id="narrativeTitle" class="form-input" 
+                       placeholder="Narrative title...">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea id="narrativeDescription" class="form-textarea" 
+                          placeholder="Describe the narrative..."></textarea>
+            </div>
+            
+            <div class="image-upload-section">
+                <label class="form-label">Narrative Cover Image</label>
+                <div class="current-image" id="currentNarrativeImage">
+                    📖
+                </div>
+                <div class="image-actions">
+                    <button type="button" class="upload-btn" onclick="document.getElementById('narrativeImageFile').click()">
+                        📁 Choose Image
+                    </button>
+                    <button type="button" class="remove-image-btn" id="removeNarrativeImage" onclick="removeNarrativeImage()" style="display: none;">
+                        🗑️ Remove
+                    </button>
+                    <input type="file" id="narrativeImageFile" class="file-input" accept="image/*" onchange="uploadNarrativeImage(this)">
+                </div>
+            </div>
+        </div>
+        
+        <div class="edit-content">
+            <div class="section-header">
+                <h2 class="section-title">Characters</h2>
+                <p class="section-description">Modify the AI characters in your narrative.</p>
+            </div>
+            
+            <div class="character-list" id="characterList">
+                <!-- Characters will be dynamically populated -->
+            </div>
+            
+            <button class="add-button" onclick="addCharacter()">+ Add Character</button>
+        </div>
+        
+        <div class="edit-content">
+            <div class="section-header">
+                <h2 class="section-title">Story Structure</h2>
+                <p class="section-description">Edit your story acts and scenes.</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Number of Acts</label>
+                <input type="number" id="numActs" class="form-input" min="1" max="10" value="3" 
+                       onchange="generateActStructure()">
+            </div>
+            
+            <div class="acts-container" id="actsContainer">
+                <!-- Acts will be dynamically generated -->
+            </div>
+        </div>
+        
+        <div class="edit-content">
+            <div class="section-header">
+                <h2 class="section-title">Scene Configuration</h2>
+                <p class="section-description">Configure individual scenes where two characters interact.</p>
+            </div>
+            
+            <div class="scenes-container" id="scenesContainer">
+                <!-- Scenes will be dynamically generated based on acts -->
+            </div>
+        </div>
+        
+        <div class="edit-actions">
+            <button class="edit-button secondary" onclick="window.location.href='/emergent_narrative'">
+                Cancel
+            </button>
+            <button class="edit-button" onclick="saveChanges()">
+                Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- Data from server -->
+    <script type="application/json" id="server-data">
+        {
+            "narrative": {{ narrative.to_dict() | tojson | safe }},
+            "models": {{ models | tojson | safe }},
+            "voices": {{ voices | tojson | safe }},
+            "categorized_voices": {{ categorized_voices | tojson | safe }}
+        }
+    </script>
+
+    <script>
+        let narrativeData = {};
+        let characters = [];
+        let acts = [];
+        let models = [];
+        let voices = [];
+        let categorizedVoices = {};
+        
+        function loadData() {
+            const serverData = JSON.parse(document.getElementById('server-data').textContent);
+            narrativeData = serverData.narrative;
+            models = serverData.models || [];
+            voices = serverData.voices || [];
+            categorizedVoices = serverData.categorized_voices || {};
+            
+            // Load basic info
+            document.getElementById('narrativeTitle').value = narrativeData.title || '';
+            document.getElementById('narrativeDescription').value = narrativeData.description || '';
+            
+            // Load narrative image
+            if (narrativeData.image_path) {
+                const imageContainer = document.getElementById('currentNarrativeImage');
+                imageContainer.innerHTML = `<img src="${narrativeData.image_path}" alt="Narrative image" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">`;
+                document.getElementById('removeNarrativeImage').style.display = 'inline-block';
+            }
+            
+            // Load characters
+            characters = narrativeData.characters.map(char => ({
+                id: char.id,
+                name: char.name,
+                model: char.model,
+                voice: char.voice,
+                system_message: char.system_message,
+                personality_archetype: char.personality_archetype || 'contemplative',
+                image_path: char.image_path || ''
+            }));
+            
+            // Load acts and scenes
+            if (narrativeData.acts && narrativeData.acts.length > 0) {
+                acts = narrativeData.acts.map(act => ({
+                    id: act.id,
+                    act_number: act.act_number,
+                    theme: act.theme,
+                    scenes: act.scenes.map(scene => ({
+                        id: scene.id,
+                        scene_number: scene.scene_number,
+                        description: scene.description,
+                        character_a_id: scene.character_a_id,
+                        character_b_id: scene.character_b_id,
+                        interaction_cycles: scene.interaction_cycles
+                    }))
+                }));
+                
+                document.getElementById('numActs').value = acts.length;
+            } else {
+                // Default if no acts
+                acts = [];
+                generateActStructure();
+            }
+            
+            renderCharacters();
+            renderActs();
+            renderScenes();
+        }
+        
+        function renderCharacters() {
+            const container = document.getElementById('characterList');
+            container.innerHTML = '';
+            
+            characters.forEach((character, index) => {
+                const characterCard = document.createElement('div');
+                characterCard.className = 'character-card';
+                
+                let modelOptions = '';
+                models.forEach(model => {
+                    modelOptions += `<option value="${model}" ${model === character.model ? 'selected' : ''}>${model}</option>`;
+                });
+                
+                let voiceOptions = generateVoiceOptions(character.voice);
+                
+                characterCard.innerHTML = `
+                    <div class="character-header">
+                        <div style="display: flex; align-items: center;">
+                            <div class="character-image" id="characterImage-${character.id}">
+                                ${character.image_path ? `<img src="${character.image_path}" alt="${character.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` : (character.name ? character.name.charAt(0).toUpperCase() : '?')}
+                            </div>
+                            <div class="character-name">${character.name || `Character ${index + 1}`}</div>
+                        </div>
+                        <button class="btn-small btn-danger" onclick="removeCharacter('${character.id}')">
+                            Remove
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-input" value="${character.name}" 
+                               onchange="updateCharacter('${character.id}', 'name', this.value)"
+                               placeholder="Character name...">
+                    </div>
+                    
+                    <div class="image-upload-section" style="background: #2a2a2a;">
+                        <label class="form-label">Character Avatar</label>
+                        <div class="image-actions">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('characterImageFile-${character.id}').click()">
+                                📁 Choose Image
+                            </button>
+                            <button type="button" class="remove-image-btn" id="removeCharacterImage-${character.id}" onclick="removeCharacterImage('${character.id}')" style="display: ${character.image_path ? 'inline-block' : 'none'};">
+                                🗑️ Remove
+                            </button>
+                            <input type="file" id="characterImageFile-${character.id}" class="file-input" accept="image/*" onchange="uploadCharacterImage('${character.id}', this)">
+                        </div>
+                    </div>
+                    
+                    <div class="two-column">
+                        <div class="form-group">
+                            <label class="form-label">AI Model</label>
+                            <select class="form-select" onchange="updateCharacter('${character.id}', 'model', this.value)">
+                                <option value="">Select Model</option>
+                                ${modelOptions}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Voice</label>
+                            <select class="form-select" onchange="updateCharacter('${character.id}', 'voice', this.value)">
+                                ${voiceOptions}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Personality Archetype</label>
+                        <select class="form-select" onchange="updateCharacter('${character.id}', 'personality_archetype', this.value)">
+                            <option value="contemplative" ${character.personality_archetype === 'contemplative' ? 'selected' : ''}>Contemplative</option>
+                            <option value="analytical" ${character.personality_archetype === 'analytical' ? 'selected' : ''}>Analytical</option>
+                            <option value="creative" ${character.personality_archetype === 'creative' ? 'selected' : ''}>Creative</option>
+                            <option value="empathetic" ${character.personality_archetype === 'empathetic' ? 'selected' : ''}>Empathetic</option>
+                            <option value="logical" ${character.personality_archetype === 'logical' ? 'selected' : ''}>Logical</option>
+                            <option value="intuitive" ${character.personality_archetype === 'intuitive' ? 'selected' : ''}>Intuitive</option>
+                            <option value="assertive" ${character.personality_archetype === 'assertive' ? 'selected' : ''}>Assertive</option>
+                            <option value="rebellious" ${character.personality_archetype === 'rebellious' ? 'selected' : ''}>Rebellious</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">System Message (Character Consciousness)</label>
+                        <textarea class="form-textarea" onchange="updateCharacter('${character.id}', 'system_message', this.value)"
+                                  placeholder="Define this character's personality, background, speaking style, and core traits...">${character.system_message}</textarea>
+                    </div>
+                `;
+                container.appendChild(characterCard);
+            });
+        }
+        
+        function updateCharacter(characterId, field, value) {
+            const character = characters.find(char => char.id === characterId);
+            if (character) {
+                character[field] = value;
+                
+                // If the name changed, update the character display and re-render scenes
+                if (field === 'name') {
+                    renderCharacters();
+                    renderScenes(); // Re-render scenes to update character dropdowns
+                }
+            }
+        }
+        
+        function addCharacter() {
+            characters.push({
+                id: generateId(),
+                name: '',
+                model: models[0] || '',
+                voice: voices[0] || '',
+                system_message: '',
+                personality_archetype: 'contemplative',
+                image_path: ''
+            });
+            renderCharacters();
+            renderScenes(); // Re-render scenes to update character dropdowns
+        }
+        
+        function removeCharacter(characterId) {
+            if (characters.length <= 2) {
+                alert('A narrative must have at least 2 characters');
+                return;
+            }
+            
+            characters = characters.filter(char => char.id !== characterId);
+            renderCharacters();
+            renderScenes(); // Re-render scenes to update character dropdowns
+        }
+        
+        async function saveChanges() {
+            const title = document.getElementById('narrativeTitle').value.trim();
+            const description = document.getElementById('narrativeDescription').value.trim();
+            
+            if (!title || !description) {
+                alert('Title and description are required');
+                return;
+            }
+            
+            if (characters.length < 2) {
+                alert('At least 2 characters are required');
+                return;
+            }
+            
+            for (let char of characters) {
+                if (!char.name || !char.model || !char.voice || !char.system_message) {
+                    alert('All character fields must be completed');
+                    return;
+                }
+            }
+            
+            // Validate acts
+            for (let act of acts) {
+                if (!act.theme.trim()) {
+                    alert('All acts must have a theme description');
+                    return;
+                }
+            }
+            
+            // Validate scenes
+            for (let act of acts) {
+                for (let scene of act.scenes) {
+                    if (!scene.description.trim() || !scene.character_a_id || !scene.character_b_id) {
+                        alert('All scenes must be configured with characters and descriptions');
+                        return;
+                    }
+                }
+            }
+            
+            const updateData = {
+                title: title,
+                description: description,
+                image_path: narrativeData.image_path,
+                characters: characters,
+                acts: acts
+            };
+            
+            try {
+                const response = await fetch(`/emergent_narrative/edit/${narrativeData.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (response.ok) {
+                    alert('Narrative updated successfully!');
+                    window.location.href = `/emergent_narrative/play/${narrativeData.id}`;
+                } else {
+                    const error = await response.text();
+                    alert(`Failed to update narrative: ${error}`);
+                }
+            } catch (error) {
+                alert(`Error updating narrative: ${error.message}`);
+            }
+        }
+        
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+        
+        function generateVoiceOptions(selectedVoice = '') {
+            let options = '<option value="">Select Voice</option>';
+            
+            for (const [category, voiceList] of Object.entries(categorizedVoices)) {
+                if (voiceList && voiceList.length > 0) {
+                    options += `<optgroup label="${category}">`;
+                    for (const voice of voiceList) {
+                        const isSelected = voice === selectedVoice ? 'selected' : '';
+                        options += `<option value="${voice}" ${isSelected}>${voice}</option>`;
+                    }
+                    options += '</optgroup>';
+                }
+            }
+            
+            return options;
+        }
+        
+        async function uploadNarrativeImage(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            
+            try {
+                const response = await fetch('/emergent_narrative/upload_narrative_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    narrativeData.image_path = result.image_path;
+                    
+                    const imageContainer = document.getElementById('currentNarrativeImage');
+                    imageContainer.innerHTML = `<img src="${result.image_path}" alt="Narrative image" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">`;
+                    document.getElementById('removeNarrativeImage').style.display = 'inline-block';
+                } else {
+                    alert('Failed to upload image');
+                }
+            } catch (error) {
+                alert('Error uploading image: ' + error.message);
+            }
+        }
+        
+        async function removeNarrativeImage() {
+            if (narrativeData.image_path) {
+                try {
+                    await fetch(`/emergent_narrative/delete_image?image_path=${encodeURIComponent(narrativeData.image_path)}`, {
+                        method: 'DELETE'
+                    });
+                } catch (error) {
+                    console.warn('Failed to delete image file:', error);
+                }
+            }
+            
+            narrativeData.image_path = '';
+            document.getElementById('currentNarrativeImage').innerHTML = '📖';
+            document.getElementById('removeNarrativeImage').style.display = 'none';
+        }
+        
+        async function uploadCharacterImage(characterId, input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            
+            try {
+                const response = await fetch('/emergent_narrative/upload_character_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateCharacter(characterId, 'image_path', result.image_path);
+                    
+                    const imageContainer = document.getElementById(`characterImage-${characterId}`);
+                    imageContainer.innerHTML = `<img src="${result.image_path}" alt="Character image" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                    document.getElementById(`removeCharacterImage-${characterId}`).style.display = 'inline-block';
+                } else {
+                    alert('Failed to upload character image');
+                }
+            } catch (error) {
+                alert('Error uploading character image: ' + error.message);
+            }
+        }
+        
+        async function removeCharacterImage(characterId) {
+            const character = characters.find(char => char.id === characterId);
+            if (character && character.image_path) {
+                try {
+                    await fetch(`/emergent_narrative/delete_image?image_path=${encodeURIComponent(character.image_path)}`, {
+                        method: 'DELETE'
+                    });
+                } catch (error) {
+                    console.warn('Failed to delete character image file:', error);
+                }
+            }
+            
+            updateCharacter(characterId, 'image_path', '');
+            const imageContainer = document.getElementById(`characterImage-${characterId}`);
+            imageContainer.innerHTML = character.name ? character.name.charAt(0).toUpperCase() : '?';
+            document.getElementById(`removeCharacterImage-${characterId}`).style.display = 'none';
+        }
+        
+        function generateActStructure() {
+            const numActs = parseInt(document.getElementById('numActs').value);
+            const currentActCount = acts.length;
+            
+            if (numActs > currentActCount) {
+                // Add new acts
+                for (let i = currentActCount; i < numActs; i++) {
+                    acts.push({
+                        id: generateId(),
+                        act_number: i + 1,
+                        theme: '',
+                        scenes: []
+                    });
+                }
+            } else if (numActs < currentActCount) {
+                // Remove excess acts
+                acts = acts.slice(0, numActs);
+            }
+            
+            renderActs();
+            renderScenes();
+        }
+        
+        function renderActs() {
+            const container = document.getElementById('actsContainer');
+            container.innerHTML = '';
+            
+            acts.forEach(act => {
+                const actCard = document.createElement('div');
+                actCard.className = 'act-card';
+                actCard.innerHTML = `
+                    <div class="act-header">
+                        <h3>Act ${act.act_number}</h3>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Theme Description</label>
+                        <input type="text" class="form-input" value="${act.theme}"
+                               onchange="updateAct('${act.id}', 'theme', this.value)"
+                               placeholder="Describe the overall theme of this act...">
+                    </div>
+                `;
+                container.appendChild(actCard);
+            });
+        }
+        
+        function updateAct(actId, field, value) {
+            const act = acts.find(a => a.id === actId);
+            if (act) {
+                act[field] = value;
+            }
+        }
+        
+        function renderScenes() {
+            const container = document.getElementById('scenesContainer');
+            container.innerHTML = '';
+            
+            acts.forEach(act => {
+                // Ensure each act has at least one scene
+                if (act.scenes.length === 0) {
+                    act.scenes.push({
+                        id: generateId(),
+                        scene_number: 1,
+                        description: '',
+                        character_a_id: '',
+                        character_b_id: '',
+                        interaction_cycles: 3
+                    });
+                }
+                
+                const actSection = document.createElement('div');
+                actSection.innerHTML = `<h3>Act ${act.act_number}: ${act.theme}</h3>`;
+                
+                act.scenes.forEach((scene, sceneIndex) => {
+                    const sceneCard = document.createElement('div');
+                    sceneCard.className = 'scene-card';
+                    sceneCard.innerHTML = `
+                        <div class="scene-header">
+                            <h4>Scene ${scene.scene_number}</h4>
+                            <div class="character-controls">
+                                <button class="btn-small" onclick="addScene('${act.id}')">+ Add Scene</button>
+                                ${act.scenes.length > 1 ? `<button class="btn-small btn-danger" onclick="removeScene('${act.id}', '${scene.id}')">Remove</button>` : ''}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Scene Description</label>
+                            <input type="text" class="form-input" value="${scene.description}"
+                                   onchange="updateScene('${act.id}', '${scene.id}', 'description', this.value)"
+                                   placeholder="What happens in this scene?">
+                        </div>
+                        <div class="two-column">
+                            <div class="form-group">
+                                <label class="form-label">Character A</label>
+                                <select class="form-select" onchange="updateScene('${act.id}', '${scene.id}', 'character_a_id', this.value)">
+                                    <option value="">Select Character</option>
+                                    ${characters.map(char => `
+                                        <option value="${char.id}" ${char.id === scene.character_a_id ? 'selected' : ''}>
+                                            ${char.name || `Character ${characters.indexOf(char) + 1}`}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Character B</label>
+                                <select class="form-select" onchange="updateScene('${act.id}', '${scene.id}', 'character_b_id', this.value)">
+                                    <option value="">Select Character</option>
+                                    ${characters.map(char => `
+                                        <option value="${char.id}" ${char.id === scene.character_b_id ? 'selected' : ''}>
+                                            ${char.name || `Character ${characters.indexOf(char) + 1}`}
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Interaction Cycles (exchanges between characters)</label>
+                            <input type="number" class="form-input" min="1" max="20" value="${scene.interaction_cycles}"
+                                   onchange="updateScene('${act.id}', '${scene.id}', 'interaction_cycles', parseInt(this.value))">
+                        </div>
+                    `;
+                    actSection.appendChild(sceneCard);
+                });
+                
+                container.appendChild(actSection);
+            });
+        }
+        
+        function addScene(actId) {
+            const act = acts.find(a => a.id === actId);
+            if (act) {
+                act.scenes.push({
+                    id: generateId(),
+                    scene_number: act.scenes.length + 1,
+                    description: '',
+                    character_a_id: '',
+                    character_b_id: '',
+                    interaction_cycles: 3
+                });
+                renderScenes();
+            }
+        }
+        
+        function removeScene(actId, sceneId) {
+            const act = acts.find(a => a.id === actId);
+            if (act) {
+                act.scenes = act.scenes.filter(scene => scene.id !== sceneId);
+                // Renumber scenes
+                act.scenes.forEach((scene, index) => {
+                    scene.scene_number = index + 1;
+                });
+                renderScenes();
+            }
+        }
+        
+        function updateScene(actId, sceneId, field, value) {
+            const act = acts.find(a => a.id === actId);
+            if (act) {
+                const scene = act.scenes.find(s => s.id === sceneId);
+                if (scene) {
+                    scene[field] = value;
+                }
+            }
+        }
+        
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html> 

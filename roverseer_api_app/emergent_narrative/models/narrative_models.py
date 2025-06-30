@@ -158,6 +158,7 @@ class Character:
     voice: str = ""  # Voice for audio output
     system_message: str = ""  # Core personality prompt
     personality_archetype: CharacterPersonality = CharacterPersonality.CONTEMPLATIVE
+    image_path: str = ""  # Path to character image/avatar
     memory: CharacterMemory = field(default_factory=lambda: None)
     
     def __post_init__(self):
@@ -173,6 +174,7 @@ class Character:
             "voice": self.voice,
             "system_message": self.system_message,
             "personality_archetype": self.personality_archetype.value,
+            "image_path": self.image_path,
             "memory": {
                 "memories": self.memory.memories,
                 "relationships": self.memory.relationships,
@@ -189,7 +191,8 @@ class Character:
             model=data["model"],
             voice=data["voice"],
             system_message=data["system_message"],
-            personality_archetype=CharacterPersonality(data["personality_archetype"])
+            personality_archetype=CharacterPersonality(data["personality_archetype"]),
+            image_path=data.get("image_path", "")
         )
         
         # Restore memory
@@ -295,6 +298,7 @@ class EmergentNarrative:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     title: str = ""
     description: str = ""
+    image_path: str = ""  # Path to narrative cover image
     characters: List[Character] = field(default_factory=list)
     acts: List[Act] = field(default_factory=list)
     active_influences: List[InfluenceVector] = field(default_factory=list)
@@ -373,6 +377,7 @@ class EmergentNarrative:
             "id": self.id,
             "title": self.title,
             "description": self.description,
+            "image_path": self.image_path,
             "characters": [char.to_dict() for char in self.characters],
             "acts": [
                 {
@@ -421,6 +426,7 @@ class EmergentNarrative:
             id=data["id"],
             title=data["title"],
             description=data["description"],
+            image_path=data.get("image_path", ""),
             state=NarrativeState(data["state"]),
             created_at=datetime.fromisoformat(data["created_at"]),
             current_act=data["current_act"],
