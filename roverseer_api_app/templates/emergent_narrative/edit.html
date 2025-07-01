@@ -600,6 +600,16 @@
                     <div class="personality-sliders-container" id="personality-sliders-${character.id}">
                         <!-- Personality sliders will be rendered here -->
                     </div>
+                    
+                    <div class="form-group" style="border-top: 1px solid #333; padding-top: 15px; margin-top: 15px;">
+                        <button type="button" class="btn-small" onclick="syncPersonalityFromLibrary('${character.id}')" 
+                                style="background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                            🔄 Sync Traits from Character Library
+                        </button>
+                        <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+                            Load the latest personality traits from the original character definition
+                        </div>
+                    </div>
                 `;
                 
                 container.appendChild(characterCard);
@@ -1040,6 +1050,71 @@
                 if (scene) {
                     scene[field] = value;
                 }
+            }
+        }
+        
+        async function syncPersonalityFromLibrary(characterId) {
+            const character = characters.find(c => c.id === characterId);
+            if (!character) {
+                alert('Character not found');
+                return;
+            }
+            
+            try {
+                // Confirm sync before proceeding
+                const confirmSync = confirm(
+                    `Sync personality traits from character library?\n\n` +
+                    `This will replace the current narrative-specific traits for "${character.name}" ` +
+                    `with the latest traits from the character library.\n\n` +
+                    `Current narrative traits will be lost. Continue?`
+                );
+                
+                if (!confirmSync) {
+                    return;
+                }
+                
+                // Use the backend API for robust syncing
+                const response = await fetch(`/emergent_narrative/sync_personality/${narrativeData.id}/${characterId}`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Failed to sync personality traits');
+                }
+                
+                const result = await response.json();
+                console.log('Sync result:', result);
+                
+                // Update the local character data
+                character.personality_traits = { ...result.new_traits };
+                
+                // Update the personality sliders
+                const sliders = personalitySliders.get(characterId);
+                if (sliders) {
+                    sliders.setValues(character.personality_traits);
+                    console.log(`Applied synced traits to sliders for ${character.name}`);
+                }
+                
+                // Show detailed success message
+                alert(
+                    `Successfully synced personality traits for "${character.name}"!\n\n` +
+                    `${result.changes_count} traits were updated from the character library.\n\n` +
+                    `The changes are now saved to the narrative.`
+                );
+                
+            } catch (error) {
+                console.error('Error syncing personality traits:', error);
+                
+                // Show user-friendly error message
+                let errorMessage = error.message;
+                if (errorMessage.includes('not found in character library')) {
+                    errorMessage = `Character "${character.name}" was not found in the character library.\n\nTip: Make sure the character name matches exactly.`;
+                } else if (errorMessage.includes('default personality traits')) {
+                    errorMessage = `Character "${character.name}" in the library has default personality traits (all 5's).\n\nPlease customize the character in the Character Library first.`;
+                }
+                
+                alert(`Error syncing personality traits:\n\n${errorMessage}`);
             }
         }
         

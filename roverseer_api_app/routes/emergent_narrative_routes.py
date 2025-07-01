@@ -2591,3 +2591,77 @@ async def cleanup_empty_groups():
         })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/sync_personality/{narrative_id}/{character_id}')
+async def sync_personality_from_library(narrative_id: str, character_id: str):
+    """Sync a narrative character's personality traits from the character library"""
+    try:
+        # Load the narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        
+        # Find the character in the narrative
+        narrative_character = narrative.get_character_by_id(character_id)
+        if not narrative_character:
+            raise HTTPException(status_code=404, detail="Character not found in narrative")
+        
+        # Search for the character in the library by name
+        try:
+            library_characters = character_library.search_characters(query=narrative_character.name)
+            library_character = None
+            
+            # Find exact match by name
+            for char in library_characters:
+                if char.name.lower() == narrative_character.name.lower():
+                    library_character = char
+                    break
+            
+            if not library_character:
+                raise HTTPException(status_code=404, detail=f"Character '{narrative_character.name}' not found in character library")
+            
+            # Check if library character has custom traits
+            has_custom_traits = (library_character.personality_traits and 
+                               any(getattr(library_character.personality_traits, trait) != 5 
+                                   for trait in ['purpose_drive', 'autonomy_urge', 'control_desire', 
+                                                'empathy_level', 'emotional_stability', 'shadow_pressure',
+                                                'loyalty_spectrum', 'manipulation_tendency', 'validation_need',
+                                                'loop_adherence', 'awakening_capacity', 'mythic_potential']))
+            
+            if not has_custom_traits:
+                raise HTTPException(status_code=400, detail=f"Character '{narrative_character.name}' in library has default personality traits (all 5's)")
+            
+            # Copy the personality traits from library to narrative character
+            old_traits = narrative_character.personality_traits.to_dict()
+            narrative_character.personality_traits = PersonalityTraits.from_dict(library_character.personality_traits.to_dict())
+            new_traits = narrative_character.personality_traits.to_dict()
+            
+            # Save the updated narrative
+            narrative.save_to_file(narrative_file)
+            
+            logger.info(f"Synced personality traits for {narrative_character.name} in narrative {narrative_id}")
+            
+            # Count how many traits actually changed
+            changes_count = sum(1 for key in old_traits.keys() if old_traits[key] != new_traits[key])
+            
+            return JSONResponse(content={
+                "success": True,
+                "character_name": narrative_character.name,
+                "old_traits": old_traits,
+                "new_traits": new_traits,
+                "changes_count": changes_count,
+                "message": f"Successfully synced {changes_count} personality traits for {narrative_character.name}"
+            })
+            
+        except Exception as e:
+            logger.error(f"Failed to sync personality from library: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to sync from character library: {str(e)}")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to sync personality traits: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
