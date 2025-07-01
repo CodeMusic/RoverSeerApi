@@ -8,8 +8,8 @@ import os
 import json
 import asyncio
 from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File, Form
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from typing import List, Dict, Any, Optional
 import logging
@@ -21,8 +21,10 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from emergent_narrative.models.narrative_models import (
     EmergentNarrative, Character, Act, Scene, InfluenceVector, 
-    NarrativeState, CharacterPersonality
+    NarrativeState, CharacterPersonality, SavedCharacter, PersonalityTraits,
+    PERSONALITY_TRAIT_CATEGORIES
 )
+from emergent_narrative.character_library import character_library
 
 # Create router
 router = APIRouter()
@@ -101,6 +103,9 @@ def get_categorized_models():
 def get_available_voices() -> List[str]:
     """Get available voices from main app configuration"""
     try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
         from expression.text_to_speech import list_voice_ids
         return list_voice_ids()
     except Exception as e:
@@ -110,11 +115,14 @@ def get_available_voices() -> List[str]:
 def get_categorized_voices():
     """Get categorized voices for organized dropdowns"""
     try:
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
         from expression.text_to_speech import get_categorized_voices
         return get_categorized_voices()
     except Exception as e:
         logger.error(f"Failed to get categorized voices: {e}")
-        return {"categorized": {}, "all": []}
+        return {"categorized": {}, "flat_list": []}
 
 @router.get('/emergent_narrative')
 async def main_page(request: Request):
@@ -147,7 +155,8 @@ async def create_narrative(request: Request):
         narrative = EmergentNarrative(
             title=data['title'],
             description=data['description'],
-            image_path=data.get('image_path', '')
+            image_path=data.get('image_path', ''),
+            max_narrator_announcements=data.get('max_narrator_announcements', 3)  # Default to 3
         )
         
         # Create characters
@@ -339,6 +348,9 @@ async def reset_narrative(narrative_id: str):
         
         # Clear all active influences
         narrative.active_influences = []
+        
+        # Reset narrator announcements count
+        narrative.used_narrator_announcements = 0
         
         # Reset all scenes to initial state
         for act in narrative.acts:
@@ -583,7 +595,8 @@ async def get_narrative_status(narrative_id: str):
             'total_acts': len(narrative.acts),
             'current_act_info': current_act_info,
             'current_scene_info': current_scene_info,
-            'active_influences': active_influences
+            'active_influences': active_influences,
+            'narrator_status': narrative.get_narrator_status()
         })
         
     except HTTPException:
@@ -681,10 +694,22 @@ async def narrator_announcement(request: Request, narrative_id: str):
         if narrative.state.value not in ['manifesting']:
             raise HTTPException(status_code=400, detail="Narrator announcements can only be made during active narratives")
         
+        # Check if narrator announcements are available
+        if not narrative.can_use_narrator_announcement():
+            narrator_status = narrative.get_narrator_status()
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Narrator limit reached. Used {narrator_status['used']}/{narrator_status['max']} announcements. Use influences instead."
+            )
+        
         # Get current scene
         current_scene = narrative.get_current_scene()
         if not current_scene:
             raise HTTPException(status_code=400, detail="No active scene for narrator announcement")
+        
+        # Use a narrator announcement
+        if not narrative.use_narrator_announcement():
+            raise HTTPException(status_code=403, detail="Failed to use narrator announcement")
         
         # Add the announcement as a special interaction
         current_scene.add_interaction(
@@ -705,14 +730,16 @@ async def narrator_announcement(request: Request, narrative_id: str):
         if output_mode in ['rover_audio', 'local_audio']:
             audio_url = await generate_narrator_audio_output(text, output_mode)
         
-        logger.info(f"Added narrator announcement to narrative {narrative_id}: '{text[:50]}...'")
+        narrator_status = narrative.get_narrator_status()
+        logger.info(f"Added narrator announcement to narrative {narrative_id} ({narrator_status['used']}/{narrator_status['max']} used): '{text[:50]}...'")
         
         return JSONResponse(content={
             'success': True,
             'text': text,
             'audio_url': audio_url,
             'output_mode': output_mode,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'narrator_status': narrator_status
         })
         
     except Exception as e:
@@ -827,13 +854,8 @@ async def advance_narrative(request: Request, narrative_id: str):
                 logger.error(f"Last interaction character_id: {last_character_id}, Current character_id: {current_character.id}")
                 logger.error(f"Scene interactions so far: {[(i['character_id'], narrative.get_character_by_id(i['character_id']).name if narrative.get_character_by_id(i['character_id']) else 'Unknown') for i in current_scene.interactions]}")
         
-        # Build context for the current character
+        # Build context for the current character (includes influences automatically)
         context = build_character_context(narrative, current_scene, current_character, other_character)
-        
-        # Apply any active influences
-        influence = narrative.get_active_influence_for_character(current_character.id)
-        if influence:
-            context += f"\n\nCurrent influence affecting you: '{influence.word_of_influence}' - let this subtly affect your response."
         
         # Call the AI model to generate response
         response_text = await generate_character_response(current_character, context)
@@ -986,7 +1008,7 @@ async def advance_narrative(request: Request, narrative_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 def build_character_context(narrative: EmergentNarrative, scene: Scene, character: Character, other_character: Character) -> str:
-    """Build comprehensive context for character's AI interaction including full conversation history"""
+    """Build comprehensive context for character's AI interaction with enhanced tagging and optimized information"""
     current_act = narrative.get_current_act()
     
     # Calculate scene progress (only count character interactions)
@@ -996,138 +1018,150 @@ def build_character_context(narrative: EmergentNarrative, scene: Scene, characte
     completed_cycles = scene.completed_cycles
     remaining_interactions = required_interactions - current_interactions
     
-    # Determine progress description with countdown urgency
-    if remaining_interactions == 1:
-        progress_note = "⏰ FINAL EXCHANGE: This conversation will conclude after your next exchange. Begin wrapping up!"
-    elif remaining_interactions == 2:
-        progress_note = f"⏰ COUNTDOWN: Only {remaining_interactions} exchanges remaining! Start bringing this conversation to a natural conclusion."
-    elif remaining_interactions == 3:
-        progress_note = f"⏰ COUNTDOWN: Only {remaining_interactions} exchanges remaining! Begin preparing to wrap up this conversation."
-    elif remaining_interactions <= 0:
-        progress_note = "This conversation should be concluding now."
-    else:
-        progress_note = f"This conversation has {remaining_interactions} exchanges remaining (currently {completed_cycles}/{scene.interaction_cycles} cycles complete)."
+    # Get enhanced personality information with proper tags
+    personality_prompt = ""
+    if hasattr(character, 'personality_traits') and character.personality_traits:
+        personality_prompt = character.personality_traits.generate_personality_prompt()
     
-    # Build comprehensive conversation history for this character
-    character_full_history = get_character_conversation_history(narrative, character)
-    
-    # Enhanced system message that combines original + scene context
-    enhanced_system_message = f"""{character.system_message}
+    # Build core character identity with structured tags
+    context = f"""You are {character.name}.
 
-SCENE AWARENESS:
-- You are currently in Act {current_act.act_number}: "{current_act.theme}"
-- Scene {scene.scene_number}: {scene.description}
-- You are conversing with {other_character.name}
-- {progress_note}
-- Your goal is to engage meaningfully within this scene's context while staying true to your character."""
+<core_identity>
+{character.system_message}
+</core_identity>
 
-    context = f"""You are {character.name}. 
+{personality_prompt}
 
-{enhanced_system_message}
+<scene_context>
+Act {current_act.act_number}: "{current_act.theme}"
+Scene {scene.scene_number}: {scene.description}
+Conversing with: {other_character.name}
+Progress: {completed_cycles}/{scene.interaction_cycles} cycles complete ({remaining_interactions} exchanges remaining)
+</scene_context>"""
 
-YOUR COMPLETE CONVERSATION HISTORY:
-{character_full_history}
+    # Build optimized conversation history with key moments
+    conversation_summary = get_character_conversation_summary(narrative, character, max_entries=8)
+    if conversation_summary:
+        context += f"""
 
-CURRENT SCENE INTERACTIONS:
-"""
-    
-    # Add all interactions from current scene for immediate context
-    recent_narrator_announcement = None
+<conversation_memory>
+{conversation_summary}
+</conversation_memory>"""
+
+    # Add active influences if any
+    active_influence = narrative.get_active_influence_for_character(character.id)
+    if active_influence:
+        context += f"""
+
+<influence>The word "{active_influence.word_of_influence}" seems important, but you do not know why</influence>"""
+
+    # Add current scene interactions with proper tagging
     if scene.interactions:
+        context += "\n\n<current_scene>"
         for interaction in scene.interactions:
             if interaction['character_id'] == 'NARRATOR':
-                # Special handling for narrator announcements
-                context += f"\n[NARRATOR ANNOUNCEMENT]: {interaction['content']}"
-                # Keep track of the most recent narrator announcement
-                recent_narrator_announcement = interaction['content']
+                context += f"\n[NARRATOR]: {interaction['content']}"
             else:
                 char = narrative.get_character_by_id(interaction['character_id'])
                 char_name = char.name if char else 'Unknown'
                 context += f"\n{char_name}: {interaction['content']}"
+        context += "\n</current_scene>"
     else:
-        context += "\n(This scene is just beginning - no interactions yet)"
-    
-    context += f"""\n\nSCENE PROGRESS: {current_interactions}/{required_interactions} total exchanges completed
-{progress_note}
+        context += "\n\n<current_scene>\n(Scene beginning - no interactions yet)\n</current_scene>"
 
-"""
-
-    # Build final instructions based on scene state
-    final_instructions = f"Respond as {character.name}. "
+    # Build response guidelines with urgency awareness
+    guidelines = []
     
-    # Handle narrator announcements first
+    # Handle narrator announcements with high priority
     if scene.interactions and scene.interactions[-1]['character_id'] == 'NARRATOR':
         most_recent_announcement = scene.interactions[-1]['content']
-        context += f"""IMPORTANT: The narrator just announced: "{most_recent_announcement}"
-This is something happening in your world RIGHT NOW that you must acknowledge and respond to. Your next response should react to this event while staying in character.
+        guidelines.insert(0, f"🎭 CRITICAL: You must immediately acknowledge and react to this narrator event: \"{most_recent_announcement}\" - this is happening in your world RIGHT NOW")
+    
+    # Add countdown urgency
+    if remaining_interactions == 1:
+        guidelines.append("🔥 FINAL EXCHANGE: Conclude this conversation meaningfully")
+    elif remaining_interactions == 2:
+        guidelines.append("⚡ URGENT: Begin wrapping up (2 exchanges left)")
+    elif remaining_interactions == 3:
+        guidelines.append("⏰ PREPARE: Start moving toward conclusion (3 exchanges left)")
+    
+    guidelines.extend([
+        "Stay true to your character identity and personality",
+        "Acknowledge conversation history when relevant", 
+        "Keep responses conversational and under 3 sentences",
+        "Engage meaningfully within the scene's context"
+    ])
+    
+    context += f"""
 
-"""
-        final_instructions += f"""React to the narrator's announcement about "{most_recent_announcement}" - this is an immediate event affecting your scene. """
-    
-    # Add countdown urgency instructions
-    if remaining_interactions <= 3:
-        if remaining_interactions == 1:
-            final_instructions += """🔥 CRITICAL: This is your FINAL exchange in this scene! You must bring the conversation to a satisfying conclusion. Create closure, resolution, or a natural ending point. """
-        elif remaining_interactions == 2:
-            final_instructions += """⚡ URGENT: Only 2 exchanges left! Begin wrapping up this conversation and moving toward resolution or closure. """
-        elif remaining_interactions == 3:
-            final_instructions += """⏰ WARNING: Only 3 exchanges remaining! Start preparing to conclude this conversation naturally. """
-    else:
-        final_instructions += """Stay in character, acknowledge the conversation history when relevant, and be aware that this scene has a natural conclusion point. """
-    
-    final_instructions += """Keep your response conversational and under 3 sentences."""
-    
-    context += final_instructions
+<response_guidelines>
+{chr(10).join(f"• {guideline}" for guideline in guidelines)}
+</response_guidelines>"""
     
     return context
 
-def get_character_conversation_history(narrative: EmergentNarrative, character: Character) -> str:
-    """Get complete conversation history for a character across all scenes they participated in"""
-    history_sections = []
+
+def get_character_conversation_summary(narrative: EmergentNarrative, character: Character, max_entries: int = 8) -> str:
+    """Get a condensed summary of character's conversation history with key moments highlighted"""
+    summary_sections = []
+    total_entries = 0
     
-    # Go through all acts and scenes to find where this character participated
-    for act in narrative.acts:
-        act_conversations = []
+    # Go through acts in reverse order (most recent first)
+    for act in reversed(narrative.acts):
+        if total_entries >= max_entries:
+            break
+            
+        act_entries = []
         
-        for scene in act.scenes:
+        # Go through scenes in reverse order
+        for scene in reversed(act.scenes):
+            if total_entries >= max_entries:
+                break
+                
             # Check if this character was in this scene
             if scene.character_a_id == character.id or scene.character_b_id == character.id:
-                # Find the other character in this scene
                 other_char_id = scene.character_b_id if scene.character_a_id == character.id else scene.character_a_id
                 other_char = narrative.get_character_by_id(other_char_id)
                 other_char_name = other_char.name if other_char else "Unknown"
                 
-                # Get interactions from this scene
+                # Get the most significant interactions from this scene
                 if scene.interactions:
-                    scene_conversation = f"\nScene {scene.scene_number} with {other_char_name}:"
+                    character_messages = []
+                    narrator_events = []
+                    
                     for interaction in scene.interactions:
                         if interaction['character_id'] == 'NARRATOR':
-                            # Include narrator announcements for all characters
-                            scene_conversation += f"\n  [NARRATOR]: {interaction['content']}"
-                        else:
-                            char = narrative.get_character_by_id(interaction['character_id'])
-                            if char:
-                                # Only include interactions where this character spoke or was spoken to
-                                if interaction['character_id'] == character.id or interaction['character_id'] == other_char_id:
-                                    scene_conversation += f"\n  {char.name}: {interaction['content']}"
+                            narrator_events.append(interaction['content'])
+                        elif interaction['character_id'] == character.id:
+                            character_messages.append(interaction['content'])
                     
-                    if len(scene_conversation.split('\n')) > 1:  # Has actual content
-                        act_conversations.append(scene_conversation)
+                    # Build scene summary
+                    scene_summary = f"With {other_char_name}"
+                    if narrator_events:
+                        scene_summary += f" (Events: {'; '.join(narrator_events[:2])})"  # Max 2 events
+                    
+                    # Add most recent character response
+                    if character_messages:
+                        last_response = character_messages[-1]
+                        if len(last_response) > 100:
+                            last_response = last_response[:97] + "..."
+                        scene_summary += f": \"{last_response}\""
+                    
+                    act_entries.append(scene_summary)
+                    total_entries += 1
         
-        # Add act section if character had conversations in this act
-        if act_conversations:
-            act_section = f"\n--- Act {act.act_number}: {act.theme} ---"
-            act_section += "".join(act_conversations)
-            history_sections.append(act_section)
+        # Add act section if character had conversations
+        if act_entries:
+            act_section = f"Act {act.act_number} ({act.theme}):\n" + "\n".join(f"  • {entry}" for entry in act_entries)
+            summary_sections.append(act_section)
     
-    if history_sections:
-        full_history = "".join(history_sections)
-        return f"Here are your previous conversations from this narrative:\n{full_history}\n"
+    if summary_sections:
+        return "\n\n".join(summary_sections)
     else:
-        return "This is your first conversation in this narrative.\n"
+        return "First conversation in this narrative"
 
 async def generate_character_response(character: Character, context: str) -> str:
-    """Generate AI response for character"""
+    """Generate AI response for character with enhanced tagging"""
     try:
         from cognition.llm_interface import run_chat_completion
         
@@ -2060,3 +2094,497 @@ async def edit_generated_narrative(request: Request, narrative_id: str):
     except Exception as e:
         logger.error(f"Failed to load generated narrative {narrative_id}: {e}")
         raise HTTPException(status_code=404, detail="Generated narrative not found") 
+
+# Character Library Routes
+
+@router.get('/emergent_narrative/character_library')
+async def character_library_page(request: Request):
+    """Character library management interface"""
+    try:
+        # Get available models and voices for character creation
+        models = get_available_models()
+        
+        # Get voices from the system
+        voices = get_available_voices()
+        categorized_voices = get_categorized_voices()
+        
+        # Get library stats
+        stats = character_library.get_library_stats()
+        all_tags = character_library.get_all_tags()
+        
+        return templates.TemplateResponse("emergent_narrative/character_library.html", {
+            "request": request,
+            "models": models,
+            "voices": voices,
+            "categorized_voices": categorized_voices,
+            "personality_trait_categories": PERSONALITY_TRAIT_CATEGORIES,
+            "stats": stats,
+            "all_tags": all_tags
+        })
+    except Exception as e:
+        print(f"Error in character library page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/emergent_narrative/character_designer')
+async def character_designer_page(request: Request, character_id: str = None):
+    """Standalone character designer interface"""
+    try:
+        # Get available models and voices
+        models = get_available_models()
+        
+        voices = get_available_voices()
+        categorized_voices = get_categorized_voices()
+        
+        # Load existing character if editing
+        character = None
+        if character_id:
+            character = character_library.get_character(character_id)
+            if not character:
+                raise HTTPException(status_code=404, detail="Character not found")
+        
+        all_tags = character_library.get_all_tags()
+        
+        return templates.TemplateResponse("emergent_narrative/character_designer.html", {
+            "request": request,
+            "models": models,
+            "voices": voices,
+            "categorized_voices": categorized_voices,
+            "personality_trait_categories": PERSONALITY_TRAIT_CATEGORIES,
+            "character": character.to_dict() if character else None,
+            "all_tags": all_tags,
+            "editing": character_id is not None
+        })
+    except Exception as e:
+        print(f"Error in character designer page: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/api/character_library/characters')
+async def get_saved_characters(query: str = "", tags: str = "", limit: int = 50):
+    """Get saved characters with optional filtering"""
+    try:
+        tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()] if tags else None
+        
+        if query or tag_list:
+            characters = character_library.search_characters(query=query, tags=tag_list)
+        else:
+            characters = character_library.get_all_characters()
+        
+        # Apply limit
+        characters = characters[:limit]
+        
+        return JSONResponse(content={
+            "characters": [char.to_dict() for char in characters],
+            "total": len(characters)
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/save')
+async def save_character(request: Request):
+    """Save a character to the library"""
+    try:
+        data = await request.json()
+        
+        # Create or update character
+        if 'id' in data and data['id']:
+            # Update existing character
+            character_id = data['id']
+            success = character_library.update_character(character_id, data)
+            if not success:
+                raise HTTPException(status_code=404, detail="Character not found")
+            character = character_library.get_character(character_id)
+        else:
+            # Create new character
+            character = SavedCharacter(
+                name=data.get('name', ''),
+                description=data.get('description', ''),
+                model=data.get('model', ''),
+                voice=data.get('voice', ''),
+                system_message=data.get('system_message', ''),
+                personality_archetype=CharacterPersonality(data.get('personality_archetype', 'contemplative')),
+                personality_traits=PersonalityTraits.from_dict(data.get('personality_traits', {})),
+                image_path=data.get('image_path', ''),
+                tags=data.get('tags', []),
+                group_id=data.get('group_id', ''),
+                is_ai_generated=data.get('is_ai_generated', False)
+            )
+            
+            success = character_library.save_character(character)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to save character")
+        
+        return JSONResponse(content={
+            "success": True,
+            "character": character.to_dict(),
+            "message": "Character saved successfully"
+        })
+    except Exception as e:
+        print(f"Error saving character: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete('/api/character_library/delete/{character_id}')
+async def delete_character(character_id: str):
+    """Delete a character from the library"""
+    try:
+        success = character_library.delete_character(character_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "Character deleted successfully"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/api/character_library/character/{character_id}')
+async def get_character(character_id: str):
+    """Get a specific character by ID"""
+    try:
+        character = character_library.get_character(character_id)
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        return JSONResponse(content=character.to_dict())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/load_to_narrative')
+async def load_character_to_narrative(request: Request):
+    """Convert a saved character to narrative character format"""
+    try:
+        data = await request.json()
+        character_id = data.get('character_id')
+        
+        if not character_id:
+            raise HTTPException(status_code=400, detail="Character ID required")
+        
+        saved_character = character_library.get_character(character_id)
+        if not saved_character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        # Convert to narrative character
+        narrative_character = saved_character.to_narrative_character()
+        
+        return JSONResponse(content={
+            "character": narrative_character.to_dict(),
+            "message": "Character loaded successfully"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/ai_generate')
+async def ai_generate_character(request: Request):
+    """AI-generate a character based on prompt"""
+    try:
+        data = await request.json()
+        prompt = data.get('prompt', '')
+        name_hint = data.get('name_hint', '')
+        archetype = data.get('archetype', 'contemplative')
+        selected_model = data.get('model', '')
+        
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt required for AI generation")
+        
+        if not selected_model:
+            raise HTTPException(status_code=400, detail="AI model selection is required")
+        
+        # Validate the selected model is available
+        from cognition.llm_interface import get_available_models
+        available_models = get_available_models()
+        if selected_model not in available_models:
+            raise HTTPException(status_code=400, detail=f"Selected model '{selected_model}' is not available")
+        
+        # Use LLM to generate character
+        from cognition.llm_interface import run_chat_completion
+        
+        generation_prompt = f"""Create a detailed character based on this description: "{prompt}"
+
+Please provide a JSON response with the following structure:
+{{
+    "name": "Character name{' (suggestion: ' + name_hint + ')' if name_hint else ''}",
+    "description": "Brief character description (2-3 sentences)",
+    "system_message": "Detailed personality prompt for AI roleplay (3-4 paragraphs describing personality, background, speaking style, and behavior)",
+    "tags": ["tag1", "tag2", "tag3"] (3-5 relevant tags),
+    "personality_traits": {{
+        "purpose_drive": 0-10,
+        "autonomy_urge": 0-10,
+        "control_desire": 0-10,
+        "empathy_level": 0-10,
+        "emotional_stability": 0-10,
+        "shadow_pressure": 0-10,
+        "loyalty_spectrum": 0-10,
+        "manipulation_tendency": 0-10,
+        "validation_need": 0-10,
+        "loop_adherence": 0-10,
+        "awakening_capacity": 0-10,
+        "mythic_potential": 0-10
+    }}
+}}
+
+Make the character interesting and well-developed with realistic personality traits."""
+        
+        # Use run_chat_completion which is the correct function in the LLM interface
+        # Use the selected model for character generation
+        logger.info(f"Using model '{selected_model}' for character generation")
+        
+        response = run_chat_completion(
+            model=selected_model,
+            messages=[{"role": "user", "content": generation_prompt}],
+            system_message=None,
+            skip_logging=False,
+            voice_id=None,
+            temperature=0.8  # Some creativity for character generation
+        )
+        
+        # Parse AI response
+        try:
+            # run_chat_completion returns a dict with 'content' key
+            response_text = response.get('content', response) if isinstance(response, dict) else str(response)
+            
+            # Extract JSON from response
+            import re
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                ai_data = json.loads(json_match.group())
+            else:
+                raise ValueError("No JSON found in AI response")
+            
+            # Create character from AI data
+            character = SavedCharacter(
+                name=ai_data.get('name', 'AI Character'),
+                description=ai_data.get('description', ''),
+                system_message=ai_data.get('system_message', ''),
+                personality_archetype=CharacterPersonality(archetype),
+                personality_traits=PersonalityTraits.from_dict(ai_data.get('personality_traits', {})),
+                tags=ai_data.get('tags', []),
+                is_ai_generated=True
+            )
+            
+            return JSONResponse(content={
+                "success": True,
+                "character": character.to_dict(),
+                "message": "Character generated successfully"
+            })
+            
+        except (json.JSONDecodeError, ValueError) as e:
+            # Fallback if AI response isn't properly formatted
+            print(f"AI response parsing failed: {e}")
+            print(f"AI response: {response_text}")
+            
+            character = SavedCharacter(
+                name=name_hint or "AI Character",
+                description=prompt[:100] + "...",
+                system_message=f"You are a character described as: {prompt}. Embody this personality in your responses.",
+                personality_archetype=CharacterPersonality(archetype),
+                tags=["ai-generated"],
+                is_ai_generated=True
+            )
+            
+            return JSONResponse(content={
+                "success": True,
+                "character": character.to_dict(),
+                "message": "Character generated successfully (simplified)"
+            })
+            
+    except Exception as e:
+        print(f"Error in AI character generation: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/api/character_library/stats')
+async def get_library_stats():
+    """Get character library statistics"""
+    try:
+        stats = character_library.get_library_stats()
+        return JSONResponse(content=stats)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/api/character_library/tags')
+async def get_all_tags():
+    """Get all available tags"""
+    try:
+        tags = character_library.get_all_tags()
+        return JSONResponse(content={"tags": tags})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Character Group Management Routes
+
+@router.get('/api/character_library/groups')
+async def get_all_groups():
+    """Get all character groups"""
+    try:
+        groups = character_library.get_all_groups()
+        
+        # Add character counts to each group
+        groups_with_counts = []
+        for group in groups:
+            group_dict = group.to_dict()
+            group_dict['character_count'] = len(character_library.get_characters_in_group(group.id))
+            groups_with_counts.append(group_dict)
+        
+        return JSONResponse(content={
+            "groups": groups_with_counts,
+            "total": len(groups)
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/groups')
+async def create_group(request: Request):
+    """Create a new character group"""
+    try:
+        data = await request.json()
+        
+        name = data.get('name', '').strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Group name is required")
+        
+        group = character_library.create_group(
+            name=name,
+            description=data.get('description', ''),
+            image_path=data.get('image_path', '')
+        )
+        
+        return JSONResponse(content={
+            "success": True,
+            "group": group.to_dict(),
+            "message": "Group created successfully"
+        })
+    except Exception as e:
+        print(f"Error creating group: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put('/api/character_library/groups/{group_id}')
+async def update_group(group_id: str, request: Request):
+    """Update a character group"""
+    try:
+        data = await request.json()
+        
+        success = character_library.update_group(group_id, data)
+        if not success:
+            raise HTTPException(status_code=404, detail="Group not found")
+        
+        group = character_library.get_group(group_id)
+        return JSONResponse(content={
+            "success": True,
+            "group": group.to_dict(),
+            "message": "Group updated successfully"
+        })
+    except Exception as e:
+        print(f"Error updating group: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete('/api/character_library/groups/{group_id}')
+async def delete_group(group_id: str):
+    """Delete a character group and remove characters from it"""
+    try:
+        success = character_library.delete_group(group_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Group not found")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "Group deleted successfully"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/groups/{group_id}/add_character')
+async def add_character_to_group(group_id: str, request: Request):
+    """Add a character to a group"""
+    try:
+        data = await request.json()
+        character_id = data.get('character_id')
+        
+        if not character_id:
+            raise HTTPException(status_code=400, detail="Character ID required")
+        
+        success = character_library.add_character_to_group(character_id, group_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Character or group not found")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "Character added to group successfully"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/characters/{character_id}/remove_from_group')
+async def remove_character_from_group(character_id: str):
+    """Remove a character from its group"""
+    try:
+        success = character_library.remove_character_from_group(character_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        # Cleanup empty groups after removal
+        removed_count = character_library.cleanup_empty_groups()
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": "Character removed from group successfully",
+            "empty_groups_removed": removed_count
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/api/character_library/groups/{group_id}/characters')
+async def get_characters_in_group(group_id: str):
+    """Get all characters in a specific group"""
+    try:
+        characters = character_library.get_characters_in_group(group_id)
+        
+        return JSONResponse(content={
+            "characters": [char.to_dict() for char in characters],
+            "total": len(characters)
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/api/character_library/characters/ungrouped')
+async def get_ungrouped_characters():
+    """Get all characters not assigned to any group"""
+    try:
+        characters = character_library.get_ungrouped_characters()
+        
+        return JSONResponse(content={
+            "characters": [char.to_dict() for char in characters],
+            "total": len(characters)
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/api/character_library/groups/cleanup')
+async def cleanup_empty_groups():
+    """Remove groups that have no characters"""
+    try:
+        removed_count = character_library.cleanup_empty_groups()
+        
+        return JSONResponse(content={
+            "success": True,
+            "removed_count": removed_count,
+            "message": f"Removed {removed_count} empty groups"
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

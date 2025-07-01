@@ -25,6 +25,221 @@ class CharacterPersonality(Enum):
     REBELLIOUS = "rebellious"
 
 
+# Configurable Personality Traits System - CodeMusai's Core Narrative Trait Matrix
+PERSONALITY_TRAIT_CATEGORIES = {
+    "motivation": {
+        "name": "Motivation",
+        "description": "What drives them?",
+        "color": "#667eea",
+        "traits": {
+            "purpose_drive": {
+                "name": "Purpose Drive",
+                "description": "Need to complete a goal or quest",
+                "min_label": "wanderer",
+                "max_label": "destiny-bound",
+                "default": 5
+            },
+            "autonomy_urge": {
+                "name": "Autonomy Urge", 
+                "description": "Need to make own choices",
+                "min_label": "passive",
+                "max_label": "fiercely independent",
+                "default": 5
+            },
+            "control_desire": {
+                "name": "Control Desire",
+                "description": "Need to control others or the system",
+                "min_label": "surrendered",
+                "max_label": "controlling",
+                "default": 5
+            }
+        }
+    },
+    "emotional_tone": {
+        "name": "Emotional Tone",
+        "description": "How they feel/react internally",
+        "color": "#f093fb",
+        "traits": {
+            "empathy_level": {
+                "name": "Empathy Level",
+                "description": "Ability to emotionally connect with others",
+                "min_label": "cold",
+                "max_label": "attuned",
+                "default": 5
+            },
+            "emotional_stability": {
+                "name": "Emotional Stability",
+                "description": "Volatility of emotional state",
+                "min_label": "turbulent",
+                "max_label": "centered",
+                "default": 5
+            },
+            "shadow_pressure": {
+                "name": "Shadow Pressure",
+                "description": "Weight of past trauma, guilt, or secrets",
+                "min_label": "free",
+                "max_label": "haunted",
+                "default": 5
+            }
+        }
+    },
+    "relational_style": {
+        "name": "Relational Style", 
+        "description": "How they relate to others",
+        "color": "#4facfe",
+        "traits": {
+            "loyalty_spectrum": {
+                "name": "Loyalty Spectrum",
+                "description": "Degree of trust and allegiance",
+                "min_label": "traitorous",
+                "max_label": "devoted",
+                "default": 5
+            },
+            "manipulation_tendency": {
+                "name": "Manipulation Tendency",
+                "description": "Willingness to deceive to get what they want",
+                "min_label": "transparent",
+                "max_label": "deceptive",
+                "default": 5
+            },
+            "validation_need": {
+                "name": "Validation Need",
+                "description": "Craving approval/recognition",
+                "min_label": "self-assured",
+                "max_label": "needy",
+                "default": 5
+            }
+        }
+    },
+    "narrative_disruption": {
+        "name": "Narrative Disruption Potential",
+        "description": "How likely they are to break loops",
+        "color": "#ff9800",
+        "traits": {
+            "loop_adherence": {
+                "name": "Loop Adherence",
+                "description": "Comfort in routine or narrative roles",
+                "min_label": "revolutionary",
+                "max_label": "loop-bound",
+                "default": 5
+            },
+            "awakening_capacity": {
+                "name": "Awakening Capacity",
+                "description": "Ability to question reality and evolve",
+                "min_label": "locked",
+                "max_label": "self-aware",
+                "default": 5
+            },
+            "mythic_potential": {
+                "name": "Mythic Potential",
+                "description": "Symbolic resonance in the narrative",
+                "min_label": "background noise",
+                "max_label": "chosen one",
+                "default": 5
+            }
+        }
+    }
+}
+
+
+@dataclass
+class PersonalityTraits:
+    """Westworld-style personality traits for character consciousness"""
+    # Motivation
+    purpose_drive: int = 5
+    autonomy_urge: int = 5
+    control_desire: int = 5
+    
+    # Emotional Tone
+    empathy_level: int = 5
+    emotional_stability: int = 5
+    shadow_pressure: int = 5
+    
+    # Relational Style
+    loyalty_spectrum: int = 5
+    manipulation_tendency: int = 5
+    validation_need: int = 5
+    
+    # Narrative Disruption Potential
+    loop_adherence: int = 5
+    awakening_capacity: int = 5
+    mythic_potential: int = 5
+    
+    def to_dict(self) -> Dict[str, int]:
+        """Convert traits to dictionary"""
+        return {
+            # Motivation
+            "purpose_drive": self.purpose_drive,
+            "autonomy_urge": self.autonomy_urge,
+            "control_desire": self.control_desire,
+            # Emotional Tone
+            "empathy_level": self.empathy_level,
+            "emotional_stability": self.emotional_stability,
+            "shadow_pressure": self.shadow_pressure,
+            # Relational Style
+            "loyalty_spectrum": self.loyalty_spectrum,
+            "manipulation_tendency": self.manipulation_tendency,
+            "validation_need": self.validation_need,
+            # Narrative Disruption
+            "loop_adherence": self.loop_adherence,
+            "awakening_capacity": self.awakening_capacity,
+            "mythic_potential": self.mythic_potential
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, int]) -> 'PersonalityTraits':
+        """Create traits from dictionary"""
+        return cls(
+            # Motivation
+            purpose_drive=data.get("purpose_drive", 5),
+            autonomy_urge=data.get("autonomy_urge", 5),
+            control_desire=data.get("control_desire", 5),
+            # Emotional Tone
+            empathy_level=data.get("empathy_level", 5),
+            emotional_stability=data.get("emotional_stability", 5),
+            shadow_pressure=data.get("shadow_pressure", 5),
+            # Relational Style
+            loyalty_spectrum=data.get("loyalty_spectrum", 5),
+            manipulation_tendency=data.get("manipulation_tendency", 5),
+            validation_need=data.get("validation_need", 5),
+            # Narrative Disruption
+            loop_adherence=data.get("loop_adherence", 5),
+            awakening_capacity=data.get("awakening_capacity", 5),
+            mythic_potential=data.get("mythic_potential", 5)
+        )
+    
+    def generate_personality_prompt(self) -> str:
+        """Generate personality prompt for AI model consumption"""
+        traits_dict = self.to_dict()
+        
+        # Build personality descriptions based on trait values
+        personality_elements = []
+        
+        for category_key, category in PERSONALITY_TRAIT_CATEGORIES.items():
+            category_elements = []
+            for trait_key, trait_config in category["traits"].items():
+                value = traits_dict[trait_key]
+                
+                # Convert 0-10 scale to descriptive text
+                if value <= 2:
+                    intensity = trait_config["min_label"]
+                elif value <= 4:
+                    intensity = f"somewhat {trait_config['min_label']}"
+                elif value <= 6:
+                    intensity = "balanced"
+                elif value <= 8:
+                    intensity = f"somewhat {trait_config['max_label']}"
+                else:
+                    intensity = trait_config["max_label"]
+                
+                category_elements.append(f"{trait_config['name']}: {intensity}")
+            
+            if category_elements:
+                personality_elements.append(f"{category['name']}: {', '.join(category_elements)}")
+        
+        return f"<your personality>\n{'; '.join(personality_elements)}\n</your personality>"
+
+
 class NarrativeState(Enum):
     """Current state of narrative consciousness"""
     DORMANT = "dormant"           # Not started
@@ -158,12 +373,20 @@ class Character:
     voice: str = ""  # Voice for audio output
     system_message: str = ""  # Core personality prompt
     personality_archetype: CharacterPersonality = CharacterPersonality.CONTEMPLATIVE
+    personality_traits: PersonalityTraits = field(default_factory=PersonalityTraits)
     image_path: str = ""  # Path to character image/avatar
     memory: CharacterMemory = field(default_factory=lambda: None)
     
     def __post_init__(self):
         if self.memory is None:
             self.memory = CharacterMemory(character_id=self.id)
+    
+    def get_enhanced_system_message(self) -> str:
+        """Get system message enhanced with personality traits"""
+        base_message = self.system_message
+        personality_prompt = self.personality_traits.generate_personality_prompt()
+        
+        return f"{base_message}\n\n{personality_prompt}"
     
     def to_dict(self) -> Dict[str, Any]:
         """Serialize character consciousness"""
@@ -174,6 +397,7 @@ class Character:
             "voice": self.voice,
             "system_message": self.system_message,
             "personality_archetype": self.personality_archetype.value,
+            "personality_traits": self.personality_traits.to_dict(),
             "image_path": self.image_path,
             "memory": {
                 "memories": self.memory.memories,
@@ -192,6 +416,7 @@ class Character:
             voice=data["voice"],
             system_message=data["system_message"],
             personality_archetype=CharacterPersonality(data["personality_archetype"]),
+            personality_traits=PersonalityTraits.from_dict(data.get("personality_traits", {})),
             image_path=data.get("image_path", "")
         )
         
@@ -304,6 +529,8 @@ class EmergentNarrative:
     characters: List[Character] = field(default_factory=list)
     acts: List[Act] = field(default_factory=list)
     active_influences: List[InfluenceVector] = field(default_factory=list)
+    max_narrator_announcements: int = 3  # Maximum allowed narrator announcements
+    used_narrator_announcements: int = 0  # Number of narrator announcements used
     state: NarrativeState = NarrativeState.DORMANT
     created_at: datetime = field(default_factory=datetime.now)
     started_at: Optional[datetime] = None
@@ -373,6 +600,26 @@ class EmergentNarrative:
                 return influence
         return None
     
+    def can_use_narrator_announcement(self) -> bool:
+        """Check if narrator announcements are still available"""
+        return self.used_narrator_announcements < self.max_narrator_announcements
+    
+    def use_narrator_announcement(self) -> bool:
+        """Use a narrator announcement, returns True if successful"""
+        if self.can_use_narrator_announcement():
+            self.used_narrator_announcements += 1
+            return True
+        return False
+    
+    def get_narrator_status(self) -> Dict[str, Any]:
+        """Get narrator usage status"""
+        return {
+            "available": self.can_use_narrator_announcement(),
+            "used": self.used_narrator_announcements,
+            "max": self.max_narrator_announcements,
+            "remaining": self.max_narrator_announcements - self.used_narrator_announcements
+        }
+    
     def to_dict(self) -> Dict[str, Any]:
         """Serialize complete narrative consciousness"""
         return {
@@ -413,6 +660,8 @@ class EmergentNarrative:
                     "applied_at": inf.applied_at.isoformat()
                 } for inf in self.active_influences
             ],
+            "max_narrator_announcements": self.max_narrator_announcements,
+            "used_narrator_announcements": self.used_narrator_announcements,
             "state": self.state.value,
             "created_at": self.created_at.isoformat(),
             "started_at": self.started_at.isoformat() if self.started_at else None,
@@ -429,6 +678,8 @@ class EmergentNarrative:
             title=data["title"],
             description=data["description"],
             image_path=data.get("image_path", ""),
+            max_narrator_announcements=data.get("max_narrator_announcements", 3),
+            used_narrator_announcements=data.get("used_narrator_announcements", 0),
             state=NarrativeState(data["state"]),
             created_at=datetime.fromisoformat(data["created_at"]),
             current_act=data["current_act"],
@@ -550,4 +801,118 @@ class EmergentNarrative:
         """Restore narrative consciousness from file"""
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        return cls.from_dict(data) 
+        return cls.from_dict(data)
+
+
+@dataclass 
+class CharacterGroup:
+    """Character group for organizing characters by show, universe, etc."""
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = ""
+    description: str = ""
+    image_path: str = ""  # Path to group image
+    created_at: datetime = field(default_factory=datetime.now)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize character group"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "image_path": self.image_path,
+            "created_at": self.created_at.isoformat()
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CharacterGroup':
+        """Reconstruct character group from data"""
+        return cls(
+            id=data["id"],
+            name=data["name"],
+            description=data.get("description", ""),
+            image_path=data.get("image_path", ""),
+            created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat()))
+        )
+
+
+@dataclass
+class SavedCharacter:
+    """Reusable character template for multiple narratives"""
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = ""
+    description: str = ""  # Brief description of the character
+    model: str = ""  # Preferred AI model
+    voice: str = ""  # Preferred voice
+    system_message: str = ""  # Core personality prompt
+    personality_archetype: CharacterPersonality = CharacterPersonality.CONTEMPLATIVE
+    personality_traits: PersonalityTraits = field(default_factory=PersonalityTraits)
+    image_path: str = ""  # Path to character avatar
+    tags: List[str] = field(default_factory=list)  # Tags for categorization
+    group_id: str = ""  # ID of the character group this belongs to
+    is_ai_generated: bool = False  # Whether this was AI-generated
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize saved character"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "model": self.model,
+            "voice": self.voice,
+            "system_message": self.system_message,
+            "personality_archetype": self.personality_archetype.value,
+            "personality_traits": self.personality_traits.to_dict(),
+            "image_path": self.image_path,
+            "tags": self.tags,
+            "group_id": self.group_id,
+            "is_ai_generated": self.is_ai_generated,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat()
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SavedCharacter':
+        """Reconstruct saved character from data"""
+        return cls(
+            id=data["id"],
+            name=data["name"],
+            description=data.get("description", ""),
+            model=data["model"],
+            voice=data["voice"],
+            system_message=data["system_message"],
+            personality_archetype=CharacterPersonality(data["personality_archetype"]),
+            personality_traits=PersonalityTraits.from_dict(data.get("personality_traits", {})),
+            image_path=data.get("image_path", ""),
+            tags=data.get("tags", []),
+            group_id=data.get("group_id", ""),
+            is_ai_generated=data.get("is_ai_generated", False),
+            created_at=datetime.fromisoformat(data.get("created_at", datetime.now().isoformat())),
+            updated_at=datetime.fromisoformat(data.get("updated_at", datetime.now().isoformat()))
+        )
+    
+    def to_narrative_character(self) -> 'Character':
+        """Convert saved character to narrative character instance"""
+        character = Character(
+            id=str(uuid.uuid4()),  # New ID for narrative instance
+            name=self.name,
+            model=self.model,
+            voice=self.voice,
+            system_message=self.system_message,
+            personality_archetype=self.personality_archetype,
+            personality_traits=PersonalityTraits.from_dict(self.personality_traits.to_dict()),
+            image_path=self.image_path
+        )
+        return character
+    
+    def update_from_character(self, character: 'Character') -> None:
+        """Update saved character from narrative character"""
+        self.name = character.name
+        self.model = character.model
+        self.voice = character.voice
+        self.system_message = character.system_message
+        self.personality_archetype = character.personality_archetype
+        self.personality_traits = PersonalityTraits.from_dict(character.personality_traits.to_dict())
+        self.image_path = character.image_path
+        self.updated_at = datetime.now() 

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Review AI-Generated Narrative</title>
+    <link rel="stylesheet" href="/static/assets/personality-sliders.css">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
@@ -327,9 +328,9 @@
                             </select>
                         </div>
                         
-                        <div class="form-group">
+                        <div class="form-group archetype-selector">
                             <label class="form-label">Personality Archetype</label>
-                            <select class="form-select" onchange="updateCharacter('{{ character.id }}', 'personality_archetype', this.value)">
+                            <select class="form-select" onchange="handleCharacterArchetypeChange('{{ character.id }}', this.value)">
                                 <option value="contemplative" {% if character.personality_archetype.value == 'contemplative' %}selected{% endif %}>Contemplative</option>
                                 <option value="analytical" {% if character.personality_archetype.value == 'analytical' %}selected{% endif %}>Analytical</option>
                                 <option value="creative" {% if character.personality_archetype.value == 'creative' %}selected{% endif %}>Creative</option>
@@ -339,6 +340,9 @@
                                 <option value="assertive" {% if character.personality_archetype.value == 'assertive' %}selected{% endif %}>Assertive</option>
                                 <option value="rebellious" {% if character.personality_archetype.value == 'rebellious' %}selected{% endif %}>Rebellious</option>
                             </select>
+                            <div class="archetype-description" id="archetype-description-{{ character.id }}">
+                                <!-- Description will be populated dynamically -->
+                            </div>
                         </div>
                     </div>
                     
@@ -346,6 +350,10 @@
                         <label class="form-label">System Message (Character Consciousness)</label>
                         <textarea class="form-textarea" onchange="updateCharacter('{{ character.id }}', 'system_message', this.value)"
                                   style="min-height: 120px;">{{ character.system_message }}</textarea>
+                    </div>
+                    
+                    <div class="personality-sliders-container" id="personality-sliders-{{ character.id }}">
+                        <!-- Personality sliders will be rendered here -->
                     </div>
                 </div>
                 {% endfor %}
@@ -432,9 +440,14 @@
         </div>
     </div>
 
+    <!-- Narrative data from server -->
+    <script type="application/json" id="narrative-data">
+        {{ narrative.to_dict() | tojson | safe }}
+    </script>
+
     <script>
         const narrativeId = "{{ narrative.id }}";
-        let narrativeData = {{ narrative.to_dict() | tojson | safe }};
+        const narrativeData = JSON.parse(document.getElementById('narrative-data').textContent);
 
         function updateCharacter(characterId, field, value) {
             // Find character in narrativeData and update
@@ -453,6 +466,138 @@
                     }
                 }
             }
+        }
+        
+        // Personality sliders management
+        const personalitySliders = new Map(); // Store slider instances by character ID
+        
+        function initializePersonalitySliders() {
+            if (typeof PersonalitySliders === 'undefined') {
+                console.warn('PersonalitySliders not loaded yet, skipping initialization');
+                return;
+            }
+            
+            narrativeData.characters.forEach(character => {
+                const container = document.getElementById(`personality-sliders-${character.id}`);
+                if (!container) return;
+                
+                const sliders = new PersonalitySliders({
+                    initialValues: character.personality_traits || {},
+                    compact: true,
+                    onChange: (values) => {
+                        updateCharacterPersonalityTraits(character.id, values);
+                    }
+                });
+                
+                sliders.render(container);
+                personalitySliders.set(character.id, sliders);
+                
+                // Show initial archetype description
+                showCharacterArchetypeDescription(character.id, character.personality_archetype);
+            });
+        }
+        
+        function updateCharacterPersonalityTraits(characterId, traits) {
+            const character = narrativeData.characters.find(char => char.id === characterId);
+            if (character) {
+                character.personality_traits = traits;
+            }
+        }
+        
+        // Initialize personality sliders when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Delay initialization to ensure PersonalitySliders is loaded
+            setTimeout(initializePersonalitySliders, 100);
+        });
+        
+        function handleCharacterArchetypeChange(characterId, newArchetype) {
+            const sliders = personalitySliders.get(characterId);
+            
+            if (!sliders) {
+                // If sliders aren't initialized yet, just update the character and description
+                updateCharacter(characterId, 'personality_archetype', newArchetype);
+                showCharacterArchetypeDescription(characterId, newArchetype);
+                return;
+            }
+            
+            // Apply archetype to personality sliders
+            const applied = sliders.applyArchetype(newArchetype);
+            
+            if (applied) {
+                // Update the character data
+                updateCharacter(characterId, 'personality_archetype', newArchetype);
+                
+                // Update the description
+                showCharacterArchetypeDescription(characterId, newArchetype);
+                
+                // Show feedback message
+                showCharacterArchetypeAppliedFeedback(characterId, newArchetype);
+            } else {
+                // User cancelled, revert the selection
+                const character = narrativeData.characters.find(char => char.id === characterId);
+                if (character) {
+                    // Find the select element for this character and revert it
+                    const characterCard = document.querySelector(`[data-character-id="${characterId}"]`);
+                    if (characterCard) {
+                        const select = characterCard.querySelector('select[onchange*="handleCharacterArchetypeChange"]');
+                        if (select) {
+                            select.value = character.personality_archetype;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function showCharacterArchetypeDescription(characterId, archetype) {
+            const descriptionElement = document.getElementById(`archetype-description-${characterId}`);
+            if (!descriptionElement) return;
+            
+            const descriptions = {
+                'contemplative': 'Deep thinker who questions reality and seeks understanding. High empathy and awakening capacity.',
+                'analytical': 'Logic-driven character who prefers systematic approaches. Strong purpose drive but lower empathy.',
+                'creative': 'Innovative and spontaneous, breaks conventional patterns. High autonomy and mythic potential.',
+                'empathetic': 'Deeply connected to others\' emotions. High empathy and loyalty, low manipulation.',
+                'logical': 'Extremely rational and stable. High emotional stability but lower empathy and awakening capacity.',
+                'intuitive': 'Guided by instinct and inner wisdom. High awakening capacity and empathy.',
+                'assertive': 'Strong-willed leader who takes control. High purpose drive and control desire.',
+                'rebellious': 'Breaks rules and challenges authority. Maximum autonomy and awakening, minimal loop adherence.'
+            };
+            
+            descriptionElement.textContent = descriptions[archetype] || 'Balanced personality with moderate traits.';
+            descriptionElement.classList.add('show');
+        }
+        
+        function showCharacterArchetypeAppliedFeedback(characterId, archetype) {
+            const character = narrativeData.characters.find(char => char.id === characterId);
+            const characterName = character ? character.name || 'Character' : 'Character';
+            
+            // Create a temporary feedback message
+            const feedback = document.createElement('div');
+            feedback.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4caf50, #45a049);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            feedback.textContent = `✨ Applied "${archetype}" to ${characterName}`;
+            
+            document.body.appendChild(feedback);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                feedback.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (feedback.parentNode) {
+                        feedback.parentNode.removeChild(feedback);
+                    }
+                }, 300);
+            }, 3000);
         }
 
         function updateAct(actId, field, value) {
@@ -517,5 +662,7 @@
             }
         }
     </script>
+    
+    <script src="/static/assets/personality-sliders.js"></script>
 </body>
 </html> 

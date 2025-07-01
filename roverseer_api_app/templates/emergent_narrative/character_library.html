@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Character Library</title>
+    <link rel="stylesheet" href="/static/assets/personality-sliders.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #1a1a1a; 
+            color: #ffffff; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .header { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .library-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .library-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .library-header h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .library-stats {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin: 5px 0 0 0;
+        }
+        
+        .library-controls {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .action-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-button.create {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+        }
+        
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .character-card {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .character-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        }
+        
+        .character-card.ai-generated::before {
+            content: '🤖';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
+        
+        .character-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #333;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 1.5rem;
+            margin: 0 auto 15px;
+        }
+        
+        .character-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            text-align: center;
+            color: #ffffff;
+        }
+        
+        .character-description {
+            font-size: 0.9rem;
+            color: #bbb;
+            margin: 0 0 15px 0;
+            line-height: 1.4;
+            text-align: center;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .character-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+        }
+        
+        .character-info-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .character-info-label {
+            color: #888;
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .character-info-value {
+            color: #ffffff;
+            font-weight: 500;
+        }
+        
+        .character-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .character-tag {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        .character-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .character-btn {
+            flex: 1;
+            background: #555;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .character-btn:hover {
+            background: #666;
+        }
+        
+        .character-btn.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        
+        .character-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .character-btn.danger {
+            background: #dc3545;
+        }
+        
+        .character-btn.danger:hover {
+            background: #c82333;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .empty-state h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+        
+        .empty-state p {
+            margin: 0 0 20px 0;
+            font-size: 1rem;
+        }
+        
+        .tag-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .tag-filter-item {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: #667eea;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .tag-filter-item:hover,
+        .tag-filter-item.active {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+        
+        /* Group Styles */
+        .group-section {
+            margin-bottom: 40px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: #667eea;
+            font-size: 1.3rem;
+        }
+        
+        .group-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .group-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: #333;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 1.3rem;
+        }
+        
+        .group-details h2 {
+            margin: 0 0 5px 0;
+            color: #667eea;
+            font-size: 1.3rem;
+        }
+        
+        .group-description {
+            margin: 0;
+            color: #bbb;
+            font-size: 0.9rem;
+        }
+        
+        .group-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .group-btn {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .group-btn:hover {
+            background: #666;
+        }
+        
+        .group-btn.danger {
+            background: #dc3545;
+        }
+        
+        .group-btn.danger:hover {
+            background: #c82333;
+        }
+        
+        .group-btn:disabled {
+            opacity: 0.5 !important;
+            cursor: not-allowed !important;
+            background: #666 !important;
+        }
+        
+        .group-btn:disabled:hover {
+            background: #666 !important;
+            transform: none !important;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid #333;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #667eea;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-btn:hover {
+            color: #fff;
+        }
+        
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .modal-form .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-form .form-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ddd;
+        }
+        
+        .modal-form .form-input,
+        .modal-form .form-textarea {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .modal-form .form-input:focus,
+        .modal-form .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .modal-form .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .modal-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .modal-btn.secondary {
+            background: #555;
+            color: white;
+        }
+        
+        .modal-btn.secondary:hover {
+            background: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .library-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .character-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .library-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/emergent_narrative">← Back to Narratives</a>
+        <div>
+            <a href="/emergent_narrative/character_designer" class="action-button create">+ New Character</a>
+        </div>
+    </div>
+
+    <div class="library-container">
+        <div class="library-header">
+            <h1>🎭 Character Library</h1>
+            <p>Manage your collection of reusable AI characters</p>
+        </div>
+
+        <div class="library-stats" id="libraryStats">
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.total_characters }}</div>
+                <div class="stat-label">Total Characters</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.total_groups or 0 }}</div>
+                <div class="stat-label">Character Groups</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.ungrouped_characters or 0 }}</div>
+                <div class="stat-label">Ungrouped</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">{{ stats.total_tags }}</div>
+                <div class="stat-label">Unique Tags</div>
+            </div>
+        </div>
+
+        <div class="library-controls">
+            <input type="text" 
+                   class="search-box" 
+                   id="searchBox" 
+                   placeholder="Search characters by name, description, or tags..."
+                   onchange="searchCharacters()">
+            
+            <a href="/emergent_narrative/character_designer" class="action-button create">
+                🎨 Character Designer
+            </a>
+            
+            <button class="action-button" onclick="createGroupModal()">
+                📁 Create Group
+            </button>
+            
+            <button class="action-button" onclick="refreshLibrary()">
+                🔄 Refresh
+            </button>
+        </div>
+
+        <div class="tag-filter" id="tagFilter">
+            <!-- Tags will be populated dynamically -->
+        </div>
+
+        <!-- Groups and Characters Display -->
+        <div id="groupsContainer">
+            <!-- Groups will be populated dynamically -->
+        </div>
+        
+        <div id="ungroupedSection">
+            <div class="section-header">
+                <h2>📁 Ungrouped Characters</h2>
+            </div>
+            <div class="character-grid" id="ungroupedGrid">
+                <!-- Ungrouped characters will be populated dynamically -->
+            </div>
+        </div>
+
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">🎭</div>
+            <h3>No Characters Found</h3>
+            <p>Start building your character library by creating your first character!</p>
+            <a href="/emergent_narrative/character_designer" class="action-button create">
+                Create First Character
+            </a>
+        </div>
+        
+        <!-- Group Creation Modal -->
+        <div id="groupModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create Character Group</h3>
+                    <button class="close-btn" onclick="closeGroupModal()">×</button>
+                </div>
+                <form class="modal-form" id="groupForm">
+                    <div class="form-group">
+                        <label class="form-label">Group Name</label>
+                        <input type="text" class="form-input" id="groupName" placeholder="e.g., Game of Thrones, Star Wars..." required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description (Optional)</label>
+                        <textarea class="form-textarea" id="groupDescription" placeholder="Brief description of this character group..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Group Image (Optional)</label>
+                        <div class="image-upload-section">
+                            <div class="current-image" id="groupImageDisplay" style="width: 80px; height: 80px; font-size: 1.5rem;">
+                                📁
+                            </div>
+                            <div class="image-actions">
+                                <button type="button" class="upload-btn" onclick="document.getElementById('groupImageFile').click()">
+                                    📁 Choose Image
+                                </button>
+                                <button type="button" class="remove-image-btn" id="removeGroupImageBtn" onclick="removeGroupImage()" style="display: none;">
+                                    🗑️ Remove
+                                </button>
+                                <input type="file" id="groupImageFile" class="file-input" accept="image/*" onchange="uploadGroupImage(this)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="modal-btn secondary" onclick="closeGroupModal()">Cancel</button>
+                        <button type="submit" class="modal-btn primary">Create Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allCharacters = [];
+        let allGroups = [];
+        let filteredCharacters = [];
+        let selectedTags = new Set();
+        let currentGroupImagePath = "";
+
+        // Initialize the library
+        document.addEventListener('DOMContentLoaded', function() {
+            loadLibraryData();
+            setupGroupFormHandler();
+        });
+
+        async function loadLibraryData() {
+            try {
+                const [charactersResponse, groupsResponse] = await Promise.all([
+                    fetch('/api/character_library/characters'),
+                    fetch('/api/character_library/groups')
+                ]);
+                
+                const charactersData = await charactersResponse.json();
+                const groupsData = await groupsResponse.json();
+                
+                allCharacters = charactersData.characters;
+                allGroups = groupsData.groups;
+                filteredCharacters = [...allCharacters];
+                
+                console.log('Loaded library data:', {
+                    characters: allCharacters.length,
+                    groups: allGroups.length,
+                    groupNames: allGroups.map(g => g.name)
+                });
+                
+                renderLibrary();
+                setupTagFilter();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading library data:', error);
+                showError('Failed to load character library');
+            }
+        }
+
+        function renderLibrary() {
+            const groupsContainer = document.getElementById('groupsContainer');
+            const ungroupedGrid = document.getElementById('ungroupedGrid');
+            const ungroupedSection = document.getElementById('ungroupedSection');
+            const emptyState = document.getElementById('emptyState');
+            
+            // Get filtered characters for each group
+            const ungroupedCharacters = filteredCharacters.filter(char => !char.group_id);
+            
+            // Check if we have any content to show
+            const hasContent = allGroups.length > 0 || ungroupedCharacters.length > 0;
+            
+            if (!hasContent) {
+                groupsContainer.style.display = 'none';
+                ungroupedSection.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            
+            // Render groups
+            if (allGroups.length > 0) {
+                groupsContainer.style.display = 'block';
+                groupsContainer.innerHTML = allGroups.map(group => {
+                    const groupCharacters = filteredCharacters.filter(char => char.group_id === group.id);
+                    const allGroupCharacters = allCharacters.filter(char => char.group_id === group.id);
+                    
+                    // Show empty groups when not filtering, or groups that have characters matching the filter
+                    const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+                    const hasFilters = searchTerm || selectedTags.size > 0;
+                    
+                    if (hasFilters && groupCharacters.length === 0 && allGroupCharacters.length > 0) {
+                        return ''; // Only hide when filtering and no matches, but group has characters
+                    }
+                    
+                    return `
+                        <div class="group-section">
+                            <div class="section-header">
+                                <div class="group-info">
+                                    <div class="group-avatar">
+                                        ${group.image_path ? 
+                                            `<img src="${group.image_path}" alt="${group.name}" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">` :
+                                            group.name.charAt(0).toUpperCase()
+                                        }
+                                    </div>
+                                    <div class="group-details">
+                                        <h2>📁 ${group.name}</h2>
+                                        ${group.description ? `<p class="group-description">${group.description}</p>` : ''}
+                                    </div>
+                                </div>
+                                <div class="group-actions">
+                                    <span class="group-btn">${groupCharacters.length} character${groupCharacters.length !== 1 ? 's' : ''}</span>
+                                    ${allGroupCharacters.length === 0 ? 
+                                        `<button class="group-btn danger" onclick="deleteGroup('${group.id}', '${group.name}')" title="Delete empty group">🗑️ Delete</button>` :
+                                        `<button class="group-btn" disabled title="Cannot delete group with characters. Remove all characters first." style="opacity: 0.5; cursor: not-allowed;">🗑️ ${allGroupCharacters.length} chars</button>`
+                                    }
+                                </div>
+                            </div>
+                            ${groupCharacters.length > 0 ? `
+                                <div class="character-grid">
+                                    ${groupCharacters.map(character => renderCharacterCard(character, group.id)).join('')}
+                                </div>
+                            ` : `
+                                <div style="padding: 20px; text-align: center; color: #888; font-style: italic;">
+                                    No characters in this group yet. <br>
+                                    <small>Create or edit characters to add them to this group.</small>
+                                </div>
+                            `}
+                        </div>
+                    `;
+                }).filter(html => html).join('');
+            } else {
+                groupsContainer.style.display = 'none';
+            }
+            
+            // Render ungrouped characters
+            if (ungroupedCharacters.length > 0) {
+                ungroupedSection.style.display = 'block';
+                ungroupedGrid.innerHTML = ungroupedCharacters.map(character => renderCharacterCard(character)).join('');
+            } else {
+                ungroupedSection.style.display = 'none';
+            }
+        }
+        
+        function renderCharacterCard(character, groupId = null) {
+            return `
+                <div class="character-card ${character.is_ai_generated ? 'ai-generated' : ''}" onclick="viewCharacter('${character.id}')">
+                    <div class="character-avatar">
+                        ${character.image_path ? 
+                            `<img src="${character.image_path}" alt="${character.name}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">` :
+                            character.name.charAt(0).toUpperCase()
+                        }
+                    </div>
+                    
+                    <h3 class="character-name">${character.name}</h3>
+                    
+                    <p class="character-description">${character.description}</p>
+                    
+                    <div class="character-info">
+                        <div class="character-info-item">
+                            <span class="character-info-label">Archetype</span>
+                            <span class="character-info-value">${character.personality_archetype}</span>
+                        </div>
+                        <div class="character-info-item">
+                            <span class="character-info-label">Voice</span>
+                            <span class="character-info-value">${character.voice || 'None'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="character-tags">
+                        ${character.tags.map(tag => `<span class="character-tag">${tag}</span>`).join('')}
+                    </div>
+                    
+                    <div class="character-actions" onclick="event.stopPropagation();">
+                        <button class="character-btn primary" onclick="editCharacter('${character.id}')">
+                            ✏️ Edit
+                        </button>
+                        <button class="character-btn" onclick="useCharacter('${character.id}')">
+                            📖 Use in Story
+                        </button>
+                        ${groupId ? `<button class="character-btn" onclick="removeFromGroup('${character.id}')">📤 Remove from Group</button>` : ''}
+                        <button class="character-btn danger" onclick="deleteCharacter('${character.id}', '${character.name}')">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupTagFilter() {
+            const tagFilter = document.getElementById('tagFilter');
+            const allTags = [...new Set(allCharacters.flatMap(char => char.tags))].sort();
+            
+            if (allTags.length === 0) {
+                tagFilter.style.display = 'none';
+                return;
+            }
+            
+            tagFilter.innerHTML = allTags.map(tag => `
+                <span class="tag-filter-item" onclick="toggleTagFilter('${tag}')">
+                    ${tag}
+                </span>
+            `).join('');
+        }
+
+        function toggleTagFilter(tag) {
+            if (selectedTags.has(tag)) {
+                selectedTags.delete(tag);
+            } else {
+                selectedTags.add(tag);
+            }
+            
+            // Update visual state
+            document.querySelectorAll('.tag-filter-item').forEach(item => {
+                if (item.textContent.trim() === tag) {
+                    item.classList.toggle('active', selectedTags.has(tag));
+                }
+            });
+            
+            filterCharacters();
+        }
+
+        function searchCharacters() {
+            filterCharacters();
+        }
+
+        function filterCharacters() {
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            
+            filteredCharacters = allCharacters.filter(character => {
+                const matchesSearch = !searchTerm || 
+                    character.name.toLowerCase().includes(searchTerm) ||
+                    character.description.toLowerCase().includes(searchTerm) ||
+                    character.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                
+                const matchesTags = selectedTags.size === 0 ||
+                    [...selectedTags].some(tag => character.tags.includes(tag));
+                
+                return matchesSearch && matchesTags;
+            });
+            
+            renderLibrary();
+        }
+        
+        // Group Management Functions
+        function setupGroupFormHandler() {
+            const form = document.getElementById('groupForm');
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await createGroup();
+            });
+        }
+        
+        function createGroupModal() {
+            document.getElementById('groupModal').style.display = 'flex';
+            document.getElementById('groupName').focus();
+        }
+        
+        function closeGroupModal() {
+            document.getElementById('groupModal').style.display = 'none';
+            document.getElementById('groupForm').reset();
+            
+            // Reset group image
+            currentGroupImagePath = "";
+            updateGroupImageDisplay();
+        }
+        
+        async function createGroup() {
+            const name = document.getElementById('groupName').value.trim();
+            const description = document.getElementById('groupDescription').value.trim();
+            
+            if (!name) {
+                showError('Group name is required');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/character_library/groups', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        name, 
+                        description,
+                        image_path: currentGroupImagePath
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showSuccess(`Group "${name}" created successfully!`);
+                    closeGroupModal();
+                    await loadLibraryData(); // Reload to show new group
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to create group: ${error}`);
+                }
+            } catch (error) {
+                console.error('Error creating group:', error);
+                showError('Error creating group');
+            }
+        }
+        
+        function updateGroupImageDisplay() {
+            const imageDisplay = document.getElementById('groupImageDisplay');
+            const removeBtn = document.getElementById('removeGroupImageBtn');
+            
+            if (currentGroupImagePath) {
+                imageDisplay.innerHTML = `<img src="${currentGroupImagePath}" alt="Group image" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">`;
+                removeBtn.style.display = 'inline-block';
+            } else {
+                imageDisplay.innerHTML = '📁';
+                removeBtn.style.display = 'none';
+            }
+        }
+        
+        async function uploadGroupImage(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            
+            try {
+                const response = await fetch('/emergent_narrative/upload_character_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    currentGroupImagePath = result.image_path;
+                    updateGroupImageDisplay();
+                    showSuccess('Group image uploaded successfully!');
+                } else {
+                    showError('Failed to upload group image');
+                }
+            } catch (error) {
+                console.error('Error uploading group image:', error);
+                showError('Error uploading group image');
+            }
+        }
+        
+        function removeGroupImage() {
+            if (confirm('Are you sure you want to remove the group image?')) {
+                currentGroupImagePath = '';
+                updateGroupImageDisplay();
+                // Clear the file input
+                document.getElementById('groupImageFile').value = '';
+            }
+        }
+        
+        async function deleteGroup(groupId, groupName) {
+            // Check if group has any characters assigned
+            const charactersInGroup = allCharacters.filter(char => char.group_id === groupId);
+            
+            if (charactersInGroup.length > 0) {
+                showError(`Cannot delete group "${groupName}". It has ${charactersInGroup.length} character${charactersInGroup.length !== 1 ? 's' : ''} assigned. Please remove all characters from the group first.`);
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete the empty group "${groupName}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/character_library/groups/${groupId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showSuccess(`Group "${groupName}" deleted successfully`);
+                    await loadLibraryData(); // Reload to update display
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to delete group: ${error}`);
+                }
+            } catch (error) {
+                console.error('Error deleting group:', error);
+                showError('Error deleting group');
+            }
+        }
+        
+        async function removeFromGroup(characterId) {
+            if (!confirm('Are you sure you want to remove this character from its group?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/character_library/characters/${characterId}/remove_from_group`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    showSuccess('Character removed from group successfully');
+                    await loadLibraryData(); // Reload to update display
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to remove character from group: ${error}`);
+                }
+            } catch (error) {
+                console.error('Error removing character from group:', error);
+                showError('Error removing character from group');
+            }
+        }
+
+        function viewCharacter(characterId) {
+            // Navigate to character designer for viewing/editing
+            window.location.href = `/emergent_narrative/character_designer?character_id=${characterId}`;
+        }
+
+        function editCharacter(characterId) {
+            window.location.href = `/emergent_narrative/character_designer?character_id=${characterId}`;
+        }
+
+        function useCharacter(characterId) {
+            // For now, redirect to narrative creation
+            // TODO: Add proper character loading to narrative creation
+            window.location.href = `/emergent_narrative/create?load_character=${characterId}`;
+        }
+
+        async function deleteCharacter(characterId, characterName) {
+            if (!confirm(`Are you sure you want to delete "${characterName}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/character_library/delete/${characterId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showSuccess(`Character "${characterName}" deleted successfully`);
+                    await loadLibraryData();
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to delete character: ${error}`);
+                }
+            } catch (error) {
+                console.error('Error deleting character:', error);
+                showError('Error deleting character');
+            }
+        }
+
+        async function refreshLibrary() {
+            await loadLibraryData();
+            showSuccess('Library refreshed');
+        }
+
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/character_library/stats');
+                const stats = await response.json();
+                
+                document.querySelector('.library-stats').innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.total_characters}</div>
+                        <div class="stat-label">Total Characters</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.total_groups || 0}</div>
+                        <div class="stat-label">Character Groups</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.ungrouped_characters || 0}</div>
+                        <div class="stat-label">Ungrouped</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${stats.total_tags}</div>
+                        <div class="stat-label">Unique Tags</div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        function showSuccess(message) {
+            console.log('✅', message);
+            
+            // Create a temporary success message
+            const successDiv = document.createElement('div');
+            successDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4caf50, #45a049);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            successDiv.textContent = `✅ ${message}`;
+            
+            document.body.appendChild(successDiv);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                successDiv.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (successDiv.parentNode) {
+                        successDiv.parentNode.removeChild(successDiv);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        function showError(message) {
+            console.error('❌', message);
+            
+            // Create a temporary error message
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #f44336, #d32f2f);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            errorDiv.textContent = `❌ ${message}`;
+            
+            document.body.appendChild(errorDiv);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                errorDiv.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 300);
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 

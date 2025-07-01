@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Character Designer</title>
+    <link rel="stylesheet" href="/static/assets/personality-sliders.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
+            background: #1a1a1a; 
+            color: #ffffff; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .header { 
+            background: #1c1c1e; 
+            color: white; 
+            padding: 15px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        .designer-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .designer-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .designer-header h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            margin: 0;
+            font-weight: 700;
+        }
+        
+        .character-form {
+            background: linear-gradient(145deg, #2a2a2a, #1f1f1f);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #667eea;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ddd;
+        }
+        
+        .form-input, .form-textarea, .form-select {
+            background: #333;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .ai-generation-section {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .ai-header h3 {
+            margin: 0;
+            color: #4caf50;
+        }
+        
+        .ai-prompt-box {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            color: #ffffff;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .ai-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .ai-generate-btn {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+        
+        .ai-generate-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .action-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-button.save {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+        }
+        
+        .action-button.secondary {
+            background: #555;
+        }
+        
+        .action-button.danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+        
+        .character-preview {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .preview-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .tags-input-container {
+            position: relative;
+        }
+        
+        .tags-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .tag-item {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .tag-remove {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .tag-remove:hover {
+            background: rgba(102, 126, 234, 0.3);
+        }
+        
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .suggestion-tag {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #555;
+            color: #ccc;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .suggestion-tag:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            border-color: #667eea;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-content {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .image-upload-section {
+            background: #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .current-image {
+            width: 120px;
+            height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #222;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            color: #888;
+            font-size: 2rem;
+        }
+        
+        .image-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .upload-btn:hover {
+            background: #45a049;
+        }
+        
+        .remove-image-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .remove-image-btn:hover {
+            background: #d32f2f;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/emergent_narrative/character_library">← Back to Library</a>
+        <div>
+            <span id="characterStatus">{{ 'Editing Character' if editing else 'Creating New Character' }}</span>
+        </div>
+    </div>
+
+    <div class="designer-container">
+        <div class="designer-header">
+            <h1>🎨 Character Designer</h1>
+            <p>Create and customize AI characters with Westworld-style personality traits</p>
+        </div>
+
+        <!-- AI Generation Section -->
+        <div class="ai-generation-section">
+            <div class="ai-header">
+                <h3>🤖 AI Character Generation</h3>
+            </div>
+            <textarea class="ai-prompt-box" 
+                      id="aiPrompt" 
+                      placeholder="Describe the character you want to create (e.g., 'A mysterious detective with a troubled past and sharp wit')"></textarea>
+            
+            <div class="ai-controls">
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                    <label class="form-label" style="margin: 0;">AI Generation Model</label>
+                    <select class="form-select" id="aiGenerationModel" style="width: 300px;">
+                        <option value="">Select AI Model...</option>
+                        {% for model in models %}
+                        <option value="{{ model }}" 
+                                {% if 'deepseek-r1' in model %}selected{% endif %}>
+                            {{ model }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: #888; font-size: 0.8rem;">💡 DeepSeek-R1 recommended for creative character generation</small>
+                </div>
+                
+                <div style="display: flex; gap: 10px; align-items: flex-end;">
+                    <button class="ai-generate-btn" id="aiGenerateBtn" onclick="generateCharacter()">
+                        ✨ Generate Character
+                    </button>
+                    <input type="text" 
+                           class="form-input" 
+                           id="nameHint" 
+                           placeholder="Character name hint (optional)"
+                           style="width: 200px;">
+                    <select class="form-select" id="aiArchetype" style="width: 150px;">
+                        <option value="contemplative">Contemplative</option>
+                        <option value="analytical">Analytical</option>
+                        <option value="creative">Creative</option>
+                        <option value="empathetic">Empathetic</option>
+                        <option value="assertive">Assertive</option>
+                        <option value="rebellious">Rebellious</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <form class="character-form" id="characterForm">
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h3 class="section-title">📝 Basic Information</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Character Name</label>
+                        <input type="text" class="form-input" id="characterName" placeholder="Enter character name" required>
+                    </div>
+                    
+                    <div class="form-group archetype-selector">
+                        <label class="form-label">Personality Archetype</label>
+                        <select class="form-select" id="personalityArchetype" onchange="handleArchetypeChange(this.value)">
+                            <option value="contemplative">Contemplative</option>
+                            <option value="analytical">Analytical</option>
+                            <option value="creative">Creative</option>
+                            <option value="empathetic">Empathetic</option>
+                            <option value="logical">Logical</option>
+                            <option value="intuitive">Intuitive</option>
+                            <option value="assertive">Assertive</option>
+                            <option value="rebellious">Rebellious</option>
+                        </select>
+                        <div class="archetype-description" id="archetypeDescription">
+                            <!-- Description will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Character Description</label>
+                    <textarea class="form-textarea" id="characterDescription" placeholder="Brief description of the character (2-3 sentences)"></textarea>
+                </div>
+            </div>
+
+            <!-- AI & Voice Settings -->
+            <div class="form-section">
+                <h3 class="section-title">🎤 AI & Voice Settings</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">AI Model</label>
+                        <select class="form-select" id="characterModel">
+                            {% for model in models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Voice</label>
+                        <select class="form-select" id="characterVoice">
+                            <option value="">No Voice</option>
+                            {% if categorized_voices and categorized_voices.categorized %}
+                                {% for category, voice_list in categorized_voices.categorized.items() %}
+                                    {% if category == 'uncategorized' %}
+                                        <!-- Add uncategorized voices directly (no optgroup) -->
+                                        {% for voice in voice_list %}
+                                            <option value="{{ voice }}">{{ voice }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <!-- Create optgroup for categorized voices -->
+                                        <optgroup label="{{ category|title }}">
+                                            {% for voice in voice_list %}
+                                                <option value="{{ voice }}">{{ voice }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <!-- Fallback to flat list if no categorization -->
+                                {% for voice in voices %}
+                                    <option value="{{ voice }}">{{ voice }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personality Traits -->
+            <div class="form-section">
+                <h3 class="section-title">🧠 Personality Traits</h3>
+                <div id="personalitySliders">
+                    <!-- Personality sliders will be rendered here -->
+                </div>
+            </div>
+
+            <!-- System Message -->
+            <div class="form-section">
+                <h3 class="section-title">💭 Character Consciousness</h3>
+                <div class="form-group">
+                    <label class="form-label">System Message (Character Personality Prompt)</label>
+                    <textarea class="form-textarea" 
+                              id="systemMessage" 
+                              placeholder="Define this character's personality, background, speaking style, and behavior..."
+                              style="min-height: 150px;"></textarea>
+                </div>
+            </div>
+
+            <!-- Character Image -->
+            <div class="form-section">
+                <h3 class="section-title">🖼️ Character Avatar</h3>
+                <div class="form-group">
+                    <label class="form-label">Character Photo</label>
+                    <div class="image-upload-section">
+                        <div class="current-image" id="characterImageDisplay">
+                            <!-- Current image or placeholder will be shown here -->
+                        </div>
+                        <div class="image-actions">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('characterImageFile').click()">
+                                📁 Choose Photo
+                            </button>
+                            <button type="button" class="remove-image-btn" id="removeImageBtn" onclick="removeCharacterImage()" style="display: none;">
+                                🗑️ Remove Photo
+                            </button>
+                            <input type="file" id="characterImageFile" class="file-input" accept="image/*" onchange="uploadCharacterImage(this)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Character Group -->
+            <div class="form-section">
+                <h3 class="section-title">📁 Character Group</h3>
+                <div class="form-group">
+                    <label class="form-label">Assign to Group (Optional)</label>
+                    <select class="form-select" id="characterGroup">
+                        <option value="">No Group (Ungrouped)</option>
+                        <!-- Groups will be populated dynamically -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="form-section">
+                <h3 class="section-title">🏷️ Tags</h3>
+                <div class="form-group">
+                    <label class="form-label">Character Tags (for organization and search)</label>
+                    <input type="text" 
+                           class="form-input" 
+                           id="tagsInput" 
+                           placeholder="Type tags separated by commas, or press Enter for single tag"
+                           onkeydown="handleTagInput(event)"
+                           onpaste="handleTagPaste(event)">
+                    
+                    <div class="tags-display" id="tagsDisplay">
+                        <!-- Tags will be displayed here -->
+                    </div>
+                    
+                    <div class="suggestions" id="tagSuggestions">
+                        <!-- Tag suggestions will appear here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Character Preview -->
+            <div class="character-preview">
+                <div class="preview-header">📊 Character Summary</div>
+                <div id="characterPreview">
+                    <p><strong>Name:</strong> <span id="previewName">—</span></p>
+                    <p><strong>Archetype:</strong> <span id="previewArchetype">—</span></p>
+                    <p><strong>Description:</strong> <span id="previewDescription">—</span></p>
+                    <p><strong>Model:</strong> <span id="previewModel">—</span></p>
+                    <p><strong>Voice:</strong> <span id="previewVoice">—</span></p>
+                    <p><strong>Group:</strong> <span id="previewGroup">—</span></p>
+                    <p><strong>Tags:</strong> <span id="previewTags">—</span></p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="button" class="action-button save" onclick="saveCharacter()">
+                    💾 Save Character
+                </button>
+                
+                <button type="button" class="action-button secondary" onclick="previewCharacter()">
+                    👁️ Preview
+                </button>
+                
+                <button type="button" class="action-button secondary" onclick="clearForm()">
+                    🗑️ Clear Form
+                </button>
+                
+                {% if editing %}
+                <button type="button" class="action-button danger" onclick="deleteCharacter()">
+                    🗑️ Delete Character
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>Generating character...</p>
+        </div>
+    </div>
+
+    <script type="application/json" id="character-data">
+        {{ character | tojson | safe if character else 'null' }}
+    </script>
+
+    <script type="application/json" id="all-tags">
+        {{ all_tags | tojson | safe }}
+    </script>
+
+    <script>
+        let personalitySliders = null;
+        let currentCharacter = null;
+        let characterTags = [];
+        let allTags = [];
+        let currentImagePath = "";
+        let availableGroups = [];
+
+        // Initialize the designer
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load character data if editing
+            const characterData = JSON.parse(document.getElementById('character-data').textContent);
+            allTags = JSON.parse(document.getElementById('all-tags').textContent);
+            
+            if (characterData) {
+                currentCharacter = characterData;
+            }
+            
+            // Initialize personality sliders first
+            initializePersonalitySliders();
+            
+            // Then load character data after sliders are ready
+            if (characterData) {
+                // Small delay to ensure sliders are fully initialized
+                setTimeout(() => {
+                    loadCharacterData(characterData);
+                }, 100);
+            }
+            
+            setupTagSuggestions();
+            setupFormListeners();
+            loadAvailableGroups();
+        });
+
+        function initializePersonalitySliders() {
+            const container = document.getElementById('personalitySliders');
+            
+            personalitySliders = new PersonalitySliders({
+                initialValues: currentCharacter ? currentCharacter.personality_traits : {},
+                onChange: (values) => updatePreview()
+            });
+            
+            personalitySliders.render(container);
+            
+            // Show initial archetype description
+            const initialArchetype = document.getElementById('personalityArchetype').value;
+            showArchetypeDescription(initialArchetype);
+        }
+        
+        function handleArchetypeChange(newArchetype) {
+            if (!personalitySliders) {
+                // If sliders aren't initialized yet, just update the description
+                showArchetypeDescription(newArchetype);
+                return;
+            }
+            
+            // Apply archetype to personality sliders
+            const applied = personalitySliders.applyArchetype(newArchetype);
+            
+            if (applied) {
+                // Update the description
+                showArchetypeDescription(newArchetype);
+                
+                // Update the preview
+                updatePreview();
+                
+                // Show feedback message
+                showArchetypeAppliedFeedback(newArchetype);
+            } else {
+                // User cancelled, revert the selection
+                const currentArchetype = getCurrentArchetypeFromSliders();
+                if (currentArchetype) {
+                    document.getElementById('personalityArchetype').value = currentArchetype;
+                }
+            }
+        }
+        
+        function showArchetypeDescription(archetype) {
+            const descriptionElement = document.getElementById('archetypeDescription');
+            
+            if (personalitySliders) {
+                const description = personalitySliders.getArchetypeDescription(archetype);
+                descriptionElement.textContent = description;
+                descriptionElement.classList.add('show');
+            } else {
+                // Fallback descriptions if PersonalitySliders not loaded yet
+                const descriptions = {
+                    'contemplative': 'Deep thinker who questions reality and seeks understanding. High empathy and awakening capacity.',
+                    'analytical': 'Logic-driven character who prefers systematic approaches. Strong purpose drive but lower empathy.',
+                    'creative': 'Innovative and spontaneous, breaks conventional patterns. High autonomy and mythic potential.',
+                    'empathetic': 'Deeply connected to others\' emotions. High empathy and loyalty, low manipulation.',
+                    'logical': 'Extremely rational and stable. High emotional stability but lower empathy and awakening capacity.',
+                    'intuitive': 'Guided by instinct and inner wisdom. High awakening capacity and empathy.',
+                    'assertive': 'Strong-willed leader who takes control. High purpose drive and control desire.',
+                    'rebellious': 'Breaks rules and challenges authority. Maximum autonomy and awakening, minimal loop adherence.'
+                };
+                
+                descriptionElement.textContent = descriptions[archetype] || 'Balanced personality with moderate traits.';
+                descriptionElement.classList.add('show');
+            }
+        }
+        
+        function getCurrentArchetypeFromSliders() {
+            // This is a simplified way to detect current archetype - in a real implementation
+            // you might want to analyze the current trait values to determine the closest archetype
+            return document.getElementById('personalityArchetype').value;
+        }
+        
+        function showArchetypeAppliedFeedback(archetype) {
+            // Create a temporary feedback message
+            const feedback = document.createElement('div');
+            feedback.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4caf50, #45a049);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            feedback.textContent = `✨ Applied "${archetype}" archetype personality`;
+            
+            document.body.appendChild(feedback);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                feedback.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (feedback.parentNode) {
+                        feedback.parentNode.removeChild(feedback);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        function loadCharacterData(character) {
+            document.getElementById('characterName').value = character.name || '';
+            document.getElementById('personalityArchetype').value = character.personality_archetype || 'contemplative';
+            document.getElementById('characterDescription').value = character.description || '';
+            document.getElementById('characterModel').value = character.model || '';
+            document.getElementById('characterVoice').value = character.voice || '';
+            document.getElementById('systemMessage').value = character.system_message || '';
+            document.getElementById('characterGroup').value = character.group_id || '';
+            
+            characterTags = character.tags || [];
+            currentImagePath = character.image_path || '';
+            
+            // Update personality sliders with loaded character traits
+            if (personalitySliders && character.personality_traits) {
+                console.log('Loading personality traits:', character.personality_traits);
+                try {
+                    if (typeof personalitySliders.setValues === 'function') {
+                        personalitySliders.setValues(character.personality_traits);
+                        console.log('Successfully set personality slider values');
+                    } else if (typeof personalitySliders.loadValues === 'function') {
+                        personalitySliders.loadValues(character.personality_traits);
+                        console.log('Successfully loaded personality slider values');
+                    } else if (typeof personalitySliders.updateValues === 'function') {
+                        personalitySliders.updateValues(character.personality_traits);
+                        console.log('Successfully updated personality slider values');
+                    } else {
+                        console.warn('No setValues/loadValues/updateValues method found on PersonalitySliders');
+                        console.log('Available methods:', Object.getOwnPropertyNames(personalitySliders));
+                    }
+                } catch (error) {
+                    console.error('Error setting personality slider values:', error);
+                }
+            } else if (!personalitySliders) {
+                console.warn('Personality sliders not initialized yet');
+            } else if (!character.personality_traits) {
+                console.warn('No personality traits to load');
+            }
+            
+            renderTags();
+            updateCharacterImage();
+            updatePreview();
+        }
+
+        function setupTagSuggestions() {
+            const suggestionsContainer = document.getElementById('tagSuggestions');
+            const commonTags = ['protagonist', 'antagonist', 'mentor', 'mysterious', 'wise', 'young', 'old', 'warrior', 'scholar', 'leader'];
+            
+            // Combine common tags with existing tags
+            const suggestionTags = [...new Set([...commonTags, ...allTags])];
+            
+            suggestionsContainer.innerHTML = suggestionTags.map(tag => 
+                `<span class="suggestion-tag" onclick="addTag('${tag}')">${tag}</span>`
+            ).join('');
+        }
+
+        async function loadAvailableGroups() {
+            try {
+                const response = await fetch('/api/character_library/groups');
+                const data = await response.json();
+                
+                availableGroups = data.groups || [];
+                
+                const groupSelect = document.getElementById('characterGroup');
+                
+                // Clear existing options except the first one
+                while (groupSelect.children.length > 1) {
+                    groupSelect.removeChild(groupSelect.lastChild);
+                }
+                
+                // Add groups as options
+                availableGroups.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.id;
+                    option.textContent = group.name;
+                    groupSelect.appendChild(option);
+                });
+                
+                // If we're editing a character, make sure the correct group is selected
+                if (currentCharacter && currentCharacter.group_id) {
+                    groupSelect.value = currentCharacter.group_id;
+                }
+                
+            } catch (error) {
+                console.error('Error loading groups:', error);
+            }
+        }
+
+        function setupFormListeners() {
+            // Add listeners for real-time preview updates
+            ['characterName', 'personalityArchetype', 'characterDescription', 'characterModel', 'characterVoice', 'characterGroup'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updatePreview);
+            });
+            
+            // Add listener for character name to update image display
+            document.getElementById('characterName').addEventListener('input', updateCharacterImage);
+        }
+
+        function handleTagInput(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const inputValue = input.value.trim();
+                
+                if (inputValue) {
+                    // Check if there are commas - if so, split and process multiple tags
+                    if (inputValue.includes(',')) {
+                        const tags = inputValue.split(',')
+                            .map(tag => tag.trim().toLowerCase())
+                            .filter(tag => tag && !characterTags.includes(tag));
+                        
+                        tags.forEach(tag => addTag(tag));
+                    } else {
+                        // Single tag
+                        const tag = inputValue.toLowerCase();
+                        if (!characterTags.includes(tag)) {
+                            addTag(tag);
+                        }
+                    }
+                }
+                
+                input.value = '';
+            }
+        }
+        
+        function handleTagPaste(event) {
+            // Allow the paste to happen, then process it
+            setTimeout(() => {
+                const input = event.target;
+                const inputValue = input.value.trim();
+                
+                if (inputValue && inputValue.includes(',')) {
+                    event.preventDefault();
+                    
+                    const tags = inputValue.split(',')
+                        .map(tag => tag.trim().toLowerCase())
+                        .filter(tag => tag && !characterTags.includes(tag));
+                    
+                    tags.forEach(tag => addTag(tag));
+                    input.value = '';
+                }
+            }, 10);
+        }
+
+        function addTag(tag) {
+            if (!characterTags.includes(tag)) {
+                characterTags.push(tag);
+                renderTags();
+                updatePreview();
+            }
+        }
+
+        function removeTag(tag) {
+            characterTags = characterTags.filter(t => t !== tag);
+            renderTags();
+            updatePreview();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tagsDisplay');
+            container.innerHTML = characterTags.map(tag => 
+                `<span class="tag-item">
+                    ${tag}
+                    <button class="tag-remove" onclick="removeTag('${tag}')">×</button>
+                </span>`
+            ).join('');
+        }
+
+        function updatePreview() {
+            document.getElementById('previewName').textContent = document.getElementById('characterName').value || '—';
+            document.getElementById('previewArchetype').textContent = document.getElementById('personalityArchetype').value || '—';
+            document.getElementById('previewDescription').textContent = document.getElementById('characterDescription').value || '—';
+            document.getElementById('previewModel').textContent = document.getElementById('characterModel').value || '—';
+            document.getElementById('previewVoice').textContent = document.getElementById('characterVoice').value || 'None';
+            
+            // Show group name if selected
+            const groupSelect = document.getElementById('characterGroup');
+            const selectedGroupId = groupSelect.value;
+            if (selectedGroupId) {
+                const selectedGroup = availableGroups.find(group => group.id === selectedGroupId);
+                document.getElementById('previewGroup').textContent = selectedGroup ? selectedGroup.name : 'Unknown Group';
+            } else {
+                document.getElementById('previewGroup').textContent = 'Ungrouped';
+            }
+            
+            document.getElementById('previewTags').textContent = characterTags.join(', ') || 'None';
+        }
+        
+        function updateCharacterImage() {
+            const imageDisplay = document.getElementById('characterImageDisplay');
+            const removeBtn = document.getElementById('removeImageBtn');
+            
+            if (currentImagePath) {
+                imageDisplay.innerHTML = `<img src="${currentImagePath}" alt="Character image" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">`;
+                removeBtn.style.display = 'inline-block';
+            } else {
+                // Show initials or placeholder
+                const characterName = document.getElementById('characterName').value.trim();
+                if (characterName) {
+                    const initials = characterName.split(' ')
+                        .map(word => word.charAt(0).toUpperCase())
+                        .join('').substring(0, 2);
+                    imageDisplay.innerHTML = initials;
+                } else {
+                    imageDisplay.innerHTML = '👤';
+                }
+                removeBtn.style.display = 'none';
+            }
+        }
+        
+        async function uploadCharacterImage(input) {
+            if (!input.files || !input.files[0]) return;
+            
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            
+            try {
+                showLoading(true);
+                
+                const response = await fetch('/emergent_narrative/upload_character_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    currentImagePath = result.image_path;
+                    updateCharacterImage();
+                    showSuccess('Image uploaded successfully!');
+                } else {
+                    showError('Failed to upload character image');
+                }
+            } catch (error) {
+                console.error('Error uploading character image:', error);
+                showError('Error uploading character image');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function removeCharacterImage() {
+            if (confirm('Are you sure you want to remove the character image?')) {
+                currentImagePath = '';
+                updateCharacterImage();
+                // Clear the file input
+                document.getElementById('characterImageFile').value = '';
+            }
+        }
+
+        async function generateCharacter() {
+            const prompt = document.getElementById('aiPrompt').value.trim();
+            const nameHint = document.getElementById('nameHint').value.trim();
+            const archetype = document.getElementById('aiArchetype').value;
+            const selectedModel = document.getElementById('aiGenerationModel').value;
+            
+            if (!prompt) {
+                alert('Please enter a character description for AI generation');
+                return;
+            }
+            
+            if (!selectedModel) {
+                alert('Please select an AI model for character generation');
+                return;
+            }
+            
+            const button = document.getElementById('aiGenerateBtn');
+            const originalText = button.textContent;
+            
+            try {
+                button.disabled = true;
+                button.textContent = '🤖 Generating...';
+                showLoading(true);
+                
+                const response = await fetch('/api/character_library/ai_generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        name_hint: nameHint,
+                        archetype: archetype,
+                        model: selectedModel
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('AI generated character:', result.character);
+                    
+                    // Update current character reference
+                    currentCharacter = result.character;
+                    
+                    // Load the character data
+                    loadCharacterData(result.character);
+                    
+                    // Clear AI prompt
+                    document.getElementById('aiPrompt').value = '';
+                    document.getElementById('nameHint').value = '';
+                    
+                    showSuccess('Character generated successfully!');
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to generate character: ${error}`);
+                }
+                
+            } catch (error) {
+                console.error('Error generating character:', error);
+                showError('Error generating character');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+                showLoading(false);
+            }
+        }
+
+        async function saveCharacter() {
+            const characterData = gatherCharacterData();
+            
+            // Validate required fields
+            if (!characterData.name.trim()) {
+                alert('Please enter a character name');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                const response = await fetch('/api/character_library/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(characterData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    currentCharacter = result.character;
+                    showSuccess('Character saved successfully!');
+                    
+                    // Update URL and status if this was a new character
+                    if (!characterData.id) {
+                        history.replaceState({}, '', `/emergent_narrative/character_designer?character_id=${result.character.id}`);
+                        document.getElementById('characterStatus').textContent = 'Editing Character';
+                    }
+                    
+                    // Redirect to character library after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/emergent_narrative/character_library';
+                    }, 1500);
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to save character: ${error}`);
+                }
+                
+            } catch (error) {
+                console.error('Error saving character:', error);
+                showError('Error saving character');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function gatherCharacterData() {
+            // Safely get personality traits
+            let personalityTraits = {};
+            try {
+                if (personalitySliders && typeof personalitySliders.getCurrentValues === 'function') {
+                    personalityTraits = personalitySliders.getCurrentValues();
+                    console.log('Successfully gathered personality traits:', personalityTraits);
+                } else if (personalitySliders && typeof personalitySliders.getValues === 'function') {
+                    // Try alternative method name
+                    personalityTraits = personalitySliders.getValues();
+                    console.log('Successfully gathered personality traits (alternative method):', personalityTraits);
+                } else {
+                    console.warn('Personality sliders not available or no getCurrentValues method');
+                    console.log('PersonalitySliders object:', personalitySliders);
+                    // Use current character traits as fallback
+                    if (currentCharacter && currentCharacter.personality_traits) {
+                        personalityTraits = currentCharacter.personality_traits;
+                        console.log('Using fallback personality traits from current character:', personalityTraits);
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting personality traits:', error);
+                // Use current character traits as fallback
+                if (currentCharacter && currentCharacter.personality_traits) {
+                    personalityTraits = currentCharacter.personality_traits;
+                    console.log('Using error fallback personality traits:', personalityTraits);
+                }
+            }
+
+            const characterData = {
+                id: currentCharacter ? currentCharacter.id : null,
+                name: document.getElementById('characterName').value.trim(),
+                description: document.getElementById('characterDescription').value.trim(),
+                model: document.getElementById('characterModel').value,
+                voice: document.getElementById('characterVoice').value,
+                system_message: document.getElementById('systemMessage').value.trim(),
+                personality_archetype: document.getElementById('personalityArchetype').value,
+                personality_traits: personalityTraits,
+                image_path: currentImagePath,
+                tags: characterTags,
+                group_id: document.getElementById('characterGroup').value,
+                is_ai_generated: currentCharacter ? currentCharacter.is_ai_generated : false
+            };
+            
+            console.log('Final character data being saved:', characterData);
+            return characterData;
+        }
+
+        function previewCharacter() {
+            const characterData = gatherCharacterData();
+            
+            const previewWindow = window.open('', '_blank', 'width=600,height=400');
+            previewWindow.document.write(`
+                <html>
+                    <head><title>Character Preview</title></head>
+                    <body style="font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white;">
+                        <h2>${characterData.name}</h2>
+                        <p><strong>Description:</strong> ${characterData.description}</p>
+                        <p><strong>Archetype:</strong> ${characterData.personality_archetype}</p>
+                        <p><strong>Model:</strong> ${characterData.model}</p>
+                        <p><strong>Voice:</strong> ${characterData.voice || 'None'}</p>
+                        <p><strong>Tags:</strong> ${characterData.tags.join(', ')}</p>
+                        <h3>Personality Traits:</h3>
+                        <pre>${JSON.stringify(characterData.personality_traits, null, 2)}</pre>
+                        <h3>System Message:</h3>
+                        <p>${characterData.system_message}</p>
+                    </body>
+                </html>
+            `);
+        }
+
+        function clearForm() {
+            if (confirm('Are you sure you want to clear all form data?')) {
+                document.getElementById('characterForm').reset();
+                characterTags = [];
+                renderTags();
+                updatePreview();
+                
+                if (personalitySliders) {
+                    personalitySliders.reset();
+                }
+            }
+        }
+
+        async function deleteCharacter() {
+            if (!currentCharacter || !currentCharacter.id) {
+                alert('No character to delete');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete "${currentCharacter.name}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                const response = await fetch(`/api/character_library/delete/${currentCharacter.id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    showSuccess('Character deleted successfully');
+                    // Redirect to library after short delay
+                    setTimeout(() => {
+                        window.location.href = '/emergent_narrative/character_library';
+                    }, 1000);
+                } else {
+                    const error = await response.text();
+                    showError(`Failed to delete character: ${error}`);
+                }
+                
+            } catch (error) {
+                console.error('Error deleting character:', error);
+                showError('Error deleting character');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+        }
+
+        function showSuccess(message) {
+            console.log('✅', message);
+            // TODO: Implement toast notifications
+        }
+
+        function showError(message) {
+            console.error('❌', message);
+            alert(message); // Temporary solution
+        }
+    </script>
+    
+    <script src="/static/assets/personality-sliders.js"></script>
+</body>
+</html> 

@@ -97,7 +97,7 @@ AUDIO_DEVICE = detect_usb_audio_device()
 MIC_DEVICE = detect_usb_mic_device()
 
 # -------- VOICE CONFIGURATION -------- #
-VOICES_DIR = "/home/codemusic/piper/voices"
+VOICES_DIR = os.path.expanduser("~/piper/voices")
 DEFAULT_VOICE = get_config_value("default_voice", "en_US-GlaDOS")
 
 def update_default_voice(new_voice):

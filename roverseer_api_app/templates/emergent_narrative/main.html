@@ -241,19 +241,31 @@
             border-color: #667eea;
         }
         
+        .narrative-visual-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+            width: 100px;
+        }
+        
         .narrative-image {
             width: 80px;
             height: 80px;
             border-radius: 8px;
             object-fit: cover;
             background: #222;
-            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #888;
             font-size: 2rem;
             border: 2px solid #444;
+        }
+        
+        .character-gallery {
+            max-width: 100px;
+            justify-content: center;
         }
         
         .narrative-content {
@@ -404,12 +416,12 @@
                     </div>
                 </a>
                 
-                <a href="/emergent_narrative/templates" class="narrative-option">
-                    <div class="option-icon">📚</div>
-                    <div class="option-title">From Template</div>
+                <a href="/emergent_narrative/character_library" class="narrative-option">
+                    <div class="option-icon">🎭</div>
+                    <div class="option-title">Character Library</div>
                     <div class="option-description">
-                        Start with pre-configured story templates like 
-                        "Philosophical Debate" or "Space Station Drama"
+                        Manage your collection of reusable AI characters with 
+                        Westworld-style personality sliders and AI generation
                     </div>
                 </a>
             </div>
@@ -461,9 +473,28 @@
                     const item = document.createElement('div');
                     item.className = 'narrative-item';
                     
+                    const characterThumbnails = narrative.characters.map((char, index) => {
+                        const roygbivColors = [
+                            '#FF3B30', '#FF9500', '#FFD60A', '#34C759', '#007AFF', '#5856D6', '#AF52DE',
+                            '#FF6B6B', '#FF8E53', '#FFF066', '#51CF66', '#339AF0'
+                        ];
+                        const characterColor = roygbivColors[index % roygbivColors.length];
+                        
+                        if (char.image_path) {
+                            return `<img src="${char.image_path}" alt="${char.name}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid ${characterColor}; margin-right: 4px;" title="${char.name}">`;
+                        } else {
+                            return `<div style="width: 32px; height: 32px; border-radius: 50%; background: ${characterColor}; border: 2px solid ${characterColor}; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.7rem; font-weight: 600; margin-right: 4px;" title="${char.name}">${char.name.charAt(0)}</div>`;
+                        }
+                    }).join('');
+                    
                     item.innerHTML = `
-                        <div class="narrative-image">
-                            ${narrative.image_path ? `<img src="${narrative.image_path}" alt="${narrative.title}" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">` : '📖'}
+                        <div class="narrative-visual-section">
+                            <div class="narrative-image">
+                                ${narrative.image_path ? `<img src="${narrative.image_path}" alt="${narrative.title}" style="width: 100%; height: 100%; border-radius: 8px; object-fit: cover;">` : '📖'}
+                            </div>
+                            <div class="character-gallery" style="display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin-top: 8px;">
+                                ${characterThumbnails}
+                            </div>
                         </div>
                         <div class="narrative-content">
                             <div class="narrative-meta">

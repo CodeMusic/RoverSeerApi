@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>{{ narrative.title }} - Play</title>
+    <link rel="stylesheet" href="/static/assets/personality-sliders.css">
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial; 
@@ -13,6 +14,25 @@
             padding: 0;
             min-height: 100vh;
             box-sizing: border-box;
+            transition: background 0.5s ease;
+        }
+        
+        body.narrative-background {
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        
+        body.narrative-background::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 26, 26, 0.85);
+            backdrop-filter: blur(3px);
+            z-index: -1;
         }
         
         .header { 
@@ -68,6 +88,82 @@
             display: flex;
             flex-direction: column;
             min-height: 700px;
+        }
+        
+        .visual-hierarchy {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        
+        .image-gallery {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 8px 0;
+        }
+        
+        .hierarchy-image {
+            position: relative;
+            flex-shrink: 0;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .hierarchy-image:hover {
+            transform: translateY(-2px);
+        }
+        
+        .hierarchy-image img {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            object-fit: cover;
+            border: 2px solid #444;
+            transition: border-color 0.3s ease;
+        }
+        
+        .hierarchy-image:hover img {
+            border-color: #667eea;
+        }
+        
+        .character-initial {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: #444;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .image-label {
+            font-size: 0.7rem;
+            color: #bbb;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        .narrative-image img {
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+        }
+        
+        .group-image img {
+            border-color: #4caf50;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+        }
+        
+        .character-thumbnails {
+            display: flex;
+            gap: 8px;
         }
         
         .control-panel {
@@ -474,6 +570,30 @@
             .control-panel {
                 order: -1;
             }
+            
+            .visual-hierarchy {
+                padding: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .image-gallery {
+                gap: 8px;
+                padding: 5px 0;
+            }
+            
+            .hierarchy-image img,
+            .character-initial {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .image-label {
+                font-size: 0.6rem;
+            }
+            
+            .character-thumbnails {
+                gap: 6px;
+            }
         }
     </style>
 </head>
@@ -494,6 +614,39 @@
 
     <div class="play-container">
         <div class="narrative-theater">
+            <!-- Visual Hierarchy Section -->
+            <div class="visual-hierarchy" id="visualHierarchy">
+                <div class="image-gallery">
+                    <!-- Narrative Image -->
+                    {% if narrative.image_path %}
+                    <div class="hierarchy-image narrative-image">
+                        <img src="{{ narrative.image_path }}" alt="{{ narrative.title }}">
+                        <div class="image-label">Story</div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Group Image (populated dynamically if characters belong to groups) -->
+                    <div class="hierarchy-image group-image" id="groupImage" style="display: none;">
+                        <img src="" alt="Character Group">
+                        <div class="image-label">Group</div>
+                    </div>
+                    
+                    <!-- Character Thumbnails -->
+                    <div class="character-thumbnails" id="characterThumbnails">
+                        {% for character in narrative.characters %}
+                        <div class="hierarchy-image character-image" data-character-id="{{ character.id }}">
+                            {% if character.image_path %}
+                                <img src="{{ character.image_path }}" alt="{{ character.name }}">
+                            {% else %}
+                                <div class="character-initial">{{ character.name[:1] }}</div>
+                            {% endif %}
+                            <div class="image-label">{{ character.name }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
             <div class="narrative-status">
                 <div class="status-header">
                     <h3>Narrative Status</h3>
@@ -573,6 +726,16 @@
             <div class="controls-section">
                 <div class="panel-header">📢 Narrator Announcement</div>
                 
+                <div class="narrator-status" id="narratorStatus">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.9rem;">
+                        <span>Announcements Used:</span>
+                        <span id="narratorCount" style="font-weight: 600;">0/3</span>
+                    </div>
+                    <div style="background: #333; border-radius: 8px; height: 6px; overflow: hidden; margin-bottom: 15px;">
+                        <div id="narratorProgress" style="background: linear-gradient(90deg, #4caf50, #8bc34a); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                
                 <div class="narrator-form" id="narratorForm" style="display: none;">
                     <textarea class="form-input" 
                               id="narratorText" 
@@ -581,7 +744,7 @@
                               maxlength="300"></textarea>
                     
                     <div style="display: flex; gap: 8px; margin-top: 10px;">
-                        <button class="control-button" onclick="makeNarratorAnnouncement()" style="flex: 1;">
+                        <button class="control-button" id="narratorAnnounceButton" onclick="makeNarratorAnnouncement()" style="flex: 1;">
                             📢 Announce
                         </button>
                         <button class="control-button secondary" onclick="hideNarratorForm()" style="background: #555;">
@@ -593,6 +756,10 @@
                 <button class="control-button" id="showNarratorButton" onclick="showNarratorForm()" style="display: block;">
                     📢 Add Narrator Voice
                 </button>
+                
+                <div id="narratorLimitMessage" style="display: none; color: #ff9800; font-size: 0.85rem; text-align: center; margin-top: 10px; font-style: italic;">
+                    Narrator limit reached. Use influences instead.
+                </div>
             </div>
             
             <div class="controls-section">
@@ -655,6 +822,14 @@
             </div>
             
             <div class="controls-section">
+                <div class="panel-header">🧠 Runtime Personality Editor</div>
+                
+                <div id="personalityEditor">
+                    <!-- Personality editor will be dynamically rendered here -->
+                </div>
+            </div>
+            
+            <div class="controls-section">
                 <div class="panel-header">🎭 Characters Info</div>
                 
                 <div class="characters-list">
@@ -683,8 +858,27 @@
         let autoAdvanceTimer = null;
         let currentSceneInfo = null; // Store current scene character assignments
         let characterColorMap = new Map(); // Map character names to their assigned colors
+        
+        // ROYGBIV color palette for multiple characters
+        const CHARACTER_COLORS = [
+            '#FF3B30', // Red
+            '#FF9500', // Orange
+            '#FFD60A', // Yellow
+            '#34C759', // Green
+            '#007AFF', // Blue
+            '#5856D6', // Indigo
+            '#AF52DE', // Violet
+            // Extended ROYGBIV variations for more characters
+            '#FF6B6B', // Light Red
+            '#FF8E53', // Light Orange
+            '#FFF066', // Light Yellow
+            '#51CF66', // Light Green
+            '#339AF0'  // Light Blue
+        ];
         let lastAudioUrl = null; // Store the last audio URL for replay
         let messageAudioMap = new Map(); // Map message elements to their audio URLs
+        let personalityEditor = null; // Runtime personality editor instance
+        let currentPersonalityAdjustments = {}; // Store temporary personality adjustments
         
         function toggleDebug() {
             debugMode = !debugMode;
@@ -815,6 +1009,9 @@
                 // Update active influences
                 updateActiveInfluences(status.active_influences);
                 
+                // Update narrator status
+                updateNarratorStatus(status.narrator_status);
+                
             } catch (error) {
                 console.error('Failed to update status:', error);
                 updateDebugInfo(`ERROR updating status: ${error.message}`);
@@ -890,6 +1087,43 @@
                     </div>
                 </div>
             `).join('');
+        }
+        
+        function updateNarratorStatus(narratorStatus) {
+            if (!narratorStatus) return;
+            
+            const countElement = document.getElementById('narratorCount');
+            const progressElement = document.getElementById('narratorProgress');
+            const showButton = document.getElementById('showNarratorButton');
+            const limitMessage = document.getElementById('narratorLimitMessage');
+            
+            // Update count display
+            countElement.textContent = `${narratorStatus.used}/${narratorStatus.max}`;
+            
+            // Update progress bar
+            const percentage = (narratorStatus.used / narratorStatus.max) * 100;
+            progressElement.style.width = `${percentage}%`;
+            
+            // Change progress bar color based on usage
+            if (percentage >= 100) {
+                progressElement.style.background = 'linear-gradient(90deg, #f44336, #d32f2f)';
+            } else if (percentage >= 66) {
+                progressElement.style.background = 'linear-gradient(90deg, #ff9800, #f57c00)';
+            } else {
+                progressElement.style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
+            }
+            
+            // Show/hide narrator controls based on availability
+            if (narratorStatus.available) {
+                showButton.style.display = 'block';
+                limitMessage.style.display = 'none';
+                showButton.disabled = false;
+            } else {
+                showButton.style.display = 'none';
+                limitMessage.style.display = 'block';
+                // Hide narrator form if it's open
+                hideNarratorForm();
+            }
         }
         
         async function startNarrative() {
@@ -1402,15 +1636,119 @@
             }
         }
         
+        // Initialize personality editor for runtime adjustments
+        function initializePersonalityEditor() {
+            const container = document.getElementById('personalityEditor');
+            if (!container) return;
+            
+            // Get default character for personality editing (first character in current scene)
+            let defaultCharacter = null;
+            if (currentSceneInfo && currentSceneInfo.characters && currentSceneInfo.characters.length > 0) {
+                const characterName = currentSceneInfo.characters[0];
+                defaultCharacter = narrativeData.characters.find(char => char.name === characterName);
+            } else if (narrativeData.characters && narrativeData.characters.length > 0) {
+                defaultCharacter = narrativeData.characters[0];
+            }
+            
+            if (!defaultCharacter) {
+                container.innerHTML = '<div style="color: #888; font-style: italic;">No characters available for personality editing.</div>';
+                return;
+            }
+            
+            personalityEditor = new PersonalitySliders({
+                initialValues: currentPersonalityAdjustments[defaultCharacter.id] || defaultCharacter.personality_traits || {},
+                isRuntime: true,
+                compact: true,
+                onChange: (values, action) => {
+                    handlePersonalityChange(defaultCharacter.id, values, action);
+                }
+            });
+            
+            personalityEditor.render(container);
+            updateDebugInfo('Personality editor initialized');
+        }
+        
+        function handlePersonalityChange(characterId, values, action) {
+            if (action === 'apply') {
+                // Apply temporary personality changes
+                currentPersonalityAdjustments[characterId] = values;
+                updateDebugInfo(`Applied personality changes for character ${characterId}: ${JSON.stringify(values, null, 2)}`);
+                
+                // Send personality adjustments to server for next interactions
+                applyPersonalityAdjustments(characterId, values);
+                
+            } else if (action === 'reset') {
+                // Reset to original values
+                delete currentPersonalityAdjustments[characterId];
+                updateDebugInfo(`Reset personality for character ${characterId}`);
+                
+                // Clear server-side adjustments
+                clearPersonalityAdjustments(characterId);
+            } else {
+                // Live preview (just store locally, don't apply yet)
+                updateDebugInfo(`Personality preview for character ${characterId}: ${JSON.stringify(values, null, 2)}`);
+            }
+        }
+        
+        async function applyPersonalityAdjustments(characterId, traits) {
+            try {
+                const response = await fetch(`/emergent_narrative/personality_adjustment/${narrativeId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        character_id: characterId,
+                        personality_traits: traits,
+                        temporary: true
+                    })
+                });
+                
+                if (response.ok) {
+                    updateDebugInfo('✅ Personality adjustments applied to server');
+                } else {
+                    const error = await response.text();
+                    updateDebugInfo(`❌ Failed to apply personality adjustments: ${error}`);
+                }
+            } catch (error) {
+                updateDebugInfo(`❌ Error applying personality adjustments: ${error.message}`);
+            }
+        }
+        
+        async function clearPersonalityAdjustments(characterId) {
+            try {
+                const response = await fetch(`/emergent_narrative/personality_adjustment/${narrativeId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        character_id: characterId
+                    })
+                });
+                
+                if (response.ok) {
+                    updateDebugInfo('✅ Personality adjustments cleared on server');
+                } else {
+                    const error = await response.text();
+                    updateDebugInfo(`❌ Failed to clear personality adjustments: ${error}`);
+                }
+            } catch (error) {
+                updateDebugInfo(`❌ Error clearing personality adjustments: ${error.message}`);
+            }
+        }
+        
         // Initialize dynamic scene-based character colors when page loads
         document.addEventListener('DOMContentLoaded', function() {
             updateDebugInfo('Page loaded, initializing...');
             updateDebugInfo(`Narrative ID: ${narrativeId}`);
             updateDebugInfo(`Narrative data: ${JSON.stringify(narrativeData, null, 2)}`);
             
+            // Initialize visual enhancements
+            initializeVisualHierarchy();
+            assignCharacterColors(narrativeData.characters.map(char => char.name));
+            updateCharacterThumbnailColors();
+            
             updateNarrativeStatus();
             startStatusUpdates();
             loadExistingInteractions();
+            initializePersonalityEditor();
             
             // Add auto-advance mode change listener
             document.getElementById('autoAdvanceMode').addEventListener('change', function() {
@@ -1427,6 +1765,73 @@
             
             updateDebugInfo('Initialization complete');
         });
+        
+        function initializeVisualHierarchy() {
+            updateDebugInfo('Initializing visual hierarchy...');
+            
+            // Set narrative background if image exists
+            if (narrativeData.image_path) {
+                setNarrativeBackground(narrativeData.image_path);
+            }
+            
+            // Load group images for characters (if they belong to groups)
+            loadCharacterGroupImages();
+            
+            updateDebugInfo('Visual hierarchy initialized');
+        }
+        
+        function setNarrativeBackground(imagePath) {
+            updateDebugInfo(`Setting narrative background: ${imagePath}`);
+            document.body.style.backgroundImage = `url('${imagePath}')`;
+            document.body.classList.add('narrative-background');
+        }
+        
+        async function loadCharacterGroupImages() {
+            try {
+                // Check if any characters have group_id
+                const charactersWithGroups = narrativeData.characters.filter(char => char.group_id);
+                
+                if (charactersWithGroups.length === 0) {
+                    updateDebugInfo('No characters belong to groups');
+                    return;
+                }
+                
+                // Get unique group IDs
+                const groupIds = [...new Set(charactersWithGroups.map(char => char.group_id))];
+                updateDebugInfo(`Found characters in ${groupIds.length} group(s): ${groupIds.join(', ')}`);
+                
+                // Load group information
+                for (const groupId of groupIds) {
+                    const response = await fetch(`/api/character_library/groups`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const group = data.groups.find(g => g.id === groupId);
+                        
+                        if (group && group.image_path) {
+                            updateDebugInfo(`Loading group image for ${group.name}: ${group.image_path}`);
+                            showGroupImage(group);
+                            break; // Show only the first group image found
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                updateDebugInfo(`Error loading group images: ${error.message}`);
+            }
+        }
+        
+        function showGroupImage(group) {
+            const groupImageElement = document.getElementById('groupImage');
+            const img = groupImageElement.querySelector('img');
+            const label = groupImageElement.querySelector('.image-label');
+            
+            img.src = group.image_path;
+            img.alt = group.name;
+            label.textContent = group.name;
+            groupImageElement.style.display = 'block';
+            
+            updateDebugInfo(`Group image displayed: ${group.name}`);
+        }
 
         // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
@@ -1556,13 +1961,8 @@
             
             updateDebugInfo(`Updating colors for scene characters: ${sceneCharA} & ${sceneCharB}`);
             
-            // Get or assign colors for these characters
-            if (!characterColorMap.has(sceneCharA)) {
-                characterColorMap.set(sceneCharA, '#007AFF'); // Default blue for first character
-            }
-            if (!characterColorMap.has(sceneCharB)) {
-                characterColorMap.set(sceneCharB, '#48484A'); // Default gray for second character  
-            }
+            // Assign ROYGBIV colors to characters if not already assigned
+            assignCharacterColors([sceneCharA, sceneCharB]);
             
             const colorA = characterColorMap.get(sceneCharA);
             const colorB = characterColorMap.get(sceneCharB);
@@ -1572,6 +1972,43 @@
             
             // Update the color picker section to show current scene characters
             updateColorPickersForScene(sceneCharA, sceneCharB, colorA, colorB);
+            
+            // Update character thumbnail borders
+            updateCharacterThumbnailColors();
+        }
+        
+        function assignCharacterColors(characterNames) {
+            // Get all characters in the narrative for consistent color assignment
+            const allCharacters = narrativeData.characters.map(char => char.name);
+            
+            allCharacters.forEach((charName, index) => {
+                if (!characterColorMap.has(charName)) {
+                    const colorIndex = index % CHARACTER_COLORS.length;
+                    characterColorMap.set(charName, CHARACTER_COLORS[colorIndex]);
+                    updateDebugInfo(`Assigned ${CHARACTER_COLORS[colorIndex]} to ${charName} (ROYGBIV index ${colorIndex})`);
+                }
+            });
+        }
+        
+        function updateCharacterThumbnailColors() {
+            const thumbnails = document.querySelectorAll('.character-image');
+            thumbnails.forEach(thumbnail => {
+                const characterId = thumbnail.dataset.characterId;
+                const character = narrativeData.characters.find(char => char.id === characterId);
+                if (character && characterColorMap.has(character.name)) {
+                    const color = characterColorMap.get(character.name);
+                    const img = thumbnail.querySelector('img');
+                    const initial = thumbnail.querySelector('.character-initial');
+                    
+                    if (img) {
+                        img.style.borderColor = color;
+                        img.style.boxShadow = `0 0 0 2px ${color}40`;
+                    } else if (initial) {
+                        initial.style.borderColor = color;
+                        initial.style.backgroundColor = color;
+                    }
+                }
+            });
         }
         
         function updateCharacterStylesForScene(colorA, colorB) {
@@ -1611,7 +2048,7 @@
         }
         
         function updateColorPickersForScene(charA, charB, colorA, colorB) {
-            // Update the color picker section to show current scene's characters
+            // Update the color picker section to show ALL characters with ROYGBIV assignments
             const panelHeaders = document.querySelectorAll('.panel-header');
             let colorSection = null;
             
@@ -1632,49 +2069,74 @@
                 return;
             }
             
-            updateDebugInfo(`Updating color pickers for ${charA} & ${charB}`);
+            updateDebugInfo(`Updating color pickers for all characters (current scene: ${charA} & ${charB})`);
+            
+            // Build color picker HTML for all characters
+            const allCharacters = narrativeData.characters;
+            const characterPickers = allCharacters.map((character, index) => {
+                const isCurrentScene = character.name === charA || character.name === charB;
+                const characterColor = characterColorMap.get(character.name) || CHARACTER_COLORS[index % CHARACTER_COLORS.length];
+                const colorName = getColorName(characterColor);
+                
+                return `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; ${isCurrentScene ? 'background: rgba(102, 126, 234, 0.1); padding: 8px; border-radius: 6px; border-left: 3px solid #667eea;' : ''}">
+                        <input type="color" 
+                               id="character-color-${character.id}" 
+                               value="${characterColor}"
+                               style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;"
+                               onchange="updateCharacterColor('${character.name}', this.value)">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; ${isCurrentScene ? 'color: #667eea;' : ''}">${character.name}</div>
+                            <div style="font-size: 0.8rem; color: #888;">
+                                ${colorName} ${isCurrentScene ? '• Current Scene' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
             
             panelContent.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <input type="color" 
-                           id="scene-color-a" 
-                           value="${colorA}"
-                           style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;"
-                           onchange="updateSceneCharacterColor('${charA}', this.value, true)">
-                    <div>
-                        <div style="font-weight: 600;">${charA}</div>
-                        <div style="font-size: 0.8rem; color: #888;">Character A (Current Scene)</div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="color" 
-                           id="scene-color-b" 
-                           value="${colorB}"
-                           style="width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer;"
-                           onchange="updateSceneCharacterColor('${charB}', this.value, false)">
-                    <div>
-                        <div style="font-weight: 600;">${charB}</div>
-                        <div style="font-size: 0.8rem; color: #888;">Character B (Current Scene)</div>
-                    </div>
-                </div>
+                ${characterPickers}
                 <div style="margin-top: 12px; padding: 8px; background: #333; border-radius: 6px; font-size: 0.8rem; color: #aaa;">
-                    💡 Colors update automatically when scenes change to new character combinations
+                    🌈 ROYGBIV palette ensures distinct character recognition across scenes
                 </div>
             `;
         }
         
-        function updateSceneCharacterColor(characterName, color, isCharacterA) {
-            // Store the color for this character
-            characterColorMap.set(characterName, color);
-            updateDebugInfo(`Updated color for ${characterName}: ${color}`);
+        function getColorName(hexColor) {
+            const colorNames = {
+                '#FF3B30': 'Red',
+                '#FF9500': 'Orange', 
+                '#FFD60A': 'Yellow',
+                '#34C759': 'Green',
+                '#007AFF': 'Blue',
+                '#5856D6': 'Indigo',
+                '#AF52DE': 'Violet',
+                '#FF6B6B': 'Light Red',
+                '#FF8E53': 'Light Orange',
+                '#FFF066': 'Light Yellow',
+                '#51CF66': 'Light Green',
+                '#339AF0': 'Light Blue'
+            };
             
-            // Update the styling
-            if (isCharacterA) {
-                updateCharacterStylesForScene(color, characterColorMap.get(currentSceneInfo.characters[1]) || '#48484A');
-            } else {
-                updateCharacterStylesForScene(characterColorMap.get(currentSceneInfo.characters[0]) || '#007AFF', color);
-            }
+            return colorNames[hexColor] || 'Custom';
         }
+        
+        function updateCharacterColor(characterName, newColor) {
+            // Update the stored color
+            characterColorMap.set(characterName, newColor);
+            updateDebugInfo(`Updated color for ${characterName}: ${newColor}`);
+            
+            // If this character is in the current scene, update scene styling
+            if (currentSceneInfo && currentSceneInfo.characters.includes(characterName)) {
+                updateCharacterColorsForScene();
+            }
+            
+            // Update thumbnail colors
+            updateCharacterThumbnailColors();
+        }
+        
+
         
         function isColorLight(color) {
             // Convert hex to RGB
@@ -1758,8 +2220,25 @@
                         setTimeout(() => playAudioFromUrl(result.audio_url), 500);
                     }
                     
+                    // Update narrator status display
+                    if (result.narrator_status) {
+                        updateNarratorStatus(result.narrator_status);
+                    }
+                    
                     // Update status to reflect the new interaction
                     updateNarrativeStatus();
+                    
+                } else if (response.status === 403) {
+                    // Handle narrator limit reached
+                    const error = await response.text();
+                    updateDebugInfo(`Narrator limit reached: ${error}`);
+                    
+                    // Show user-friendly message
+                    alert('⚠️ Narrator Limit Reached\n\nYou have used all available narrator announcements for this narrative. Use "Consciousness Influence" instead to affect the story.');
+                    
+                    // Hide the form and update UI
+                    hideNarratorForm();
+                    updateNarrativeStatus(); // This will update the narrator status UI
                     
                 } else {
                     const error = await response.text();
@@ -1846,5 +2325,7 @@
             updateNarratorButtonVisibility(state);
         };
     </script>
+    
+    <script src="/static/assets/personality-sliders.js"></script>
 </body>
 </html> 
