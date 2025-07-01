@@ -3,6 +3,8 @@
  * 
  * Reusable component for character personality trait editing
  * with configurable traits system and enhanced UX.
+ * 
+ * Enhanced with ECHOMATRIX Tone Feedback System
  */
 
 class PersonalitySliders {
@@ -15,8 +17,188 @@ class PersonalitySliders {
         this.onChange = config.onChange || (() => {});
         this.compact = config.compact || false;
         
+        // ECHOMATRIX Audio System
+        this.audioContext = null;
+        this.initializeAudioContext();
+        
+        // Chromatic note mapping for traits
+        this.chromaticMapping = {
+            'purpose_drive': { note: 'C', color: 'Red' },
+            'autonomy_urge': { note: 'C#', color: 'Red-Orange' },
+            'control_desire': { note: 'D', color: 'Orange' },
+            'empathy_level': { note: 'D#', color: 'Orange-Yellow' },
+            'emotional_stability': { note: 'E', color: 'Yellow' },
+            'shadow_pressure': { note: 'F', color: 'Green' },
+            'loyalty_spectrum': { note: 'F#', color: 'Green-Blue' },
+            'manipulation_tendency': { note: 'G', color: 'Blue' },
+            'validation_need': { note: 'G#', color: 'Blue-Indigo' },
+            'loop_adherence': { note: 'A', color: 'Indigo' },
+            'awakening_capacity': { note: 'A#', color: 'Indigo-Violet' },
+            'mythic_potential': { note: 'B', color: 'Violet' }
+        };
+        
+        // Base frequency map (Octave 4 as reference)
+        this.noteFrequencies = {
+            'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13,
+            'E': 329.63, 'F': 349.23, 'F#': 369.99, 'G': 392.00,
+            'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
+        };
+        
         // Load initial values
         this.loadValues(config.initialValues || {});
+    }
+    
+    initializeAudioContext() {
+        try {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (error) {
+            console.warn('Web Audio API not supported:', error);
+            this.audioContext = null;
+        }
+    }
+    
+    playEchomatrixTone(traitKey, value) {
+        if (!this.chromaticMapping[traitKey]) return;
+        
+        const mapping = this.chromaticMapping[traitKey];
+        const note = mapping.note;
+        
+        // Play web audio tone
+        this.playWebAudioTone(note, value);
+        
+        // Trigger hardware buzzer via API
+        this.triggerHardwareBuzzer(note, value);
+        
+        // Show note display
+        this.showNoteDisplay(traitKey, note, value);
+        
+        // Visual effects
+        this.triggerVisualEffects(traitKey, value);
+    }
+    
+    playWebAudioTone(note, value) {
+        if (!this.audioContext) return;
+        
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            // Octave logic: map values 0-10 to octaves 2-6
+            const baseOctave = 2;
+            const semitoneOffset = Math.floor(value / 2); // 0-5
+            const octave = baseOctave + semitoneOffset;
+            const frequency = this.noteFrequencies[note] * Math.pow(2, octave - 4);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            gainNode.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+            
+            oscillator.start();
+            oscillator.stop(this.audioContext.currentTime + 0.3);
+            
+        } catch (error) {
+            console.warn('Error playing web audio tone:', error);
+        }
+    }
+    
+    triggerHardwareBuzzer(note, value) {
+        // Send command to hardware buzzer via API
+        fetch('/system/echomatrix/tone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                note: note,
+                value: value
+            })
+        }).catch(error => {
+            console.warn('Hardware buzzer not available:', error);
+        });
+    }
+    
+    showNoteDisplay(traitKey, note, value) {
+        const traitElement = this.container.querySelector(`[data-trait="${traitKey}"]`).closest('.personality-trait');
+        if (!traitElement) return;
+        
+        // Remove existing note display
+        const existingDisplay = traitElement.querySelector('.echomatrix-note-display');
+        if (existingDisplay) {
+            existingDisplay.remove();
+        }
+        
+        // Create new note display
+        const noteDisplay = document.createElement('div');
+        noteDisplay.className = 'echomatrix-note-display';
+        noteDisplay.textContent = `${note}${Math.floor(value / 2) + 2}`;
+        
+        const sliderContainer = traitElement.querySelector('.personality-slider-container');
+        sliderContainer.style.position = 'relative';
+        sliderContainer.appendChild(noteDisplay);
+        
+        // Show with animation
+        setTimeout(() => {
+            noteDisplay.classList.add('show');
+        }, 10);
+        
+        // Hide after delay
+        setTimeout(() => {
+            noteDisplay.classList.remove('show');
+            setTimeout(() => {
+                if (noteDisplay.parentNode) {
+                    noteDisplay.remove();
+                }
+            }, 300);
+        }, 1200);
+    }
+    
+    triggerVisualEffects(traitKey, value) {
+        const traitElement = this.container.querySelector(`[data-trait="${traitKey}"]`).closest('.personality-trait');
+        if (!traitElement) return;
+        
+        // Tone flash effect
+        traitElement.classList.add('tone-flash');
+        setTimeout(() => {
+            traitElement.classList.remove('tone-flash');
+        }, 300);
+        
+        // Label brightness modulation
+        this.updateLabelBrightness(traitKey, value);
+        
+        // Color flash on labels
+        const labels = traitElement.querySelectorAll('.personality-slider-label');
+        labels.forEach(label => {
+            label.classList.add('color-flash');
+            setTimeout(() => {
+                label.classList.remove('color-flash');
+            }, 400);
+        });
+    }
+    
+    updateLabelBrightness(traitKey, value) {
+        const traitElement = this.container.querySelector(`[data-trait="${traitKey}"]`).closest('.personality-trait');
+        if (!traitElement) return;
+        
+        const minLabel = traitElement.querySelector('.personality-slider-label.min');
+        const maxLabel = traitElement.querySelector('.personality-slider-label.max');
+        
+        if (!minLabel || !maxLabel) return;
+        
+        // Clear existing classes
+        minLabel.classList.remove('dimmed', 'brightened');
+        maxLabel.classList.remove('dimmed', 'brightened');
+        
+        // Apply brightness based on slider position
+        if (value <= 3) {
+            minLabel.classList.add('brightened');
+            maxLabel.classList.add('dimmed');
+        } else if (value >= 7) {
+            minLabel.classList.add('dimmed');
+            maxLabel.classList.add('brightened');
+        }
+        // Values 4-6 use default brightness (no classes added)
     }
     
     getDefaultTraits() {
@@ -147,6 +329,13 @@ class PersonalitySliders {
                 this.originalValues[traitKey] = this.currentValues[traitKey];
             }
         }
+        
+        // Initialize label brightness for all traits
+        setTimeout(() => {
+            for (const traitKey in this.currentValues) {
+                this.updateLabelBrightness(traitKey, this.currentValues[traitKey]);
+            }
+        }, 100);
     }
     
     render(container) {
@@ -247,7 +436,7 @@ class PersonalitySliders {
             const value = this.currentValues[traitKey];
             
             html += `
-                <div class="personality-trait">
+                <div class="personality-trait" data-trait="${traitKey}">
                     <div class="personality-trait-header">
                         <h5 class="personality-trait-name">${trait.name}</h5>
                         <span class="personality-trait-value" id="value-${traitKey}">${value}</span>
@@ -281,6 +470,9 @@ class PersonalitySliders {
                 const traitKey = e.target.dataset.trait;
                 const value = parseInt(e.target.value);
                 
+                // ECHOMATRIX: Play tone and trigger effects
+                this.playEchomatrixTone(traitKey, value);
+                
                 this.updateTraitValue(traitKey, value);
                 this.onChange(this.getValues());
             });
@@ -309,6 +501,9 @@ class PersonalitySliders {
                 valueElement.classList.remove('changed');
             }, 500);
         }
+        
+        // Update label brightness
+        this.updateLabelBrightness(traitKey, value);
     }
     
     getValues() {

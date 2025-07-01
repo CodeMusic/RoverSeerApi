@@ -122,6 +122,7 @@
     padding: 2px 8px;
     border-radius: 4px;
     border: 1px solid rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
 }
 
 .personality-trait-description {
@@ -187,17 +188,23 @@
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
 }
 
+/* ========== ECHOMATRIX Color-Coded Labels ========== */
 .personality-slider-labels {
     display: flex;
     justify-content: space-between;
     margin-top: 8px;
     font-size: 0.7rem;
-    color: #666;
+    position: relative;
 }
 
 .personality-slider-label {
     font-style: italic;
     text-transform: lowercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .personality-slider-label.min {
@@ -206,6 +213,207 @@
 
 .personality-slider-label.max {
     text-align: right;
+}
+
+/* Chromatic Color Assignments for Trait Labels */
+/* Purpose Drive (C) - Red to Red-Orange */
+.personality-trait[data-trait="purpose_drive"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #FF3B30, #FF6B6B);
+    color: white;
+}
+.personality-trait[data-trait="purpose_drive"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FF6B6B, #FF9500);
+    color: white;
+}
+
+/* Autonomy Urge (C#) - Red-Orange to Orange */
+.personality-trait[data-trait="autonomy_urge"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #FF9500, #FF8E53);
+    color: white;
+}
+.personality-trait[data-trait="autonomy_urge"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FF8E53, #FFD60A);
+    color: black;
+}
+
+/* Control Desire (D) - Orange to Orange-Yellow */
+.personality-trait[data-trait="control_desire"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #FFD60A, #FFF066);
+    color: black;
+}
+.personality-trait[data-trait="control_desire"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FFF066, #34C759);
+    color: white;
+}
+
+/* Empathy Level (D#) - Orange-Yellow to Yellow */
+.personality-trait[data-trait="empathy_level"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #FFD60A, #FFF066);
+    color: black;
+}
+.personality-trait[data-trait="empathy_level"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FFF066, #34C759);
+    color: white;
+}
+
+/* Emotional Stability (E) - Yellow to Green */
+.personality-trait[data-trait="emotional_stability"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #FFD60A, #FFF066);
+    color: black;
+}
+.personality-trait[data-trait="emotional_stability"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FFF066, #34C759);
+    color: white;
+}
+
+/* Shadow Pressure (F) - Green to Green-Blue */
+.personality-trait[data-trait="shadow_pressure"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #34C759, #51CF66);
+    color: white;
+}
+.personality-trait[data-trait="shadow_pressure"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #51CF66, #007AFF);
+    color: white;
+}
+
+/* Loyalty Spectrum (F#) - Green-Blue to Blue */
+.personality-trait[data-trait="loyalty_spectrum"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #34C759, #339AF0);
+    color: white;
+}
+.personality-trait[data-trait="loyalty_spectrum"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #339AF0, #007AFF);
+    color: white;
+}
+
+/* Manipulation Tendency (G) - Blue to Blue-Indigo */
+.personality-trait[data-trait="manipulation_tendency"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #007AFF, #339AF0);
+    color: white;
+}
+.personality-trait[data-trait="manipulation_tendency"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #339AF0, #5856D6);
+    color: white;
+}
+
+/* Validation Need (G#) - Blue-Indigo to Indigo */
+.personality-trait[data-trait="validation_need"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #007AFF, #5856D6);
+    color: white;
+}
+.personality-trait[data-trait="validation_need"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #5856D6, #AF52DE);
+    color: white;
+}
+
+/* Loop Adherence (A) - Indigo to Indigo-Violet */
+.personality-trait[data-trait="loop_adherence"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #5856D6, #AF52DE);
+    color: white;
+}
+.personality-trait[data-trait="loop_adherence"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #AF52DE, #FF3B30);
+    color: white;
+}
+
+/* Awakening Capacity (A#) - Indigo-Violet to Violet */
+.personality-trait[data-trait="awakening_capacity"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #AF52DE, #FF6B6B);
+    color: white;
+}
+.personality-trait[data-trait="awakening_capacity"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FF6B6B, #FF3B30);
+    color: white;
+}
+
+/* Mythic Potential (B) - Violet to Red (wraparound) */
+.personality-trait[data-trait="mythic_potential"] .personality-slider-label.min {
+    background: linear-gradient(90deg, #AF52DE, #FF6B6B);
+    color: white;
+}
+.personality-trait[data-trait="mythic_potential"] .personality-slider-label.max {
+    background: linear-gradient(90deg, #FF6B6B, #FF3B30);
+    color: white;
+}
+
+/* ========== ECHOMATRIX Visual Effects ========== */
+
+/* Tone Flash Effect */
+@keyframes toneFlash {
+    0% { 
+        background-color: transparent;
+        transform: scale(1);
+    }
+    50% { 
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    }
+    100% { 
+        background-color: transparent;
+        transform: scale(1);
+    }
+}
+
+.personality-trait.tone-flash {
+    animation: toneFlash 0.3s ease;
+}
+
+/* Note Display */
+.echomatrix-note-display {
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: rgba(0, 0, 0, 0.8);
+    color: #FFD60A;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    font-family: monospace;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.echomatrix-note-display.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Brightness Modulation for Labels */
+.personality-slider-label.dimmed {
+    opacity: 0.4;
+    filter: brightness(0.6);
+}
+
+.personality-slider-label.brightened {
+    opacity: 1;
+    filter: brightness(1.3);
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* Label Color Flash */
+@keyframes labelColorFlash {
+    0% { 
+        filter: brightness(1);
+        transform: scale(1);
+    }
+    50% { 
+        filter: brightness(1.5) saturate(1.3);
+        transform: scale(1.05);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    }
+    100% { 
+        filter: brightness(1);
+        transform: scale(1);
+    }
+}
+
+.personality-slider-label.color-flash {
+    animation: labelColorFlash 0.4s ease;
 }
 
 /* Runtime Editor Specific Styles */

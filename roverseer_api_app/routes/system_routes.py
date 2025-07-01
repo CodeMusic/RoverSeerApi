@@ -1216,17 +1216,77 @@ async def get_buzzer_effects():
 async def set_buzzer_effects(request: Request):
     """Set buzzer sound effects on/off"""
     try:
-        body = await request.json()
-        enabled = bool(body.get('enabled', True))
+        form = await request.form()
+        enabled = form.get('enabled') == 'true'
         
-        # Update the config setting
+        # Update config
         config.BUZZER_SOUND_EFFECTS = enabled
         
-        # Log the change
-        logging.info(f"🔊 Buzzer sound effects {'enabled' if enabled else 'disabled'}")
+        # Save to config file if possible
+        try:
+            import json
+            config_path = os.path.join(os.path.dirname(__file__), '..', 'config.json')
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    config_data = json.load(f)
+                config_data['buzzer_sound_effects'] = enabled
+                with open(config_path, 'w') as f:
+                    json.dump(config_data, f, indent=2)
+        except Exception as e:
+            print(f"Could not save buzzer config: {e}")
         
-        return JSONResponse(content={"status": "success", "enabled": enabled})
+        return JSONResponse(content={
+            "status": "success", 
+            "message": f"Buzzer effects {'enabled' if enabled else 'disabled'}",
+            "buzzer_effects": enabled
+        })
         
     except Exception as e:
-        logging.error(f"Error setting buzzer effects: {e}")
-        return JSONResponse(content={"status": "error", "message": str(e)}), 500
+        return JSONResponse(content={"status": "error", "message": str(e)})
+
+
+@router.post('/system/echomatrix/tone')
+async def play_echomatrix_tone_route(request: Request):
+    """Play ECHOMATRIX chromatic tone for personality trait feedback"""
+    try:
+        data = await request.json()
+        note = data.get('note')
+        value = data.get('value')
+        
+        if not note or value is None:
+            return JSONResponse(content={
+                "status": "error", 
+                "message": "Missing note or value parameter"
+            }, status_code=400)
+        
+        # Validate note
+        valid_notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+        if note not in valid_notes:
+            return JSONResponse(content={
+                "status": "error", 
+                "message": f"Invalid note. Must be one of: {', '.join(valid_notes)}"
+            }, status_code=400)
+        
+        # Validate value range
+        if not isinstance(value, (int, float)) or value < 0 or value > 10:
+            return JSONResponse(content={
+                "status": "error", 
+                "message": "Value must be a number between 0 and 10"
+            }, status_code=400)
+        
+        # Play the tone
+        from expression.sound_orchestration import play_echomatrix_tone
+        play_echomatrix_tone(note, int(value))
+        
+        return JSONResponse(content={
+            "status": "success", 
+            "message": f"Playing {note} tone for value {value}",
+            "note": note,
+            "value": value
+        })
+        
+    except Exception as e:
+        return JSONResponse(content={
+            "status": "error", 
+            "message": f"Error playing tone: {str(e)}"
+        }, status_code=500)

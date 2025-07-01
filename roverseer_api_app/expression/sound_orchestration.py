@@ -19,6 +19,52 @@ def is_buzzer_enabled():
         return True  # Default to enabled if config can't be read
 
 
+# -------- ECHOMATRIX TONE FEEDBACK -------- #
+def play_echomatrix_tone(note, value):
+    """Play chromatic tone for personality trait adjustment feedback"""
+    if not is_buzzer_enabled():
+        return
+        
+    from embodiment.rainbow_interface import get_rainbow_driver
+    rainbow = get_rainbow_driver()
+    
+    if rainbow and hasattr(rainbow, 'buzzer_manager'):
+        try:
+            # Chromatic note frequency mapping (Octave 4 base)
+            note_frequencies = {
+                'C': 261.63, 'C#': 277.18, 'D': 293.66, 'D#': 311.13,
+                'E': 329.63, 'F': 349.23, 'F#': 369.99, 'G': 392.00,
+                'G#': 415.30, 'A': 440.00, 'A#': 466.16, 'B': 493.88
+            }
+            
+            if note not in note_frequencies:
+                print(f"Unknown note: {note}")
+                return
+            
+            # Map value (0-10) to octave range (2-6)
+            base_octave = 2
+            semitone_offset = max(0, min(5, int(value / 2)))  # Clamp to 0-5
+            target_octave = base_octave + semitone_offset
+            
+            # Calculate frequency for target octave
+            base_frequency = note_frequencies[note]
+            target_frequency = base_frequency * pow(2, target_octave - 4)  # Octave 4 is reference
+            
+            # Create tone object with calculated frequency
+            tone_obj = Tone(target_frequency)
+            
+            # Play tone with duration based on value (higher values = longer tones)
+            duration = 0.2 + (value * 0.02)  # 0.2s to 0.4s duration
+            
+            # Single tone feedback
+            rainbow.buzzer_manager.play_sequence_async([tone_obj], [duration], gaps=0.01)
+            
+            print(f"🎵 ECHOMATRIX: {note}{target_octave} ({target_frequency:.1f}Hz) - Value {value}")
+                
+        except Exception as e:
+            print(f"Error playing ECHOMATRIX tone: {e}")
+
+
 # -------- TUNE FUNCTIONS -------- #
 def play_neural_training_start_tune(voice_name=None):
     """Play an ascending neural network activation tune when starting voice training"""

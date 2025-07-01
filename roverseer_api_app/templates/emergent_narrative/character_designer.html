@@ -699,12 +699,22 @@
         function initializePersonalitySliders() {
             const container = document.getElementById('personalitySliders');
             
+            // Get initial values from current character or defaults
+            const initialTraits = (currentCharacter && currentCharacter.personality_traits) ? 
+                currentCharacter.personality_traits : {};
+            
             personalitySliders = new PersonalitySliders({
-                initialValues: currentCharacter ? currentCharacter.personality_traits : {},
+                initialValues: initialTraits,
                 onChange: (values) => updatePreview()
             });
             
             personalitySliders.render(container);
+            
+            // If we have a current character with traits, ensure they're loaded
+            if (currentCharacter && currentCharacter.personality_traits) {
+                console.log('Setting initial personality traits in sliders:', currentCharacter.personality_traits);
+                personalitySliders.setValues(currentCharacter.personality_traits);
+            }
             
             // Show initial archetype description
             const initialArchetype = document.getElementById('personalityArchetype').value;
@@ -816,24 +826,13 @@
             if (personalitySliders && character.personality_traits) {
                 console.log('Loading personality traits:', character.personality_traits);
                 try {
-                    if (typeof personalitySliders.setValues === 'function') {
-                        personalitySliders.setValues(character.personality_traits);
-                        console.log('Successfully set personality slider values');
-                    } else if (typeof personalitySliders.loadValues === 'function') {
-                        personalitySliders.loadValues(character.personality_traits);
-                        console.log('Successfully loaded personality slider values');
-                    } else if (typeof personalitySliders.updateValues === 'function') {
-                        personalitySliders.updateValues(character.personality_traits);
-                        console.log('Successfully updated personality slider values');
-                    } else {
-                        console.warn('No setValues/loadValues/updateValues method found on PersonalitySliders');
-                        console.log('Available methods:', Object.getOwnPropertyNames(personalitySliders));
-                    }
+                    personalitySliders.setValues(character.personality_traits);
+                    console.log('Successfully set personality slider values');
                 } catch (error) {
                     console.error('Error setting personality slider values:', error);
                 }
             } else if (!personalitySliders) {
-                console.warn('Personality sliders not initialized yet');
+                console.warn('Personality sliders not initialized yet - will load traits after initialization');
             } else if (!character.personality_traits) {
                 console.warn('No personality traits to load');
             }
@@ -1163,15 +1162,11 @@
             // Safely get personality traits
             let personalityTraits = {};
             try {
-                if (personalitySliders && typeof personalitySliders.getCurrentValues === 'function') {
-                    personalityTraits = personalitySliders.getCurrentValues();
-                    console.log('Successfully gathered personality traits:', personalityTraits);
-                } else if (personalitySliders && typeof personalitySliders.getValues === 'function') {
-                    // Try alternative method name
+                if (personalitySliders && typeof personalitySliders.getValues === 'function') {
                     personalityTraits = personalitySliders.getValues();
-                    console.log('Successfully gathered personality traits (alternative method):', personalityTraits);
+                    console.log('Successfully gathered personality traits:', personalityTraits);
                 } else {
-                    console.warn('Personality sliders not available or no getCurrentValues method');
+                    console.warn('Personality sliders not available or no getValues method');
                     console.log('PersonalitySliders object:', personalitySliders);
                     // Use current character traits as fallback
                     if (currentCharacter && currentCharacter.personality_traits) {

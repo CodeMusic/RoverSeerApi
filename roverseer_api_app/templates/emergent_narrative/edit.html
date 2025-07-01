@@ -469,16 +469,21 @@
             }
             
             // Load characters
-            characters = narrativeData.characters.map(char => ({
-                id: char.id,
-                name: char.name,
-                model: char.model,
-                voice: char.voice,
-                system_message: char.system_message,
-                personality_archetype: char.personality_archetype || 'contemplative',
-                personality_traits: char.personality_traits || {},
-                image_path: char.image_path || ''
-            }));
+            characters = narrativeData.characters.map(char => {
+                console.log(`Loading character ${char.name}:`, char);
+                console.log(`  - personality_traits:`, char.personality_traits);
+                
+                return {
+                    id: char.id,
+                    name: char.name,
+                    model: char.model,
+                    voice: char.voice,
+                    system_message: char.system_message,
+                    personality_archetype: char.personality_archetype || 'contemplative',
+                    personality_traits: char.personality_traits || {},
+                    image_path: char.image_path || ''
+                };
+            });
             
             // Load acts and scenes
             if (narrativeData.acts && narrativeData.acts.length > 0) {
@@ -639,8 +644,20 @@
             const container = document.getElementById(`personality-sliders-${characterId}`);
             if (!container) return;
             
+            const character = characters.find(c => c.id === characterId);
+            console.log(`Initializing personality sliders for ${character?.name || characterId}:`);
+            console.log(`  - initialTraits:`, initialTraits);
+            console.log(`  - character.personality_traits:`, character?.personality_traits);
+            
+            // Use the character's personality_traits directly, with fallback to empty object
+            const traitsToUse = (character && character.personality_traits && Object.keys(character.personality_traits).length > 0) 
+                ? character.personality_traits 
+                : initialTraits;
+            
+            console.log(`  - using traits:`, traitsToUse);
+            
             const sliders = new PersonalitySliders({
-                initialValues: initialTraits,
+                initialValues: traitsToUse,
                 compact: true,
                 onChange: (values) => {
                     updateCharacterPersonalityTraits(characterId, values);
@@ -649,6 +666,14 @@
             
             sliders.render(container);
             personalitySliders.set(characterId, sliders);
+            
+            // Ensure values are set after rendering
+            if (traitsToUse && Object.keys(traitsToUse).length > 0) {
+                setTimeout(() => {
+                    sliders.setValues(traitsToUse);
+                    console.log(`  - applied values after render:`, traitsToUse);
+                }, 100);
+            }
         }
         
         function updateCharacterPersonalityTraits(characterId, traits) {
@@ -707,6 +732,17 @@
                     }
                 }
             }
+            
+            // Gather current personality traits from sliders before saving
+            characters.forEach(character => {
+                const sliders = personalitySliders.get(character.id);
+                if (sliders && typeof sliders.getValues === 'function') {
+                    character.personality_traits = sliders.getValues();
+                    console.log(`Gathered personality traits for ${character.name}:`, character.personality_traits);
+                } else {
+                    console.warn(`No personality sliders found for character ${character.name} (${character.id})`);
+                }
+            });
             
             const updateData = {
                 title: title,

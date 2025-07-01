@@ -857,6 +857,9 @@ async def advance_narrative(request: Request, narrative_id: str):
         # Build context for the current character (includes influences automatically)
         context = build_character_context(narrative, current_scene, current_character, other_character)
         
+        # Get active influence for this character (needed for metadata)
+        influence = narrative.get_active_influence_for_character(current_character.id)
+        
         # Call the AI model to generate response
         response_text = await generate_character_response(current_character, context)
         
