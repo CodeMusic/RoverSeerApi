@@ -243,19 +243,21 @@ class Scene:
     
     def is_completed(self) -> bool:
         """Check if scene has fulfilled its narrative purpose"""
-        total_interactions = len(self.interactions)
-        required_interactions = self.interaction_cycles * 2  # Each cycle = 2 interactions
+        # Only count character interactions, not narrator announcements
+        character_interactions = [i for i in self.interactions if i['character_id'] != 'NARRATOR']
+        total_character_interactions = len(character_interactions)
+        required_interactions = self.interaction_cycles * 2  # Each cycle = 2 character interactions
         
-        # Scene is complete when we have enough total interactions
-        is_complete = total_interactions >= required_interactions
+        # Scene is complete when we have enough character interactions
+        is_complete = total_character_interactions >= required_interactions
         
         return is_complete
     
     def add_interaction(self, character_id: str, content: str, metadata: Dict[str, Any] = None) -> None:
         """Record character interaction in scene"""
-        # Calculate which cycle this interaction belongs to
-        current_interaction_count = len(self.interactions)
-        current_cycle = current_interaction_count // 2
+        # Calculate which cycle this interaction belongs to (only count character interactions)
+        current_character_interactions = len([i for i in self.interactions if i['character_id'] != 'NARRATOR'])
+        current_cycle = current_character_interactions // 2
         
         interaction = {
             "id": str(uuid.uuid4()),
@@ -267,9 +269,9 @@ class Scene:
         }
         self.interactions.append(interaction)
         
-        # Update completed cycles based on new interaction count
-        new_interaction_count = len(self.interactions)
-        self.completed_cycles = new_interaction_count // 2
+        # Update completed cycles based on character interaction count (not total interactions)
+        new_character_interactions = len([i for i in self.interactions if i['character_id'] != 'NARRATOR'])
+        self.completed_cycles = new_character_interactions // 2
 
 
 @dataclass

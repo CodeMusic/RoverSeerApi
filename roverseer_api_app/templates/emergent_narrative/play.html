@@ -227,6 +227,31 @@
             to { opacity: 1; }
         }
         
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.9; }
+        }
+        
+        .scene-countdown {
+            font-size: 0.9rem;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .countdown-critical {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+            animation: pulse 0.8s infinite !important;
+        }
+        
+        .countdown-urgent {
+            background: linear-gradient(135deg, #fd7e14, #e55700) !important;
+            animation: pulse 1s infinite !important;
+        }
+        
+        .countdown-warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+            animation: pulse 1.2s infinite !important;
+        }
+        
         .message-timestamp {
             font-size: 0.7rem;
             color: #8E8E93;
@@ -355,6 +380,53 @@
             color: #888;
             font-style: italic;
             margin-top: 50px;
+        }
+        
+        .narrator-announcement {
+            margin-bottom: 20px;
+            animation: messageSlideIn 0.4s ease-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .narrator-bubble {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 20px;
+            max-width: 80%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            font-style: italic;
+            font-weight: 500;
+        }
+        
+        .narrator-bubble::before {
+            content: '📢';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: #ff9800;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            border: 2px solid white;
+        }
+        
+        .narrator-label {
+            font-size: 0.8rem;
+            color: #ff9800;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         .loading-indicator {
@@ -496,6 +568,31 @@
                         🔄 Reset to Start
                     </button>
                 </div>
+            </div>
+            
+            <div class="controls-section">
+                <div class="panel-header">📢 Narrator Announcement</div>
+                
+                <div class="narrator-form" id="narratorForm" style="display: none;">
+                    <textarea class="form-input" 
+                              id="narratorText" 
+                              placeholder="Speak as the narrator..."
+                              rows="3"
+                              maxlength="300"></textarea>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button class="control-button" onclick="makeNarratorAnnouncement()" style="flex: 1;">
+                            📢 Announce
+                        </button>
+                        <button class="control-button secondary" onclick="hideNarratorForm()" style="background: #555;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+                
+                <button class="control-button" id="showNarratorButton" onclick="showNarratorForm()" style="display: block;">
+                    📢 Add Narrator Voice
+                </button>
             </div>
             
             <div class="controls-section">
@@ -656,15 +753,51 @@
                 const sceneInfo = document.getElementById('sceneInfo');
                 if (status.current_scene_info) {
                     currentSceneInfo = status.current_scene_info; // Store for character styling
-                    sceneInfo.innerHTML = `
+                    
+                    let sceneContent = `
                         <strong>Scene ${status.current_scene_info.number}:</strong> 
                         ${status.current_scene_info.description}
                         <br><small>
                             ${status.current_scene_info.characters.join(' & ')} 
                             (${status.current_scene_info.progress_text} cycles complete)
-                            <br>${status.current_scene_info.total_interactions}/${status.current_scene_info.required_interactions} total exchanges
+                            <br>${status.current_scene_info.character_interactions || status.current_scene_info.total_interactions}/${status.current_scene_info.required_interactions} character exchanges
                         </small>
                     `;
+                    
+                    // Add countdown display if active
+                    if (status.current_scene_info.countdown && status.current_scene_info.countdown.active) {
+                        const countdown = status.current_scene_info.countdown;
+                        let countdownClass = '';
+                        let countdownIcon = '';
+                        
+                        if (countdown.remaining === 1) {
+                            countdownClass = 'countdown-critical';
+                            countdownIcon = '🔥';
+                        } else if (countdown.remaining === 2) {
+                            countdownClass = 'countdown-urgent';
+                            countdownIcon = '⚡';
+                        } else if (countdown.remaining === 3) {
+                            countdownClass = 'countdown-warning';
+                            countdownIcon = '⏰';
+                        }
+                        
+                        sceneContent += `
+                            <div class="scene-countdown ${countdownClass}" style="
+                                background: linear-gradient(135deg, #ff6b35, #f7931e);
+                                color: white;
+                                padding: 8px 12px;
+                                border-radius: 8px;
+                                margin-top: 8px;
+                                font-weight: 600;
+                                text-align: center;
+                                animation: pulse 1s infinite;
+                            ">
+                                ${countdownIcon} ${countdown.remaining} exchanges until scene completion!
+                            </div>
+                        `;
+                    }
+                    
+                    sceneInfo.innerHTML = sceneContent;
                     
                     // Log character assignments for debugging
                     updateDebugInfo(`Scene ${status.current_scene_info.number} characters: ${status.current_scene_info.characters.join(' & ')}`);
@@ -1019,6 +1152,11 @@
             const emptyState = container.querySelector('.empty-theater');
             if (emptyState) {
                 emptyState.remove();
+            }
+            
+            // Check if this is a narrator announcement
+            if (result.character === 'NARRATOR' || result.type === 'narrator_announcement') {
+                return addNarratorAnnouncementToDisplay(result);
             }
             
             // Find the character data to get image path
@@ -1549,6 +1687,164 @@
             const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
             return luminance > 0.5;
         }
+        
+        // Narrator announcement functions
+        function showNarratorForm() {
+            const form = document.getElementById('narratorForm');
+            const button = document.getElementById('showNarratorButton');
+            
+            form.style.display = 'block';
+            button.style.display = 'none';
+            
+            // Focus on the textarea
+            document.getElementById('narratorText').focus();
+            
+            updateDebugInfo('Narrator form opened');
+        }
+        
+        function hideNarratorForm() {
+            const form = document.getElementById('narratorForm');
+            const button = document.getElementById('showNarratorButton');
+            
+            form.style.display = 'none';
+            button.style.display = 'block';
+            
+            // Clear the textarea
+            document.getElementById('narratorText').value = '';
+            
+            updateDebugInfo('Narrator form closed');
+        }
+        
+        async function makeNarratorAnnouncement() {
+            const text = document.getElementById('narratorText').value.trim();
+            
+            if (!text) {
+                alert('Please enter an announcement text');
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            try {
+                button.disabled = true;
+                button.textContent = '📢 Announcing...';
+                
+                updateDebugInfo(`Making narrator announcement: "${text}"`);
+                
+                const outputMode = document.getElementById('outputMode').value;
+                
+                const response = await fetch(`/emergent_narrative/narrator_announcement/${narrativeId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: text,
+                        output_mode: outputMode
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateDebugInfo(`Narrator announcement result: ${JSON.stringify(result)}`);
+                    
+                    // Add the announcement to the display
+                    addNarratorAnnouncementToDisplay(result);
+                    
+                    // Hide the form
+                    hideNarratorForm();
+                    
+                    // Play audio if available
+                    if (result.audio_url) {
+                        setTimeout(() => playAudioFromUrl(result.audio_url), 500);
+                    }
+                    
+                    // Update status to reflect the new interaction
+                    updateNarrativeStatus();
+                    
+                } else {
+                    const error = await response.text();
+                    updateDebugInfo(`Narrator announcement error: ${error}`);
+                    alert(`Failed to make announcement: ${error}`);
+                }
+                
+            } catch (error) {
+                updateDebugInfo(`Narrator announcement exception: ${error.message}`);
+                alert(`Error making announcement: ${error.message}`);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+        
+        function addNarratorAnnouncementToDisplay(result) {
+            const container = document.getElementById('interactionsDisplay');
+            
+            // Remove empty state if present
+            const emptyState = container.querySelector('.empty-theater');
+            if (emptyState) {
+                emptyState.remove();
+            }
+            
+            const announcementDiv = document.createElement('div');
+            announcementDiv.className = 'narrator-announcement';
+            
+            announcementDiv.innerHTML = `
+                <div class="narrator-label">Narrator</div>
+                <div class="narrator-bubble">
+                    ${result.text}
+                </div>
+            `;
+            
+            container.appendChild(announcementDiv);
+            
+            // Add timestamp after a brief delay
+            setTimeout(() => {
+                const timestampDiv = document.createElement('div');
+                timestampDiv.className = 'message-timestamp';
+                timestampDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                container.appendChild(timestampDiv);
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+            
+            container.scrollTop = container.scrollHeight;
+            
+            // Store audio for replay if available
+            if (result.audio_url) {
+                lastAudioUrl = result.audio_url;
+                updateGlobalReplayButton();
+            }
+            
+            updateDebugInfo('Narrator announcement added to display');
+            
+            return announcementDiv;
+        }
+        
+        // Update the control buttons function to show/hide narrator button based on state
+        function updateNarratorButtonVisibility(state) {
+            const narratorButton = document.getElementById('showNarratorButton');
+            const narratorForm = document.getElementById('narratorForm');
+            
+            // Only show narrator option when narrative is actively running
+            if (state === 'manifesting') {
+                narratorButton.style.display = 'block';
+            } else {
+                narratorButton.style.display = 'none';
+                // Hide form if it's open
+                if (narratorForm.style.display === 'block') {
+                    hideNarratorForm();
+                }
+            }
+        }
+        
+        // Modify the existing updateControlButtons function to include narrator visibility
+        const originalUpdateControlButtons = updateControlButtons;
+        updateControlButtons = function(state) {
+            // Call the original function
+            originalUpdateControlButtons(state);
+            
+            // Add narrator button visibility logic
+            updateNarratorButtonVisibility(state);
+        };
     </script>
 </body>
 </html> 

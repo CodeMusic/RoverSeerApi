@@ -506,14 +506,17 @@ async def get_narrative_status(narrative_id: str):
                 char_a = narrative.get_character_by_id(current_scene.character_a_id)
                 char_b = narrative.get_character_by_id(current_scene.character_b_id)
                 
-                # Get scene progress information
-                total_interactions = len(current_scene.interactions)
+                # Get scene progress information (counting only character interactions)
+                character_interactions = [i for i in current_scene.interactions if i['character_id'] != 'NARRATOR']
+                total_character_interactions = len(character_interactions)
+                total_interactions = len(current_scene.interactions)  # Include narrator for total count
                 required_interactions = current_scene.interaction_cycles * 2
                 completed_cycles = current_scene.completed_cycles  # Use stored value
-                partial_cycle = total_interactions % 2
+                partial_cycle = total_character_interactions % 2
+                remaining_interactions = required_interactions - total_character_interactions
                 
                 logger.info(f"DEBUG STATUS: Scene {current_scene.id}, stored completed_cycles = {current_scene.completed_cycles}")
-                logger.info(f"DEBUG STATUS: Total interactions = {total_interactions}, required = {required_interactions}")
+                logger.info(f"DEBUG STATUS: Character interactions = {total_character_interactions}, total with narrator = {total_interactions}, required = {required_interactions}")
                 logger.info(f"DEBUG STATUS: Scene interaction_cycles setting = {current_scene.interaction_cycles}")
                 
                 # Create progress description
@@ -522,15 +525,27 @@ async def get_narrative_status(narrative_id: str):
                 else:
                     progress_text = f"{completed_cycles}/{current_scene.interaction_cycles}"
                 
+                # Generate countdown info
+                countdown_info = None
+                if remaining_interactions <= 3 and remaining_interactions > 0:
+                    countdown_info = {
+                        'active': True,
+                        'remaining': remaining_interactions,
+                        'message': f"⏰ {remaining_interactions} exchanges until scene completion!"
+                    }
+                
                 current_scene_info = {
                     'number': current_scene.scene_number,
                     'description': current_scene.description,
                     'completed_cycles': completed_cycles,
                     'total_cycles': current_scene.interaction_cycles,
                     'total_interactions': total_interactions,
+                    'character_interactions': total_character_interactions,
                     'required_interactions': required_interactions,
+                    'remaining_interactions': remaining_interactions,
                     'progress_text': progress_text,
-                    'characters': [char_a.name if char_a else "Unknown", char_b.name if char_b else "Unknown"]
+                    'characters': [char_a.name if char_a else "Unknown", char_b.name if char_b else "Unknown"],
+                    'countdown': countdown_info
                 }
             except Exception as scene_info_error:
                 logger.error(f"Failed to build scene info: {scene_info_error}")
@@ -594,13 +609,22 @@ async def get_narrative_interactions(narrative_id: str):
         # Format interactions for display
         formatted_interactions = []
         for interaction in current_scene.interactions:
-            character = narrative.get_character_by_id(interaction['character_id'])
-            formatted_interactions.append({
-                'character': character.name if character else 'Unknown',
-                'response': interaction['content'],
-                'timestamp': interaction['timestamp'],
-                'influence_applied': interaction.get('metadata', {}).get('influence')
-            })
+            if interaction['character_id'] == 'NARRATOR':
+                # Special handling for narrator announcements
+                formatted_interactions.append({
+                    'character': 'NARRATOR',
+                    'response': interaction['content'],
+                    'timestamp': interaction['timestamp'],
+                    'type': 'narrator_announcement'
+                })
+            else:
+                character = narrative.get_character_by_id(interaction['character_id'])
+                formatted_interactions.append({
+                    'character': character.name if character else 'Unknown',
+                    'response': interaction['content'],
+                    'timestamp': interaction['timestamp'],
+                    'influence_applied': interaction.get('metadata', {}).get('influence')
+                })
         
         return JSONResponse(content={'interactions': formatted_interactions})
         
@@ -637,6 +661,62 @@ async def apply_influence(request: Request, narrative_id: str):
         
     except Exception as e:
         logger.error(f"Failed to apply influence to narrative {narrative_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post('/emergent_narrative/narrator_announcement/{narrative_id}')
+async def narrator_announcement(request: Request, narrative_id: str):
+    """Add a narrator announcement to the narrative"""
+    try:
+        data = await request.json()
+        text = data.get('text', '').strip()
+        output_mode = data.get('output_mode', 'text')
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="Announcement text is required")
+        
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        
+        # Check if narrative is in a state where announcements are allowed
+        if narrative.state.value not in ['manifesting']:
+            raise HTTPException(status_code=400, detail="Narrator announcements can only be made during active narratives")
+        
+        # Get current scene
+        current_scene = narrative.get_current_scene()
+        if not current_scene:
+            raise HTTPException(status_code=400, detail="No active scene for narrator announcement")
+        
+        # Add the announcement as a special interaction
+        current_scene.add_interaction(
+            character_id="NARRATOR",  # Special ID for narrator
+            content=text,
+            metadata={
+                'type': 'narrator_announcement',
+                'timestamp': datetime.now().isoformat(),
+                'output_mode': output_mode
+            }
+        )
+        
+        # Save narrative state
+        narrative.save_to_file(narrative_file)
+        
+        # Handle audio output if requested
+        audio_url = None
+        if output_mode in ['rover_audio', 'local_audio']:
+            audio_url = await generate_narrator_audio_output(text, output_mode)
+        
+        logger.info(f"Added narrator announcement to narrative {narrative_id}: '{text[:50]}...'")
+        
+        return JSONResponse(content={
+            'success': True,
+            'text': text,
+            'audio_url': audio_url,
+            'output_mode': output_mode,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to add narrator announcement to {narrative_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post('/emergent_narrative/advance/{narrative_id}')
@@ -728,18 +808,18 @@ async def advance_narrative(request: Request, narrative_id: str):
         
         logger.info(f"Final character assignments: {char_a.name} (A) and {char_b.name} (B)")
         
-        # Determine whose turn it is based on the number of interactions in the scene
-        interactions_count = len(current_scene.interactions)
-        current_character = char_a if interactions_count % 2 == 0 else char_b
+        # Determine whose turn it is based on the number of CHARACTER interactions (excluding narrator announcements)
+        character_interactions_count = len([i for i in current_scene.interactions if i['character_id'] != 'NARRATOR'])
+        current_character = char_a if character_interactions_count % 2 == 0 else char_b
         other_character = char_b if current_character == char_a else char_a
         
-        logger.info(f"TURN DEBUG: Scene {current_scene.scene_number}, interactions_count = {interactions_count}")
+        logger.info(f"TURN DEBUG: Scene {current_scene.scene_number}, character_interactions_count = {character_interactions_count} (total with narrator: {len(current_scene.interactions)})")
         logger.info(f"TURN DEBUG: char_a = {char_a.name} ({char_a.id}), char_b = {char_b.name} ({char_b.id})")
-        logger.info(f"TURN DEBUG: Turn {interactions_count}: {current_character.name} speaks to {other_character.name}")
-        logger.info(f"TURN DEBUG: Logic: interactions_count {interactions_count} % 2 == 0? {interactions_count % 2 == 0} -> Character {'A' if interactions_count % 2 == 0 else 'B'}")
+        logger.info(f"TURN DEBUG: Turn {character_interactions_count}: {current_character.name} speaks to {other_character.name}")
+        logger.info(f"TURN DEBUG: Logic: character_interactions_count {character_interactions_count} % 2 == 0? {character_interactions_count % 2 == 0} -> Character {'A' if character_interactions_count % 2 == 0 else 'B'}")
         
         # Additional check for potential same-character-twice bug
-        if interactions_count > 0 and current_scene.interactions:
+        if character_interactions_count > 0 and current_scene.interactions:
             last_interaction = current_scene.interactions[-1]
             last_character_id = last_interaction['character_id']
             if last_character_id == current_character.id:
@@ -758,11 +838,20 @@ async def advance_narrative(request: Request, narrative_id: str):
         # Call the AI model to generate response
         response_text = await generate_character_response(current_character, context)
         
+        # Decrement influence cycles after each turn (this was missing!)
+        for active_influence in narrative.active_influences:
+            if active_influence.is_active():
+                active_influence.apply_to_cycle()
+                logger.info(f"Decremented influence '{active_influence.word_of_influence}' cycles: {active_influence.remaining_cycles} remaining")
+        
+        # Remove expired influences
+        narrative.active_influences = [inf for inf in narrative.active_influences if inf.is_active()]
+        
         # Store the interaction
         current_scene.add_interaction(
             character_id=current_character.id,
             content=response_text,
-            metadata={'turn': interactions_count, 'influence': influence.word_of_influence if influence else None}
+            metadata={'turn': character_interactions_count, 'influence': influence.word_of_influence if influence else None}
         )
         
         # Check scene completion AFTER adding the interaction
@@ -792,7 +881,7 @@ async def advance_narrative(request: Request, narrative_id: str):
             'timestamp': datetime.now().isoformat()
         })
         
-        # Note: Influences will be cleared when scene completes (no per-cycle countdown)
+        # Note: Influences decrement each turn and expire naturally, or are cleared when scene completes
         
         # Continue with narrative advancement logic
         narrative_advanced = False
@@ -900,17 +989,20 @@ def build_character_context(narrative: EmergentNarrative, scene: Scene, characte
     """Build comprehensive context for character's AI interaction including full conversation history"""
     current_act = narrative.get_current_act()
     
-    # Calculate scene progress
-    current_interactions = len(scene.interactions)
+    # Calculate scene progress (only count character interactions)
+    character_interactions = [i for i in scene.interactions if i['character_id'] != 'NARRATOR']
+    current_interactions = len(character_interactions)
     required_interactions = scene.interaction_cycles * 2
     completed_cycles = scene.completed_cycles
     remaining_interactions = required_interactions - current_interactions
     
-    # Determine progress description
+    # Determine progress description with countdown urgency
     if remaining_interactions == 1:
-        progress_note = "This conversation will conclude after your next exchange."
+        progress_note = "⏰ FINAL EXCHANGE: This conversation will conclude after your next exchange. Begin wrapping up!"
     elif remaining_interactions == 2:
-        progress_note = f"This conversation has {remaining_interactions} exchanges remaining before concluding."
+        progress_note = f"⏰ COUNTDOWN: Only {remaining_interactions} exchanges remaining! Start bringing this conversation to a natural conclusion."
+    elif remaining_interactions == 3:
+        progress_note = f"⏰ COUNTDOWN: Only {remaining_interactions} exchanges remaining! Begin preparing to wrap up this conversation."
     elif remaining_interactions <= 0:
         progress_note = "This conversation should be concluding now."
     else:
@@ -940,18 +1032,52 @@ CURRENT SCENE INTERACTIONS:
 """
     
     # Add all interactions from current scene for immediate context
+    recent_narrator_announcement = None
     if scene.interactions:
         for interaction in scene.interactions:
-            char = narrative.get_character_by_id(interaction['character_id'])
-            char_name = char.name if char else 'Unknown'
-            context += f"\n{char_name}: {interaction['content']}"
+            if interaction['character_id'] == 'NARRATOR':
+                # Special handling for narrator announcements
+                context += f"\n[NARRATOR ANNOUNCEMENT]: {interaction['content']}"
+                # Keep track of the most recent narrator announcement
+                recent_narrator_announcement = interaction['content']
+            else:
+                char = narrative.get_character_by_id(interaction['character_id'])
+                char_name = char.name if char else 'Unknown'
+                context += f"\n{char_name}: {interaction['content']}"
     else:
         context += "\n(This scene is just beginning - no interactions yet)"
     
     context += f"""\n\nSCENE PROGRESS: {current_interactions}/{required_interactions} total exchanges completed
 {progress_note}
 
-Respond as {character.name}. Stay in character, acknowledge the conversation history when relevant, and be aware that this scene has a natural conclusion point. Keep your response conversational and under 3 sentences."""
+"""
+
+    # Build final instructions based on scene state
+    final_instructions = f"Respond as {character.name}. "
+    
+    # Handle narrator announcements first
+    if scene.interactions and scene.interactions[-1]['character_id'] == 'NARRATOR':
+        most_recent_announcement = scene.interactions[-1]['content']
+        context += f"""IMPORTANT: The narrator just announced: "{most_recent_announcement}"
+This is something happening in your world RIGHT NOW that you must acknowledge and respond to. Your next response should react to this event while staying in character.
+
+"""
+        final_instructions += f"""React to the narrator's announcement about "{most_recent_announcement}" - this is an immediate event affecting your scene. """
+    
+    # Add countdown urgency instructions
+    if remaining_interactions <= 3:
+        if remaining_interactions == 1:
+            final_instructions += """🔥 CRITICAL: This is your FINAL exchange in this scene! You must bring the conversation to a satisfying conclusion. Create closure, resolution, or a natural ending point. """
+        elif remaining_interactions == 2:
+            final_instructions += """⚡ URGENT: Only 2 exchanges left! Begin wrapping up this conversation and moving toward resolution or closure. """
+        elif remaining_interactions == 3:
+            final_instructions += """⏰ WARNING: Only 3 exchanges remaining! Start preparing to conclude this conversation naturally. """
+    else:
+        final_instructions += """Stay in character, acknowledge the conversation history when relevant, and be aware that this scene has a natural conclusion point. """
+    
+    final_instructions += """Keep your response conversational and under 3 sentences."""
+    
+    context += final_instructions
     
     return context
 
@@ -975,11 +1101,15 @@ def get_character_conversation_history(narrative: EmergentNarrative, character: 
                 if scene.interactions:
                     scene_conversation = f"\nScene {scene.scene_number} with {other_char_name}:"
                     for interaction in scene.interactions:
-                        char = narrative.get_character_by_id(interaction['character_id'])
-                        if char:
-                            # Only include interactions where this character spoke or was spoken to
-                            if interaction['character_id'] == character.id or interaction['character_id'] == other_char_id:
-                                scene_conversation += f"\n  {char.name}: {interaction['content']}"
+                        if interaction['character_id'] == 'NARRATOR':
+                            # Include narrator announcements for all characters
+                            scene_conversation += f"\n  [NARRATOR]: {interaction['content']}"
+                        else:
+                            char = narrative.get_character_by_id(interaction['character_id'])
+                            if char:
+                                # Only include interactions where this character spoke or was spoken to
+                                if interaction['character_id'] == character.id or interaction['character_id'] == other_char_id:
+                                    scene_conversation += f"\n  {char.name}: {interaction['content']}"
                     
                     if len(scene_conversation.split('\n')) > 1:  # Has actual content
                         act_conversations.append(scene_conversation)
@@ -1041,6 +1171,33 @@ async def generate_audio_output(text: str, voice: str, output_mode: str) -> Opti
         
     except Exception as e:
         logger.error(f"Failed to generate audio: {e}")
+        return None
+
+async def generate_narrator_audio_output(text: str, output_mode: str) -> Optional[str]:
+    """Generate audio output for narrator announcements using a narrator voice"""
+    try:
+        # Use a specific narrator voice - you can customize this
+        narrator_voice = "en_speaker_9"  # Choose a distinctive voice for the narrator
+        
+        if output_mode == 'rover_audio':
+            # Play on RoverSeer speakers
+            from expression.text_to_speech import speak_text
+            speak_text(text, narrator_voice)
+            return None
+        elif output_mode == 'local_audio':
+            # Generate audio file for download
+            import tempfile
+            import uuid
+            from expression.text_to_speech import generate_tts_audio
+            
+            temp_file = f"/tmp/narrator_audio_{uuid.uuid4().hex}.wav"
+            output_file, _ = generate_tts_audio(text, narrator_voice, temp_file)
+            return f"/tmp/narrative_audio/{os.path.basename(output_file)}"
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"Failed to generate narrator audio: {e}")
         return None
 
 @router.get('/emergent_narrative/edit/{narrative_id}')
