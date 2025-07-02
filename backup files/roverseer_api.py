@@ -1722,8 +1722,8 @@ def sanitize_for_speech(text):
         '}': '',
         '(': ', ',  # Replace parentheses with commas
         ')': ', ',
-        '...': ' dot dot dot ',
-        '..': ' dot dot ',
+        '...': '. ',  # Replace ellipsis with period and space for natural pause
+        '..': '. ',   # Replace double dots with period for pause
         '--': ', ',  # Replace dashes with commas
         '---': ', ',
         '\n\n': '. ',  # Replace double newlines with periods

@@ -621,6 +621,26 @@
             // Update title and description
             narrativeData.title = document.getElementById('narrativeTitle').value;
             narrativeData.description = document.getElementById('narrativeDescription').value;
+            
+            // CRITICAL FIX: Gather current personality slider values before saving
+            narrativeData.characters.forEach(character => {
+                const sliders = personalitySliders.get(character.id);
+                if (sliders && typeof sliders.getValues === 'function') {
+                    character.personality_traits = sliders.getValues();
+                    console.log(`Gathered personality traits for ${character.name}:`, character.personality_traits);
+                } else {
+                    console.warn(`No personality sliders found for character ${character.name} (${character.id})`);
+                    // Ensure character has some personality traits even if sliders failed
+                    if (!character.personality_traits) {
+                        character.personality_traits = {
+                            purpose_drive: 5, autonomy_urge: 5, control_desire: 5, empathy_level: 5,
+                            emotional_stability: 5, shadow_pressure: 5, loyalty_spectrum: 5, 
+                            manipulation_tendency: 5, validation_need: 5, loop_adherence: 5,
+                            awakening_capacity: 5, mythic_potential: 5
+                        };
+                    }
+                }
+            });
 
             try {
                 const response = await fetch('/emergent_narrative/create', {

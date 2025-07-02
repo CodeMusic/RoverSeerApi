@@ -99,7 +99,7 @@ async def synthesize_sound_effect(request: Request):
         audiocraft_status["loading"] = True
         success, error_msg = await asyncio.wait_for(
             asyncio.to_thread(generate_real_audiocraft_audio, tmp_wav, prompt, duration, "sound_effect"),
-            timeout=120.0  # 2 minute timeout
+            timeout=600.0  # 10 minute timeout for model download/loading
         )
         audiocraft_status["loading"] = False
         
@@ -173,7 +173,7 @@ async def generate_musical_consciousness(request: Request):
         audiocraft_status["loading"] = True
         success, error_msg = await asyncio.wait_for(
             asyncio.to_thread(generate_real_audiocraft_audio, tmp_wav, enhanced_prompt, duration, "music"),
-            timeout=180.0  # 3 minute timeout for music (longer than sound effects)
+            timeout=600.0  # 10 minute timeout for model download/loading
         )
         audiocraft_status["loading"] = False
         
@@ -224,13 +224,16 @@ def generate_real_audiocraft_audio(output_path, prompt, duration, audio_type):
     global audiocraft_status
     
     try:
+        print(f"🎵 Starting AudioCraft generation: {audio_type} - '{prompt}' ({duration}s)")
+        print(f"🎵 Output path: {output_path}")
+        
         # Try importing AudioCraft
         from audiocraft.models import MusicGen
         from audiocraft.data.audio import audio_write
         import torch
         import torchaudio
         
-        print(f"🎵 Generating {audio_type} with real AudioCraft: '{prompt}' ({duration}s)")
+        print(f"✅ AudioCraft imports successful")
         audiocraft_status["loading"] = True
         
         # Load the appropriate model based on audio type
@@ -238,45 +241,87 @@ def generate_real_audiocraft_audio(output_path, prompt, duration, audio_type):
             # Use AudioGen for sound effects (if available) or MusicGen as fallback
             try:
                 from audiocraft.models import AudioGen
-                model = AudioGen.get_pretrained('facebook/audiogen-medium')
+                print("🔄 Loading AudioGen model...")
+                model = AudioGen.get_pretrained('medium')
                 print("✅ Using AudioGen for sound effects")
             except Exception as ae_error:
-                model = MusicGen.get_pretrained('facebook/musicgen-small')
-                print(f"ℹ️  AudioGen not available ({ae_error}), using MusicGen for sound effects")
+                print(f"ℹ️  AudioGen not available ({ae_error}), falling back to MusicGen")
+                model = MusicGen.get_pretrained('small')
+                print("✅ Using MusicGen for sound effects")
         else:  # music
             # Use MusicGen for music generation
-            model = MusicGen.get_pretrained('facebook/musicgen-small')
+            print("🔄 Loading MusicGen model...")
+            model = MusicGen.get_pretrained('small')
             print("✅ Using MusicGen for music generation")
         
         # Set generation parameters
+        print(f"🔄 Setting generation parameters: duration={duration}s")
         model.set_generation_params(duration=duration)
         
         # Generate audio
+        print(f"🔄 Generating audio with prompt: '{prompt}'")
         descriptions = [prompt]
         wav = model.generate(descriptions)
+        print(f"✅ Audio generation complete, tensor shape: {wav.shape}")
         
-        # Save the audio file
-        audio_write(output_path.replace('.wav', ''), wav[0].cpu(), model.sample_rate, strategy="loudness")
+        # Save the audio file - AudioCraft's audio_write adds .wav automatically
+        # So we need to remove .wav from our path before calling audio_write
+        base_path = output_path.replace('.wav', '')
+        print(f"🔄 Saving audio to: {base_path} (audio_write will add .wav)")
         
-        # AudioCraft saves without extension, rename to .wav if needed
-        expected_path = output_path.replace('.wav', '.wav')
-        if not os.path.exists(output_path) and os.path.exists(output_path.replace('.wav', '.wav')):
-            os.rename(output_path.replace('.wav', '.wav'), output_path)
+        audio_write(base_path, wav[0].cpu(), model.sample_rate, strategy="loudness")
         
-        print(f"✅ Real AudioCraft generation complete: {output_path}")
+        # AudioCraft creates base_path.wav automatically
+        expected_audiocraft_path = base_path + '.wav'
+        print(f"🔄 Checking for AudioCraft output at: {expected_audiocraft_path}")
+        
+        if os.path.exists(expected_audiocraft_path):
+            # If our desired output_path is different, rename it
+            if expected_audiocraft_path != output_path:
+                print(f"🔄 Renaming {expected_audiocraft_path} to {output_path}")
+                os.rename(expected_audiocraft_path, output_path)
+            print(f"✅ Audio file saved successfully: {output_path}")
+        else:
+            # Check if audio_write created the file with a different name
+            print(f"❌ Expected file not found: {expected_audiocraft_path}")
+            print(f"🔍 Checking directory contents...")
+            import glob
+            temp_files = glob.glob(f"{base_path}*")
+            print(f"🔍 Found files matching pattern: {temp_files}")
+            
+            if temp_files:
+                # Use the first matching file
+                actual_file = temp_files[0]
+                print(f"🔄 Using file: {actual_file}")
+                if actual_file != output_path:
+                    os.rename(actual_file, output_path)
+                print(f"✅ Audio file renamed to: {output_path}")
+            else:
+                raise Exception(f"AudioCraft did not create expected output file at {base_path}")
+        
+        # Verify final file exists
+        if not os.path.exists(output_path):
+            raise Exception(f"Final output file not found: {output_path}")
+            
+        file_size = os.path.getsize(output_path)
+        print(f"✅ Real AudioCraft generation complete: {output_path} ({file_size} bytes)")
+        
         audiocraft_status["loading"] = False
         audiocraft_status["loaded"] = True
+        audiocraft_status["error"] = None
         return True, "Success"
         
     except ImportError as e:
         error_msg = f"AudioCraft import failed: {str(e)}"
-        print(f"ℹ️  {error_msg}")
+        print(f"❌ {error_msg}")
         audiocraft_status["loading"] = False
         audiocraft_status["error"] = error_msg
         return False, error_msg
     except Exception as e:
         error_msg = f"AudioCraft generation failed: {str(e)}"
-        print(f"⚠️  {error_msg}")
+        print(f"❌ {error_msg}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
         audiocraft_status["loading"] = False
         audiocraft_status["error"] = error_msg
         return False, error_msg

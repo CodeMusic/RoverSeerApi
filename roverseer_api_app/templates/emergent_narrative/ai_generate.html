@@ -263,7 +263,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Number of Characters 👥</label>
-                    <select id="numCharacters" class="form-select" required>
+                    <select id="numCharacters" class="form-select" required onchange="handleCharacterCountChange()">
                         <option value="2">2 Characters</option>
                         <option value="3">3 Characters</option>
                         <option value="4">4 Characters</option>
@@ -271,6 +271,28 @@
                     </select>
                 </div>
 
+                <div class="form-group">
+                    <label class="form-label">Character Source 🎭</label>
+                    <select id="characterSource" class="form-select" required onchange="handleCharacterSourceChange()">
+                        <option value="generate">Generate New Characters</option>
+                        <option value="library">Select from Character Library</option>
+                        <option value="mixed">Mix of New & Existing</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Character Selection Section (hidden by default) -->
+            <div id="characterSelectionSection" class="form-group" style="display: none;">
+                <label class="form-label">Select Characters from Library 📚</label>
+                <div id="characterSelectionArea">
+                    <!-- Character selection will be populated here -->
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9rem; color: #888;">
+                    Select characters to use in your narrative. Empty slots will be filled with AI-generated characters.
+                </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Number of Acts 🎬</label>
                     <select id="numActs" class="form-select" required>
@@ -330,9 +352,12 @@
 
     <script>
         let generationInProgress = false;
+        let availableCharacters = [];
+        let selectedCharacters = [];
 
         document.addEventListener('DOMContentLoaded', function() {
             loadAvailableModels();
+            loadCharacterLibrary();
             
             // Add change listener for model selection
             document.getElementById('modelSelect').addEventListener('change', function() {
@@ -426,6 +451,129 @@
             capabilityDiv.textContent = capability;
         }
 
+        async function loadCharacterLibrary() {
+            try {
+                const response = await fetch('/api/character_library/characters');
+                if (response.ok) {
+                    const data = await response.json();
+                    availableCharacters = data.characters || [];
+                    console.log(`Loaded ${availableCharacters.length} characters from library`);
+                } else {
+                    console.warn('Failed to load character library');
+                    availableCharacters = [];
+                }
+            } catch (error) {
+                console.error('Error loading character library:', error);
+                availableCharacters = [];
+            }
+        }
+
+        function handleCharacterSourceChange() {
+            const source = document.getElementById('characterSource').value;
+            const selectionSection = document.getElementById('characterSelectionSection');
+            
+            if (source === 'library' || source === 'mixed') {
+                selectionSection.style.display = 'block';
+                renderCharacterSelection();
+            } else {
+                selectionSection.style.display = 'none';
+                selectedCharacters = [];
+            }
+        }
+
+        function handleCharacterCountChange() {
+            const currentSource = document.getElementById('characterSource').value;
+            if (currentSource === 'library' || currentSource === 'mixed') {
+                renderCharacterSelection();
+            }
+        }
+
+        function renderCharacterSelection() {
+            const numCharacters = parseInt(document.getElementById('numCharacters').value);
+            const selectionArea = document.getElementById('characterSelectionArea');
+            
+            // Ensure selectedCharacters array matches the required number
+            while (selectedCharacters.length < numCharacters) {
+                selectedCharacters.push(null);
+            }
+            while (selectedCharacters.length > numCharacters) {
+                selectedCharacters.pop();
+            }
+            
+            let html = '';
+            for (let i = 0; i < numCharacters; i++) {
+                html += `
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: #333; border-radius: 8px;">
+                        <span style="font-weight: 600; width: 100px;">Character ${i + 1}:</span>
+                        <select id="characterSelect-${i}" class="form-select" style="flex: 1;" onchange="updateSelectedCharacter(${i}, this.value)">
+                            <option value="">Generate New Character</option>
+                            ${availableCharacters.map(char => 
+                                `<option value="${char.id}" ${selectedCharacters[i] === char.id ? 'selected' : ''}>${char.name} - ${char.personality_archetype}</option>`
+                            ).join('')}
+                        </select>
+                        ${selectedCharacters[i] ? `
+                            <button type="button" onclick="previewCharacter('${selectedCharacters[i]}')" 
+                                    style="background: #667eea; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                                👁️ Preview
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            selectionArea.innerHTML = html;
+        }
+
+        function updateSelectedCharacter(index, characterId) {
+            selectedCharacters[index] = characterId || null;
+            renderCharacterSelection(); // Re-render to update preview buttons
+        }
+
+        function previewCharacter(characterId) {
+            const character = availableCharacters.find(c => c.id === characterId);
+            if (!character) return;
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center;
+                z-index: 1000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: #2a2a2a; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                    <h3 style="margin: 0 0 20px 0; color: #667eea;">${character.name}</h3>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <strong>Archetype:</strong> ${character.personality_archetype}
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <strong>Description:</strong><br>
+                        ${character.description || 'No description available'}
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <strong>System Message:</strong><br>
+                        <div style="background: #333; padding: 10px; border-radius: 6px; font-size: 0.9rem; max-height: 200px; overflow-y: auto;">
+                            ${character.system_message || 'No system message available'}
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <strong>Tags:</strong> ${(character.tags || []).join(', ') || 'None'}
+                    </div>
+                    
+                    <button onclick="this.closest('div[style*=\"fixed\"]').remove()" 
+                            style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%;">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
         document.getElementById('generatorForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -444,7 +592,9 @@
                 narrative_tone: document.getElementById('narrativeTone').value,
                 scene_length: document.getElementById('sceneLength').value,
                 additional_notes: document.getElementById('additionalNotes').value.trim(),
-                selected_model: selectedModel
+                selected_model: selectedModel,
+                character_source: document.getElementById('characterSource').value,
+                selected_characters: selectedCharacters.filter(id => id !== null)
             };
 
             if (!formData.story_concept) {

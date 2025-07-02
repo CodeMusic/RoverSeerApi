@@ -394,6 +394,29 @@
                 flex-direction: column;
             }
         }
+
+        /* Feedback animations */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+        }
     </style>
 </head>
 <body>
@@ -703,6 +726,8 @@
             const initialTraits = (currentCharacter && currentCharacter.personality_traits) ? 
                 currentCharacter.personality_traits : {};
             
+            console.log('Initializing personality sliders with traits:', initialTraits);
+            
             personalitySliders = new PersonalitySliders({
                 initialValues: initialTraits,
                 onChange: (values) => updatePreview()
@@ -710,10 +735,19 @@
             
             personalitySliders.render(container);
             
-            // If we have a current character with traits, ensure they're loaded
+            // If we have a current character with traits, ensure they're loaded after rendering
             if (currentCharacter && currentCharacter.personality_traits) {
-                console.log('Setting initial personality traits in sliders:', currentCharacter.personality_traits);
-                personalitySliders.setValues(currentCharacter.personality_traits);
+                console.log('Setting initial personality traits in sliders after render:', currentCharacter.personality_traits);
+                
+                // Small delay to ensure DOM is ready
+                setTimeout(() => {
+                    try {
+                        personalitySliders.setValues(currentCharacter.personality_traits);
+                        console.log('✅ Successfully set initial personality traits');
+                    } catch (error) {
+                        console.error('❌ Error setting initial personality traits:', error);
+                    }
+                }, 50);
             }
             
             // Show initial archetype description
@@ -840,6 +874,113 @@
             renderTags();
             updateCharacterImage();
             updatePreview();
+        }
+
+        async function loadCharacterDataFromAI(character) {
+            console.log('Loading AI-generated character:', character);
+            console.log('AI character personality traits:', character.personality_traits);
+            
+            // Load basic character information
+            document.getElementById('characterName').value = character.name || '';
+            document.getElementById('personalityArchetype').value = character.personality_archetype || 'contemplative';
+            document.getElementById('characterDescription').value = character.description || '';
+            document.getElementById('characterModel').value = character.model || '';
+            document.getElementById('characterVoice').value = character.voice || '';
+            document.getElementById('systemMessage').value = character.system_message || '';
+            document.getElementById('characterGroup').value = character.group_id || '';
+            
+            characterTags = character.tags || [];
+            currentImagePath = character.image_path || '';
+            
+            // Ensure personality sliders are ready and populated with AI-generated traits
+            if (character.personality_traits) {
+                console.log('Processing AI personality traits:', character.personality_traits);
+                
+                // If sliders aren't ready, reinitialize them with the AI data
+                if (!personalitySliders) {
+                    console.log('Reinitializing personality sliders with AI traits');
+                    initializePersonalitySliders();
+                    
+                    // Wait a moment for initialization
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // Set the AI-generated personality traits
+                if (personalitySliders && typeof personalitySliders.setValues === 'function') {
+                    try {
+                        console.log('Setting AI personality traits in sliders:', character.personality_traits);
+                        personalitySliders.setValues(character.personality_traits);
+                        console.log('✅ Successfully populated personality sliders with AI traits');
+                        
+                        // Show visual feedback that traits were loaded
+                        showAIPersonalityFeedback();
+                        
+                    } catch (error) {
+                        console.error('❌ Error setting AI personality traits:', error);
+                        // Try one more time after a longer delay
+                        setTimeout(() => {
+                            try {
+                                personalitySliders.setValues(character.personality_traits);
+                                console.log('✅ Successfully set AI traits on retry');
+                            } catch (retryError) {
+                                console.error('❌ Final attempt failed:', retryError);
+                            }
+                        }, 500);
+                    }
+                } else {
+                    console.error('❌ Personality sliders not available or missing setValues method');
+                    console.log('PersonalitySliders object:', personalitySliders);
+                }
+            } else {
+                console.warn('⚠️ No personality traits found in AI-generated character');
+            }
+            
+            // Update archetype description
+            showArchetypeDescription(character.personality_archetype || 'contemplative');
+            
+            renderTags();
+            updateCharacterImage();
+            updatePreview();
+        }
+
+        function showAIPersonalityFeedback() {
+            // Show temporary feedback that AI traits were loaded
+            const feedback = document.createElement('div');
+            feedback.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4caf50, #45a049);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 12px;
+                font-weight: 600;
+                z-index: 10000;
+                box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+                animation: slideInRight 0.4s ease-out;
+                border: 2px solid rgba(255, 255, 255, 0.2);
+            `;
+            feedback.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">🧠</span>
+                    <div>
+                        <div>AI Personality Traits Loaded</div>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">Check the personality sliders below</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(feedback);
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                feedback.style.animation = 'fadeOut 0.4s ease-out';
+                setTimeout(() => {
+                    if (feedback.parentNode) {
+                        feedback.parentNode.removeChild(feedback);
+                    }
+                }, 400);
+            }, 4000);
         }
 
         function setupTagSuggestions() {
@@ -1089,8 +1230,8 @@
                     // Update current character reference
                     currentCharacter = result.character;
                     
-                    // Load the character data
-                    loadCharacterData(result.character);
+                    // Load the character data with proper timing
+                    await loadCharacterDataFromAI(result.character);
                     
                     // Clear AI prompt
                     document.getElementById('aiPrompt').value = '';

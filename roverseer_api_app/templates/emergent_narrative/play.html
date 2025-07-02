@@ -323,6 +323,16 @@
             to { opacity: 1; }
         }
         
+        @keyframes fadeOut {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.95); }
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.02); opacity: 0.9; }
@@ -346,6 +356,57 @@
         .countdown-warning {
             background: linear-gradient(135deg, #ffc107, #e0a800) !important;
             animation: pulse 1.2s infinite !important;
+        }
+        
+        /* Character tabs for personality editor */
+        .character-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #333;
+            gap: 2px;
+        }
+        
+        .character-tab {
+            flex: 1;
+            padding: 8px 12px;
+            background: #2a2a2a;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .character-tab:hover {
+            background: #3a3a3a;
+            color: #fff;
+        }
+        
+        .character-tab.active {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .character-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+        
+        .character-tab.current-scene {
+            border: 2px solid #4caf50;
+            background: #2a4a2a;
+        }
+        
+        .character-tab.current-scene:not(.active) {
+            color: #4caf50;
         }
         
         .message-timestamp {
@@ -680,7 +741,7 @@
                     <select class="form-select" id="outputMode">
                         <option value="text">📝 Text Only</option>
                         <option value="rover_audio">🔊 RoverSeer Speakers</option>
-                        <option value="local_audio">🎵 Download Audio</option>
+                        <option value="local_audio">🎧 Browser Audio</option>
                     </select>
                 </div>
                 
@@ -716,6 +777,9 @@
                     </button>
                     <button class="control-button advance" id="advanceButton" onclick="advanceNarrative()">
                         ⏭️ Next Interaction
+                    </button>
+                    <button class="control-button" id="hushButton" onclick="hushAllAudio()" style="background: linear-gradient(135deg, #e91e63, #c2185b);" title="Stop all playing audio (Press Escape key)">
+                        🤫 Hush Audio
                     </button>
                     <button class="control-button" id="resetButton" onclick="resetNarrative()" style="background: linear-gradient(135deg, #f44336, #d32f2f); display: none;">
                         🔄 Reset to Start
@@ -824,6 +888,12 @@
             <div class="controls-section">
                 <div class="panel-header">🧠 Runtime Personality Editor</div>
                 
+                <!-- Character tabs -->
+                <div id="characterTabs" class="character-tabs">
+                    <!-- Character tabs will be dynamically rendered here -->
+                </div>
+                
+                <!-- Personality editor container -->
                 <div id="personalityEditor">
                     <!-- Personality editor will be dynamically rendered here -->
                 </div>
@@ -889,6 +959,9 @@
         let messageAudioMap = new Map(); // Map message elements to their audio URLs
         let personalityEditor = null; // Runtime personality editor instance
         let currentPersonalityAdjustments = {}; // Store temporary personality adjustments
+        let audioContext = null; // Audio context for enabling autoplay
+        let autoplayEnabled = false; // Track if autoplay is working
+        let currentlyPlayingAudio = new Set(); // Track all currently playing audio elements
         
         function toggleDebug() {
             debugMode = !debugMode;
@@ -1056,8 +1129,10 @@
                 advanceButton.disabled = isProcessing;
                 resetButton.style.display = 'inline-block';
                 
+                const outputMode = document.getElementById('outputMode').value;
+                
                 if (autoMode === 'auto') {
-                    statusHelpText.innerHTML = '🎭 <strong>Story Flowing</strong><br>Auto-advancing every 2-4 seconds. Use "Pause" to stop, "Next" to skip ahead, or "Reset" to start over.';
+                    statusHelpText.innerHTML = '🎭 <strong>Story Auto-Flowing</strong><br>Auto-advancing when each audio finishes playing. Use "Pause" to stop, "Next" to skip ahead, or "Reset" to start over.';
                 } else {
                     statusHelpText.innerHTML = '🎭 <strong>Story in Progress</strong><br>Click "Next Interaction" to advance, "Pause" to stop, or "Reset" to start over.';
                 }
@@ -1139,6 +1214,23 @@
         async function startNarrative() {
             console.log('Starting narrative:', narrativeId);
             updateDebugInfo(`Starting narrative: ${narrativeId}`);
+            
+            // Enable audio context for autoplay (user interaction enables this)
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    updateDebugInfo('Audio context created for autoplay');
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    updateDebugInfo('Audio context resumed');
+                }
+                autoplayEnabled = true;
+                updateDebugInfo('✅ Autoplay enabled - audio will play automatically');
+            } catch (e) {
+                updateDebugInfo(`⚠️ Audio context setup failed: ${e.message}`);
+                autoplayEnabled = false;
+            }
             
             try {
                 const response = await fetch(`/emergent_narrative/start/${narrativeId}`, {
@@ -1271,6 +1363,8 @@
                     // Remove typing indicator
                     hideTypingIndicator();
                     
+                    let messageElement = null;
+                    
                     // If scene advanced to a new scene, clear the interactions display
                     if (result.narrative_advanced) {
                         updateDebugInfo('Scene advanced - clearing interactions display for new scene');
@@ -1288,32 +1382,25 @@
                         setTimeout(() => {
                             // Force refresh of current scene info for character assignments
                             updateNarrativeStatus().then(() => {
-                                const messageElement = addInteractionToDisplay(result);
+                                messageElement = addInteractionToDisplay(result);
                                 // Ensure colors are updated for the new scene
                                 updateCharacterColorsForScene();
                                 
-                                // Handle audio for new scene
-                                if (result.audio_url) {
-                                    setTimeout(() => playAudioFromUrl(result.audio_url, messageElement), 100);
-                                }
+                                // Handle audio for new scene with auto-advance callback
+                                handleAudioAndAutoAdvance(result, messageElement);
                             });
                         }, 500);
-                    } else {
-                        // Add interaction to current scene
-                        const messageElement = addInteractionToDisplay(result);
                         
-                        // Handle audio for current scene interaction
-                        if (result.audio_url) {
-                            setTimeout(() => playAudioFromUrl(result.audio_url, messageElement), 100);
-                        }
+                        return; // Exit early for scene transitions
                     }
+                    
+                    // Add interaction to current scene
+                    messageElement = addInteractionToDisplay(result);
+                    
+                    // Handle audio and auto-advance for current scene
+                    handleAudioAndAutoAdvance(result, messageElement);
                     
                     updateNarrativeStatus();
-                    
-                    // Start next auto-advance if enabled and narrative is still running
-                    if (!result.narrative_completed && !result.scene_completed) {
-                        startAutoAdvance();
-                    }
                     
                 } else {
                     hideTypingIndicator();
@@ -1498,11 +1585,15 @@
             }
         }
         
-        function playAudioFromUrl(url, messageElement = null) {
-            if (!url) return;
+        function playAudioFromUrl(url, messageElement = null, callback = null) {
+            if (!url) {
+                if (callback) callback();
+                return;
+            }
+            
+            const outputMode = document.getElementById('outputMode').value;
             
             try {
-                const audio = new Audio(url);
                 lastAudioUrl = url; // Store for replay
                 
                 if (messageElement) {
@@ -1510,18 +1601,333 @@
                     addReplayButtonToMessage(messageElement, url);
                 }
                 
-                updateDebugInfo(`Playing audio: ${url}`);
-                audio.play().catch(e => {
+                // Play audio in browser for all modes
+                updateDebugInfo(`🔊 Attempting to play audio: ${url}`);
+                const audio = new Audio(url);
+                
+                // Add to tracking set
+                currentlyPlayingAudio.add(audio);
+                
+                // Show audio playing indicator
+                showAudioPlayingIndicator(messageElement);
+                
+                // Set up audio event listeners
+                audio.onloadstart = function() {
+                    updateDebugInfo('📡 Audio loading started');
+                };
+                
+                audio.oncanplay = function() {
+                    updateDebugInfo('🎵 Audio ready to play');
+                };
+                
+                audio.onplay = function() {
+                    updateDebugInfo('▶️ Audio playback started successfully');
+                    hideAudioBlockedNotification();
+                };
+                
+                audio.onended = function() {
+                    updateDebugInfo('✅ Audio playback completed');
+                    currentlyPlayingAudio.delete(audio); // Remove from tracking
+                    hideAudioPlayingIndicator();
+                    if (callback) callback();
+                };
+                
+                audio.onerror = function(e) {
                     console.log('Audio playback failed:', e);
-                    updateDebugInfo(`Audio playback failed: ${e.message}`);
-                });
+                    updateDebugInfo(`❌ Audio playback failed: ${e.message || 'Unknown error'}`);
+                    currentlyPlayingAudio.delete(audio); // Remove from tracking
+                    hideAudioPlayingIndicator();
+                    if (callback) callback(); // Still trigger callback on error
+                };
+                
+                audio.onpause = function() {
+                    updateDebugInfo('⏸️ Audio paused');
+                    currentlyPlayingAudio.delete(audio); // Remove from tracking when paused
+                };
+                
+                // Attempt to play audio
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        updateDebugInfo('🎉 Audio autoplay successful');
+                                         }).catch(e => {
+                         console.log('Audio autoplay blocked:', e);
+                         updateDebugInfo(`🚫 Audio autoplay blocked: ${e.message}`);
+                         currentlyPlayingAudio.delete(audio); // Remove from tracking if blocked
+                         hideAudioPlayingIndicator();
+                         showAudioBlockedNotification(url, messageElement);
+                         if (callback) callback(); // Trigger callback even if blocked
+                     });
+                } else {
+                    // Old browser fallback
+                    updateDebugInfo('⚠️ Using legacy audio play (no promise support)');
+                }
                 
                 // Update the global replay button state
                 updateGlobalReplayButton();
                 
             } catch (e) {
-                console.error('Error creating audio element:', e);
-                updateDebugInfo(`Error creating audio: ${e.message}`);
+                console.error('Error handling audio:', e);
+                updateDebugInfo(`💥 Error handling audio: ${e.message}`);
+                hideAudioPlayingIndicator();
+                if (callback) callback(); // Still trigger callback on error
+            }
+        }
+        
+        function showAudioPlayingIndicator(messageElement) {
+            if (!messageElement) return;
+            
+            // Add playing indicator to the message
+            const indicator = document.createElement('div');
+            indicator.className = 'audio-playing-indicator';
+            indicator.innerHTML = '🔊 Playing...';
+            indicator.style.cssText = `
+                color: #4caf50;
+                font-size: 0.8rem;
+                margin-top: 4px;
+                font-weight: 600;
+                animation: pulse 1s infinite;
+            `;
+            
+            const messageBubble = messageElement.querySelector('.message-bubble');
+            if (messageBubble && !messageBubble.querySelector('.audio-playing-indicator')) {
+                messageBubble.appendChild(indicator);
+            }
+        }
+        
+        function hideAudioPlayingIndicator() {
+            const indicators = document.querySelectorAll('.audio-playing-indicator');
+            indicators.forEach(indicator => indicator.remove());
+        }
+        
+        function showAudioBlockedNotification(audioUrl, messageElement) {
+            // Show notification that autoplay was blocked
+            const notification = document.createElement('div');
+            notification.className = 'audio-blocked-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #ff9800, #f57c00);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 12px;
+                font-weight: 600;
+                z-index: 10000;
+                box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+                animation: slideInRight 0.3s ease-out;
+                max-width: 300px;
+            `;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.2rem;">🔊</span>
+                    <div>
+                        <div>Audio Autoplay Blocked</div>
+                        <div style="font-size: 0.8rem; opacity: 0.9; margin-top: 4px;">
+                            Click the 🔊 button to play audio
+                        </div>
+                        <button onclick="this.parentNode.parentNode.parentNode.remove(); playAudioFromUrl('${audioUrl}')" 
+                                style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 4px; margin-top: 6px; cursor: pointer; font-size: 0.8rem;">
+                            ▶️ Play Now
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 8 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.style.animation = 'fadeOut 0.3s ease-out';
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, 8000);
+        }
+        
+                 function hideAudioBlockedNotification() {
+             const notifications = document.querySelectorAll('.audio-blocked-notification');
+             notifications.forEach(notification => {
+                 if (notification.parentNode) {
+                     notification.style.animation = 'fadeOut 0.3s ease-out';
+                     setTimeout(() => {
+                         if (notification.parentNode) {
+                             notification.parentNode.removeChild(notification);
+                         }
+                     }, 300);
+                 }
+             });
+         }
+         
+         function hushAllAudio() {
+             updateDebugInfo(`🤫 Hushing all audio - ${currentlyPlayingAudio.size} audio element(s) playing`);
+             
+             let hushedCount = 0;
+             
+             // Stop all tracked audio elements
+             currentlyPlayingAudio.forEach(audio => {
+                 try {
+                     if (!audio.paused && !audio.ended) {
+                         audio.pause();
+                         audio.currentTime = 0; // Reset to beginning
+                         hushedCount++;
+                         updateDebugInfo(`🔇 Stopped audio: ${audio.src}`);
+                     }
+                 } catch (e) {
+                     updateDebugInfo(`⚠️ Error stopping audio: ${e.message}`);
+                 }
+             });
+             
+             // Clear the tracking set
+             currentlyPlayingAudio.clear();
+             
+             // Hide all audio indicators
+             hideAudioPlayingIndicator();
+             hideAudioBlockedNotification();
+             
+             // Show hush notification
+             showHushNotification(hushedCount);
+             
+             updateDebugInfo(`✅ Hush complete - stopped ${hushedCount} audio element(s)`);
+         }
+         
+         function showHushNotification(hushedCount) {
+             const notification = document.createElement('div');
+             notification.style.cssText = `
+                 position: fixed;
+                 top: 20px;
+                 right: 20px;
+                 background: linear-gradient(135deg, #e91e63, #c2185b);
+                 color: white;
+                 padding: 12px 20px;
+                 border-radius: 8px;
+                 font-weight: 600;
+                 z-index: 10000;
+                 box-shadow: 0 4px 15px rgba(233, 30, 99, 0.4);
+                 animation: slideInRight 0.3s ease-out;
+             `;
+             
+             const message = hushedCount > 0 
+                 ? `🤫 Hushed ${hushedCount} audio element${hushedCount > 1 ? 's' : ''}`
+                 : `🤫 No audio was playing`;
+                 
+             notification.innerHTML = `
+                 <div style="display: flex; align-items: center; gap: 8px;">
+                     <span style="font-size: 1.2rem;">🤫</span>
+                     <div>${message}</div>
+                 </div>
+             `;
+             
+             document.body.appendChild(notification);
+             
+             // Remove after 2 seconds
+             setTimeout(() => {
+                 notification.style.animation = 'fadeOut 0.3s ease-out';
+                 setTimeout(() => {
+                     if (notification.parentNode) {
+                         notification.parentNode.removeChild(notification);
+                     }
+                 }, 300);
+             }, 2000);
+         }
+        
+        function triggerAudioDownload(url) {
+            try {
+                // Create a temporary link element to trigger download
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `narrative_audio_${Date.now()}.wav`; // Generate unique filename
+                link.style.display = 'none';
+                
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                updateDebugInfo(`Audio download triggered: ${link.download}`);
+                
+                // Show download notification
+                showAudioDownloadNotification(link.download);
+                
+            } catch (e) {
+                console.error('Error triggering audio download:', e);
+                updateDebugInfo(`Error triggering audio download: ${e.message}`);
+            }
+        }
+        
+        function showAudioDownloadNotification(filename) {
+            // Show temporary notification that download started
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+                animation: slideInRight 0.3s ease-out;
+            `;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>💾</span>
+                    <div>
+                        <div>Audio File Saved</div>
+                        <div style="font-size: 0.8rem; opacity: 0.9;">${filename}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        function handleAudioAndAutoAdvance(result, messageElement) {
+            // Handle audio playback/download with auto-advance callback
+            if (result.audio_url) {
+                updateDebugInfo('Handling audio with auto-advance callback');
+                
+                // Play audio with callback for auto-advance
+                setTimeout(() => {
+                    playAudioFromUrl(result.audio_url, messageElement, () => {
+                        // This callback runs when audio finishes or download starts
+                        updateDebugInfo('Audio handling completed, checking auto-advance');
+                        
+                        // Start next auto-advance if enabled and narrative is still running
+                        if (!result.narrative_completed && !result.scene_completed) {
+                            updateDebugInfo('Restarting auto-advance after audio');
+                            startAutoAdvance();
+                        } else {
+                            updateDebugInfo('Not restarting auto-advance - narrative/scene completed');
+                        }
+                    });
+                }, 100);
+            } else {
+                // No audio, immediately check for auto-advance
+                updateDebugInfo('No audio to handle, checking auto-advance immediately');
+                
+                if (!result.narrative_completed && !result.scene_completed) {
+                    updateDebugInfo('Restarting auto-advance (no audio)');
+                    startAutoAdvance();
+                } else {
+                    updateDebugInfo('Not restarting auto-advance - narrative/scene completed');
+                }
             }
         }
         
@@ -1646,36 +2052,71 @@
             }
         }
         
-        // Initialize personality editor for runtime adjustments
+        // Initialize personality editor for runtime adjustments with character tabs
         function initializePersonalityEditor() {
-            const container = document.getElementById('personalityEditor');
-            if (!container) return;
+            const tabsContainer = document.getElementById('characterTabs');
+            const editorContainer = document.getElementById('personalityEditor');
             
-            // Get default character for personality editing (first character in current scene)
-            let defaultCharacter = null;
-            if (currentSceneInfo && currentSceneInfo.characters && currentSceneInfo.characters.length > 0) {
-                const characterName = currentSceneInfo.characters[0];
-                defaultCharacter = narrativeData.characters.find(char => char.name === characterName);
-            } else if (narrativeData.characters && narrativeData.characters.length > 0) {
-                defaultCharacter = narrativeData.characters[0];
-            }
+            if (!tabsContainer || !editorContainer) return;
             
-            if (!defaultCharacter) {
-                container.innerHTML = '<div style="color: #888; font-style: italic;">No characters available for personality editing.</div>';
+            // Check if we have characters
+            if (!narrativeData.characters || narrativeData.characters.length === 0) {
+                tabsContainer.innerHTML = '';
+                editorContainer.innerHTML = '<div style="color: #888; font-style: italic;">No characters available for personality editing.</div>';
                 return;
             }
             
+            // Create character tabs
+            createCharacterTabs(narrativeData.characters);
+            
+            // Initialize with first character
+            const firstCharacter = narrativeData.characters[0];
+            switchToCharacter(firstCharacter.id);
+            
+            updateDebugInfo(`Personality editor initialized with ${narrativeData.characters.length} character tabs`);
+        }
+        
+        function createCharacterTabs(characters) {
+            const tabsContainer = document.getElementById('characterTabs');
+            
+            tabsContainer.innerHTML = characters.map(character => `
+                <button class="character-tab" 
+                        data-character-id="${character.id}"
+                        onclick="switchToCharacter('${character.id}')">
+                    ${character.name}
+                </button>
+            `).join('');
+        }
+        
+        function switchToCharacter(characterId) {
+            const character = narrativeData.characters.find(c => c.id === characterId);
+            if (!character) return;
+            
+            // Update tab appearance
+            document.querySelectorAll('.character-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.characterId === characterId) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            // Create or update personality editor for this character
+            const container = document.getElementById('personalityEditor');
+            
+            // Get current adjustments or fall back to character's original traits
+            const currentTraits = currentPersonalityAdjustments[characterId] || character.personality_traits || {};
+            
             personalityEditor = new PersonalitySliders({
-                initialValues: currentPersonalityAdjustments[defaultCharacter.id] || defaultCharacter.personality_traits || {},
+                initialValues: currentTraits,
                 isRuntime: true,
                 compact: true,
                 onChange: (values, action) => {
-                    handlePersonalityChange(defaultCharacter.id, values, action);
+                    handlePersonalityChange(characterId, values, action);
                 }
             });
             
             personalityEditor.render(container);
-            updateDebugInfo('Personality editor initialized');
+            updateDebugInfo(`Switched personality editor to ${character.name} (${characterId})`);
         }
         
         function handlePersonalityChange(characterId, values, action) {
@@ -1771,6 +2212,24 @@
                 
                 // Update status text to reflect new mode
                 updateControlButtons(document.getElementById('statusBadge').textContent.toLowerCase());
+            });
+            
+            // Add output mode change listener
+            document.getElementById('outputMode').addEventListener('change', function() {
+                const newMode = this.value;
+                updateDebugInfo(`Output mode changed to: ${newMode}`);
+                
+                // Update status text to reflect new output mode
+                updateControlButtons(document.getElementById('statusBadge').textContent.toLowerCase());
+            });
+            
+            // Add keyboard shortcut for hush (Escape key)
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    hushAllAudio();
+                    updateDebugInfo('🎹 Hush triggered via Escape key');
+                }
             });
             
             updateDebugInfo('Initialization complete');
@@ -1941,15 +2400,22 @@
 
         function startAutoAdvance() {
             const autoMode = document.getElementById('autoAdvanceMode').value;
+            const outputMode = document.getElementById('outputMode').value;
+            
+            updateDebugInfo(`startAutoAdvance called: autoMode=${autoMode}, isProcessing=${isProcessing}, outputMode=${outputMode}`);
+            
             if (autoMode === 'auto' && !isProcessing) {
-                // Wait 2-4 seconds for realistic conversation flow
+                // Standard delay for all modes since we wait for audio completion
                 const delay = 2000 + Math.random() * 2000; 
-                updateDebugInfo(`Auto-advance scheduled in ${Math.round(delay/1000)}s`);
+                
+                updateDebugInfo(`Auto-advance scheduled in ${Math.round(delay/1000)}s (${outputMode} mode)`);
                 
                 autoAdvanceTimer = setTimeout(() => {
                     updateDebugInfo('Auto-advancing...');
                     advanceNarrative();
                 }, delay);
+            } else {
+                updateDebugInfo(`Auto-advance not started: autoMode=${autoMode}, isProcessing=${isProcessing}`);
             }
         }
         
@@ -1985,6 +2451,30 @@
             
             // Update character thumbnail borders
             updateCharacterThumbnailColors();
+            
+            // Update character tabs to highlight current scene participants
+            updateCharacterTabsForScene();
+        }
+        
+        function updateCharacterTabsForScene() {
+            // Remove all current-scene highlights
+            document.querySelectorAll('.character-tab').forEach(tab => {
+                tab.classList.remove('current-scene');
+            });
+            
+            // Add current-scene highlight to tabs for characters in the active scene
+            if (currentSceneInfo && currentSceneInfo.characters) {
+                currentSceneInfo.characters.forEach(characterName => {
+                    const character = narrativeData.characters.find(c => c.name === characterName);
+                    if (character) {
+                        const tab = document.querySelector(`.character-tab[data-character-id="${character.id}"]`);
+                        if (tab) {
+                            tab.classList.add('current-scene');
+                            updateDebugInfo(`Highlighted tab for scene character: ${characterName}`);
+                        }
+                    }
+                });
+            }
         }
         
         function assignCharacterColors(characterNames) {
@@ -2225,9 +2715,14 @@
                     // Hide the form
                     hideNarratorForm();
                     
-                    // Play audio if available
+                    // Play audio if available with auto-advance consideration
                     if (result.audio_url) {
-                        setTimeout(() => playAudioFromUrl(result.audio_url), 500);
+                        setTimeout(() => {
+                            playAudioFromUrl(result.audio_url, null, () => {
+                                updateDebugInfo('Narrator audio completed');
+                                // Auto-advance could be triggered here if desired for narrator announcements
+                            });
+                        }, 500);
                     }
                     
                     // Update narrator status display
@@ -2422,6 +2917,13 @@
             }
             
             try {
+                // Find the narrative character
+                const narrativeCharacter = narrativeData.characters.find(c => c.name === selectedCharacterName);
+                if (!narrativeCharacter) {
+                    alert(`Character "${selectedCharacterName}" not found in narrative.`);
+                    return;
+                }
+                
                 // Search for the character in the library
                 const response = await fetch(`/api/character_library/characters?query=${encodeURIComponent(selectedCharacterName)}`);
                 if (!response.ok) {
@@ -2448,16 +2950,16 @@
                     return;
                 }
                 
-                // Apply the traits to the personality editor temporarily
-                if (personalityEditor && typeof personalityEditor.setValues === 'function') {
-                    personalityEditor.setValues(libraryCharacter.personality_traits);
-                    updateDebugInfo(`Applied library traits to personality editor for ${selectedCharacterName}`);
-                    
-                    // Store as current adjustments for this character (find character ID)
-                    const narrativeCharacter = narrativeData.characters.find(c => c.name === selectedCharacterName);
-                    if (narrativeCharacter) {
-                        currentPersonalityAdjustments[narrativeCharacter.id] = { ...libraryCharacter.personality_traits };
-                        updateDebugInfo(`Stored temporary adjustments for character ID ${narrativeCharacter.id}`);
+                // Store the synced traits for this character
+                currentPersonalityAdjustments[narrativeCharacter.id] = { ...libraryCharacter.personality_traits };
+                updateDebugInfo(`Stored synced traits for character ID ${narrativeCharacter.id}`);
+                
+                // If this character is currently active, update the personality editor
+                const activeTab = document.querySelector('.character-tab.active');
+                if (activeTab && activeTab.dataset.characterId === narrativeCharacter.id) {
+                    if (personalityEditor && typeof personalityEditor.setValues === 'function') {
+                        personalityEditor.setValues(libraryCharacter.personality_traits);
+                        updateDebugInfo(`Applied synced traits to active personality editor for ${selectedCharacterName}`);
                     }
                 }
                 
