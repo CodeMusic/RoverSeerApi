@@ -2397,12 +2397,36 @@ async def save_character(request: Request):
         
         # Create or update character
         if 'id' in data and data['id']:
-            # Update existing character
+            # Try to update existing character first
             character_id = data['id']
-            success = character_library.update_character(character_id, data)
-            if not success:
-                raise HTTPException(status_code=404, detail="Character not found")
-            character = character_library.get_character(character_id)
+            existing_character = character_library.get_character(character_id)
+            
+            if existing_character:
+                # Update existing character
+                success = character_library.update_character(character_id, data)
+                if not success:
+                    raise HTTPException(status_code=500, detail="Failed to update character")
+                character = character_library.get_character(character_id)
+            else:
+                # Character with this ID doesn't exist, create new one
+                # Clear the ID so a new one gets generated
+                character = SavedCharacter(
+                    name=data.get('name', ''),
+                    description=data.get('description', ''),
+                    model=data.get('model', ''),
+                    voice=data.get('voice', ''),
+                    system_message=data.get('system_message', ''),
+                    personality_archetype=CharacterPersonality(data.get('personality_archetype', 'contemplative')),
+                    personality_traits=PersonalityTraits.from_dict(data.get('personality_traits', {})),
+                    image_path=data.get('image_path', ''),
+                    tags=data.get('tags', []),
+                    group_id=data.get('group_id', ''),
+                    is_ai_generated=data.get('is_ai_generated', False)
+                )
+                
+                success = character_library.save_character(character)
+                if not success:
+                    raise HTTPException(status_code=500, detail="Failed to save character")
         else:
             # Create new character
             character = SavedCharacter(

@@ -258,9 +258,17 @@ def generate_real_audiocraft_audio(output_path, prompt, duration, audio_type):
         print(f"🔄 Setting generation parameters: duration={duration}s")
         model.set_generation_params(duration=duration)
         
-        # Generate audio
-        print(f"🔄 Generating audio with prompt: '{prompt}'")
-        descriptions = [prompt]
+        # Enhance prompts for better results
+        if audio_type == "sound_effect":
+            # For sound effects, enhance the prompt to guide MusicGen
+            enhanced_prompt = f"sound effect, {prompt}, audio clip, fx, foley"
+            print(f"🔄 Generating sound effect with enhanced prompt: '{enhanced_prompt}'")
+            descriptions = [enhanced_prompt]
+        else:
+            # For music, use the original prompt
+            print(f"🔄 Generating music with prompt: '{prompt}'")
+            descriptions = [prompt]
+        
         wav = model.generate(descriptions)
         print(f"✅ Audio generation complete, tensor shape: {wav.shape}")
         
