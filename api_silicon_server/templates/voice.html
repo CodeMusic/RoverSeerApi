@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎙️ Voice Center - AI Silicon Server</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            retro: {
+              bg: '#1F1D36',
+              surface: '#3F3351',
+              neon: '#E94560',
+              chrome: '#03C988',
+              shadow: '#0F3460',
+              purple: '#864879',
+              accent: '#7209B7'
+            }
+          },
+          fontFamily: {
+            retro: ['"Press Start 2P"', 'monospace'],
+            mono: ['"Fira Code"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    .text-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+    
+    /* Enhanced text readability */
+    .readable-text { color: #FFFFFF !important; text-shadow: 2px 2px 4px #000000, 0 0 10px #000000; font-weight: 500; }
+    .readable-text-chrome { color: #03C988 !important; text-shadow: 2px 2px 4px #000000, 0 0 10px #000000; font-weight: 500; }
+    .readable-text-neon { color: #E94560 !important; text-shadow: 2px 2px 4px #000000, 0 0 10px #000000; font-weight: 600; }
+    .border-glow { border-color: theme('colors.retro.neon'); box-shadow: 0 0 5px theme('colors.retro.neon'), inset 0 0 5px rgba(233, 69, 96, 0.1); }
+    .bg-surface { background: linear-gradient(135deg, theme('colors.retro.surface'), theme('colors.retro.shadow')); }
+    .retro-button { background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent')); transition: all 0.3s ease; }
+    .retro-button:hover { transform: translateY(-2px); box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4); }
+    .scan-line { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, theme('colors.retro.chrome'), transparent); animation: scan-line 3s linear infinite; pointer-events: none; }
+    @keyframes scan-line { 0% { top: '0%' } 100% { top: '100%' } }
+  </style>
+</head>
+<body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
+  
+  <div class="scan-line"></div>
+
+  <!-- Navigation -->
+  <div class="fixed top-0 left-0 p-4 z-50">
+    <button onclick="toggleMenu()" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm">☰ MENU</button>
+    <div id="menu" class="hidden bg-surface border border-retro-neon rounded-lg mt-2 w-64 p-4">
+      <ul class="space-y-3 text-sm">
+        <li><a href="/" class="flex items-center hover:text-retro-neon transition-colors">🗨️ Chat Interface</a></li>
+        <li><a href="/models" class="flex items-center hover:text-retro-neon transition-colors">🔥 MLX Model Manager</a></li>
+        <li><a href="/voice" class="flex items-center text-retro-neon">🎙️ Voice Center</a></li>
+        <li><a href="/improv" class="flex items-center hover:text-retro-neon transition-colors">🎭 Improv Games</a></li>
+        <li><a href="/narrative" class="flex items-center hover:text-retro-neon transition-colors">📘 Emergent Narrative</a></li>
+        <li class="border-t border-retro-shadow pt-2">
+          <button onclick="resetSystem()" class="flex items-center text-retro-neon hover:text-white transition-colors">🔄 Reset All Systems</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="pt-20 px-6 max-w-7xl mx-auto">
+    <!-- Back to Main Button -->
+    <div class="mb-4">
+      <a href="/" class="inline-flex items-center retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm hover:scale-105 transition-transform">
+        ← 🗨️ BACK TO CHAT
+      </a>
+    </div>
+    
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2">🎙️ VOICE CENTER</h1>
+      <p class="text-retro-chrome text-sm readable-text-chrome">MLX-Accelerated Voice Training & Synthesis</p>
+    </div>
+
+    <!-- Voice Center Tabs -->
+    <div class="mb-6">
+      <div class="flex space-x-2 bg-surface rounded-lg p-1">
+        <button onclick="switchTab('train')" id="tab-train" class="flex-1 px-4 py-2 rounded text-sm retro-button text-retro-bg font-retro">🎤 Train Voice</button>
+        <button onclick="switchTab('library')" id="tab-library" class="flex-1 px-4 py-2 rounded text-sm bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors">📚 Voice Library</button>
+        <button onclick="switchTab('download')" id="tab-download" class="flex-1 px-4 py-2 rounded text-sm bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors">📥 Download Voices</button>
+        <button onclick="switchTab('test')" id="tab-test" class="flex-1 px-4 py-2 rounded text-sm bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors">🔊 Test Voices</button>
+      </div>
+    </div>
+
+    <!-- Train Voice Tab -->
+    <div id="tab-train-content" class="tab-content">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Training Form -->
+        <div class="bg-surface border border-glow rounded-lg p-6">
+          <h3 class="font-retro text-sm text-retro-neon mb-4 text-glow readable-text-neon">🎯 NEW VOICE TRAINING</h3>
+          
+          <form id="voice-training-form" class="space-y-4">
+            <div>
+              <label class="block text-xs text-retro-chrome mb-2 readable-text-chrome">Voice Name</label>
+              <input type="text" id="voice-name" placeholder="my_custom_voice" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none readable-text" required>
+            </div>
+            
+            <div>
+              <label class="block text-xs text-retro-chrome mb-2">Training Text</label>
+              <textarea id="training-text" placeholder="Hello, this is my voice sample for training. The quick brown fox jumps over the lazy dog." rows="4" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none" required></textarea>
+            </div>
+            
+            <div>
+              <label class="block text-xs text-retro-chrome mb-2">Reference Audio (WAV)</label>
+              <input type="file" id="reference-audio" accept="audio/*" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none" required>
+            </div>
+            
+            <div>
+              <label class="block text-xs text-retro-chrome mb-2">Language</label>
+              <select id="language" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+              </select>
+            </div>
+            
+            <button type="submit" class="w-full retro-button text-retro-bg px-6 py-3 rounded font-retro text-sm">
+              🚀 START TRAINING
+            </button>
+          </form>
+        </div>
+
+        <!-- Training Status -->
+        <div class="bg-surface border border-glow rounded-lg p-6">
+          <h3 class="font-retro text-sm text-retro-neon mb-4 text-glow">⚡ TRAINING STATUS</h3>
+          
+          <div id="training-status" class="space-y-4">
+            <div class="text-center text-retro-chrome opacity-70">
+              <div class="text-6xl mb-2">🎙️</div>
+              <p class="text-sm readable-text">No active training sessions</p>
+              <div class="mt-4 p-4 bg-retro-shadow rounded-lg">
+                <h4 class="text-xs font-bold text-retro-neon mb-2">ℹ️ ABOUT CUSTOM VOICES</h4>
+                <p class="text-xs readable-text-chrome">
+                  Custom voices are <strong>user-trained voices</strong> that you create using your own audio samples. 
+                  Currently showing "none" because you haven't trained any custom voices yet.
+                </p>
+                <p class="text-xs readable-text-chrome mt-2">
+                  Pre-installed Piper voices (like en_US-amy-low) are separate from custom voices.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Active training template (hidden) -->
+          <div id="training-template" class="hidden space-y-4">
+            <div class="bg-retro-shadow rounded p-4">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-sm font-bold text-retro-neon" data-voice-name></span>
+                <span class="text-xs text-retro-chrome" data-training-id></span>
+              </div>
+              <div class="w-full bg-retro-shadow rounded-full h-2 mb-2">
+                <div class="bg-retro-chrome h-2 rounded-full transition-all duration-500" data-progress-bar style="width: 0%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-retro-chrome">
+                <span data-progress-text>Initializing...</span>
+                <span data-time-remaining>Calculating...</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Voice Library Tab -->
+    <div id="tab-library-content" class="tab-content hidden">
+      <div class="bg-surface border border-glow rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="font-retro text-sm text-retro-neon text-glow">🗂️ VOICE LIBRARY</h3>
+          <button onclick="refreshVoices()" class="text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🔄 Refresh</button>
+        </div>
+        
+        <div id="voices-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Voices will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Download Voices Tab -->
+    <div id="tab-download-content" class="tab-content hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Downloaded Voices Section (2/3 width) -->
+        <div class="lg:col-span-2 space-y-4">
+          
+          <!-- Available Voices for Download -->
+          <div class="bg-surface border border-glow rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-retro text-sm text-retro-neon text-glow">🌐 AVAILABLE VOICE MODELS</h3>
+              <button onclick="refreshAvailableVoices()" class="text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🔄 Refresh</button>
+            </div>
+            
+            <div id="available-voices" class="space-y-3">
+              <div class="text-retro-chrome text-sm opacity-70 text-center py-8">
+                <div class="inline-flex items-center">
+                  <div class="w-1 h-1 bg-retro-chrome rounded-full animate-pulse mr-1"></div>
+                  Use the search panel to find voice models
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search Results -->
+          <div class="bg-surface border border-glow rounded-lg p-6">
+            <h3 class="font-retro text-sm text-retro-neon text-glow mb-4">🔍 SEARCH RESULTS</h3>
+            <div id="voice-search-results" class="space-y-3">
+              <div class="text-retro-chrome text-sm opacity-70 text-center py-8">
+                Use the search panel to find voice models
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search & Controls Panel (1/3 width) -->
+        <div class="lg:col-span-1 space-y-4">
+          
+          <!-- Search Panel -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">🔍 VOICE SEARCH</h3>
+            
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs text-retro-chrome mb-1">Search Query</label>
+                <input type="text" id="voice-search-query" placeholder="english, french, female..." 
+                       class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+              </div>
+              
+              <div>
+                <label class="block text-xs text-retro-chrome mb-1">Results Limit</label>
+                <select id="voice-search-limit" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome text-xs p-2 rounded focus:border-retro-neon focus:outline-none">
+                  <option value="5">5 voices</option>
+                  <option value="10" selected>10 voices</option>
+                  <option value="20">20 voices</option>
+                </select>
+              </div>
+              
+              <button onclick="searchVoiceModels()" class="w-full retro-button text-retro-bg px-4 py-2 rounded font-retro text-xs">
+                🔍 SEARCH VOICES
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Downloads -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">⚡ POPULAR VOICES</h3>
+            <div class="space-y-2">
+              <button onclick="downloadPopularVoice('en_US-amy-medium')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Amy (EN-US)</button>
+              <button onclick="downloadPopularVoice('en_US-ryan-high')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Ryan (EN-US)</button>
+              <button onclick="downloadPopularVoice('en_GB-alan-medium')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Alan (EN-GB)</button>
+              <button onclick="downloadPopularVoice('es_ES-marta-medium')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Marta (Spanish)</button>
+              <button onclick="clearVoiceSearchResults()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🗑️ Clear Results</button>
+            </div>
+          </div>
+
+          <!-- Voice Info -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">📊 VOICE INFO</h3>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Available Voices:</span>
+                <span id="available-voices-count" class="text-retro-chrome">8</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Downloaded:</span>
+                <span id="downloaded-voices-count" class="text-retro-chrome">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Languages:</span>
+                <span id="languages-count" class="text-retro-chrome">6</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Storage Used:</span>
+                <span id="storage-used" class="text-retro-chrome">0 MB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Voices Tab -->
+    <div id="tab-test-content" class="tab-content hidden">
+      <div class="bg-surface border border-glow rounded-lg p-6">
+        <h3 class="font-retro text-sm text-retro-neon mb-6 text-glow">🔊 VOICE TESTING</h3>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-xs text-retro-chrome mb-2">Test Text</label>
+            <textarea id="test-text" placeholder="Hello, this is a test of the voice synthesis system. How does it sound?" rows="4" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none"></textarea>
+          </div>
+          
+          <div>
+            <label class="block text-xs text-retro-chrome mb-2">Voice Selection</label>
+            <select id="test-voice" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none mb-4">
+              <option value="">Loading voices...</option>
+            </select>
+            
+            <button onclick="testVoice()" class="w-full retro-button text-retro-bg px-6 py-3 rounded font-retro text-sm">
+              🎵 TEST VOICE
+            </button>
+          </div>
+        </div>
+        
+        <div id="audio-player" class="mt-6 hidden">
+          <div class="bg-retro-shadow rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm text-retro-chrome">Generated Audio:</span>
+              <button onclick="downloadAudio()" class="text-xs bg-retro-neon text-retro-bg px-3 py-1 rounded">💾 Download</button>
+            </div>
+            <audio id="test-audio" controls class="w-full"></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-retro-surface border-2 border-retro-neon text-retro-chrome p-4 rounded-lg hidden max-w-sm z-50 shadow-lg">
+    <div class="flex items-center">
+      <span id="toast-icon" class="mr-2 text-retro-neon">ℹ️</span>
+      <span id="toast-msg" class="text-retro-chrome font-mono text-sm">Message</span>
+    </div>
+  </div>
+
+  <script>
+    let activeTrainingId = null;
+    let trainingStatusInterval = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadVoices();
+      loadCustomVoices();
+      setupEventListeners();
+      startVoiceDownloadMonitoring(); // Monitor voice downloads
+    });
+
+    // Voice download monitoring
+    let voiceDownloadMonitorInterval = null;
+    
+    function startVoiceDownloadMonitoring() {
+      if (voiceDownloadMonitorInterval) clearInterval(voiceDownloadMonitorInterval);
+      
+      voiceDownloadMonitorInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/download/status');
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.downloads && data.downloads.length > 0) {
+              data.downloads.forEach(download => {
+                if (download.type === 'Voice') {
+                  const progressText = download.progress ? 
+                    `${download.name}: ${download.progress}% (${download.status})` :
+                    `${download.name}: ${download.status}`;
+                  
+                  if (download.status === 'completed') {
+                    showToast(`✅ Voice ${progressText}`, 'success');
+                    setTimeout(() => {
+                      loadVoices();
+                      loadCustomVoices();
+                    }, 2000); // Refresh voice lists
+                  } else if (download.status === 'failed') {
+                    showToast(`❌ ${progressText}`, 'error');
+                  } else {
+                    showToast(`📥 Downloading ${progressText}`, 'info');
+                  }
+                }
+              });
+            } else {
+              // No active downloads, reduce frequency
+              clearInterval(voiceDownloadMonitorInterval);
+              setTimeout(startVoiceDownloadMonitoring, 10000); // Check again in 10 seconds
+            }
+          }
+        } catch (error) {
+          // Silently fail
+        }
+      }, 3000);
+    }
+
+    function setupEventListeners() {
+      document.getElementById('voice-training-form').addEventListener('submit', handleTrainingSubmit);
+    }
+
+    function toggleMenu() {
+      document.getElementById('menu').classList.toggle('hidden');
+    }
+
+    function switchTab(tabName) {
+      // Hide all tab contents
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+      
+      // Reset all tab buttons to inactive state
+      document.querySelectorAll('[id^="tab-"]:not([id$="-content"])').forEach(btn => {
+        btn.className = 'px-4 py-2 bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors rounded-t-lg border border-retro-purple';
+      });
+      
+      // Show selected tab content
+      const selectedContent = document.getElementById(`tab-${tabName}-content`);
+      if (selectedContent) {
+        selectedContent.classList.remove('hidden');
+      }
+      
+      // Activate selected tab button
+      const selectedTab = document.getElementById(`tab-${tabName}`);
+      if (selectedTab) {
+        selectedTab.className = 'px-4 py-2 retro-button text-retro-bg font-retro rounded-t-lg border border-retro-neon bg-retro-neon';
+      }
+      
+      console.log(`Switched to tab: ${tabName}`); // Debug
+    }
+
+    async function handleTrainingSubmit(e) {
+      e.preventDefault();
+      
+      const formData = new FormData();
+      formData.append('voice_name', document.getElementById('voice-name').value);
+      formData.append('training_text', document.getElementById('training-text').value);
+      formData.append('reference_audio', document.getElementById('reference-audio').files[0]);
+      formData.append('language', document.getElementById('language').value);
+      
+      try {
+        showToast('🚀 Starting voice training...', 'info');
+        
+        const response = await fetch('/voice_training/start', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showToast('✅ Training started successfully!', 'success');
+          activeTrainingId = data.training_id;
+          startTrainingStatusMonitoring(data);
+          document.getElementById('voice-training-form').reset();
+        } else {
+          showToast('❌ Training failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Network error: ' + error.message, 'error');
+      }
+    }
+
+    function startTrainingStatusMonitoring(trainingData) {
+      const statusDiv = document.getElementById('training-status');
+      const template = document.getElementById('training-template').cloneNode(true);
+      template.id = 'active-training';
+      template.classList.remove('hidden');
+      
+      template.querySelector('[data-voice-name]').textContent = trainingData.voice_name;
+      template.querySelector('[data-training-id]').textContent = trainingData.training_id;
+      
+      statusDiv.innerHTML = '';
+      statusDiv.appendChild(template);
+      
+      // Start polling for status updates
+      trainingStatusInterval = setInterval(async () => {
+        try {
+          const response = await fetch(`/voice_training/status/${activeTrainingId}`);
+          const data = await response.json();
+          
+          updateTrainingProgress(data);
+          
+          if (data.status === 'completed' || data.status === 'failed') {
+            clearInterval(trainingStatusInterval);
+            if (data.status === 'completed') {
+              showToast('🎉 Voice training completed!', 'success');
+              loadCustomVoices(); // Refresh voice library
+            } else {
+              showToast('❌ Voice training failed', 'error');
+            }
+          }
+        } catch (error) {
+          console.error('Status check failed:', error);
+        }
+      }, 2000);
+    }
+
+    function updateTrainingProgress(data) {
+      const progressBar = document.querySelector('[data-progress-bar]');
+      const progressText = document.querySelector('[data-progress-text]');
+      const timeRemaining = document.querySelector('[data-time-remaining]');
+      
+      if (progressBar) progressBar.style.width = `${data.progress || 0}%`;
+      if (progressText) progressText.textContent = data.status || 'Processing...';
+      if (timeRemaining) timeRemaining.textContent = data.estimated_remaining || 'Calculating...';
+    }
+
+    async function loadVoices() {
+      try {
+        const response = await fetch('/api/voices');
+        const data = await response.json();
+        const select = document.getElementById('test-voice');
+        
+        select.innerHTML = '';
+        
+        if (data.voices && data.voices.length > 0) {
+          data.voices.forEach(voice => {
+            const option = document.createElement('option');
+            option.value = voice.name;
+            option.textContent = `${voice.name} (${voice.language})`;
+            select.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load voices:', error);
+      }
+    }
+
+    async function loadCustomVoices() {
+      try {
+        const response = await fetch('/voice_training/custom_voices');
+        const data = await response.json();
+        const grid = document.getElementById('voices-grid');
+        
+        grid.innerHTML = '';
+        
+        if (data.voices && data.voices.length > 0) {
+          data.voices.forEach(voice => {
+            const voiceCard = createVoiceCard(voice);
+            grid.appendChild(voiceCard);
+          });
+        } else {
+          grid.innerHTML = '<div class="col-span-full text-center text-retro-chrome opacity-70"><div class="text-4xl mb-2">🎤</div><p>No custom voices found</p></div>';
+        }
+      } catch (error) {
+        console.error('Failed to load custom voices:', error);
+      }
+    }
+
+    function createVoiceCard(voice) {
+      const card = document.createElement('div');
+      card.className = 'bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors';
+      
+      card.innerHTML = `
+        <div class="flex justify-between items-start mb-2">
+          <h4 class="text-sm font-bold text-retro-neon">${voice.name}</h4>
+          <button onclick="deleteVoice('${voice.name}')" class="text-xs text-retro-neon hover:text-red-400">🗑️</button>
+        </div>
+        <div class="text-xs text-retro-chrome space-y-1">
+          <div>Language: ${voice.language || 'Unknown'}</div>
+          <div>Created: ${voice.created_at || 'Unknown'}</div>
+          <div>Size: ${voice.file_size ? (voice.file_size / 1024 / 1024).toFixed(1) + 'MB' : 'Unknown'}</div>
+        </div>
+        <div class="mt-3 flex space-x-2">
+          <button onclick="testCustomVoice('${voice.name}')" class="flex-1 text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded hover:bg-retro-accent transition-colors">🔊 Test</button>
+          <button onclick="useVoice('${voice.name}')" class="flex-1 text-xs bg-retro-chrome text-retro-bg px-2 py-1 rounded hover:bg-retro-accent transition-colors">✅ Use</button>
+        </div>
+      `;
+      
+      return card;
+    }
+
+    async function deleteVoice(voiceName) {
+      if (!confirm(`Delete voice "${voiceName}"? This cannot be undone.`)) return;
+      
+      try {
+        const response = await fetch(`/voice_training/custom_voices/${voiceName}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          showToast('🗑️ Voice deleted successfully', 'success');
+          loadCustomVoices();
+        } else {
+          showToast('❌ Failed to delete voice', 'error');
+        }
+      } catch (error) {
+        showToast('❌ Network error: ' + error.message, 'error');
+      }
+    }
+
+    async function testVoice() {
+      const text = document.getElementById('test-text').value;
+      const voice = document.getElementById('test-voice').value;
+      
+      if (!text || !voice) {
+        showToast('⚠️ Please enter text and select a voice', 'warning');
+        return;
+      }
+      
+      try {
+        showToast('🎵 Generating audio...', 'info');
+        
+        const formData = new FormData();
+        formData.append('text', text);
+        formData.append('voice', voice);
+        
+        const response = await fetch('/tts', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          document.getElementById('test-audio').src = audioUrl;
+          document.getElementById('audio-player').classList.remove('hidden');
+          
+          showToast('🔊 Audio generated successfully!', 'success');
+        } else {
+          showToast('❌ Failed to generate audio', 'error');
+        }
+      } catch (error) {
+        showToast('❌ Network error: ' + error.message, 'error');
+      }
+    }
+
+    function refreshVoices() {
+      loadCustomVoices();
+      loadVoices();
+      showToast('🔄 Voice library refreshed', 'info');
+    }
+
+    // Voice Download Functions
+    async function searchVoiceModels() {
+      const query = document.getElementById('voice-search-query').value.trim();
+      const limit = document.getElementById('voice-search-limit').value;
+      
+      if (!query) {
+        showToast('⚠️ Please enter a search query', 'warning');
+        return;
+      }
+
+      const resultsContainer = document.getElementById('voice-search-results');
+      resultsContainer.innerHTML = '<div class="text-retro-chrome text-sm">🔍 Searching for voice models...</div>';
+
+      try {
+        const response = await fetch(`/api/voices/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+        const data = await response.json();
+
+        if (response.ok && data.voices && data.voices.length > 0) {
+          displayVoiceSearchResults(data.voices);
+          showToast(`✅ Found ${data.voices.length} voice models`, 'success');
+        } else {
+          resultsContainer.innerHTML = '<div class="text-retro-chrome text-sm opacity-70 text-center py-8">No voice models found for this query</div>';
+          showToast('ℹ️ No voice models found', 'info');
+        }
+      } catch (error) {
+        resultsContainer.innerHTML = '<div class="text-retro-neon text-sm text-center py-8">❌ Search failed</div>';
+        showToast('❌ Search failed: ' + error.message, 'error');
+      }
+    }
+
+    function displayVoiceSearchResults(voices) {
+      const container = document.getElementById('voice-search-results');
+      container.innerHTML = '';
+      
+      voices.forEach(voice => {
+        const voiceDiv = document.createElement('div');
+        const isMLX = voice.model_type === 'mlx';
+        const isPiper = voice.model_type === 'piper';
+        
+        // Enhanced border and background for MLX models
+        voiceDiv.className = `bg-retro-shadow border ${isMLX ? 'border-retro-chrome' : 'border-retro-purple'} rounded p-4 ${isMLX ? 'ring-1 ring-retro-chrome ring-opacity-50' : ''}`;
+        
+        const qualityIcon = voice.quality === 'high' ? '⭐' : voice.quality === 'medium' ? '🔷' : '📦';
+        const genderIcon = voice.gender === 'female' ? '👩' : '👨';
+        const typeIcon = isMLX ? '🔥' : isPiper ? '🔄' : '📦';
+        const accelerationIcon = voice.accelerated ? '⚡' : '';
+        const recommendedIcon = voice.recommended ? '⭐' : '';
+        
+        voiceDiv.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center space-x-2 mb-2">
+                <span class="text-lg">${genderIcon}</span>
+                <span class="text-retro-chrome font-bold text-sm">
+                  ${voice.speaker} ${typeIcon} ${accelerationIcon} ${recommendedIcon}
+                </span>
+                <span class="text-xs px-2 py-1 rounded ${isMLX ? 'bg-retro-chrome text-retro-bg' : 'bg-retro-neon text-retro-bg'}">
+                  ${qualityIcon} ${voice.quality}
+                </span>
+              </div>
+              <div class="text-retro-chrome text-xs opacity-70 mb-1">${voice.name}</div>
+              <div class="text-retro-chrome text-xs mb-1">${voice.language}</div>
+              <div class="text-retro-chrome text-xs opacity-50">
+                ${voice.size_mb} MB ${voice.sample_rate ? `• ${voice.sample_rate} Hz` : ''}
+                ${voice.downloads ? `• ${voice.downloads.toLocaleString()} downloads` : ''}
+              </div>
+              <div class="text-retro-chrome text-xs mt-1">
+                ${isMLX ? '🔥 MLX Accelerated:' : isPiper ? '🔄 Piper TTS:' : ''} ${voice.description}
+              </div>
+            </div>
+            <button onclick="showVoiceDownloadModal('${voice.name}', '${voice.download_url}', '${voice.config_url}')" 
+                    class="text-xs px-3 py-2 rounded transition-colors ${isMLX ? 'bg-retro-chrome text-retro-bg hover:bg-retro-accent' : 'bg-retro-neon text-retro-bg hover:bg-retro-chrome'}">
+              ${isMLX ? '🔥 Download MLX' : '📥 Download Piper'}
+            </button>
+          </div>
+        `;
+        container.appendChild(voiceDiv);
+      });
+    }
+
+    function showVoiceDownloadModal(voiceName, downloadUrl, configUrl) {
+      // For now, directly start download. Could add a confirmation modal later
+      downloadVoiceModel(voiceName, downloadUrl, configUrl);
+    }
+
+    async function downloadVoiceModel(voiceName, downloadUrl, configUrl) {
+      showToast('📥 Starting voice download...', 'info');
+
+      try {
+        const formData = new FormData();
+        formData.append('voice_name', voiceName);
+        formData.append('download_url', downloadUrl);
+        formData.append('config_url', configUrl);
+
+        const response = await fetch('/api/voices/download', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast(`✅ Voice ${voiceName} download started!`, 'success');
+          // Refresh voice library after a delay to show the downloaded voice
+          setTimeout(() => {
+            loadVoices();
+            loadCustomVoices();
+          }, 3000);
+        } else {
+          showToast(`❌ Download failed: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        showToast(`❌ Download error: ${error.message}`, 'error');
+      }
+    }
+
+    async function downloadPopularVoice(voiceName) {
+      // Predefined popular voices
+      const popularVoices = {
+        'en_US-amy-medium': {
+          download_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx',
+          config_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json'
+        },
+        'en_US-ryan-high': {
+          download_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx',
+          config_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/high/en_US-ryan-high.onnx.json'
+        },
+        'en_GB-alan-medium': {
+          download_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx',
+          config_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/alan/medium/en_GB-alan-medium.onnx.json'
+        },
+        'es_ES-marta-medium': {
+          download_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/marta/medium/es_ES-marta-medium.onnx',
+          config_url: 'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/marta/medium/es_ES-marta-medium.onnx.json'
+        }
+      };
+      
+      const voice = popularVoices[voiceName];
+      if (voice) {
+        downloadVoiceModel(voiceName, voice.download_url, voice.config_url);
+      }
+    }
+
+    function clearVoiceSearchResults() {
+      document.getElementById('voice-search-results').innerHTML = '<div class="text-retro-chrome text-sm opacity-70 text-center py-8">Use the search panel to find voice models</div>';
+    }
+
+    function refreshAvailableVoices() {
+      showToast('🔄 Refreshing available voices...', 'info');
+      // Could load a default set of available voices here
+    }
+
+    async function resetSystem() {
+      try {
+        showToast('🔄 Resetting all systems...', 'info');
+        const response = await fetch('/reset_system', { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+          showToast('✅ ' + (data.message || 'System reset successfully!'), 'success');
+        } else {
+          showToast('❌ Reset failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Reset failed: ' + error.message, 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      const msg = document.getElementById('toast-msg');
+      
+      const styles = {
+        success: {
+          icon: '✅',
+          bg: 'bg-green-900',
+          border: 'border-green-400',
+          text: 'text-green-100'
+        },
+        error: {
+          icon: '❌',
+          bg: 'bg-red-900',
+          border: 'border-red-400', 
+          text: 'text-red-100'
+        },
+        info: {
+          icon: 'ℹ️',
+          bg: 'bg-blue-900',
+          border: 'border-blue-400',
+          text: 'text-blue-100'
+        },
+        warning: {
+          icon: '⚠️',
+          bg: 'bg-yellow-900',
+          border: 'border-yellow-400',
+          text: 'text-yellow-100'
+        }
+      };
+      
+      const style = styles[type] || styles.info;
+      
+      // Reset classes
+      toast.className = `fixed bottom-5 right-5 p-4 rounded-lg max-w-sm z-50 shadow-lg border-2 ${style.bg} ${style.border}`;
+      
+      icon.textContent = style.icon;
+      icon.className = `mr-2 ${style.text}`;
+      
+      msg.textContent = message;
+      msg.className = `${style.text} font-mono text-sm font-bold`;
+      
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 5000);
+    }
+  </script>
+</body>
+</html> 

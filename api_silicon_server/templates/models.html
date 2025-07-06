@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 MLX Model Manager - AI Silicon Server</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            retro: {
+              bg: '#1F1D36',
+              surface: '#3F3351',
+              neon: '#E94560',
+              chrome: '#03C988',
+              shadow: '#0F3460',
+              purple: '#864879',
+              accent: '#7209B7'
+            }
+          },
+          fontFamily: {
+            retro: ['"Press Start 2P"', 'monospace'],
+            mono: ['"Fira Code"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    .text-glow {
+      text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+    }
+    
+    /* Enhanced text readability */
+    .readable-text {
+      color: #FFFFFF !important;
+      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+      font-weight: 500;
+    }
+    
+    .readable-text-chrome {
+      color: #03C988 !important;
+      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+      font-weight: 500;
+    }
+    
+    .readable-text-neon {
+      color: #E94560 !important;
+      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+      font-weight: 600;
+    }
+    .border-glow {
+      border-color: theme('colors.retro.neon');
+      box-shadow: 0 0 5px theme('colors.retro.neon'), inset 0 0 5px rgba(233, 69, 96, 0.1);
+    }
+    .bg-surface {
+      background: linear-gradient(135deg, theme('colors.retro.surface'), theme('colors.retro.shadow'));
+    }
+    .retro-button {
+      background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent'));
+      transition: all 0.3s ease;
+    }
+    .retro-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4);
+    }
+    .scan-line {
+      position: absolute;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, theme('colors.retro.chrome'), transparent);
+      animation: scan-line 3s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes scan-line {
+      0% { top: '0%'; }
+      100% { top: '100%'; }
+    }
+  </style>
+</head>
+<body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
+  
+  <!-- Animated scan line effect -->
+  <div class="scan-line"></div>
+
+  <!-- Navigation -->
+  <div class="fixed top-0 left-0 p-4 z-50">
+    <button onclick="toggleMenu()" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm">
+      ☰ MENU
+    </button>
+    <div id="menu" class="hidden bg-surface border border-retro-neon rounded-lg mt-2 w-64 p-4">
+      <ul class="space-y-3 text-sm">
+        <li><a href="/" class="flex items-center hover:text-retro-neon transition-colors">🗨️ Chat Interface</a></li>
+        <li><a href="/models" class="flex items-center text-retro-neon">🔥 MLX Model Manager</a></li>
+        <li><a href="/voice" class="flex items-center hover:text-retro-neon transition-colors">🎙️ Voice Center</a></li>
+        <li><a href="/improv" class="flex items-center hover:text-retro-neon transition-colors">🎭 Improv Games</a></li>
+        <li><a href="/narrative" class="flex items-center hover:text-retro-neon transition-colors">📘 Emergent Narrative</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="pt-20 px-6 max-w-7xl mx-auto">
+    <!-- Back to Main Button -->
+    <div class="mb-4">
+      <a href="/" class="inline-flex items-center retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm hover:scale-105 transition-transform">
+        ← 🗨️ BACK TO CHAT
+      </a>
+    </div>
+    
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2">🔥 MLX MODEL MANAGER</h1>
+      <p class="text-retro-chrome text-sm readable-text-chrome">Apple Silicon Optimized Language Models</p>
+      <div id="status-indicator" class="inline-flex items-center mt-2 text-xs">
+        <div class="w-2 h-2 bg-retro-chrome rounded-full animate-pulse mr-2"></div>
+        <span class="readable-text-chrome">Loading MLX Status...</span>
+      </div>
+    </div>
+
+    <!-- Model Management Interface -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Installed Models Section (2/3 width) -->
+      <div class="lg:col-span-2 space-y-4">
+        
+        <!-- Current Models -->
+        <div class="bg-surface border border-glow rounded-lg p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-retro text-sm text-retro-neon text-glow">📦 INSTALLED MODELS</h3>
+            <button onclick="refreshModels()" class="text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🔄 Refresh</button>
+          </div>
+          
+          <div id="installed-models" class="space-y-3">
+            <div class="text-retro-chrome text-sm opacity-70 text-center py-8">
+              <div class="inline-flex items-center">
+                <div class="w-1 h-1 bg-retro-chrome rounded-full animate-pulse mr-1"></div>
+                Loading installed models...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Results -->
+        <div class="bg-surface border border-glow rounded-lg p-6">
+          <h3 class="font-retro text-sm text-retro-neon text-glow mb-4">🔍 SEARCH RESULTS</h3>
+          <div id="search-results" class="space-y-3">
+            <div class="text-retro-chrome text-sm opacity-70 text-center py-8">
+              Use the search panel to find MLX-compatible models
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search & Controls Panel (1/3 width) -->
+      <div class="lg:col-span-1 space-y-4">
+        
+        <!-- Search Panel -->
+        <div class="bg-surface border border-glow rounded-lg p-4">
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">🔍 MODEL SEARCH</h3>
+          
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-retro-chrome mb-1">Search Query</label>
+              <input type="text" id="search-query" placeholder="llama, mistral, codellama..." 
+                     class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+            </div>
+            
+            <div>
+              <label class="block text-xs text-retro-chrome mb-1">Results Limit</label>
+              <select id="search-limit" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome text-xs p-2 rounded focus:border-retro-neon focus:outline-none">
+                <option value="5">5 models</option>
+                <option value="10" selected>10 models</option>
+                <option value="20">20 models</option>
+                <option value="50">50 models</option>
+              </select>
+            </div>
+            
+            <button onclick="searchModels()" class="w-full retro-button text-retro-bg px-4 py-2 rounded font-retro text-xs">
+              🔍 SEARCH HF REPO
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-surface border border-glow rounded-lg p-4">
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">⚡ QUICK ACTIONS</h3>
+          <div class="space-y-2">
+            <button onclick="downloadPopularModel('deepseek-r1-0528')" class="w-full text-xs bg-retro-neon text-retro-bg px-3 py-2 rounded hover:bg-retro-chrome transition-colors font-bold">🧠 DeepSeek-R1 0528 8B</button>
+            <button onclick="downloadPopularModel('llama-3.2-1b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Llama 3.2 1B</button>
+            <button onclick="downloadPopularModel('llama-3.2-3b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Llama 3.2 3B</button>
+            <button onclick="downloadPopularModel('codellama-7b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 CodeLlama 7B</button>
+            <button onclick="testDownloadModel('llama-1b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🧪 Test Llama 1B</button>
+            <button onclick="clearSearchResults()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🗑️ Clear Results</button>
+          </div>
+        </div>
+
+        <!-- System Info -->
+        <div class="bg-surface border border-glow rounded-lg p-4">
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">📊 SYSTEM INFO</h3>
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-retro-chrome">MLX Status:</span>
+              <span id="mlx-status" class="text-retro-chrome">Checking...</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-retro-chrome">Total Models:</span>
+              <span id="total-models" class="text-retro-chrome">0</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-retro-chrome">MLX Models:</span>
+              <span id="mlx-models-count" class="text-retro-chrome">0</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-retro-chrome">Fallback Models:</span>
+              <span id="fallback-models-count" class="text-retro-chrome">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast notification container -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-retro-surface border-2 border-retro-neon text-retro-chrome p-4 rounded-lg hidden max-w-sm z-50 shadow-lg">
+    <div class="flex items-center">
+      <span id="toast-icon" class="mr-2 text-retro-neon">ℹ️</span>
+      <span id="toast-msg" class="text-retro-chrome font-mono text-sm">Message</span>
+    </div>
+  </div>
+
+  <!-- Download Confirmation Modal -->
+  <div id="download-modal" class="fixed inset-0 bg-retro-bg bg-opacity-80 flex items-center justify-center hidden z-50">
+    <div class="bg-surface border border-glow rounded-lg p-6 max-w-md w-full mx-4">
+      <h3 class="font-retro text-sm text-retro-neon text-glow mb-4">📥 DOWNLOAD MODEL</h3>
+      
+      <div class="space-y-3 text-sm">
+        <div>
+          <span class="text-retro-chrome">Model ID:</span>
+          <div id="download-model-id" class="text-retro-chrome font-mono bg-retro-shadow p-2 rounded mt-1"></div>
+        </div>
+        
+        <div>
+          <label class="block text-xs text-retro-chrome mb-1">Local Name</label>
+          <input type="text" id="download-local-name" placeholder="my-model" 
+                 class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-2 rounded focus:border-retro-neon focus:outline-none">
+        </div>
+      </div>
+
+      <div class="flex space-x-2 mt-6">
+        <button onclick="confirmDownload()" class="flex-1 retro-button text-retro-bg px-4 py-2 rounded text-xs">📥 DOWNLOAD</button>
+        <button onclick="closeDownloadModal()" class="flex-1 text-xs bg-retro-shadow text-retro-chrome px-4 py-2 rounded hover:bg-retro-purple transition-colors">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Global state
+    let installedModels = [];
+    let searchResults = [];
+    let currentDownloadModel = null;
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+      loadInstalledModels();
+      checkSystemStatus();
+      startDownloadMonitoring(); // Monitor downloads on models page
+    });
+
+    // Download monitoring for models page
+    let downloadMonitorInterval = null;
+    
+    function startDownloadMonitoring() {
+      if (downloadMonitorInterval) clearInterval(downloadMonitorInterval);
+      
+      downloadMonitorInterval = setInterval(async () => {
+        try {
+          const response = await fetch('/download/status');
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.downloads && data.downloads.length > 0) {
+              data.downloads.forEach(download => {
+                if (download.type === 'Model') {
+                  const progressText = download.progress ? 
+                    `${download.name}: ${download.progress}% (${download.status})` :
+                    `${download.name}: ${download.status}`;
+                  
+                  if (download.status === 'completed') {
+                    showToast(`✅ Model ${progressText}`, 'success');
+                    setTimeout(() => loadInstalledModels(), 2000); // Refresh models list
+                  } else if (download.status === 'failed') {
+                    showToast(`❌ ${progressText}`, 'error');
+                  } else {
+                    showToast(`📥 Downloading ${progressText}`, 'info');
+                  }
+                }
+              });
+            } else {
+              // No active downloads, reduce frequency
+              clearInterval(downloadMonitorInterval);
+              setTimeout(startDownloadMonitoring, 10000); // Check again in 10 seconds
+            }
+          }
+        } catch (error) {
+          // Silently fail
+        }
+      }, 3000);
+    }
+
+    function toggleMenu() {
+      const menu = document.getElementById('menu');
+      menu.classList.toggle('hidden');
+    }
+
+    async function loadInstalledModels() {
+      try {
+        const response = await fetch('/api/models');
+        const data = await response.json();
+        installedModels = data.models || [];
+        
+        displayInstalledModels();
+        updateSystemInfo(data);
+      } catch (error) {
+        console.error('Failed to load models:', error);
+        showToast('❌ Failed to load models', 'error');
+      }
+    }
+
+    function displayInstalledModels() {
+      const container = document.getElementById('installed-models');
+      
+      if (installedModels.length === 0) {
+        container.innerHTML = '<div class="text-retro-chrome text-sm opacity-70 text-center py-8">No models installed</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      installedModels.forEach(model => {
+        const modelDiv = document.createElement('div');
+        modelDiv.className = `bg-retro-shadow border border-retro-purple rounded p-4 ${model.recommended ? 'border-retro-neon' : ''}`;
+        
+        const statusIcon = model.backend === 'MLX' ? '🔥' : '🔄';
+        const statusText = model.backend === 'MLX' ? 'MLX Accelerated' : 'Ollama Fallback';
+        
+        modelDiv.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center space-x-2 mb-2">
+                <span class="text-lg">${statusIcon}</span>
+                <span class="text-retro-chrome font-bold text-sm">${model.name}</span>
+                ${model.recommended ? '<span class="text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded">⭐ RECOMMENDED</span>' : ''}
+              </div>
+              <div class="text-retro-chrome text-xs opacity-70 mb-1">${model.full_name || model.name}</div>
+              <div class="text-retro-chrome text-xs">${statusText}</div>
+              ${model.size > 0 ? `<div class="text-retro-chrome text-xs opacity-50">Size: ${(model.size / 1024 / 1024 / 1024).toFixed(1)} GB</div>` : ''}
+            </div>
+            <div class="flex space-x-2">
+              ${model.backend === 'MLX' ? `<button onclick="removeModel('${model.name}')" class="text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded hover:bg-retro-chrome transition-colors">🗑️ Remove</button>` : ''}
+            </div>
+          </div>
+        `;
+        container.appendChild(modelDiv);
+      });
+    }
+
+    function updateSystemInfo(data) {
+      document.getElementById('total-models').textContent = data.total_models || 0;
+      document.getElementById('mlx-models-count').textContent = (data.models || []).filter(m => m.backend === 'MLX').length;
+      document.getElementById('fallback-models-count').textContent = (data.models || []).filter(m => m.backend === 'Ollama').length;
+      
+      const statusElement = document.getElementById('status-indicator');
+      if (data.mlx_available) {
+        statusElement.innerHTML = '<div class="w-2 h-2 bg-retro-chrome rounded-full animate-pulse mr-2"></div><span>🔥 MLX Acceleration Active</span>';
+      } else {
+        statusElement.innerHTML = '<div class="w-2 h-2 bg-retro-neon rounded-full animate-pulse mr-2"></div><span>🔄 Ollama Fallback Mode</span>';
+      }
+    }
+
+    async function checkSystemStatus() {
+      try {
+        const response = await fetch('/status');
+        const data = await response.json();
+        
+        const mlxEnabled = data.mlx_acceleration?.enabled || false;
+        document.getElementById('mlx-status').textContent = mlxEnabled ? '🔥 Active' : '⚠️ Fallback';
+      } catch (error) {
+        document.getElementById('mlx-status').textContent = '❌ Error';
+      }
+    }
+
+    async function searchModels() {
+      const query = document.getElementById('search-query').value.trim();
+      const limit = document.getElementById('search-limit').value;
+      
+      if (!query) {
+        showToast('⚠️ Please enter a search query', 'warning');
+        return;
+      }
+
+      const resultsContainer = document.getElementById('search-results');
+      resultsContainer.innerHTML = '<div class="text-retro-chrome text-sm">🔍 Searching Hugging Face repository...</div>';
+
+      try {
+        const response = await fetch(`/models/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+        const data = await response.json();
+
+        if (response.ok && data.models && data.models.length > 0) {
+          searchResults = data.models;
+          displaySearchResults();
+          showToast(`✅ Found ${data.models.length} models`, 'success');
+        } else {
+          resultsContainer.innerHTML = '<div class="text-retro-chrome text-sm opacity-70 text-center py-8">No MLX models found for this query</div>';
+          showToast('ℹ️ No models found', 'info');
+        }
+      } catch (error) {
+        resultsContainer.innerHTML = '<div class="text-retro-neon text-sm text-center py-8">❌ Search failed</div>';
+        showToast('❌ Search failed: ' + error.message, 'error');
+      }
+    }
+
+    function displaySearchResults() {
+      const container = document.getElementById('search-results');
+      container.innerHTML = '';
+      
+      searchResults.forEach(model => {
+        const modelDiv = document.createElement('div');
+        modelDiv.className = 'bg-retro-shadow border border-retro-purple rounded p-4';
+        
+        modelDiv.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center space-x-2 mb-2">
+                <span class="text-retro-chrome font-bold text-sm">${model.name}</span>
+                ${model.recommended ? '<span class="text-xs bg-retro-chrome text-retro-bg px-2 py-1 rounded">⭐ POPULAR</span>' : ''}
+              </div>
+              <div class="text-retro-chrome text-xs opacity-70 mb-1">${model.id}</div>
+              <div class="text-retro-chrome text-xs">Downloads: ${model.downloads.toLocaleString()}</div>
+            </div>
+            <button onclick="showDownloadModal('${model.id}', '${model.name}')" 
+                    class="text-xs bg-retro-neon text-retro-bg px-3 py-2 rounded hover:bg-retro-chrome transition-colors">
+              📥 Download
+            </button>
+          </div>
+        `;
+        container.appendChild(modelDiv);
+      });
+    }
+
+    function showDownloadModal(modelId, suggestedName) {
+      currentDownloadModel = modelId;
+      document.getElementById('download-model-id').textContent = modelId;
+      document.getElementById('download-local-name').value = suggestedName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      document.getElementById('download-modal').classList.remove('hidden');
+    }
+
+    function closeDownloadModal() {
+      document.getElementById('download-modal').classList.add('hidden');
+      currentDownloadModel = null;
+    }
+
+    async function confirmDownload() {
+      const localName = document.getElementById('download-local-name').value.trim();
+      
+      if (!localName) {
+        showToast('⚠️ Please enter a local name', 'warning');
+        return;
+      }
+
+      closeDownloadModal();
+      showToast('📥 Starting download...', 'info');
+
+      try {
+        const formData = new FormData();
+        formData.append('model_id', currentDownloadModel);
+        formData.append('local_name', localName);
+
+        const response = await fetch('/api/models/download', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast(`✅ Model ${localName} downloaded successfully!`, 'success');
+          setTimeout(() => loadInstalledModels(), 2000);
+        } else {
+          showToast(`❌ Download failed: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        showToast(`❌ Download error: ${error.message}`, 'error');
+      }
+    }
+
+    async function removeModel(modelName) {
+      if (!confirm(`Are you sure you want to remove model "${modelName}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/models/mlx/${modelName}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast(`✅ Model ${modelName} removed`, 'success');
+          loadInstalledModels();
+        } else {
+          showToast(`❌ Remove failed: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        showToast(`❌ Remove error: ${error.message}`, 'error');
+      }
+    }
+
+    async function downloadPopularModel(modelType) {
+      const popularModels = {
+        'deepseek-r1-0528': 'lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-MLX-4bit',
+        'llama-3.2-1b': 'mlx-community/Llama-3.2-1B-Instruct-4bit',
+        'llama-3.2-3b': 'mlx-community/Llama-3.2-3B-Instruct-4bit',
+        'codellama-7b': 'mlx-community/CodeLlama-7b-Instruct-hf-4bit'
+      };
+      
+      const modelId = popularModels[modelType];
+      if (modelId) {
+        // Direct download without modal for quick testing
+        showToast(`📥 Starting download of ${modelType}...`, 'info');
+        
+        try {
+          const formData = new FormData();
+          formData.append('model_id', modelId);
+          formData.append('local_name', modelType);
+
+          const response = await fetch('/api/models/download', {
+            method: 'POST',
+            body: formData
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showToast(`✅ ${modelType} download started successfully!`, 'success');
+          } else {
+            showToast(`❌ Download failed: ${data.error}`, 'error');
+          }
+        } catch (error) {
+          showToast(`❌ Download error: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    function clearSearchResults() {
+      document.getElementById('search-results').innerHTML = '<div class="text-retro-chrome text-sm opacity-70 text-center py-8">Use the search panel to find MLX-compatible models</div>';
+      searchResults = [];
+    }
+
+    function refreshModels() {
+      showToast('🔄 Refreshing models...', 'info');
+      loadInstalledModels();
+    }
+
+    async function testDownloadModel(modelType) {
+      showToast(`🧪 Testing download of ${modelType}...`, 'info');
+      
+      try {
+        const response = await fetch(`/api/models/test-download/${modelType}`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          showToast(`✅ Test download started: ${data.message}`, 'success');
+        } else {
+          showToast(`❌ Test download failed: ${data.error}`, 'error');
+        }
+      } catch (error) {
+        showToast(`❌ Test download error: ${error.message}`, 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      const msg = document.getElementById('toast-msg');
+      
+      const styles = {
+        success: {
+          icon: '✅',
+          bg: 'bg-green-900',
+          border: 'border-green-400',
+          text: 'text-green-100'
+        },
+        error: {
+          icon: '❌',
+          bg: 'bg-red-900',
+          border: 'border-red-400', 
+          text: 'text-red-100'
+        },
+        info: {
+          icon: 'ℹ️',
+          bg: 'bg-blue-900',
+          border: 'border-blue-400',
+          text: 'text-blue-100'
+        },
+        warning: {
+          icon: '⚠️',
+          bg: 'bg-yellow-900',
+          border: 'border-yellow-400',
+          text: 'text-yellow-100'
+        }
+      };
+      
+      const style = styles[type] || styles.info;
+      
+      // Reset classes
+      toast.className = `fixed bottom-5 right-5 p-4 rounded-lg max-w-sm z-50 shadow-lg border-2 ${style.bg} ${style.border}`;
+      
+      icon.textContent = style.icon;
+      icon.className = `mr-2 ${style.text}`;
+      
+      msg.textContent = message;
+      msg.className = `${style.text} font-mono text-sm font-bold`;
+      
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 5000);
+    }
+  </script>
+</body>
+</html> 

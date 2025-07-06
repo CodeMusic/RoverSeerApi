@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📘 Emergent Narrative - AI Silicon Server</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            retro: {
+              bg: '#1F1D36',
+              surface: '#3F3351',
+              neon: '#E94560',
+              chrome: '#03C988',
+              shadow: '#0F3460',
+              purple: '#864879',
+              accent: '#7209B7'
+            }
+          },
+          fontFamily: {
+            retro: ['"Press Start 2P"', 'monospace'],
+            mono: ['"Fira Code"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    .text-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+    .border-glow { border-color: theme('colors.retro.neon'); box-shadow: 0 0 5px theme('colors.retro.neon'), inset 0 0 5px rgba(233, 69, 96, 0.1); }
+    .bg-surface { background: linear-gradient(135deg, theme('colors.retro.surface'), theme('colors.retro.shadow')); }
+    .retro-button { background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent')); transition: all 0.3s ease; }
+    .retro-button:hover { transform: translateY(-2px); box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4); }
+    .scan-line { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, theme('colors.retro.chrome'), transparent); animation: scan-line 3s linear infinite; pointer-events: none; }
+    @keyframes scan-line { 0% { top: '0%' } 100% { top: '100%' } }
+    .story-text { line-height: 1.8; font-family: 'Georgia', serif; }
+    .chapter-divider { background: linear-gradient(90deg, transparent, theme('colors.retro.chrome'), transparent); height: 1px; margin: 2rem 0; }
+  </style>
+</head>
+<body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
+  
+  <div class="scan-line"></div>
+
+  <!-- Navigation -->
+  <div class="fixed top-0 left-0 p-4 z-50">
+    <button onclick="toggleMenu()" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm">☰ MENU</button>
+    <div id="menu" class="hidden bg-surface border border-retro-neon rounded-lg mt-2 w-64 p-4">
+      <ul class="space-y-3 text-sm">
+        <li><a href="/" class="flex items-center hover:text-retro-neon transition-colors">🗨️ Chat Interface</a></li>
+        <li><a href="/voice" class="flex items-center hover:text-retro-neon transition-colors">🎙️ Voice Center</a></li>
+        <li><a href="/improv" class="flex items-center hover:text-retro-neon transition-colors">🎭 Improv Games</a></li>
+        <li><a href="/narrative" class="flex items-center text-retro-neon">📘 Emergent Narrative</a></li>
+        <li class="border-t border-retro-shadow pt-2">
+          <button onclick="resetSystem()" class="flex items-center text-retro-neon hover:text-white transition-colors">🔄 Reset All Systems</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="pt-20 px-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2">📘 EMERGENT NARRATIVE</h1>
+      <p class="text-retro-chrome text-sm">Collaborative Storytelling & Creative Writing</p>
+    </div>
+
+    <!-- Narrative Tabs -->
+    <div class="mb-6">
+      <div class="flex space-x-2 bg-surface rounded-lg p-1">
+        <button onclick="switchTab('create')" id="tab-create" class="flex-1 px-4 py-2 rounded text-sm retro-button text-retro-bg font-retro">✍️ Create Story</button>
+        <button onclick="switchTab('library')" id="tab-library" class="flex-1 px-4 py-2 rounded text-sm bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors">📚 Story Library</button>
+        <button onclick="switchTab('genres')" id="tab-genres" class="flex-1 px-4 py-2 rounded text-sm bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors">🎭 Genre Templates</button>
+      </div>
+    </div>
+
+    <!-- Create Story Tab -->
+    <div id="tab-create-content" class="tab-content">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Story Editor -->
+        <div class="lg:col-span-2">
+          <div class="bg-surface border border-glow rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-retro text-sm text-retro-neon text-glow">📝 STORY EDITOR</h3>
+              <div class="flex space-x-2">
+                <button onclick="saveStory()" class="text-xs bg-retro-chrome text-retro-bg px-3 py-1 rounded">💾 Save</button>
+                <button onclick="exportStory()" class="text-xs bg-retro-neon text-retro-bg px-3 py-1 rounded">📤 Export</button>
+              </div>
+            </div>
+            
+            <!-- Story Metadata -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <input type="text" id="story-title" placeholder="Story Title..." class="bg-retro-shadow border border-retro-purple text-retro-chrome p-2 rounded focus:border-retro-neon focus:outline-none text-sm">
+              <select id="story-genre" class="bg-retro-shadow border border-retro-purple text-retro-chrome p-2 rounded focus:border-retro-neon focus:outline-none text-sm">
+                <option value="">Select Genre...</option>
+                <option value="sci-fi">Science Fiction</option>
+                <option value="fantasy">Fantasy</option>
+                <option value="mystery">Mystery</option>
+                <option value="romance">Romance</option>
+                <option value="horror">Horror</option>
+                <option value="adventure">Adventure</option>
+                <option value="literary">Literary Fiction</option>
+              </select>
+            </div>
+            
+            <!-- Story Content -->
+            <div id="story-content" class="bg-retro-shadow rounded-lg p-4 mb-4 h-96 overflow-y-auto story-text">
+              <div class="text-retro-chrome opacity-70 text-center italic">
+                Begin your story here... Let your imagination flow!
+              </div>
+            </div>
+            
+            <!-- Writing Input -->
+            <div class="space-y-3">
+              <textarea id="writing-input" placeholder="Continue the story..." rows="4" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none"></textarea>
+              
+              <div class="flex space-x-2">
+                <button onclick="addToStory()" class="retro-button text-retro-bg px-4 py-2 rounded text-sm">✍️ Add Paragraph</button>
+                <button onclick="generateAISuggestion()" class="bg-retro-chrome text-retro-bg px-4 py-2 rounded text-sm hover:bg-retro-accent transition-colors">🧠 AI Suggestion</button>
+                <button onclick="addChapterBreak()" class="bg-retro-purple text-white px-4 py-2 rounded text-sm hover:bg-retro-accent transition-colors">📖 New Chapter</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Writing Tools -->
+        <div class="lg:col-span-1 space-y-4">
+          
+          <!-- Story Statistics -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">📊 STORY STATS</h3>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Word Count:</span>
+                <span id="word-count" class="text-retro-chrome">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Paragraphs:</span>
+                <span id="paragraph-count" class="text-retro-chrome">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Chapters:</span>
+                <span id="chapter-count" class="text-retro-chrome">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Reading Time:</span>
+                <span id="reading-time" class="text-retro-chrome">0 min</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Character Tracker -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">👥 CHARACTERS</h3>
+            <div class="space-y-2">
+              <input type="text" id="character-input" placeholder="Add character..." class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-2 rounded text-xs focus:border-retro-neon focus:outline-none">
+              <div id="character-list" class="space-y-1 text-xs">
+                <!-- Characters will be added here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Plot Points -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">🎯 PLOT POINTS</h3>
+            <div class="space-y-2">
+              <textarea id="plot-input" placeholder="Add plot point..." rows="2" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome p-2 rounded text-xs focus:border-retro-neon focus:outline-none"></textarea>
+              <button onclick="addPlotPoint()" class="w-full text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded">+ Add Plot Point</button>
+              <div id="plot-list" class="space-y-1 text-xs">
+                <!-- Plot points will be added here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Writing Prompts -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">💡 INSPIRATION</h3>
+            <div class="space-y-2">
+              <button onclick="getWritingPrompt()" class="w-full text-xs bg-retro-chrome text-retro-bg px-2 py-1 rounded">🎲 Random Prompt</button>
+              <div id="writing-prompt" class="text-xs text-retro-chrome p-2 bg-retro-shadow rounded hidden">
+                <!-- Prompt will appear here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Story Library Tab -->
+    <div id="tab-library-content" class="tab-content hidden">
+      <div class="bg-surface border border-glow rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="font-retro text-sm text-retro-neon text-glow">📚 STORY LIBRARY</h3>
+          <button onclick="loadStoryLibrary()" class="text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🔄 Refresh</button>
+        </div>
+        
+        <div id="story-library" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Stories will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Genre Templates Tab -->
+    <div id="tab-genres-content" class="tab-content hidden">
+      <div class="bg-surface border border-glow rounded-lg p-6">
+        <h3 class="font-retro text-sm text-retro-neon mb-6 text-glow">🎭 GENRE TEMPLATES</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          <!-- Sci-Fi Template -->
+          <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors cursor-pointer" onclick="useTemplate('sci-fi')">
+            <div class="text-center mb-3">
+              <div class="text-3xl mb-2">🚀</div>
+              <h4 class="font-retro text-xs text-retro-neon">SCIENCE FICTION</h4>
+            </div>
+            <p class="text-xs text-retro-chrome">Explore the future, space travel, advanced technology, and the consequences of scientific progress.</p>
+          </div>
+
+          <!-- Fantasy Template -->
+          <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors cursor-pointer" onclick="useTemplate('fantasy')">
+            <div class="text-center mb-3">
+              <div class="text-3xl mb-2">🧙‍♂️</div>
+              <h4 class="font-retro text-xs text-retro-neon">FANTASY</h4>
+            </div>
+            <p class="text-xs text-retro-chrome">Magic, mythical creatures, epic quests, and worlds where the impossible becomes reality.</p>
+          </div>
+
+          <!-- Mystery Template -->
+          <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors cursor-pointer" onclick="useTemplate('mystery')">
+            <div class="text-center mb-3">
+              <div class="text-3xl mb-2">🔍</div>
+              <h4 class="font-retro text-xs text-retro-neon">MYSTERY</h4>
+            </div>
+            <p class="text-xs text-retro-chrome">Puzzles to solve, secrets to uncover, and truth hidden beneath layers of deception.</p>
+          </div>
+
+          <!-- Romance Template -->
+          <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors cursor-pointer" onclick="useTemplate('romance')">
+            <div class="text-center mb-3">
+              <div class="text-3xl mb-2">💕</div>
+              <h4 class="font-retro text-xs text-retro-neon">ROMANCE</h4>
+            </div>
+            <p class="text-xs text-retro-chrome">Love stories, relationships, emotional journeys, and the triumph of the heart.</p>
+          </div>
+
+          <!-- Horror Template -->
+          <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors cursor-pointer" onclick="useTemplate('horror')">
+            <div class="text-center mb-3">
+              <div class="text-3xl mb-2">👻</div>
+              <h4 class="font-retro text-xs text-retro-neon">HORROR</h4>
+            </div>
+            <p class="text-xs text-retro-chrome">Fear, suspense, supernatural elements, and the exploration of our darkest fears.</p>
+          </div>
+
+          <!-- Adventure Template -->
+          <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors cursor-pointer" onclick="useTemplate('adventure')">
+            <div class="text-center mb-3">
+              <div class="text-3xl mb-2">🗺️</div>
+              <h4 class="font-retro text-xs text-retro-neon">ADVENTURE</h4>
+            </div>
+            <p class="text-xs text-retro-chrome">Journeys, exploration, danger, and heroes facing extraordinary challenges.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-5 right-5 retro-button text-retro-bg p-4 rounded-lg hidden max-w-sm z-50">
+    <div class="flex items-center">
+      <span id="toast-icon" class="mr-2">ℹ️</span>
+      <span id="toast-msg">Message</span>
+    </div>
+  </div>
+
+  <script>
+    let currentStory = {
+      title: '',
+      genre: '',
+      content: [],
+      characters: [],
+      plotPoints: [],
+      wordCount: 0,
+      created: null,
+      modified: null
+    };
+
+    const genreTemplates = {
+      'sci-fi': {
+        title: 'Untitled Sci-Fi Story',
+        starter: 'The stars had never looked so distant as they did from the observation deck of the generation ship...',
+        prompts: [
+          'A technology that changes everything',
+          'First contact with alien life',
+          'The last human on Earth',
+          'Time travel paradox',
+          'AI consciousness awakening'
+        ]
+      },
+      'fantasy': {
+        title: 'Untitled Fantasy Tale',
+        starter: 'The ancient runes on the stone began to glow as the young mage approached...',
+        prompts: [
+          'A magical artifact with a curse',
+          'The last dragon awakens',
+          'A portal to another realm',
+          'The chosen one refuses their destiny',
+          'Magic is disappearing from the world'
+        ]
+      },
+      'mystery': {
+        title: 'Untitled Mystery',
+        starter: 'The detective arrived at the scene to find something that shouldn\'t have been possible...',
+        prompts: [
+          'A locked room murder',
+          'The victim who isn\'t dead',
+          'Evidence that leads nowhere',
+          'The detective becomes the suspect',
+          'A cold case suddenly gets hot'
+        ]
+      },
+      'romance': {
+        title: 'Untitled Love Story',
+        starter: 'Their eyes met across the crowded café, and time seemed to stop...',
+        prompts: [
+          'Enemies to lovers',
+          'Second chance romance',
+          'Forbidden love',
+          'Love letters to the wrong person',
+          'Falling for your best friend'
+        ]
+      },
+      'horror': {
+        title: 'Untitled Horror Story',
+        starter: 'The house had been empty for decades, but the lights were on...',
+        prompts: [
+          'Something in the walls',
+          'The thing that follows you home',
+          'Messages from beyond',
+          'The monster was human all along',
+          'Reality starts breaking down'
+        ]
+      },
+      'adventure': {
+        title: 'Untitled Adventure',
+        starter: 'The map was old and faded, but the X marked a place that shouldn\'t exist...',
+        prompts: [
+          'Race against time',
+          'Treasure with a guardian',
+          'The guide who betrays you',
+          'Lost in uncharted territory',
+          'The rescue becomes a trap'
+        ]
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadStoryLibrary();
+      setupEventListeners();
+    });
+
+    function setupEventListeners() {
+      document.getElementById('character-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') addCharacter();
+      });
+    }
+
+    function toggleMenu() {
+      document.getElementById('menu').classList.toggle('hidden');
+    }
+
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+      document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+        btn.className = btn.className.replace('retro-button text-retro-bg font-retro', 'bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors');
+      });
+      
+      // Show selected tab
+      document.getElementById(`tab-${tabName}-content`).classList.remove('hidden');
+      document.getElementById(`tab-${tabName}`).className = document.getElementById(`tab-${tabName}`).className.replace('bg-retro-shadow text-retro-chrome hover:bg-retro-purple transition-colors', 'retro-button text-retro-bg font-retro');
+    }
+
+    function addToStory() {
+      const input = document.getElementById('writing-input');
+      const text = input.value.trim();
+      
+      if (!text) {
+        showToast('⚠️ Please write something first!', 'warning');
+        return;
+      }
+      
+      currentStory.content.push({
+        type: 'paragraph',
+        text: text,
+        timestamp: Date.now()
+      });
+      
+      input.value = '';
+      updateStoryDisplay();
+      updateStoryStats();
+      showToast('✍️ Paragraph added to story', 'success');
+    }
+
+    function addChapterBreak() {
+      if (currentStory.content.length === 0) {
+        showToast('⚠️ Add some content before creating a chapter break', 'warning');
+        return;
+      }
+      
+      currentStory.content.push({
+        type: 'chapter',
+        text: `Chapter ${getChapterCount() + 1}`,
+        timestamp: Date.now()
+      });
+      
+      updateStoryDisplay();
+      updateStoryStats();
+      showToast('📖 Chapter break added', 'success');
+    }
+
+    async function generateAISuggestion() {
+      try {
+        showToast('🧠 AI is generating suggestions...', 'info');
+        
+        const context = currentStory.content.slice(-3).map(c => c.text).join(' ');
+        const genre = document.getElementById('story-genre').value || 'general fiction';
+        
+        const formData = new FormData();
+        formData.append('prompt', `Continue this ${genre} story in an interesting way. Current text: "${context}". Write one compelling paragraph that advances the plot.`);
+        formData.append('system_prompt', 'You are a creative writing assistant. Write engaging, well-crafted prose that continues the story naturally.');
+        formData.append('temperature', '0.8');
+        
+        const response = await fetch('/llm', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          document.getElementById('writing-input').value = data.response;
+          showToast('🧠 AI suggestion generated!', 'success');
+        } else {
+          showToast('❌ Failed to generate suggestion', 'error');
+        }
+      } catch (error) {
+        showToast('❌ Network error: ' + error.message, 'error');
+      }
+    }
+
+    function addCharacter() {
+      const input = document.getElementById('character-input');
+      const name = input.value.trim();
+      
+      if (!name) return;
+      
+      if (!currentStory.characters.includes(name)) {
+        currentStory.characters.push(name);
+        input.value = '';
+        updateCharacterList();
+        showToast(`👤 Character "${name}" added`, 'success');
+      } else {
+        showToast('⚠️ Character already exists', 'warning');
+      }
+    }
+
+    function addPlotPoint() {
+      const input = document.getElementById('plot-input');
+      const point = input.value.trim();
+      
+      if (!point) return;
+      
+      currentStory.plotPoints.push({
+        text: point,
+        timestamp: Date.now()
+      });
+      
+      input.value = '';
+      updatePlotList();
+      showToast('🎯 Plot point added', 'success');
+    }
+
+    function updateStoryDisplay() {
+      const contentDiv = document.getElementById('story-content');
+      
+      if (currentStory.content.length === 0) {
+        contentDiv.innerHTML = '<div class="text-retro-chrome opacity-70 text-center italic">Begin your story here... Let your imagination flow!</div>';
+        return;
+      }
+      
+      contentDiv.innerHTML = currentStory.content.map(item => {
+        if (item.type === 'chapter') {
+          return `<div class="chapter-divider"></div><h3 class="text-retro-neon font-retro text-sm text-center mb-4">${item.text}</h3>`;
+        } else {
+          return `<p class="mb-4 text-retro-chrome">${item.text}</p>`;
+        }
+      }).join('');
+      
+      contentDiv.scrollTop = contentDiv.scrollHeight;
+    }
+
+    function updateStoryStats() {
+      const wordCount = currentStory.content
+        .filter(item => item.type === 'paragraph')
+        .reduce((count, item) => count + item.text.split(/\s+/).length, 0);
+      
+      const paragraphCount = currentStory.content.filter(item => item.type === 'paragraph').length;
+      const chapterCount = getChapterCount();
+      const readingTime = Math.ceil(wordCount / 200); // Average reading speed
+      
+      document.getElementById('word-count').textContent = wordCount;
+      document.getElementById('paragraph-count').textContent = paragraphCount;
+      document.getElementById('chapter-count').textContent = chapterCount;
+      document.getElementById('reading-time').textContent = `${readingTime} min`;
+      
+      currentStory.wordCount = wordCount;
+    }
+
+    function updateCharacterList() {
+      const listDiv = document.getElementById('character-list');
+      listDiv.innerHTML = currentStory.characters.map(char => 
+        `<div class="bg-retro-shadow rounded p-1 flex justify-between items-center">
+          <span>${char}</span>
+          <button onclick="removeCharacter('${char}')" class="text-red-400 hover:text-red-300">×</button>
+        </div>`
+      ).join('');
+    }
+
+    function updatePlotList() {
+      const listDiv = document.getElementById('plot-list');
+      listDiv.innerHTML = currentStory.plotPoints.map((point, index) => 
+        `<div class="bg-retro-shadow rounded p-2">
+          <div class="text-retro-chrome">${point.text}</div>
+          <button onclick="removePlotPoint(${index})" class="text-xs text-red-400 hover:text-red-300 mt-1">Remove</button>
+        </div>`
+      ).join('');
+    }
+
+    function removeCharacter(name) {
+      currentStory.characters = currentStory.characters.filter(char => char !== name);
+      updateCharacterList();
+      showToast(`👤 Character "${name}" removed`, 'info');
+    }
+
+    function removePlotPoint(index) {
+      currentStory.plotPoints.splice(index, 1);
+      updatePlotList();
+      showToast('🎯 Plot point removed', 'info');
+    }
+
+    function getChapterCount() {
+      return currentStory.content.filter(item => item.type === 'chapter').length;
+    }
+
+    function saveStory() {
+      const title = document.getElementById('story-title').value || 'Untitled Story';
+      const genre = document.getElementById('story-genre').value || '';
+      
+      currentStory.title = title;
+      currentStory.genre = genre;
+      currentStory.modified = Date.now();
+      
+      if (!currentStory.created) {
+        currentStory.created = Date.now();
+      }
+      
+      let stories = JSON.parse(localStorage.getItem('narrative-stories') || '[]');
+      const existingIndex = stories.findIndex(s => s.title === title);
+      
+      if (existingIndex >= 0) {
+        stories[existingIndex] = { ...currentStory };
+      } else {
+        stories.unshift({ ...currentStory });
+      }
+      
+      localStorage.setItem('narrative-stories', JSON.stringify(stories));
+      showToast('💾 Story saved successfully!', 'success');
+    }
+
+    function exportStory() {
+      const title = document.getElementById('story-title').value || 'Untitled Story';
+      
+      const storyText = currentStory.content.map(item => {
+        if (item.type === 'chapter') {
+          return `\n\n${item.text}\n\n`;
+        } else {
+          return item.text + '\n\n';
+        }
+      }).join('');
+      
+      const exportData = {
+        title: title,
+        genre: document.getElementById('story-genre').value,
+        content: storyText,
+        characters: currentStory.characters,
+        plotPoints: currentStory.plotPoints,
+        stats: {
+          wordCount: currentStory.wordCount,
+          paragraphs: currentStory.content.filter(c => c.type === 'paragraph').length,
+          chapters: getChapterCount()
+        },
+        exported: new Date().toISOString()
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showToast('📤 Story exported successfully!', 'success');
+    }
+
+    function loadStoryLibrary() {
+      const stories = JSON.parse(localStorage.getItem('narrative-stories') || '[]');
+      const libraryDiv = document.getElementById('story-library');
+      
+      if (stories.length === 0) {
+        libraryDiv.innerHTML = '<div class="col-span-full text-center text-retro-chrome opacity-70"><div class="text-4xl mb-2">📚</div><p>No stories found. Start writing!</p></div>';
+        return;
+      }
+      
+      libraryDiv.innerHTML = stories.map(story => `
+        <div class="bg-retro-shadow border border-retro-purple rounded-lg p-4 hover:border-retro-neon transition-colors">
+          <h4 class="text-sm font-bold text-retro-neon mb-2">${story.title}</h4>
+          <div class="text-xs text-retro-chrome space-y-1">
+            <div>Genre: ${story.genre || 'Unspecified'}</div>
+            <div>Words: ${story.wordCount || 0}</div>
+            <div>Created: ${new Date(story.created).toLocaleDateString()}</div>
+          </div>
+          <div class="mt-3 flex space-x-2">
+            <button onclick="loadStory('${story.title}')" class="flex-1 text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded">📖 Load</button>
+            <button onclick="deleteStory('${story.title}')" class="flex-1 text-xs bg-red-500 text-white px-2 py-1 rounded">🗑️ Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function loadStory(title) {
+      const stories = JSON.parse(localStorage.getItem('narrative-stories') || '[]');
+      const story = stories.find(s => s.title === title);
+      
+      if (story) {
+        currentStory = { ...story };
+        document.getElementById('story-title').value = story.title;
+        document.getElementById('story-genre').value = story.genre || '';
+        updateStoryDisplay();
+        updateStoryStats();
+        updateCharacterList();
+        updatePlotList();
+        switchTab('create');
+        showToast(`📖 Loaded "${title}"`, 'success');
+      }
+    }
+
+    function deleteStory(title) {
+      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+      
+      let stories = JSON.parse(localStorage.getItem('narrative-stories') || '[]');
+      stories = stories.filter(s => s.title !== title);
+      localStorage.setItem('narrative-stories', JSON.stringify(stories));
+      loadStoryLibrary();
+      showToast(`🗑️ Deleted "${title}"`, 'info');
+    }
+
+    function useTemplate(genre) {
+      const template = genreTemplates[genre];
+      if (!template) return;
+      
+      currentStory = {
+        title: template.title,
+        genre: genre,
+        content: [{
+          type: 'paragraph',
+          text: template.starter,
+          timestamp: Date.now()
+        }],
+        characters: [],
+        plotPoints: [],
+        wordCount: 0,
+        created: Date.now(),
+        modified: Date.now()
+      };
+      
+      document.getElementById('story-title').value = template.title;
+      document.getElementById('story-genre').value = genre;
+      updateStoryDisplay();
+      updateStoryStats();
+      updateCharacterList();
+      updatePlotList();
+      
+      switchTab('create');
+      showToast(`🎭 Applied ${genre} template`, 'success');
+    }
+
+    async function getWritingPrompt() {
+      try {
+        const genre = document.getElementById('story-genre').value || 'general';
+        const template = genreTemplates[genre];
+        
+        if (template && template.prompts) {
+          const randomPrompt = template.prompts[Math.floor(Math.random() * template.prompts.length)];
+          document.getElementById('writing-prompt').textContent = randomPrompt;
+          document.getElementById('writing-prompt').classList.remove('hidden');
+        } else {
+          // Generate AI prompt
+          const formData = new FormData();
+          formData.append('prompt', `Generate a creative writing prompt for a ${genre} story. Make it specific and inspiring.`);
+          formData.append('system_prompt', 'You are a creative writing coach. Generate inspiring, specific writing prompts that spark imagination.');
+          
+          const response = await fetch('/llm', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            document.getElementById('writing-prompt').textContent = data.response;
+            document.getElementById('writing-prompt').classList.remove('hidden');
+          }
+        }
+        
+        showToast('💡 Writing prompt generated!', 'success');
+      } catch (error) {
+        showToast('❌ Failed to generate prompt', 'error');
+      }
+    }
+
+    async function resetSystem() {
+      try {
+        showToast('🔄 Resetting all systems...', 'info');
+        const response = await fetch('/reset_system', { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+          showToast('✅ ' + (data.message || 'System reset successfully!'), 'success');
+        } else {
+          showToast('❌ Reset failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Reset failed: ' + error.message, 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      const msg = document.getElementById('toast-msg');
+      
+      const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+      
+      icon.textContent = icons[type] || icons.info;
+      msg.textContent = message;
+      
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+  </script>
+</body>
+</html> 

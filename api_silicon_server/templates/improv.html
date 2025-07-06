@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎭 Improv Games - AI Silicon Server</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            retro: {
+              bg: '#1F1D36',
+              surface: '#3F3351',
+              neon: '#E94560',
+              chrome: '#03C988',
+              shadow: '#0F3460',
+              purple: '#864879',
+              accent: '#7209B7'
+            }
+          },
+          fontFamily: {
+            retro: ['"Press Start 2P"', 'monospace'],
+            mono: ['"Fira Code"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    .text-glow { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+    .border-glow { border-color: theme('colors.retro.neon'); box-shadow: 0 0 5px theme('colors.retro.neon'), inset 0 0 5px rgba(233, 69, 96, 0.1); }
+    .bg-surface { background: linear-gradient(135deg, theme('colors.retro.surface'), theme('colors.retro.shadow')); }
+    .retro-button { background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent')); transition: all 0.3s ease; }
+    .retro-button:hover { transform: translateY(-2px); box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4); }
+    .scan-line { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, theme('colors.retro.chrome'), transparent); animation: scan-line 3s linear infinite; pointer-events: none; }
+    @keyframes scan-line { 0% { top: '0%' } 100% { top: '100%' } }
+    .game-card { transition: all 0.3s ease; transform-style: preserve-3d; }
+    .game-card:hover { transform: rotateY(5deg) rotateX(5deg); }
+    .typing-effect { border-right: 2px solid theme('colors.retro.chrome'); animation: typing-cursor 1s infinite; }
+    @keyframes typing-cursor { 0%, 50% { border-color: transparent; } 51%, 100% { border-color: theme('colors.retro.chrome'); } }
+  </style>
+</head>
+<body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
+  
+  <div class="scan-line"></div>
+
+  <!-- Navigation -->
+  <div class="fixed top-0 left-0 p-4 z-50">
+    <button onclick="toggleMenu()" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm">☰ MENU</button>
+    <div id="menu" class="hidden bg-surface border border-retro-neon rounded-lg mt-2 w-64 p-4">
+      <ul class="space-y-3 text-sm">
+        <li><a href="/" class="flex items-center hover:text-retro-neon transition-colors">🗨️ Chat Interface</a></li>
+        <li><a href="/voice" class="flex items-center hover:text-retro-neon transition-colors">🎙️ Voice Center</a></li>
+        <li><a href="/improv" class="flex items-center text-retro-neon">🎭 Improv Games</a></li>
+        <li><a href="/narrative" class="flex items-center hover:text-retro-neon transition-colors">📘 Emergent Narrative</a></li>
+        <li class="border-t border-retro-shadow pt-2">
+          <button onclick="resetSystem()" class="flex items-center text-retro-neon hover:text-white transition-colors">🔄 Reset All Systems</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="pt-20 px-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2">🎭 IMPROV GAMES</h1>
+      <p class="text-retro-chrome text-sm">Interactive AI Gaming & Creative Collaboration</p>
+    </div>
+
+    <!-- Game Selection Grid -->
+    <div id="game-selection" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      
+      <!-- Story Builder Game -->
+      <div class="game-card bg-surface border border-glow rounded-lg p-6 cursor-pointer" onclick="startGame('story-builder')">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-2">📚</div>
+          <h3 class="font-retro text-sm text-retro-neon text-glow">STORY BUILDER</h3>
+        </div>
+        <p class="text-xs text-retro-chrome mb-4">Collaborate with AI to build an epic story, one sentence at a time. Watch as your narrative evolves in unexpected directions!</p>
+        <div class="text-xs text-retro-chrome opacity-70">
+          <div>Players: You + AI</div>
+          <div>Duration: 10-30 min</div>
+          <div>Difficulty: ⭐⭐</div>
+        </div>
+      </div>
+
+      <!-- Character Creation -->
+      <div class="game-card bg-surface border border-glow rounded-lg p-6 cursor-pointer" onclick="startGame('character-creation')">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-2">🎪</div>
+          <h3 class="font-retro text-sm text-retro-neon text-glow">CHARACTER CREATION</h3>
+        </div>
+        <p class="text-xs text-retro-chrome mb-4">Design unique characters together. AI suggests traits, you add personality. Perfect for worldbuilding!</p>
+        <div class="text-xs text-retro-chrome opacity-70">
+          <div>Players: You + AI</div>
+          <div>Duration: 5-15 min</div>
+          <div>Difficulty: ⭐</div>
+        </div>
+      </div>
+
+      <!-- Riddle Challenge -->
+      <div class="game-card bg-surface border border-glow rounded-lg p-6 cursor-pointer" onclick="startGame('riddle-challenge')">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-2">🧩</div>
+          <h3 class="font-retro text-sm text-retro-neon text-glow">RIDDLE CHALLENGE</h3>
+        </div>
+        <p class="text-xs text-retro-chrome mb-4">Take turns creating and solving riddles. Test your wit against the AI's creative puzzles!</p>
+        <div class="text-xs text-retro-chrome opacity-70">
+          <div>Players: You vs AI</div>
+          <div>Duration: 15-45 min</div>
+          <div>Difficulty: ⭐⭐⭐</div>
+        </div>
+      </div>
+
+      <!-- Word Association -->
+      <div class="game-card bg-surface border border-glow rounded-lg p-6 cursor-pointer" onclick="startGame('word-association')">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-2">🔗</div>
+          <h3 class="font-retro text-sm text-retro-neon text-glow">WORD ASSOCIATION</h3>
+        </div>
+        <p class="text-xs text-retro-chrome mb-4">Quick-fire word association game. Keep the chain going and see where your minds connect!</p>
+        <div class="text-xs text-retro-chrome opacity-70">
+          <div>Players: You + AI</div>
+          <div>Duration: 5-10 min</div>
+          <div>Difficulty: ⭐</div>
+        </div>
+      </div>
+
+      <!-- Code Poetry -->
+      <div class="game-card bg-surface border border-glow rounded-lg p-6 cursor-pointer" onclick="startGame('code-poetry')">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-2">💻</div>
+          <h3 class="font-retro text-sm text-retro-neon text-glow">CODE POETRY</h3>
+        </div>
+        <p class="text-xs text-retro-chrome mb-4">Write poetic code that's both functional and beautiful. Merge programming with creative expression!</p>
+        <div class="text-xs text-retro-chrome opacity-70">
+          <div>Players: You + AI</div>
+          <div>Duration: 10-20 min</div>
+          <div>Difficulty: ⭐⭐⭐</div>
+        </div>
+      </div>
+
+      <!-- Mystery Solver -->
+      <div class="game-card bg-surface border border-glow rounded-lg p-6 cursor-pointer" onclick="startGame('mystery-solver')">
+        <div class="text-center mb-4">
+          <div class="text-4xl mb-2">🔍</div>
+          <h3 class="font-retro text-sm text-retro-neon text-glow">MYSTERY SOLVER</h3>
+        </div>
+        <p class="text-xs text-retro-chrome mb-4">Solve AI-generated mysteries by asking yes/no questions. Uncover the truth step by step!</p>
+        <div class="text-xs text-retro-chrome opacity-70">
+          <div>Players: You vs AI</div>
+          <div>Duration: 15-30 min</div>
+          <div>Difficulty: ⭐⭐⭐⭐</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Game Area -->
+    <div id="game-area" class="hidden">
+      
+      <!-- Game Header -->
+      <div class="bg-surface border border-glow rounded-lg p-4 mb-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 id="game-title" class="font-retro text-lg text-retro-neon text-glow">GAME ACTIVE</h2>
+            <p id="game-description" class="text-xs text-retro-chrome">Game in progress...</p>
+          </div>
+          <div class="text-right">
+            <div class="text-xs text-retro-chrome">Score: <span id="game-score">0</span></div>
+            <div class="text-xs text-retro-chrome">Round: <span id="game-round">1</span></div>
+            <button onclick="endGame()" class="text-xs bg-retro-neon text-retro-bg px-3 py-1 rounded mt-2">🏁 End Game</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Game Interaction -->
+        <div class="lg:col-span-2">
+          <div class="bg-surface border border-glow rounded-lg p-6">
+            
+            <!-- Game Output -->
+            <div id="game-output" class="bg-retro-shadow rounded-lg p-4 mb-4 h-64 overflow-y-auto">
+              <div class="text-retro-chrome text-sm opacity-70 text-center">
+                <div class="inline-flex items-center">
+                  <div class="w-1 h-1 bg-retro-chrome rounded-full animate-pulse mr-1"></div>
+                  Game initialized. Ready to play!
+                </div>
+              </div>
+            </div>
+
+            <!-- Game Input -->
+            <form id="game-input-form" class="space-y-3">
+              <div class="flex space-x-2">
+                <input 
+                  type="text" 
+                  id="game-input" 
+                  placeholder="Enter your move..." 
+                  class="flex-1 bg-retro-shadow border border-retro-purple text-retro-chrome p-3 rounded focus:border-retro-neon focus:outline-none"
+                  required
+                >
+                <button 
+                  type="submit" 
+                  class="retro-button text-retro-bg px-6 py-3 rounded font-retro text-sm"
+                >
+                  PLAY
+                </button>
+              </div>
+              
+              <!-- Quick Actions for specific games -->
+              <div id="quick-actions" class="flex flex-wrap gap-2">
+                <!-- Will be populated based on active game -->
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Game Info & Stats -->
+        <div class="lg:col-span-1 space-y-4">
+          
+          <!-- Game Rules -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">📋 RULES</h3>
+            <div id="game-rules" class="text-xs text-retro-chrome space-y-2">
+              <!-- Game-specific rules will be loaded here -->
+            </div>
+          </div>
+
+          <!-- Game Progress -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">📊 PROGRESS</h3>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Moves Made:</span>
+                <span id="moves-count" class="text-retro-chrome">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">AI Responses:</span>
+                <span id="ai-responses" class="text-retro-chrome">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-retro-chrome">Time Played:</span>
+                <span id="time-played" class="text-retro-chrome">00:00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Game History -->
+          <div class="bg-surface border border-glow rounded-lg p-4">
+            <h3 class="font-retro text-xs text-retro-neon mb-3 text-glow">🏆 GAME HISTORY</h3>
+            <div id="game-history" class="space-y-2 text-xs text-retro-chrome">
+              <div class="opacity-70">No games played yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast notification -->
+  <div id="toast" class="fixed bottom-5 right-5 retro-button text-retro-bg p-4 rounded-lg hidden max-w-sm z-50">
+    <div class="flex items-center">
+      <span id="toast-icon" class="mr-2">ℹ️</span>
+      <span id="toast-msg">Message</span>
+    </div>
+  </div>
+
+  <script>
+    let currentGame = null;
+    let gameStartTime = null;
+    let gameTimer = null;
+    let gameStats = {
+      moves: 0,
+      aiResponses: 0,
+      score: 0,
+      round: 1
+    };
+
+    const gameDefinitions = {
+      'story-builder': {
+        title: 'STORY BUILDER',
+        description: 'Collaborative storytelling - you and AI build a story together',
+        rules: [
+          'Take turns adding one sentence to the story',
+          'Build on what came before',
+          'Be creative and unexpected',
+          'Story ends after 10 rounds or when you choose'
+        ],
+        systemPrompt: 'You are participating in a collaborative storytelling game. Add one creative sentence that continues the story in an interesting direction. Keep it engaging and family-friendly.',
+        quickActions: ['Continue story', 'Add plot twist', 'Introduce character', 'End chapter']
+      },
+      'character-creation': {
+        title: 'CHARACTER CREATION',
+        description: 'Design unique characters collaboratively',
+        rules: [
+          'Start with a basic character concept',
+          'Add traits, backstory, and personality',
+          'AI suggests additions and refinements',
+          'Create a complete character profile'
+        ],
+        systemPrompt: 'You are helping create a fictional character. Suggest interesting traits, backstory elements, or personality details that would make this character more compelling and three-dimensional.',
+        quickActions: ['Add trait', 'Suggest backstory', 'Define motivation', 'Add quirk']
+      },
+      'riddle-challenge': {
+        title: 'RIDDLE CHALLENGE',
+        description: 'Create and solve riddles in turn-based competition',
+        rules: [
+          'Take turns creating riddles',
+          'Try to solve the other\'s riddles',
+          'Get points for solving and stumping',
+          'First to 5 points wins'
+        ],
+        systemPrompt: 'You are playing a riddle game. When creating riddles, make them clever but fair. When solving, think step by step. Keep riddles appropriate and fun.',
+        quickActions: ['Create riddle', 'Solve riddle', 'Give hint', 'Pass turn']
+      },
+      'word-association': {
+        title: 'WORD ASSOCIATION',
+        description: 'Rapid-fire word connections',
+        rules: [
+          'Say a word related to the previous word',
+          'Keep the chain going as long as possible',
+          'No repeating words',
+          'Aim for creative connections'
+        ],
+        systemPrompt: 'You are playing word association. Respond with a single word that relates to the previous word. Be creative with your associations but keep them logical.',
+        quickActions: ['Random word', 'Theme: Nature', 'Theme: Tech', 'Theme: Space']
+      },
+      'code-poetry': {
+        title: 'CODE POETRY',
+        description: 'Write poetic code that functions and inspires',
+        rules: [
+          'Write code that has poetic meaning',
+          'Code should be syntactically correct',
+          'Aim for beauty and function',
+          'Take turns improving each other\'s code'
+        ],
+        systemPrompt: 'You are writing code poetry - code that is both functional and beautiful. Create or improve code snippets that have poetic meaning while being syntactically correct.',
+        quickActions: ['Python poem', 'JavaScript haiku', 'HTML art', 'CSS story']
+      },
+      'mystery-solver': {
+        title: 'MYSTERY SOLVER',
+        description: 'Solve AI-generated mysteries with yes/no questions',
+        rules: [
+          'AI creates a mystery scenario',
+          'Ask only yes/no questions',
+          'Try to solve with minimal questions',
+          'Points based on efficiency'
+        ],
+        systemPrompt: 'You have created a mystery scenario. Answer only yes or no to questions. If the human solves the mystery correctly, congratulate them. Create engaging but solvable mysteries.',
+        quickActions: ['Ask about person', 'Ask about place', 'Ask about method', 'Make accusation']
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadGameHistory();
+    });
+
+    function toggleMenu() {
+      document.getElementById('menu').classList.toggle('hidden');
+    }
+
+    function startGame(gameType) {
+      currentGame = gameType;
+      gameStartTime = Date.now();
+      gameStats = { moves: 0, aiResponses: 0, score: 0, round: 1 };
+
+      const game = gameDefinitions[gameType];
+      
+      // Hide game selection, show game area
+      document.getElementById('game-selection').classList.add('hidden');
+      document.getElementById('game-area').classList.remove('hidden');
+      
+      // Set up game UI
+      document.getElementById('game-title').textContent = game.title;
+      document.getElementById('game-description').textContent = game.description;
+      
+      // Load rules
+      const rulesDiv = document.getElementById('game-rules');
+      rulesDiv.innerHTML = game.rules.map(rule => `<div>• ${rule}</div>`).join('');
+      
+      // Set up quick actions
+      const quickActionsDiv = document.getElementById('quick-actions');
+      quickActionsDiv.innerHTML = game.quickActions.map(action => 
+        `<button type="button" onclick="insertQuickAction('${action}')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">${action}</button>`
+      ).join('');
+      
+      // Set up game form
+      document.getElementById('game-input-form').addEventListener('submit', handleGameInput);
+      
+      // Start timer
+      startGameTimer();
+      
+      // Add initial game message
+      addGameMessage(`🎮 ${game.title} started! ${game.description}`, 'system');
+      
+      // Initial AI response for some games
+      if (gameType === 'mystery-solver') {
+        generateAIMove('Create an interesting mystery scenario for me to solve. End with "Ask me yes/no questions to solve this mystery!"');
+      } else if (gameType === 'story-builder') {
+        generateAIMove('Start a creative story with an intriguing opening sentence.');
+      }
+      
+      showToast(`🎮 ${game.title} started!`, 'success');
+    }
+
+    function endGame() {
+      if (!currentGame) return;
+      
+      // Stop timer
+      clearInterval(gameTimer);
+      
+      // Calculate final stats
+      const gameTime = Math.floor((Date.now() - gameStartTime) / 1000);
+      const finalStats = {
+        game: currentGame,
+        moves: gameStats.moves,
+        aiResponses: gameStats.aiResponses,
+        score: gameStats.score,
+        duration: gameTime,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Save to history
+      saveGameToHistory(finalStats);
+      
+      // Show game selection
+      document.getElementById('game-area').classList.add('hidden');
+      document.getElementById('game-selection').classList.remove('hidden');
+      
+      // Clear game state
+      currentGame = null;
+      document.getElementById('game-output').innerHTML = '';
+      
+      showToast('🏁 Game ended! Thanks for playing!', 'info');
+    }
+
+    async function handleGameInput(e) {
+      e.preventDefault();
+      const input = document.getElementById('game-input').value.trim();
+      if (!input) return;
+      
+      // Add user move
+      addGameMessage(input, 'user');
+      document.getElementById('game-input').value = '';
+      
+      // Update stats
+      gameStats.moves++;
+      updateGameStats();
+      
+      // Generate AI response
+      await generateAIMove(input);
+    }
+
+    async function generateAIMove(userInput) {
+      try {
+        const game = gameDefinitions[currentGame];
+        const formData = new FormData();
+        
+        formData.append('prompt', userInput);
+        formData.append('system_prompt', game.systemPrompt);
+        formData.append('temperature', '0.8'); // Higher creativity for games
+        
+        const response = await fetch('/llm', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          addGameMessage(data.response, 'ai');
+          
+          gameStats.aiResponses++;
+          gameStats.score += 10; // Points for each exchange
+          updateGameStats();
+        } else {
+          addGameMessage('AI is thinking... try again!', 'error');
+        }
+      } catch (error) {
+        addGameMessage('Connection error - please try again', 'error');
+      }
+    }
+
+    function addGameMessage(message, type) {
+      const gameOutput = document.getElementById('game-output');
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `mb-3 flex ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+      
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-md px-4 py-2 rounded-lg text-sm ${
+        type === 'user' ? 'bg-retro-neon text-retro-bg' : 
+        type === 'ai' ? 'bg-retro-chrome text-retro-bg' :
+        type === 'system' ? 'bg-retro-purple text-retro-bg' :
+        'bg-red-500 text-white'
+      }`;
+      
+      const prefix = type === 'user' ? '👤 You: ' : type === 'ai' ? '🧠 AI: ' : type === 'system' ? '🎮 Game: ' : '⚠️ ';
+      bubble.innerHTML = `<div class="font-bold text-xs mb-1">${prefix}</div><div>${message}</div>`;
+      
+      messageDiv.appendChild(bubble);
+      gameOutput.appendChild(messageDiv);
+      gameOutput.scrollTop = gameOutput.scrollHeight;
+    }
+
+    function insertQuickAction(action) {
+      document.getElementById('game-input').value = action;
+      document.getElementById('game-input').focus();
+    }
+
+    function updateGameStats() {
+      document.getElementById('game-score').textContent = gameStats.score;
+      document.getElementById('game-round').textContent = gameStats.round;
+      document.getElementById('moves-count').textContent = gameStats.moves;
+      document.getElementById('ai-responses').textContent = gameStats.aiResponses;
+    }
+
+    function startGameTimer() {
+      gameTimer = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        document.getElementById('time-played').textContent = 
+          `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }, 1000);
+    }
+
+    function saveGameToHistory(gameData) {
+      let history = JSON.parse(localStorage.getItem('improv-games-history') || '[]');
+      history.unshift(gameData);
+      history = history.slice(0, 10); // Keep only last 10 games
+      localStorage.setItem('improv-games-history', JSON.stringify(history));
+      loadGameHistory();
+    }
+
+    function loadGameHistory() {
+      const history = JSON.parse(localStorage.getItem('improv-games-history') || '[]');
+      const historyDiv = document.getElementById('game-history');
+      
+      if (history.length === 0) {
+        historyDiv.innerHTML = '<div class="opacity-70">No games played yet</div>';
+        return;
+      }
+      
+      historyDiv.innerHTML = history.map(game => `
+        <div class="bg-retro-shadow rounded p-2">
+          <div class="font-bold">${gameDefinitions[game.game]?.title || game.game}</div>
+          <div class="opacity-70">Score: ${game.score} | ${Math.floor(game.duration / 60)}:${(game.duration % 60).toString().padStart(2, '0')}</div>
+        </div>
+      `).join('');
+    }
+
+    async function resetSystem() {
+      try {
+        showToast('🔄 Resetting all systems...', 'info');
+        const response = await fetch('/reset_system', { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+          showToast('✅ ' + (data.message || 'System reset successfully!'), 'success');
+          if (currentGame) endGame();
+        } else {
+          showToast('❌ Reset failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Reset failed: ' + error.message, 'error');
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      const msg = document.getElementById('toast-msg');
+      
+      const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+      
+      icon.textContent = icons[type] || icons.info;
+      msg.textContent = message;
+      
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+  </script>
+</body>
+</html> 
