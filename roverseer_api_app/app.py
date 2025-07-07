@@ -19,6 +19,10 @@ from routes.audio_routes import router as audio_router
 from routes.audiocraft_routes import router as audiocraft_router
 from routes.emergent_narrative_routes import router as emergent_narrative_router
 
+# Import AI service discovery
+from helpers.ai_service_discovery import start_ai_service_discovery
+from helpers.silicon_gateway import get_silicon_gateway
+
 # Create minimal routers for other routes to maintain compatibility
 from fastapi import APIRouter
 voice_training_router = APIRouter() 
@@ -71,6 +75,38 @@ async def initialize_application():
     except Exception as e:
         print(f"⚠️  Configuration initialization failed: {e}")
         print("⚠️  Continuing with defaults...")
+    
+    try:
+        # Initialize AI Service Discovery EARLY - before personalities
+        print("🔍 Starting AI Service Discovery...")
+        start_ai_service_discovery()
+        
+        # Give discovery system a moment to find local services
+        await asyncio.sleep(3)
+        
+        # Get discovery status
+        gateway = get_silicon_gateway()
+        status = gateway.get_service_status()
+        
+        healthy_nodes = status.get("healthy_nodes", 0)
+        
+        if healthy_nodes > 0:
+            print(f"✅ AI Service Discovery initialized - found {healthy_nodes} satellite nodes")
+            
+            # List discovered services
+            for service_type in ["tts", "stt", "llm", "audiocraft"]:
+                service_nodes = status.get("services", {}).get(service_type, [])
+                if service_nodes:
+                    best_service = status.get("best_services", {}).get(service_type, {})
+                    source = best_service.get("source", "unknown")
+                    acceleration = best_service.get("acceleration", "unknown")
+                    print(f"   🔥 {service_type.upper()}: {len(service_nodes)} nodes available, best: {source} ({acceleration})")
+        else:
+            print("⚠️  No satellite nodes discovered - using local fallback services")
+            
+    except Exception as e:
+        print(f"⚠️  AI Service Discovery initialization failed: {e}")
+        print("⚠️  Continuing with local services only...")
     
     try:
         # Initialize personality system FIRST (before model list)
@@ -153,11 +189,49 @@ async def initialize_application():
         print("⚠️  Continuing with default device settings...")
     
     print("🎯 RoverSeer FastAPI is ready!")
+    
+    # Print satellite network status summary
+    try:
+        gateway = get_silicon_gateway()
+        status = gateway.get_service_status()
+        local_domain = status.get("local_domain", "localhost")
+        healthy_nodes = status.get("healthy_nodes", 0)
+        
+        print("\n" + "="*60)
+        print("🌐 SATELLITE NETWORK STATUS")
+        print("="*60)
+        print(f"Local Domain: {local_domain}")
+        print(f"Healthy Satellite Nodes: {healthy_nodes}")
+        
+        if healthy_nodes > 0:
+            for service_type in ["tts", "stt", "llm", "audiocraft"]:
+                best_service = status.get("best_services", {}).get(service_type, {})
+                if best_service.get("available", False):
+                    source = best_service.get("source", "unknown")
+                    acceleration = best_service.get("acceleration", "unknown")
+                    print(f"  {service_type.upper()}: {source} ({acceleration})")
+                else:
+                    print(f"  {service_type.upper()}: local fallback")
+        else:
+            print("  All services: local fallback mode")
+        print("="*60)
+        
+    except Exception as e:
+        print(f"⚠️  Status summary failed: {e}")
 
 
 def cleanup_application():
     """Cleanup function called on application shutdown"""
     print("🧹 Cleaning up RoverSeer API...")
+    
+    try:
+        # Stop AI service discovery
+        from helpers.ai_service_discovery import get_service_discovery
+        discovery = get_service_discovery()
+        discovery.stop_discovery()
+        print("✅ AI Service Discovery stopped")
+    except Exception as e:
+        print(f"⚠️  Discovery cleanup error: {e}")
     
     try:
         # Turn off all LEDs and clear display
@@ -201,9 +275,10 @@ atexit.register(cleanup_application)
 
 if __name__ == '__main__':
     try:
-        print("🌐 Starting FastAPI server on http://0.0.0.0:5000")
+        print("🌐 Starting RoverSeer API on http://0.0.0.0:5000")
         print("🚀 Performance upgrade: Now using FastAPI instead of Flask!")
         print("📊 API documentation available at: http://0.0.0.0:5000/api/docs")
+        print("🛰️  Will scan for satellite AI nodes and route intelligently")
         
         uvicorn.run(
             app,

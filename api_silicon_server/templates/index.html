@@ -22,7 +22,8 @@
           },
           fontFamily: {
             retro: ['"Press Start 2P"', 'monospace'],
-            mono: ['"Fira Code"', 'monospace']
+            mono: ['"Fira Code"', 'monospace'],
+            emoji: ['Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'system-ui', 'sans-serif']
           },
           animation: {
             'glow-pulse': 'glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -64,14 +65,47 @@
     
     .readable-text-chrome {
       color: #03C988 !important;
-      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
-      font-weight: 500;
+      text-shadow: 2px 2px 6px #000000, 0 0 15px #000000, 1px 1px 3px rgba(0,0,0,0.9);
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(3, 201, 136, 0.3);
     }
     
     .readable-text-neon {
       color: #E94560 !important;
-      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+      text-shadow: 2px 2px 6px #000000, 0 0 15px #000000, 1px 1px 3px rgba(0,0,0,0.9);
       font-weight: 600;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(233, 69, 96, 0.3);
+    }
+    
+    /* Emoji support for navigation and interface */
+    .emoji-text {
+      font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', system-ui, sans-serif !important;
+      font-style: normal !important;
+      font-variant: normal !important;
+      text-rendering: auto !important;
+      -webkit-font-smoothing: auto !important;
+    }
+    
+    /* Navigation menu emoji fix */
+    .menu-item {
+      font-family: 'Fira Code', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', monospace !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+    
+    .menu-emoji {
+      font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', system-ui !important;
+      font-size: 1rem !important;
+      line-height: 1 !important;
+      display: inline-block !important;
+      min-width: 1.2em !important;
     }
     .border-glow {
       border-color: theme('colors.retro.neon');
@@ -90,9 +124,87 @@
     }
     .chat-bubble-user {
       background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.purple'));
+      max-width: 70%;
+      margin-left: auto;
+      margin-right: 0;
+      border-radius: 18px 18px 4px 18px;
+      padding: 12px 16px;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      position: relative;
+      word-wrap: break-word;
     }
     .chat-bubble-ai {
       background: linear-gradient(45deg, theme('colors.retro.chrome'), theme('colors.retro.accent'));
+      max-width: 70%;
+      margin-left: 0;
+      margin-right: auto;
+      border-radius: 18px 18px 18px 4px;
+      padding: 12px 16px;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      position: relative;
+      word-wrap: break-word;
+    }
+    .chat-bubble-system {
+      background: linear-gradient(45deg, theme('colors.retro.shadow'), theme('colors.retro.purple'));
+      max-width: 90%;
+      margin: 0 auto;
+      border-radius: 12px;
+      padding: 8px 12px;
+      color: theme('colors.retro.chrome');
+      text-align: center;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+    .chat-message {
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-message.user {
+      align-items: flex-end;
+    }
+    .chat-message.ai {
+      align-items: flex-start;
+    }
+    .chat-message.system {
+      align-items: center;
+    }
+    .chat-timestamp {
+      font-size: 0.65rem;
+      color: theme('colors.retro.chrome');
+      opacity: 0.6;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      max-width: 70%;
+      margin-left: 0;
+      margin-right: auto;
+      background: linear-gradient(45deg, theme('colors.retro.chrome'), theme('colors.retro.accent'));
+      border-radius: 18px 18px 18px 4px;
+      padding: 12px 16px;
+      color: white;
+    }
+    .typing-dots {
+      display: flex;
+      gap: 3px;
+    }
+    .typing-dots div {
+      width: 6px;
+      height: 6px;
+      background: white;
+      border-radius: 50%;
+      animation: typing-bounce 1.4s infinite ease-in-out;
+    }
+    .typing-dots div:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dots div:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing-bounce {
+      0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+      40% { transform: scale(1.2); opacity: 1; }
     }
     .loading-dots::after {
       content: '';
@@ -111,9 +223,76 @@
       animation: scan-line 3s linear infinite;
       pointer-events: none;
     }
+    
+    /* Thinking tags styling */
+    .thinking-section {
+      background: linear-gradient(135deg, theme('colors.retro.shadow'), rgba(63, 51, 81, 0.3));
+      border: 1px solid theme('colors.retro.purple');
+      border-radius: 8px;
+      margin: 8px 0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .thinking-header {
+      background: linear-gradient(45deg, theme('colors.retro.purple'), theme('colors.retro.shadow'));
+      color: theme('colors.retro.chrome');
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      border-bottom: 1px solid theme('colors.retro.purple');
+    }
+    
+    .thinking-header:hover {
+      background: linear-gradient(45deg, theme('colors.retro.accent'), theme('colors.retro.purple'));
+      color: white;
+    }
+    
+    .thinking-toggle {
+      transition: transform 0.3s ease;
+      font-size: 0.8rem;
+    }
+    
+    .thinking-toggle.expanded {
+      transform: rotate(90deg);
+    }
+    
+    .thinking-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+      background: rgba(31, 29, 54, 0.4);
+      color: theme('colors.retro.chrome');
+      font-size: 0.8rem;
+      line-height: 1.4;
+      font-style: italic;
+      opacity: 0.9;
+    }
+    
+    .thinking-content.expanded {
+      max-height: 500px;
+      padding: 12px;
+      border-top: 1px solid rgba(63, 51, 81, 0.5);
+    }
+    
+    .thinking-content pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+    }
   </style>
 </head>
 <body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
+  
+  <!-- Include Download Notifications -->
+  {% include 'download_notifications.html' %}
   
   <!-- Animated scan line effect -->
   <div class="scan-line"></div>
@@ -125,13 +304,13 @@
     </button>
     <div id="menu" class="hidden bg-surface border border-retro-neon rounded-lg mt-2 w-64 p-4 animate-glow-pulse">
       <ul class="space-y-3 text-sm">
-        <li><a href="/" class="flex items-center hover:text-retro-neon transition-colors">🗨️ Chat Interface</a></li>
-        <li><a href="/models" class="flex items-center hover:text-retro-neon transition-colors">🔥 MLX Model Manager</a></li>
-        <li><a href="/voice" class="flex items-center hover:text-retro-neon transition-colors">🎙️ Voice Center</a></li>
-        <li><a href="/improv" class="flex items-center hover:text-retro-neon transition-colors">🎭 Improv Games</a></li>
-        <li><a href="/narrative" class="flex items-center hover:text-retro-neon transition-colors">📘 Emergent Narrative</a></li>
+        <li><a href="/" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🗨️</span> Chat Interface</a></li>
+        <li><a href="/models" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🔥</span> MLX Model Manager</a></li>
+        <li><a href="/voice" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🎙️</span> Voice Center</a></li>
+        <li><a href="/improv" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🎭</span> Improv Games</a></li>
+        <li><a href="/narrative" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">📘</span> Emergent Narrative</a></li>
         <li class="border-t border-retro-shadow pt-2">
-          <button onclick="resetSystem()" class="flex items-center text-retro-neon hover:text-white transition-colors">🔄 Reset All Systems</button>
+          <button onclick="resetSystem()" class="menu-item text-retro-neon hover:text-white transition-colors"><span class="menu-emoji">🔄</span> Reset All Systems</button>
         </li>
       </ul>
     </div>
@@ -141,7 +320,7 @@
   <main class="pt-20 px-6 max-w-6xl mx-auto">
     <!-- Header -->
     <div class="text-center mb-8">
-      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2">🧠 AI SILICON SERVER</h1>
+      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2"><span class="menu-emoji text-4xl">🧠</span> AI SILICON SERVER</h1>
       <p class="text-retro-chrome text-sm">MLX-Accelerated Cognitive Services Gateway</p>
       <div id="status-indicator" class="inline-flex items-center mt-2 text-xs">
         <div class="w-2 h-2 bg-retro-chrome rounded-full animate-pulse mr-2"></div>
@@ -170,7 +349,7 @@
           <form id="chat-form" class="space-y-3">
             <!-- System Message Input -->
             <div>
-              <label class="block text-xs text-retro-chrome mb-1">🧠 System Message (AI Personality & Instructions)</label>
+              <label class="block text-xs text-retro-chrome mb-1"><span class="menu-emoji">🧠</span> System Message (AI Personality & Instructions)</label>
               <textarea 
                 id="system-message-input" 
                 placeholder="You are a helpful AI assistant. Define the AI's personality, role, and behavior here..."
@@ -199,10 +378,10 @@
             
             <!-- Quick Actions -->
             <div class="flex flex-wrap gap-2">
-              <button type="button" onclick="insertQuickMessage('Hello, how are you?')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">👋 Greeting</button>
-              <button type="button" onclick="insertQuickMessage('What are your capabilities?')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">❓ Capabilities</button>
-              <button type="button" onclick="insertQuickMessage('Tell me a story')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">📚 Story</button>
-              <button type="button" onclick="insertQuickMessage('Generate some code')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">💻 Code</button>
+              <button type="button" onclick="insertQuickMessage('Hello, how are you?')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">👋</span> Greeting</button>
+              <button type="button" onclick="insertQuickMessage('What are your capabilities?')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">❓</span> Capabilities</button>
+              <button type="button" onclick="insertQuickMessage('Tell me a story')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">📚</span> Story</button>
+              <button type="button" onclick="insertQuickMessage('Generate some code')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">💻</span> Code</button>
             </div>
           </form>
         </div>
@@ -213,48 +392,48 @@
         
         <!-- Advanced Settings Panel -->
         <div class="bg-surface border border-glow rounded-lg p-4">
-          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">⚙️ NEURAL CONFIG</h3>
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow"><span class="menu-emoji">⚙️</span> NEURAL CONFIG</h3>
           
           <!-- Speak Response Toggle -->
           <div class="mb-4">
             <label class="flex items-center space-x-2 cursor-pointer">
               <input type="checkbox" id="speak-response" class="w-4 h-4 text-retro-neon bg-retro-shadow border-retro-purple rounded focus:ring-retro-neon">
-              <span class="text-xs text-retro-chrome">🗣️ Voice Output</span>
+              <span class="text-xs text-retro-chrome"><span class="menu-emoji">🗣️</span> Voice Output</span>
             </label>
           </div>
 
           <!-- Model Selection -->
           <div class="mb-4">
-            <label class="block text-xs text-retro-chrome mb-1">🧠 LLM Model</label>
+            <label class="block text-xs text-retro-chrome mb-1"><span class="menu-emoji">🧠</span> LLM Model</label>
             <select id="model-select" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome text-xs p-2 rounded focus:border-retro-neon focus:outline-none">
               <option value="default">Loading models...</option>
             </select>
             <div class="flex mt-1">
-              <a href="/models" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">🔥 Manage MLX Models</a>
+              <a href="/models" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">🔥</span> Manage MLX Models</a>
             </div>
           </div>
 
           <!-- Voice Selection -->
           <div class="mb-4">
-            <label class="block text-xs text-retro-chrome mb-1">🎙️ Voice Model</label>
+            <label class="block text-xs text-retro-chrome mb-1"><span class="menu-emoji">🎙️</span> Voice Model</label>
             <select id="voice-select" class="w-full bg-retro-shadow border border-retro-purple text-retro-chrome text-xs p-2 rounded focus:border-retro-neon focus:outline-none">
               <option value="default">Loading voices...</option>
             </select>
             <div class="flex mt-1">
-              <a href="/voice" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors">🎙️ Manage Voices</a>
+              <a href="/voice" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">🎙️</span> Manage Voices</a>
             </div>
           </div>
 
           <!-- Temperature Control -->
           <div class="mb-4">
-            <label class="block text-xs text-retro-chrome mb-1">🌡️ Creativity: <span id="temp-value">0.7</span></label>
+            <label class="block text-xs text-retro-chrome mb-1"><span class="menu-emoji">🌡️</span> Creativity: <span id="temp-value">0.7</span></label>
             <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7" class="w-full">
           </div>
         </div>
 
         <!-- System Metrics -->
         <div class="bg-surface border border-glow rounded-lg p-4">
-          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">📊 SYSTEM METRICS</h3>
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow"><span class="menu-emoji">📊</span> SYSTEM METRICS</h3>
           <div class="space-y-2 text-xs">
             <div class="flex justify-between">
               <span class="text-retro-chrome">MLX Status:</span>
@@ -275,13 +454,24 @@
           </div>
         </div>
         
+        <!-- Quick Access Games -->
+        <div class="bg-surface border border-glow rounded-lg p-4 mb-4">
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow"><span class="menu-emoji">🎮</span> QUICK ACCESS</h3>
+          <div class="space-y-2">
+            <a href="/improv" class="block w-full text-xs retro-button text-retro-bg px-3 py-2 rounded text-center hover:scale-105 transition-transform"><span class="menu-emoji">🎭</span> Improv Games</a>
+            <a href="/narrative" class="block w-full text-xs retro-button text-retro-bg px-3 py-2 rounded text-center hover:scale-105 transition-transform"><span class="menu-emoji">📘</span> Emergent Narrative</a>
+            <a href="/voice" class="block w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded text-center hover:bg-retro-purple transition-colors"><span class="menu-emoji">🎙️</span> Voice Center</a>
+            <a href="/models" class="block w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded text-center hover:bg-retro-purple transition-colors"><span class="menu-emoji">🔥</span> Model Manager</a>
+          </div>
+        </div>
+
         <!-- Quick Controls -->
         <div class="bg-surface border border-glow rounded-lg p-4">
-          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">🎮 QUICK CONTROLS</h3>
+          <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow"><span class="menu-emoji">🎮</span> QUICK CONTROLS</h3>
           <div class="space-y-2">
-            <button onclick="clearChat()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🗑️ Clear Chat</button>
-            <button onclick="exportChat()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">💾 Export Chat</button>
-            <button onclick="toggleTheme()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🎨 Toggle Theme</button>
+            <button onclick="clearChat()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">🗑️</span> Clear Chat</button>
+            <button onclick="exportChat()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">💾</span> Export Chat</button>
+            <button onclick="toggleTheme()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">🎨</span> Toggle Theme</button>
           </div>
         </div>
       </div>
@@ -301,7 +491,7 @@
   <!-- Loading overlay -->
   <div id="loading-overlay" class="fixed inset-0 bg-retro-bg bg-opacity-80 flex items-center justify-center hidden z-50">
     <div class="bg-surface border border-glow rounded-lg p-8 text-center">
-      <div class="text-retro-neon text-2xl mb-4">🧠</div>
+      <div class="text-retro-neon text-2xl mb-4"><span class="menu-emoji text-2xl">🧠</span></div>
       <div class="text-retro-chrome text-sm loading-dots">Processing neural pathways</div>
     </div>
   </div>
@@ -309,7 +499,7 @@
   <script>
     // Global state
     let messageCount = 0;
-    let chatHistory = [];
+    let chatHistoryArray = [];
     let sessionId = 'session_' + Date.now();
 
     // Initialize app
@@ -542,8 +732,8 @@
       addMessageToChat(message, 'user');
       messageInput.value = '';
       
-      // Show loading
-      showLoading(true);
+      // Show typing indicator
+      showTypingIndicator();
       
       try {
         const formData = new FormData();
@@ -568,6 +758,7 @@
         const processingTime = (Date.now() - startTime) / 1000;
         
         if (response.ok) {
+          hideTypingIndicator();
           addMessageToChat(data.text_response || 'No response generated', 'ai');
           document.getElementById('response-time').textContent = `${processingTime.toFixed(2)}s`;
           
@@ -580,39 +771,143 @@
             }
           }
         } else {
+          hideTypingIndicator();
           addMessageToChat(`Error: ${data.error || 'Unknown error occurred'}`, 'error');
           showToast('❌ Error: ' + (data.error || 'Unknown error'), 'error');
         }
       } catch (error) {
+        hideTypingIndicator();
         console.error('Chat error:', error);
         addMessageToChat(`Network error: ${error.message}`, 'error');
         showToast('❌ Network error: ' + error.message, 'error');
-      } finally {
-        showLoading(false);
+      }
+    }
+
+    function processThinkingTags(content) {
+      // Replace <think></think> tags with collapsible sections
+      const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+      let thinkingCounter = 0;
+      
+      return content.replace(thinkRegex, (match, thinkingContent) => {
+        thinkingCounter++;
+        const thinkingId = `thinking-${Date.now()}-${thinkingCounter}`;
+        
+        // Clean and format the thinking content
+        const cleanContent = thinkingContent.trim();
+        
+        return `
+          <div class="thinking-section">
+            <div class="thinking-header" onclick="toggleThinking('${thinkingId}')">
+              <span>🧠 AI Inner Thoughts</span>
+              <span class="thinking-toggle" id="toggle-${thinkingId}">▶</span>
+            </div>
+            <div class="thinking-content" id="${thinkingId}">
+              <pre>${cleanContent}</pre>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    function toggleThinking(thinkingId) {
+      const content = document.getElementById(thinkingId);
+      const toggle = document.getElementById(`toggle-${thinkingId}`);
+      
+      if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        toggle.classList.remove('expanded');
+        toggle.textContent = '▶';
+      } else {
+        content.classList.add('expanded');
+        toggle.classList.add('expanded');
+        toggle.textContent = '▼';
       }
     }
 
     function addMessageToChat(message, type) {
       const chatHistory = document.getElementById('chat-history');
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `mb-3 flex ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+      const messageContainer = document.createElement('div');
+      messageContainer.className = `chat-message ${type}`;
       
+      // Add timestamp
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timestampDiv = document.createElement('div');
+      timestampDiv.className = 'chat-timestamp';
+      timestampDiv.textContent = timestamp;
+      
+      // Create message bubble
       const bubble = document.createElement('div');
-      bubble.className = `max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-sm ${
-        type === 'user' ? 'chat-bubble-user ' : 
-        type === 'ai' ? 'chat-bubble-ai ' :
-        'bg-retro-neon '
-      }`;
       
-      const prefix = type === 'user' ? '👤 You: ' : type === 'ai' ? '🧠 AI: ' : '⚠️ ';
-      bubble.innerHTML = `<div class="font-bold text-xs mb-1">${prefix}</div><div>${message}</div>`;
+      // Process thinking tags for AI messages
+      let processedMessage = message;
+      if (type === 'ai') {
+        processedMessage = processThinkingTags(message);
+      }
       
-      messageDiv.appendChild(bubble);
-      chatHistory.appendChild(messageDiv);
+      if (type === 'user') {
+        bubble.className = 'chat-bubble-user';
+        bubble.innerHTML = processedMessage;
+      } else if (type === 'ai') {
+        bubble.className = 'chat-bubble-ai';
+        bubble.innerHTML = processedMessage;
+      } else if (type === 'system' || type === 'error') {
+        bubble.className = 'chat-bubble-system';
+        bubble.innerHTML = `${type === 'error' ? '⚠️ ' : 'ℹ️ '}${processedMessage}`;
+      }
+      
+      // Add elements to container
+      if (type === 'user') {
+        messageContainer.appendChild(timestampDiv);
+        messageContainer.appendChild(bubble);
+      } else {
+        messageContainer.appendChild(bubble);
+        messageContainer.appendChild(timestampDiv);
+      }
+      
+      chatHistory.appendChild(messageContainer);
       chatHistory.scrollTop = chatHistory.scrollHeight;
       
-      messageCount++;
-      document.getElementById('message-count').textContent = messageCount;
+      // Update message count
+      if (type === 'user' || type === 'ai') {
+        messageCount++;
+        document.getElementById('message-count').textContent = messageCount;
+      }
+      
+      // Store in history (store original message without processing)
+      chatHistoryArray.push({
+        message: message,
+        type: type,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    function showTypingIndicator() {
+      const chatHistory = document.getElementById('chat-history');
+      const typingContainer = document.createElement('div');
+      typingContainer.className = 'chat-message ai';
+      typingContainer.id = 'typing-indicator-message';
+      
+      const typingBubble = document.createElement('div');
+      typingBubble.className = 'typing-indicator';
+      typingBubble.innerHTML = `
+        <span style="margin-right: 8px;">🧠 AI is thinking</span>
+        <div class="typing-dots">
+          <div></div>
+          <div></div>
+          <div></div>
+        </div>
+      `;
+      
+      typingContainer.appendChild(typingBubble);
+      chatHistory.appendChild(typingContainer);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+    
+    function hideTypingIndicator() {
+      const typingIndicator = document.getElementById('typing-indicator-message');
+      if (typingIndicator) {
+        typingIndicator.remove();
+      }
     }
 
     function insertQuickMessage(message) {
@@ -631,7 +926,7 @@
       `;
       messageCount = 0;
       document.getElementById('message-count').textContent = '0';
-      chatHistory = [];
+      chatHistoryArray = [];
       showToast('🗑️ Chat cleared', 'info');
     }
 
@@ -639,7 +934,7 @@
       const data = {
         session_id: sessionId,
         timestamp: new Date().toISOString(),
-        messages: chatHistory
+        messages: chatHistoryArray
       };
       
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

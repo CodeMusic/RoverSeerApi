@@ -1,0 +1,357 @@
+<!-- Download Notifications Component -->
+<div id="downloadNotifications" class="fixed top-4 right-4 z-50 w-96 max-h-screen overflow-y-auto">
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="space-y-2">
+        <!-- Notifications will be dynamically inserted here -->
+    </div>
+</div>
+
+<!-- Download Notification Template -->
+<template id="downloadNotificationTemplate">
+    <div class="bg-gray-800 border border-green-400 rounded-lg p-4 shadow-lg download-notification" data-download-id="">
+        <div class="flex items-start justify-between">
+            <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                    <div class="download-icon">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-white download-title"></h4>
+                        <p class="text-xs text-gray-300 download-type"></p>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="mt-3">
+                    <div class="flex justify-between text-xs text-gray-300 mb-1">
+                        <span class="download-status">Downloading...</span>
+                        <span class="download-progress">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div class="bg-blue-500 h-2 rounded-full transition-all duration-300 progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Estimated time -->
+                <div class="mt-2 text-xs text-gray-400 download-time">
+                    Calculating time remaining...
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="ml-4 flex flex-col space-y-1">
+                <button class="cancel-download text-red-400 hover:text-red-300 text-xs p-1 rounded transition-colors" 
+                        onclick="cancelDownload(this)" title="Cancel Download">
+                    ✕
+                </button>
+                <button class="close-notification text-gray-400 hover:text-gray-300 text-xs p-1 rounded transition-colors hidden" 
+                        onclick="closeNotification(this)" title="Close">
+                    −
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style>
+/* Custom styles for download notifications */
+.download-notification {
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+.download-notification.closing {
+    animation: slideOutToRight 0.3s ease-in forwards;
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutToRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.download-notification.completed {
+    border-color: #10b981;
+}
+
+.download-notification.failed {
+    border-color: #ef4444;
+}
+
+.download-notification.cancelled {
+    border-color: #f59e0b;
+}
+</style>
+
+<script>
+// Global download notification manager
+class DownloadNotificationManager {
+    constructor() {
+        this.notifications = new Map();
+        this.checkInterval = null;
+        this.startMonitoring();
+    }
+    
+    startMonitoring() {
+        // Check download status every 3 seconds
+        this.checkInterval = setInterval(() => {
+            this.checkDownloadStatus();
+        }, 3000);
+        
+        // Initial check
+        this.checkDownloadStatus();
+    }
+    
+    stopMonitoring() {
+        if (this.checkInterval) {
+            clearInterval(this.checkInterval);
+            this.checkInterval = null;
+        }
+    }
+    
+    async checkDownloadStatus() {
+        try {
+            const response = await fetch('/download/status');
+            if (response.ok) {
+                const data = await response.json();
+                this.updateNotifications(data.downloads || []);
+            }
+        } catch (error) {
+            console.error('Failed to check download status:', error);
+        }
+    }
+    
+    updateNotifications(downloads) {
+        const container = document.getElementById('notificationContainer');
+        if (!container) return;
+        
+        // Track which downloads are still active
+        const activeDownloads = new Set();
+        
+        downloads.forEach(download => {
+            activeDownloads.add(download.id);
+            
+            if (this.notifications.has(download.id)) {
+                // Update existing notification
+                this.updateNotification(download);
+            } else {
+                // Create new notification
+                this.createNotification(download);
+            }
+        });
+        
+        // Remove notifications for completed/failed downloads after delay
+        this.notifications.forEach((notification, downloadId) => {
+            if (!activeDownloads.has(downloadId)) {
+                const download = this.getDownloadFromNotification(notification);
+                if (download && ['completed', 'failed', 'cancelled'].includes(download.status)) {
+                    // Keep completed/failed notifications for 10 seconds
+                    setTimeout(() => {
+                        this.removeNotification(downloadId);
+                    }, 10000);
+                }
+            }
+        });
+    }
+    
+    createNotification(download) {
+        const template = document.getElementById('downloadNotificationTemplate');
+        const container = document.getElementById('notificationContainer');
+        
+        if (!template || !container) return;
+        
+        const clone = template.content.cloneNode(true);
+        const notification = clone.querySelector('.download-notification');
+        
+        notification.setAttribute('data-download-id', download.id);
+        this.populateNotification(notification, download);
+        
+        container.appendChild(clone);
+        this.notifications.set(download.id, notification);
+        
+        // Show close button for completed/failed downloads
+        if (['completed', 'failed', 'cancelled'].includes(download.status)) {
+            const closeBtn = notification.querySelector('.close-notification');
+            const cancelBtn = notification.querySelector('.cancel-download');
+            if (closeBtn && cancelBtn) {
+                closeBtn.classList.remove('hidden');
+                cancelBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    updateNotification(download) {
+        const notification = this.notifications.get(download.id);
+        if (notification) {
+            this.populateNotification(notification, download);
+        }
+    }
+    
+    populateNotification(notification, download) {
+        // Update title and type
+        const title = notification.querySelector('.download-title');
+        const type = notification.querySelector('.download-type');
+        const status = notification.querySelector('.download-status');
+        const progress = notification.querySelector('.download-progress');
+        const progressBar = notification.querySelector('.progress-bar');
+        const time = notification.querySelector('.download-time');
+        
+        if (title) title.textContent = download.name || 'Unknown';
+        if (type) type.textContent = `${download.type || 'Unknown'} Download`;
+        if (status) status.textContent = this.formatStatus(download.status);
+        if (progress) progress.textContent = `${download.progress || 0}%`;
+        if (progressBar) progressBar.style.width = `${download.progress || 0}%`;
+        if (time) time.textContent = this.formatTimeRemaining(download);
+        
+        // Update styling based on status
+        notification.className = `bg-gray-800 border rounded-lg p-4 shadow-lg download-notification ${download.status || ''}`;
+        
+        if (download.status === 'completed') {
+            notification.classList.add('completed');
+            if (progressBar) progressBar.className = 'bg-green-500 h-2 rounded-full transition-all duration-300 progress-bar';
+        } else if (download.status === 'failed') {
+            notification.classList.add('failed');
+            if (progressBar) progressBar.className = 'bg-red-500 h-2 rounded-full transition-all duration-300 progress-bar';
+        } else if (download.status === 'cancelled') {
+            notification.classList.add('cancelled');
+            if (progressBar) progressBar.className = 'bg-yellow-500 h-2 rounded-full transition-all duration-300 progress-bar';
+        }
+        
+        // Show/hide buttons based on status
+        const cancelBtn = notification.querySelector('.cancel-download');
+        const closeBtn = notification.querySelector('.close-notification');
+        
+        if (download.cancelable && ['downloading', 'loading_model', 'downloading_config'].includes(download.status)) {
+            if (cancelBtn) cancelBtn.style.display = 'block';
+            if (closeBtn) closeBtn.classList.add('hidden');
+        } else {
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            if (closeBtn) closeBtn.classList.remove('hidden');
+        }
+    }
+    
+    formatStatus(status) {
+        const statusMap = {
+            'downloading': '📥 Downloading',
+            'loading_model': '🔄 Loading Model',
+            'downloading_config': '⚙️ Config Download',
+            'completed': '✅ Completed',
+            'failed': '❌ Failed',
+            'cancelled': '⏹️ Cancelled'
+        };
+        return statusMap[status] || status;
+    }
+    
+    formatTimeRemaining(download) {
+        if (download.status === 'completed') {
+            return '✅ Download complete';
+        } else if (download.status === 'failed') {
+            return `❌ Failed: ${download.error || 'Unknown error'}`;
+        } else if (download.status === 'cancelled') {
+            return '⏹️ Cancelled by user';
+        } else if (download.estimated_completion) {
+            return `⏱️ ETA: ${download.estimated_completion}`;
+        } else {
+            return '⏱️ Calculating time...';
+        }
+    }
+    
+    removeNotification(downloadId) {
+        const notification = this.notifications.get(downloadId);
+        if (notification) {
+            notification.classList.add('closing');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+                this.notifications.delete(downloadId);
+            }, 300);
+        }
+    }
+    
+    getDownloadFromNotification(notification) {
+        // Extract download info from notification elements
+        const title = notification.querySelector('.download-title')?.textContent;
+        const status = notification.querySelector('.download-status')?.textContent;
+        return { name: title, status: status?.toLowerCase().replace(/[^a-z]/g, '') };
+    }
+}
+
+// Global functions for button interactions
+window.cancelDownload = async function(button) {
+    const notification = button.closest('.download-notification');
+    const downloadId = notification?.getAttribute('data-download-id');
+    
+    if (!downloadId) return;
+    
+    // Show confirmation
+    if (!confirm('Are you sure you want to cancel this download? Progress will be lost.')) {
+        return;
+    }
+    
+    try {
+        button.disabled = true;
+        button.textContent = '⏳';
+        
+        const response = await fetch(`/api/downloads/${downloadId}/cancel`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ confirm: true })
+        });
+        
+        if (response.ok) {
+            // The notification will be updated by the monitoring system
+        } else {
+            const data = await response.json();
+            alert(`Failed to cancel download: ${data.error || 'Unknown error'}`);
+            button.disabled = false;
+            button.textContent = '✕';
+        }
+    } catch (error) {
+        console.error('Failed to cancel download:', error);
+        alert('Failed to cancel download: ' + error.message);
+        button.disabled = false;
+        button.textContent = '✕';
+    }
+};
+
+window.closeNotification = function(button) {
+    const notification = button.closest('.download-notification');
+    const downloadId = notification?.getAttribute('data-download-id');
+    
+    if (downloadId && window.downloadManager) {
+        window.downloadManager.removeNotification(downloadId);
+    }
+};
+
+// Initialize download manager when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    window.downloadManager = new DownloadNotificationManager();
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    if (window.downloadManager) {
+        window.downloadManager.stopMonitoring();
+    }
+});
+</script> 

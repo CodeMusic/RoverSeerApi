@@ -80,11 +80,21 @@ WHISPER_MODEL = "base"
 
 # Piper Configuration - Mac optimized
 if platform.system() == "Darwin":  # macOS
-    # Mac-specific defaults
-    PIPER_BINARY = "/opt/homebrew/bin/piper"  # Homebrew default for Apple Silicon
-    VOICES_DIR = os.path.expanduser("~/piper/voices")  # Mac-friendly path
+    # Check for standalone piper first (bundled with the app)
+    _current_dir = os.path.dirname(os.path.abspath(__file__))
+    _standalone_piper = os.path.join(_current_dir, "piper_standalone", "piper", "piper")
+    
+    if os.path.exists(_standalone_piper) and os.access(_standalone_piper, os.X_OK):
+        PIPER_BINARY = _standalone_piper
+        VOICES_DIR = os.path.expanduser("~/piper/voices")  # Use home directory voices
+    else:
+        # Fallback to system installations
+        PIPER_BINARY = "/opt/homebrew/bin/piper"  # Homebrew default for Apple Silicon
+        VOICES_DIR = os.path.expanduser("~/piper/voices")  # Mac-friendly path
+    
     # Alternative voices directory locations for Mac
     ALTERNATIVE_VOICES_DIRS = [
+        os.path.expanduser("~/piper/voices"),  # Primary voices directory
         os.path.expanduser("~/Library/Application Support/piper/voices"),
         os.path.expanduser("~/Downloads/piper_voices"),
         "/usr/local/share/piper/voices",

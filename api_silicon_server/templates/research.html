@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 AgentWorkflow Research | API Silicon Server</title>
+    <!-- Add markdown rendering library -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Tab Navigation */
+        .tab-navigation {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .tab-button.active {
+            background: rgba(255, 255, 255, 0.95);
+            color: #4a5568;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .workflow-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+        
+        .results-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+
+        /* Library styles */
+        .library-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .library-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .library-search {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .library-filter {
+            min-width: 150px;
+        }
+
+        .research-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .research-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .research-item-header {
+            display: flex;
+            justify-content: between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .research-item-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            flex: 1;
+        }
+
+        .research-item-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .research-item-preview {
+            color: #4a5568;
+            line-height: 1.5;
+        }
+
+        .research-item-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn.view {
+            background: #667eea;
+            color: white;
+        }
+
+        .action-btn.delete {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Research viewer modal */
+        .research-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .research-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .research-modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 80vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .research-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .research-modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #718096;
+        }
+
+        .research-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tts-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tts-btn.speak {
+            background: #48bb78;
+            color: white;
+        }
+
+        .tts-btn.hush {
+            background: #e53e3e;
+            color: white;
+        }
+
+        /* Markdown content styling */
+        .markdown-content {
+            line-height: 1.7;
+        }
+
+        .markdown-content h1, 
+        .markdown-content h2, 
+        .markdown-content h3, 
+        .markdown-content h4, 
+        .markdown-content h5, 
+        .markdown-content h6 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: #2d3748;
+            font-weight: 600;
+        }
+
+        .markdown-content h1 {
+            font-size: 1.8em;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.3em;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.5em;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.3em;
+        }
+
+        .markdown-content p {
+            margin-bottom: 1em;
+        }
+
+        .markdown-content ul, 
+        .markdown-content ol {
+            margin: 1em 0;
+            padding-left: 2em;
+        }
+
+        .markdown-content li {
+            margin-bottom: 0.5em;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid #667eea;
+            padding-left: 1em;
+            margin: 1em 0;
+            background: #f8f9fa;
+            padding: 1em;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .markdown-content code {
+            background: #f1f3f4;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        .markdown-content pre {
+            background: #f8f9fa;
+            padding: 1em;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .markdown-content em {
+            font-style: italic;
+            color: #4a5568;
+        }
+
+        .markdown-content a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75em;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #4a5568;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .workflow-type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .workflow-type {
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            background: white;
+        }
+        
+        .workflow-type:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+        
+        .workflow-type.selected {
+            border-color: #667eea;
+            background: #ebf4ff;
+            color: #2b6cb0;
+        }
+        
+        .workflow-type h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .workflow-type p {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+        
+        .status.info {
+            background: #ebf8ff;
+            color: #2a4365;
+            border: 1px solid #90cdf4;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .workflow-steps {
+            margin-top: 20px;
+        }
+        
+        .step {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #e2e8f0;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .step.pending {
+            border-left-color: #cbd5e0;
+            opacity: 0.6;
+        }
+        
+        .step.active {
+            border-left-color: #667eea;
+            background: #ebf4ff;
+            animation: pulse 1s infinite;
+        }
+        
+        .step.completed {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .step.failed {
+            border-left-color: #e53e3e;
+            background: #fed7d7;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+        }
+        
+        .step-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+        }
+        
+        .step-details {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #4a5568;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .step.expanded .step-details {
+            max-height: 200px;
+        }
+        
+        .step-toggle {
+            background: none;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            color: #667eea;
+            margin-left: 10px;
+        }
+        
+        .result-content {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-top: 20px;
+        }
+        
+        .result-content h3 {
+            margin-bottom: 15px;
+            color: #2d3748;
+        }
+        
+        .result-text {
+            white-space: pre-wrap;
+            line-height: 1.6;
+            color: #4a5568;
+        }
+        
+        .result-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .result-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .result-btn.speak {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .result-btn.hush {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .result-btn.copy {
+            background: #667eea;
+            color: white;
+        }
+        
+        .result-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            margin-bottom: 20px;
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+        }
+        
+        .back-link:hover {
+            opacity: 1;
+        }
+        
+        .back-link::before {
+            content: "←";
+            margin-right: 8px;
+            font-size: 18px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .workflow-type-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #4a5568;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-link">Back to Silicon Server</a>
+            <h1>🧠 AgentWorkflow Research</h1>
+            <p>Advanced AI research system with CBT-informed analysis, web search capabilities, and MLX acceleration</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-button active" onclick="switchTab('research')">🔬 Research</button>
+            <button class="tab-button" onclick="switchTab('library')">📚 Library</button>
+        </div>
+
+        <!-- Research Tab -->
+        <div id="research-tab" class="tab-content active">
+            <div class="main-content">
+                <div class="workflow-panel">
+                    <h2>🔬 Research Configuration</h2>
+                    
+                    <form id="researchForm">
+                        <div class="form-group">
+                            <label for="research_query">Research Question *</label>
+                            <textarea 
+                                id="research_query" 
+                                name="research_query" 
+                                placeholder="Enter your research question or topic..."
+                                required
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Workflow Type</label>
+                            <div class="workflow-type-grid">
+                                <div class="workflow-type selected" data-type="comprehensive">
+                                    <h4>🎯 Comprehensive</h4>
+                                    <p>Full analysis with multiple sources</p>
+                                </div>
+                                <div class="workflow-type" data-type="quick">
+                                    <h4>⚡ Quick</h4>
+                                    <p>Fast overview and summary</p>
+                                </div>
+                                <div class="workflow-type" data-type="academic">
+                                    <h4>🎓 Academic</h4>
+                                    <p>Scholarly with citations</p>
+                                </div>
+                                <div class="workflow-type" data-type="creative">
+                                    <h4>🎨 Creative</h4>
+                                    <p>Innovative and exploratory</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="academic_level">Academic Level</label>
+                            <select id="academic_level" name="academic_level">
+                                <option value="undergraduate">Undergraduate</option>
+                                <option value="graduate" selected>Graduate</option>
+                                <option value="doctoral">Doctoral</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="max_search_results">Max Search Results</label>
+                            <select id="max_search_results" name="max_search_results">
+                                <option value="5">5 (Fast)</option>
+                                <option value="10" selected>10 (Balanced)</option>
+                                <option value="15">15 (Thorough)</option>
+                                <option value="20">20 (Comprehensive)</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn" id="submitBtn">
+                            🧠 Generate Research
+                        </button>
+                    </form>
+                </div>
+
+                <div class="results-panel">
+                    <div id="statusContainer"></div>
+                    <div id="workflowSteps" class="workflow-steps"></div>
+                    <div id="resultContainer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Library Tab -->
+        <div id="library-tab" class="tab-content">
+            <div class="workflow-panel" style="grid-column: 1 / -1; max-width: none;">
+                <h2>📚 Research Library</h2>
+                
+                <div class="library-controls">
+                    <div class="form-group library-search">
+                        <input 
+                            type="text" 
+                            id="library-search" 
+                            placeholder="Search research library..."
+                            onkeyup="filterLibrary()"
+                        />
+                    </div>
+                    <div class="form-group library-filter">
+                        <select id="workflow-filter" onchange="filterLibrary()">
+                            <option value="">All Workflows</option>
+                            <option value="comprehensive">Comprehensive</option>
+                            <option value="quick">Quick</option>
+                            <option value="academic">Academic</option>
+                            <option value="creative">Creative</option>
+                        </select>
+                    </div>
+                    <div class="form-group library-filter">
+                        <select id="level-filter" onchange="filterLibrary()">
+                            <option value="">All Levels</option>
+                            <option value="undergraduate">Undergraduate</option>
+                            <option value="graduate">Graduate</option>
+                            <option value="doctoral">Doctoral</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="loadLibrary()" style="width: auto; margin: 0; padding: 12px 20px;">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <div id="library-container" class="library-grid">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading research library...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Research Viewer Modal -->
+    <div id="research-modal" class="research-modal">
+        <div class="research-modal-content">
+            <div class="research-modal-header">
+                <h2 id="modal-title"></h2>
+                <button class="research-modal-close" onclick="closeResearchModal()">&times;</button>
+            </div>
+            <div class="research-modal-actions">
+                <button class="tts-btn speak" onclick="speakResearch()">
+                    🔊 Speak
+                </button>
+                <button class="tts-btn hush" onclick="hushResearch()">
+                    🔇 Hush
+                </button>
+            </div>
+            <div id="modal-content" class="markdown-content"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedWorkflowType = 'comprehensive';
+        let currentAudio = null;
+        let currentResearchId = null;
+        let libraryData = [];
+
+        // Tab switching functionality
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Reset all tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            
+            // Load library when switching to library tab
+            if (tabName === 'library') {
+                loadLibrary();
+            }
+        }
+
+        // Workflow type selection
+        document.querySelectorAll('.workflow-type').forEach(type => {
+            type.addEventListener('click', function() {
+                document.querySelectorAll('.workflow-type').forEach(t => t.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedWorkflowType = this.dataset.type;
+            });
+        });
+
+        // Research form submission
+        document.getElementById('researchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('research_query', document.getElementById('research_query').value);
+            formData.append('workflow_type', selectedWorkflowType);
+            formData.append('academic_level', document.getElementById('academic_level').value);
+            formData.append('max_search_results', document.getElementById('max_search_results').value);
+            
+            // Disable form and show loading
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('submitBtn').textContent = '🔄 Processing...';
+            
+            // Clear previous results
+            document.getElementById('statusContainer').innerHTML = '';
+            document.getElementById('workflowSteps').innerHTML = '';
+            document.getElementById('resultContainer').innerHTML = '';
+            
+            // Show loading state
+            showWorkflowLoading();
+            
+            try {
+                const response = await fetch('/api/workflow/research', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showStatus('Research completed successfully!', 'success');
+                    displayResults(data);
+                    updateWorkflowStepsFromMetadata(data.workflow_metadata || {});
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                    markAllStepsFailed();
+                }
+            } catch (error) {
+                showStatus(`Network error: ${error.message}`, 'error');
+                console.error('Research error:', error);
+                markAllStepsFailed();
+            } finally {
+                // Re-enable form
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').textContent = '🧠 Generate Research';
+            }
+        });
+
+        function showStatus(message, type) {
+            const statusContainer = document.getElementById('statusContainer');
+            statusContainer.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function displayResults(data) {
+            const resultContainer = document.getElementById('resultContainer');
+            
+            const resultHtml = `
+                <div class="result-content">
+                    <h3>Research Results</h3>
+                    <div class="result-actions">
+                        <button class="result-btn speak" onclick="speakCurrentResult()">
+                            🔊 Speak
+                        </button>
+                        <button class="result-btn hush" onclick="hushCurrentResult()">
+                            🔇 Hush
+                        </button>
+                        <button class="result-btn copy" onclick="copyToClipboard()">
+                            📋 Copy
+                        </button>
+                    </div>
+                    <div class="markdown-content" id="research-content">${marked.parse(data.research_content)}</div>
+                </div>
+            `;
+            
+            resultContainer.innerHTML = resultHtml;
+            
+            // Store the raw content for TTS
+            window.currentResearchContent = data.research_content;
+            
+            // Show workflow metadata if available
+            if (data.workflow_metadata) {
+                displayWorkflowSteps(data.workflow_metadata);
+            }
+        }
+
+        // Workflow step definitions
+        const workflowSteps = [
+            { 
+                name: 'CBT Clarification & Bias Detection', 
+                key: 'cbt_clarification_applied', 
+                desc: 'Applied cognitive behavioral analysis to research query',
+                details: 'Analyzing query for cognitive biases and clarifying research intent using CBT principles'
+            },
+            { 
+                name: 'Information Gathering & Search', 
+                key: 'search_performed', 
+                desc: 'Collected relevant information from multiple sources',
+                details: 'Searching academic databases, web resources, and collecting relevant information'
+            },
+            { 
+                name: 'Content Synthesis & Analysis', 
+                key: 'summarization_performed', 
+                desc: 'Synthesized findings into coherent analysis',
+                details: 'Processing and analyzing collected information to extract key insights'
+            },
+            { 
+                name: 'Structure Identification', 
+                key: 'structure_identified', 
+                desc: 'Organized content into logical structure',
+                details: 'Identifying optimal structure and organization for the research content'
+            },
+            { 
+                name: 'Content Expansion', 
+                key: 'content_expansion', 
+                desc: 'Expanded key sections with detailed analysis',
+                details: 'Developing comprehensive content for each identified section'
+            },
+            { 
+                name: 'Quality Review & Finalization', 
+                key: 'quality_review', 
+                desc: 'Final review and formatting of research output',
+                details: 'Performing final quality checks and formatting the completed research'
+            }
+        ];
+
+        function showWorkflowLoading() {
+            const stepsContainer = document.getElementById('workflowSteps');
+            stepsContainer.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <h3>🧠 Processing Research Request</h3>
+                    <p>The AI is working on your research using the AgentWorkflow system...</p>
+                    <br>
+                    <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                        <p><strong>This may include:</strong></p>
+                        <ul style="text-align: left; margin-top: 10px;">
+                            <li>• CBT-informed query analysis</li>
+                            <li>• Web and academic search</li>
+                            <li>• Content synthesis & analysis</li>
+                            <li>• Structure identification</li>
+                            <li>• Content expansion</li>
+                            <li>• Quality review & formatting</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        function initializeWorkflowSteps() {
+            const stepsContainer = document.getElementById('workflowSteps');
+            let stepsHtml = '<h3>🔬 Workflow Progress</h3>';
+            
+            workflowSteps.forEach((step, index) => {
+                stepsHtml += `
+                    <div class="step pending" id="step-${index}" onclick="toggleStepDetails(${index})">
+                        <div class="step-header">
+                            <span>${step.name}</span>
+                            <div>
+                                <span class="step-status" style="background: #cbd5e0;">Pending</span>
+                                <button class="step-toggle">▼</button>
+                            </div>
+                        </div>
+                        <div class="step-details">
+                            <p><strong>Purpose:</strong> ${step.desc}</p>
+                            <p><strong>Details:</strong> ${step.details}</p>
+                            <p><strong>Status:</strong> Waiting to start...</p>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            stepsContainer.innerHTML = stepsHtml;
+        }
+
+        function updateStepStatus(index, status, statusText, details) {
+            const stepElement = document.getElementById(`step-${index}`);
+            if (!stepElement) return;
+            
+            // Remove all status classes
+            stepElement.classList.remove('pending', 'active', 'completed', 'failed');
+            // Add new status
+            stepElement.classList.add(status);
+            
+            // Update status text and color
+            const statusSpan = stepElement.querySelector('.step-status');
+            if (statusSpan) {
+                statusSpan.textContent = statusText;
+                statusSpan.style.background = getStatusColor(status);
+            }
+            
+            // Update details
+            const detailsDiv = stepElement.querySelector('.step-details');
+            if (detailsDiv) {
+                const step = workflowSteps[index];
+                detailsDiv.innerHTML = `
+                    <p><strong>Purpose:</strong> ${step.desc}</p>
+                    <p><strong>Details:</strong> ${step.details}</p>
+                    <p><strong>Status:</strong> ${details}</p>
+                `;
+            }
+            
+            // Auto-expand active steps
+            if (status === 'active' || status === 'completed') {
+                stepElement.classList.add('expanded');
+                const toggle = stepElement.querySelector('.step-toggle');
+                if (toggle) toggle.textContent = '▲';
+            }
+        }
+
+        function getStatusColor(status) {
+            switch (status) {
+                case 'pending': return '#cbd5e0';
+                case 'active': return '#667eea';
+                case 'completed': return '#48bb78';
+                case 'failed': return '#e53e3e';
+                default: return '#cbd5e0';
+            }
+        }
+
+        function updateWorkflowStepsFromMetadata(metadata) {
+            // Clear the progress interval
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            
+            // Update steps based on actual metadata
+            workflowSteps.forEach((step, index) => {
+                const completed = metadata[step.key] === true;
+                const status = completed ? 'completed' : 'pending';
+                const statusText = completed ? 'Completed' : 'Skipped';
+                const details = completed ? 'Successfully completed' : 'Not performed in this workflow';
+                
+                updateStepStatus(index, status, statusText, details);
+            });
+        }
+
+        function markAllStepsFailed() {
+            // Clear the progress interval
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            
+            // Mark current step as failed, rest as pending
+            for (let i = 0; i < workflowSteps.length; i++) {
+                if (i <= currentStepIndex) {
+                    updateStepStatus(i, 'failed', 'Failed', 'Step failed due to error');
+                } else {
+                    updateStepStatus(i, 'pending', 'Pending', 'Not started');
+                }
+            }
+        }
+
+        function displayWorkflowSteps(metadata) {
+            // This function is now handled by updateWorkflowStepsFromMetadata
+            updateWorkflowStepsFromMetadata(metadata);
+        }
+
+        function toggleStepDetails(index) {
+            const steps = document.querySelectorAll('.step');
+            const step = steps[index];
+            step.classList.toggle('expanded');
+            
+            const toggle = step.querySelector('.step-toggle');
+            toggle.textContent = step.classList.contains('expanded') ? '▲' : '▼';
+        }
+
+        // TTS functionality for current result
+        async function speakCurrentResult() {
+            if (!window.currentResearchContent) {
+                alert('No research content to speak');
+                return;
+            }
+            
+            await speakText(window.currentResearchContent);
+        }
+
+        function hushCurrentResult() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        async function speakText(text) {
+            try {
+                // Clean markdown formatting
+                let cleanText = text
+                    .replace(/#{1,6}\s/g, '') // Remove headers
+                    .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
+                    .replace(/\*(.*?)\*/g, '$1') // Remove italic
+                    .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links
+                    .replace(/`(.*?)`/g, '$1') // Remove code
+                    .replace(/>\s/g, '') // Remove blockquotes
+                    .replace(/\n{2,}/g, '\n') // Normalize line breaks
+                    .trim();
+                
+                // Check if text is too long and truncate if needed
+                if (cleanText.length > 5000) {
+                    cleanText = cleanText.substring(0, 5000) + "... Content truncated for speech synthesis.";
+                }
+                
+                console.log('Sending TTS request with text length:', cleanText.length);
+                
+                const formData = new FormData();
+                formData.append('text', cleanText);
+                formData.append('voice', 'en_US-amy-medium'); // Add explicit voice parameter
+                
+                const response = await fetch('/tts', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('TTS response status:', response.status);
+                
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+                    console.log('Audio blob size:', audioBlob.size);
+                    
+                    if (audioBlob.size === 0) {
+                        throw new Error('Received empty audio file');
+                    }
+                    
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentAudio = null;
+                    }
+                    
+                    currentAudio = new Audio(audioUrl);
+                    
+                    currentAudio.onerror = (e) => {
+                        console.error('Audio playback error:', e);
+                        alert('Error playing audio');
+                        URL.revokeObjectURL(audioUrl);
+                        currentAudio = null;
+                    };
+                    
+                    currentAudio.onended = () => {
+                        URL.revokeObjectURL(audioUrl);
+                        currentAudio = null;
+                    };
+                    
+                    await currentAudio.play();
+                    console.log('Audio playback started successfully');
+                    
+                } else {
+                    const errorText = await response.text();
+                    console.error('TTS error response:', errorText);
+                    alert(`Failed to generate speech: ${response.status} - ${errorText}`);
+                }
+            } catch (error) {
+                console.error('TTS error:', error);
+                alert(`Error generating speech: ${error.message}`);
+            }
+        }
+
+        function copyToClipboard() {
+            if (!window.currentResearchContent) {
+                alert('No content to copy');
+                return;
+            }
+            
+            navigator.clipboard.writeText(window.currentResearchContent).then(() => {
+                alert('Research content copied to clipboard!');
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                alert('Failed to copy content');
+            });
+        }
+
+        // Library functionality
+        async function loadLibrary() {
+            const container = document.getElementById('library-container');
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading research library...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch('/api/research/library');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    libraryData = data.library;
+                    displayLibrary(libraryData);
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">❌</div>
+                            <h3>Error Loading Library</h3>
+                            <p>${data.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">❌</div>
+                        <h3>Network Error</h3>
+                        <p>Failed to load research library: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayLibrary(items) {
+            const container = document.getElementById('library-container');
+            
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📚</div>
+                        <h3>No Research Found</h3>
+                        <p>Your research library is empty. Create some research to see it here!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const itemsHtml = items.map(item => {
+                const date = new Date(item.created_at).toLocaleDateString();
+                const time = new Date(item.created_at).toLocaleTimeString();
+                
+                return `
+                    <div class="research-item">
+                        <div class="research-item-header">
+                            <div class="research-item-title">${item.query}</div>
+                        </div>
+                        <div class="research-item-meta">
+                            <span>📊 ${item.workflow_type}</span>
+                            <span>🎓 ${item.academic_level}</span>
+                            <span>📝 ${item.word_count} words</span>
+                            <span>📅 ${date} ${time}</span>
+                        </div>
+                        <div class="research-item-preview">${item.content_preview}</div>
+                        <div class="research-item-actions">
+                            <button class="action-btn view" onclick="viewResearch('${item.id}')">
+                                👁️ View
+                            </button>
+                            <button class="action-btn delete" onclick="deleteResearch('${item.id}')">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = itemsHtml;
+        }
+
+        function filterLibrary() {
+            const search = document.getElementById('library-search').value.toLowerCase();
+            const workflowFilter = document.getElementById('workflow-filter').value;
+            const levelFilter = document.getElementById('level-filter').value;
+            
+            const filtered = libraryData.filter(item => {
+                const matchesSearch = !search || 
+                    item.query.toLowerCase().includes(search) || 
+                    item.content_preview.toLowerCase().includes(search);
+                
+                const matchesWorkflow = !workflowFilter || item.workflow_type === workflowFilter;
+                const matchesLevel = !levelFilter || item.academic_level === levelFilter;
+                
+                return matchesSearch && matchesWorkflow && matchesLevel;
+            });
+            
+            displayLibrary(filtered);
+        }
+
+        async function viewResearch(researchId) {
+            try {
+                const response = await fetch(`/api/research/library/${researchId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const research = data.research;
+                    currentResearchId = researchId;
+                    
+                    document.getElementById('modal-title').textContent = research.query;
+                    document.getElementById('modal-content').innerHTML = marked.parse(research.content);
+                    document.getElementById('research-modal').classList.add('show');
+                    
+                    // Store content for TTS
+                    window.currentModalContent = research.content;
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Network error: ${error.message}`);
+            }
+        }
+
+        function closeResearchModal() {
+            document.getElementById('research-modal').classList.remove('show');
+            currentResearchId = null;
+            window.currentModalContent = null;
+            
+            // Stop any playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        async function speakResearch() {
+            if (!window.currentModalContent) {
+                alert('No research content to speak');
+                return;
+            }
+            
+            await speakText(window.currentModalContent);
+        }
+
+        function hushResearch() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+
+        async function deleteResearch(researchId) {
+            if (!confirm('Are you sure you want to delete this research? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/research/library/${researchId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Reload library
+                    loadLibrary();
+                    alert('Research deleted successfully');
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Network error: ${error.message}`);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('research-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeResearchModal();
+            }
+        });
+
+        // Load library on page load if library tab is active
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the research tab by default
+            switchTab('research');
+        });
+    </script>
+</body>
+</html> 
+</html> 

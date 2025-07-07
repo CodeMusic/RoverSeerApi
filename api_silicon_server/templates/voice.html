@@ -34,8 +34,8 @@
     
     /* Enhanced text readability */
     .readable-text { color: #FFFFFF !important; text-shadow: 2px 2px 4px #000000, 0 0 10px #000000; font-weight: 500; }
-    .readable-text-chrome { color: #03C988 !important; text-shadow: 2px 2px 4px #000000, 0 0 10px #000000; font-weight: 500; }
-    .readable-text-neon { color: #E94560 !important; text-shadow: 2px 2px 4px #000000, 0 0 10px #000000; font-weight: 600; }
+    .readable-text-chrome { color: #03C988 !important; text-shadow: 2px 2px 6px #000000, 0 0 15px #000000, 1px 1px 3px rgba(0,0,0,0.9); font-weight: 600; background: rgba(0, 0, 0, 0.4); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(3, 201, 136, 0.3); }
+    .readable-text-neon { color: #E94560 !important; text-shadow: 2px 2px 6px #000000, 0 0 15px #000000, 1px 1px 3px rgba(0,0,0,0.9); font-weight: 600; background: rgba(0, 0, 0, 0.4); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(233, 69, 96, 0.3); }
     .border-glow { border-color: theme('colors.retro.neon'); box-shadow: 0 0 5px theme('colors.retro.neon'), inset 0 0 5px rgba(233, 69, 96, 0.1); }
     .bg-surface { background: linear-gradient(135deg, theme('colors.retro.surface'), theme('colors.retro.shadow')); }
     .retro-button { background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent')); transition: all 0.3s ease; }
@@ -45,6 +45,9 @@
   </style>
 </head>
 <body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
+  
+  <!-- Include Download Notifications -->
+  {% include 'download_notifications.html' %}
   
   <div class="scan-line"></div>
 
@@ -771,6 +774,72 @@
     function refreshAvailableVoices() {
       showToast('🔄 Refreshing available voices...', 'info');
       // Could load a default set of available voices here
+    }
+
+    // Missing functions that are called from the voice cards
+    async function testCustomVoice(voiceName) {
+      try {
+        showToast('🎵 Testing custom voice...', 'info');
+        
+        const testText = 'Hello, this is a test of the custom voice. How does it sound?';
+        
+        const formData = new FormData();
+        formData.append('text', testText);
+        formData.append('voice', voiceName);
+        
+        const response = await fetch('/tts', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          const audio = new Audio(audioUrl);
+          audio.play();
+          
+          showToast('🔊 Custom voice test played!', 'success');
+        } else {
+          showToast('❌ Failed to test custom voice', 'error');
+        }
+      } catch (error) {
+        showToast('❌ Network error: ' + error.message, 'error');
+      }
+    }
+
+    async function useVoice(voiceName) {
+      try {
+        showToast(`✅ Using voice: ${voiceName}`, 'success');
+        
+        // Update the test voice dropdown to this voice
+        const testVoiceSelect = document.getElementById('test-voice');
+        if (testVoiceSelect) {
+          // Add the voice to the dropdown if it's not already there
+          let optionExists = false;
+          for (let i = 0; i < testVoiceSelect.options.length; i++) {
+            if (testVoiceSelect.options[i].value === voiceName) {
+              testVoiceSelect.selectedIndex = i;
+              optionExists = true;
+              break;
+            }
+          }
+          
+          if (!optionExists) {
+            const option = document.createElement('option');
+            option.value = voiceName;
+            option.textContent = voiceName;
+            option.selected = true;
+            testVoiceSelect.appendChild(option);
+          }
+        }
+        
+        // Could also save as user preference here
+        localStorage.setItem('selectedVoice', voiceName);
+        
+      } catch (error) {
+        showToast('❌ Error using voice: ' + error.message, 'error');
+      }
     }
 
     async function resetSystem() {

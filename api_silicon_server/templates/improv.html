@@ -37,6 +37,85 @@
     .retro-button:hover { transform: translateY(-2px); box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4); }
     .scan-line { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, theme('colors.retro.chrome'), transparent); animation: scan-line 3s linear infinite; pointer-events: none; }
     @keyframes scan-line { 0% { top: '0%' } 100% { top: '100%' } }
+    
+    /* Emoji support for navigation and interface */
+    .menu-emoji {
+      font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', system-ui !important;
+      font-size: 1rem !important;
+      line-height: 1 !important;
+      display: inline-block !important;
+      min-width: 1.2em !important;
+    }
+    
+    .menu-item {
+      font-family: 'Fira Code', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', monospace !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+    
+    /* Thinking tags styling for improv games */
+    .thinking-section {
+      background: linear-gradient(135deg, theme('colors.retro.shadow'), rgba(15, 52, 96, 0.3));
+      border: 1px solid theme('colors.retro.purple');
+      border-radius: 6px;
+      margin: 8px 0;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .thinking-header {
+      background: linear-gradient(45deg, theme('colors.retro.purple'), theme('colors.retro.accent'));
+      color: theme('colors.retro.chrome');
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 0.7rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    
+    .thinking-header:hover {
+      background: linear-gradient(45deg, theme('colors.retro.accent'), theme('colors.retro.neon'));
+      color: white;
+    }
+    
+    .thinking-toggle {
+      transition: transform 0.3s ease;
+      font-size: 0.7rem;
+    }
+    
+    .thinking-toggle.expanded {
+      transform: rotate(90deg);
+    }
+    
+    .thinking-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+      background: rgba(15, 52, 96, 0.2);
+      color: theme('colors.retro.chrome');
+      font-size: 0.7rem;
+      line-height: 1.4;
+      font-style: italic;
+      opacity: 0.9;
+    }
+    
+    .thinking-content.expanded {
+      max-height: 300px;
+      padding: 8px;
+      border-top: 1px solid rgba(134, 72, 121, 0.5);
+    }
+    
+    .thinking-content pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin: 0;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.65rem;
+    }
     .game-card { transition: all 0.3s ease; transform-style: preserve-3d; }
     .game-card:hover { transform: rotateY(5deg) rotateX(5deg); }
     .typing-effect { border-right: 2px solid theme('colors.retro.chrome'); animation: typing-cursor 1s infinite; }
@@ -49,15 +128,19 @@
 
   <!-- Navigation -->
   <div class="fixed top-0 left-0 p-4 z-50">
-    <button onclick="toggleMenu()" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm">☰ MENU</button>
+    <div class="flex space-x-2">
+      <button onclick="toggleMenu()" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm"><span class="menu-emoji">☰</span> MENU</button>
+      <a href="/" class="retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm"><span class="menu-emoji">←</span> BACK</a>
+    </div>
     <div id="menu" class="hidden bg-surface border border-retro-neon rounded-lg mt-2 w-64 p-4">
       <ul class="space-y-3 text-sm">
-        <li><a href="/" class="flex items-center hover:text-retro-neon transition-colors">🗨️ Chat Interface</a></li>
-        <li><a href="/voice" class="flex items-center hover:text-retro-neon transition-colors">🎙️ Voice Center</a></li>
-        <li><a href="/improv" class="flex items-center text-retro-neon">🎭 Improv Games</a></li>
-        <li><a href="/narrative" class="flex items-center hover:text-retro-neon transition-colors">📘 Emergent Narrative</a></li>
+        <li><a href="/" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🗨️</span> Chat Interface</a></li>
+        <li><a href="/models" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🔥</span> MLX Model Manager</a></li>
+        <li><a href="/voice" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🎙️</span> Voice Center</a></li>
+        <li><a href="/improv" class="menu-item text-retro-neon"><span class="menu-emoji">🎭</span> Improv Games</a></li>
+        <li><a href="/narrative" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">📘</span> Emergent Narrative</a></li>
         <li class="border-t border-retro-shadow pt-2">
-          <button onclick="resetSystem()" class="flex items-center text-retro-neon hover:text-white transition-colors">🔄 Reset All Systems</button>
+          <button onclick="resetSystem()" class="menu-item text-retro-neon hover:text-white transition-colors"><span class="menu-emoji">🔄</span> Reset All Systems</button>
         </li>
       </ul>
     </div>
@@ -66,7 +149,7 @@
   <main class="pt-20 px-6 max-w-7xl mx-auto">
     <!-- Header -->
     <div class="text-center mb-8">
-      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2">🎭 IMPROV GAMES</h1>
+      <h1 class="text-4xl font-retro text-glow text-retro-neon mb-2"><span class="menu-emoji text-4xl">🎭</span> IMPROV GAMES</h1>
       <p class="text-retro-chrome text-sm">Interactive AI Gaming & Creative Collaboration</p>
     </div>
 
@@ -290,7 +373,7 @@
           'Be creative and unexpected',
           'Story ends after 10 rounds or when you choose'
         ],
-        systemPrompt: 'You are participating in a collaborative storytelling game. Add one creative sentence that continues the story in an interesting direction. Keep it engaging and family-friendly.',
+        systemPrompt: 'STORY BUILDER GAME: You must respond with EXACTLY ONE SENTENCE that continues the story. Do not explain, chat, or add extra commentary. Just one creative sentence that advances the plot. NOTHING ELSE.',
         quickActions: ['Continue story', 'Add plot twist', 'Introduce character', 'End chapter']
       },
       'character-creation': {
@@ -302,7 +385,7 @@
           'AI suggests additions and refinements',
           'Create a complete character profile'
         ],
-        systemPrompt: 'You are helping create a fictional character. Suggest interesting traits, backstory elements, or personality details that would make this character more compelling and three-dimensional.',
+        systemPrompt: 'CHARACTER CREATION GAME: Respond with ONLY a brief character trait, backstory element, or personality detail. Maximum 2 sentences. No explanations or conversations. Just the character element. Example: "Has a fear of butterflies due to childhood trauma." or "Speaks three languages but pretends to only know one."',
         quickActions: ['Add trait', 'Suggest backstory', 'Define motivation', 'Add quirk']
       },
       'riddle-challenge': {
@@ -314,7 +397,7 @@
           'Get points for solving and stumping',
           'First to 5 points wins'
         ],
-        systemPrompt: 'You are playing a riddle game. When creating riddles, make them clever but fair. When solving, think step by step. Keep riddles appropriate and fun.',
+        systemPrompt: 'RIDDLE GAME: If creating a riddle, give ONLY the riddle question (no explanations). If solving, give ONLY your answer (no thinking steps shown). If the answer is wrong, say "No, try again." If correct, say "Correct!" then give the next riddle. NO CONVERSATIONS.',
         quickActions: ['Create riddle', 'Solve riddle', 'Give hint', 'Pass turn']
       },
       'word-association': {
@@ -326,7 +409,7 @@
           'No repeating words',
           'Aim for creative connections'
         ],
-        systemPrompt: 'You are playing word association. Respond with a single word that relates to the previous word. Be creative with your associations but keep them logical.',
+        systemPrompt: 'WORD ASSOCIATION GAME: Respond with EXACTLY ONE WORD only. No explanations, no sentences, no punctuation. Just the word. Example: if I say "ocean" you might say "waves" or "blue" or "fish". ONE WORD ONLY.',
         quickActions: ['Random word', 'Theme: Nature', 'Theme: Tech', 'Theme: Space']
       },
       'code-poetry': {
@@ -338,7 +421,7 @@
           'Aim for beauty and function',
           'Take turns improving each other\'s code'
         ],
-        systemPrompt: 'You are writing code poetry - code that is both functional and beautiful. Create or improve code snippets that have poetic meaning while being syntactically correct.',
+        systemPrompt: 'CODE POETRY GAME: Respond with ONLY a code snippet (3-8 lines max) that has poetic meaning. No explanations or commentary. The code should be syntactically correct and beautiful. Start coding immediately.',
         quickActions: ['Python poem', 'JavaScript haiku', 'HTML art', 'CSS story']
       },
       'mystery-solver': {
@@ -350,7 +433,7 @@
           'Try to solve with minimal questions',
           'Points based on efficiency'
         ],
-        systemPrompt: 'You have created a mystery scenario. Answer only yes or no to questions. If the human solves the mystery correctly, congratulate them. Create engaging but solvable mysteries.',
+        systemPrompt: 'MYSTERY SOLVER GAME: If starting, present ONLY the mystery scenario (2-3 sentences max). For questions, respond ONLY with "Yes", "No", or "Irrelevant". If they solve it, say "Correct! You solved it!" NO OTHER RESPONSES OR EXPLANATIONS.',
         quickActions: ['Ask about person', 'Ask about place', 'Ask about method', 'Make accusation']
       }
     };
@@ -360,7 +443,24 @@
     });
 
     function toggleMenu() {
-      document.getElementById('menu').classList.toggle('hidden');
+      const menu = document.getElementById('menu');
+      menu.classList.toggle('hidden');
+    }
+    
+    async function resetSystem() {
+      try {
+        showToast('🔄 Resetting all systems...', 'info');
+        const response = await fetch('/reset_system', { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+          showToast('✅ ' + (data.message || 'System reset successfully!'), 'success');
+        } else {
+          showToast('❌ Reset failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Reset error: ' + error.message, 'error');
+      }
     }
 
     function startGame(gameType) {
@@ -484,6 +584,47 @@
       }
     }
 
+    function processThinkingTags(content) {
+      // Replace <think></think> tags with collapsible sections
+      const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+      let thinkingCounter = 0;
+      
+      return content.replace(thinkRegex, (match, thinkingContent) => {
+        thinkingCounter++;
+        const thinkingId = `thinking-${Date.now()}-${thinkingCounter}`;
+        
+        // Clean and format the thinking content
+        const cleanContent = thinkingContent.trim();
+        
+        return `
+          <div class="thinking-section">
+            <div class="thinking-header" onclick="toggleThinking('${thinkingId}')">
+              <span>🎭 AI Game Thinking</span>
+              <span class="thinking-toggle" id="toggle-${thinkingId}">▶</span>
+            </div>
+            <div class="thinking-content" id="${thinkingId}">
+              <pre>${cleanContent}</pre>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    function toggleThinking(thinkingId) {
+      const content = document.getElementById(thinkingId);
+      const toggle = document.getElementById(`toggle-${thinkingId}`);
+      
+      if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        toggle.classList.remove('expanded');
+        toggle.textContent = '▶';
+      } else {
+        content.classList.add('expanded');
+        toggle.classList.add('expanded');
+        toggle.textContent = '▼';
+      }
+    }
+
     function addGameMessage(message, type) {
       const gameOutput = document.getElementById('game-output');
       const messageDiv = document.createElement('div');
@@ -498,7 +639,14 @@
       }`;
       
       const prefix = type === 'user' ? '👤 You: ' : type === 'ai' ? '🧠 AI: ' : type === 'system' ? '🎮 Game: ' : '⚠️ ';
-      bubble.innerHTML = `<div class="font-bold text-xs mb-1">${prefix}</div><div>${message}</div>`;
+      
+      // Process thinking tags for AI messages
+      let processedMessage = message;
+      if (type === 'ai') {
+        processedMessage = processThinkingTags(message);
+      }
+      
+      bubble.innerHTML = `<div class="font-bold text-xs mb-1">${prefix}</div><div>${processedMessage}</div>`;
       
       messageDiv.appendChild(bubble);
       gameOutput.appendChild(messageDiv);

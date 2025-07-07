@@ -43,29 +43,51 @@
     
     .readable-text-chrome {
       color: #03C988 !important;
-      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
-      font-weight: 500;
+      text-shadow: 2px 2px 6px #000000, 0 0 15px #000000, 1px 1px 3px rgba(0,0,0,0.9);
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(3, 201, 136, 0.3);
     }
     
     .readable-text-neon {
       color: #E94560 !important;
-      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+      text-shadow: 2px 2px 6px #000000, 0 0 15px #000000, 1px 1px 3px rgba(0,0,0,0.9);
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(233, 69, 96, 0.3);
+    }
+    
+    /* Enhanced button readability */
+    .retro-button {
+      background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent'));
+      transition: all 0.3s ease;
+      color: #FFFFFF !important;
+      text-shadow: 1px 1px 2px #000000;
       font-weight: 600;
     }
+    .retro-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4);
+      color: #FFFFFF !important;
+    }
+    
+    /* Better button text visibility */
+    .button-text {
+      color: #FFFFFF !important;
+      text-shadow: 1px 1px 3px #000000, 0 0 8px #000000;
+      font-weight: 600;
+    }
+    
     .border-glow {
       border-color: theme('colors.retro.neon');
       box-shadow: 0 0 5px theme('colors.retro.neon'), inset 0 0 5px rgba(233, 69, 96, 0.1);
     }
     .bg-surface {
       background: linear-gradient(135deg, theme('colors.retro.surface'), theme('colors.retro.shadow'));
-    }
-    .retro-button {
-      background: linear-gradient(45deg, theme('colors.retro.neon'), theme('colors.retro.accent'));
-      transition: all 0.3s ease;
-    }
-    .retro-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 15px theme('colors.retro.neon'), 0 5px 15px rgba(233, 69, 96, 0.4);
     }
     .scan-line {
       position: absolute;
@@ -83,6 +105,9 @@
 </head>
 <body class="bg-retro-bg text-retro-chrome font-mono min-h-screen relative overflow-x-hidden">
   
+  <!-- Include Download Notifications -->
+  {% include 'download_notifications.html' %}
+  
   <!-- Animated scan line effect -->
   <div class="scan-line"></div>
 
@@ -98,6 +123,8 @@
         <li><a href="/voice" class="flex items-center hover:text-retro-neon transition-colors">🎙️ Voice Center</a></li>
         <li><a href="/improv" class="flex items-center hover:text-retro-neon transition-colors">🎭 Improv Games</a></li>
         <li><a href="/narrative" class="flex items-center hover:text-retro-neon transition-colors">📘 Emergent Narrative</a></li>
+        <li><a href="/research" class="flex items-center hover:text-retro-neon transition-colors">🔬 Research Generator</a></li>
+        <li><button onclick="openSystemConfig()" class="flex items-center hover:text-retro-neon transition-colors w-full text-left">⚙️ System Config</button></li>
       </ul>
     </div>
   </div>
@@ -106,7 +133,7 @@
   <main class="pt-20 px-6 max-w-7xl mx-auto">
     <!-- Back to Main Button -->
     <div class="mb-4">
-      <a href="/" class="inline-flex items-center retro-button text-retro-bg px-4 py-2 rounded font-retro text-sm hover:scale-105 transition-transform">
+      <a href="/" class="inline-flex items-center retro-button button-text px-4 py-2 rounded font-retro text-sm hover:scale-105 transition-transform">
         ← 🗨️ BACK TO CHAT
       </a>
     </div>
@@ -131,11 +158,11 @@
         <div class="bg-surface border border-glow rounded-lg p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="font-retro text-sm text-retro-neon text-glow">📦 INSTALLED MODELS</h3>
-            <button onclick="refreshModels()" class="text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🔄 Refresh</button>
+            <button onclick="refreshModels()" class="text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">🔄 Refresh</button>
           </div>
           
           <div id="installed-models" class="space-y-3">
-            <div class="text-retro-chrome text-sm opacity-70 text-center py-8">
+            <div class="readable-text-chrome text-sm opacity-70 text-center py-8">
               <div class="inline-flex items-center">
                 <div class="w-1 h-1 bg-retro-chrome rounded-full animate-pulse mr-1"></div>
                 Loading installed models...
@@ -148,7 +175,7 @@
         <div class="bg-surface border border-glow rounded-lg p-6">
           <h3 class="font-retro text-sm text-retro-neon text-glow mb-4">🔍 SEARCH RESULTS</h3>
           <div id="search-results" class="space-y-3">
-            <div class="text-retro-chrome text-sm opacity-70 text-center py-8">
+            <div class="readable-text-chrome text-sm opacity-70 text-center py-8">
               Use the search panel to find MLX-compatible models
             </div>
           </div>
@@ -179,7 +206,7 @@
               </select>
             </div>
             
-            <button onclick="searchModels()" class="w-full retro-button text-retro-bg px-4 py-2 rounded font-retro text-xs">
+            <button onclick="searchModels()" class="w-full retro-button button-text px-4 py-2 rounded font-retro text-xs">
               🔍 SEARCH HF REPO
             </button>
           </div>
@@ -189,12 +216,14 @@
         <div class="bg-surface border border-glow rounded-lg p-4">
           <h3 class="font-retro text-xs text-retro-neon mb-4 text-glow">⚡ QUICK ACTIONS</h3>
           <div class="space-y-2">
-            <button onclick="downloadPopularModel('deepseek-r1-0528')" class="w-full text-xs bg-retro-neon text-retro-bg px-3 py-2 rounded hover:bg-retro-chrome transition-colors font-bold">🧠 DeepSeek-R1 0528 8B</button>
-            <button onclick="downloadPopularModel('llama-3.2-1b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Llama 3.2 1B</button>
-            <button onclick="downloadPopularModel('llama-3.2-3b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Llama 3.2 3B</button>
-            <button onclick="downloadPopularModel('codellama-7b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 CodeLlama 7B</button>
-            <button onclick="testDownloadModel('llama-1b')" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🧪 Test Llama 1B</button>
-            <button onclick="clearSearchResults()" class="w-full text-xs bg-retro-shadow text-retro-chrome px-3 py-2 rounded hover:bg-retro-purple transition-colors">🗑️ Clear Results</button>
+            <button onclick="downloadPopularModel('deepseek-r1-0528')" class="w-full text-xs bg-retro-neon button-text px-3 py-2 rounded hover:bg-retro-chrome transition-colors font-bold">🧠 DeepSeek-R1 0528 8B</button>
+            <button onclick="downloadPopularModel('deepseek-coder-6.7b')" class="w-full text-xs bg-retro-accent button-text px-3 py-2 rounded hover:bg-retro-neon transition-colors font-bold">💻 DeepSeek Coder 6.7B</button>
+            <button onclick="downloadPopularModel('deepseek-coder-1.3b')" class="w-full text-xs bg-retro-accent button-text px-3 py-2 rounded hover:bg-retro-neon transition-colors font-bold">💻 DeepSeek Coder 1.3B</button>
+            <button onclick="downloadPopularModel('llama-3.2-1b')" class="w-full text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Llama 3.2 1B</button>
+            <button onclick="downloadPopularModel('llama-3.2-3b')" class="w-full text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 Llama 3.2 3B</button>
+            <button onclick="downloadPopularModel('codellama-7b')" class="w-full text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">📥 CodeLlama 7B</button>
+            <button onclick="testDownloadModel('llama-1b')" class="w-full text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">🧪 Test Llama 1B</button>
+            <button onclick="clearSearchResults()" class="w-full text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">🗑️ Clear Results</button>
           </div>
         </div>
 
@@ -251,8 +280,119 @@
       </div>
 
       <div class="flex space-x-2 mt-6">
-        <button onclick="confirmDownload()" class="flex-1 retro-button text-retro-bg px-4 py-2 rounded text-xs">📥 DOWNLOAD</button>
-        <button onclick="closeDownloadModal()" class="flex-1 text-xs bg-retro-shadow text-retro-chrome px-4 py-2 rounded hover:bg-retro-purple transition-colors">CANCEL</button>
+        <button onclick="confirmDownload()" class="flex-1 retro-button button-text px-4 py-2 rounded text-xs">📥 DOWNLOAD</button>
+        <button onclick="closeDownloadModal()" class="flex-1 text-xs bg-retro-shadow button-text px-4 py-2 rounded hover:bg-retro-purple transition-colors">CANCEL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Configuration Modal -->
+  <div id="config-modal" class="fixed inset-0 bg-retro-bg bg-opacity-80 flex items-center justify-center hidden z-50">
+    <div class="bg-surface border border-glow rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <h3 class="font-retro text-lg text-retro-neon text-glow mb-6">⚙️ SYSTEM CONFIGURATION</h3>
+      
+      <div class="space-y-6">
+        <!-- Agent Model Selection -->
+        <div class="bg-retro-shadow rounded-lg p-4 border border-retro-purple">
+          <h4 class="font-retro text-sm text-retro-chrome mb-3">🤖 AGENT MODEL SETTINGS</h4>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs readable-text-chrome mb-2">Primary Agent Model (for research, tasks, etc.)</label>
+              <select id="agent-model" class="w-full bg-retro-shadow border border-retro-purple readable-text-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+                <option value="">Select a model...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs readable-text-chrome mb-2">Coding Agent Model (for code generation)</label>
+              <select id="coding-agent-model" class="w-full bg-retro-shadow border border-retro-purple readable-text-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+                <option value="">Select a model...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs readable-text-chrome mb-2">Research Model (for research tasks)</label>
+              <select id="research-model" class="w-full bg-retro-shadow border border-retro-purple readable-text-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+                <option value="">Select a model...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Preferences -->
+        <div class="bg-retro-shadow rounded-lg p-4 border border-retro-purple">
+          <h4 class="font-retro text-sm text-retro-chrome mb-3">🎛️ SYSTEM PREFERENCES</h4>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-xs readable-text-chrome">Auto-refresh models every 5 minutes</label>
+              <input type="checkbox" id="auto-refresh" class="w-4 h-4">
+            </div>
+            <div class="flex items-center justify-between">
+              <label class="text-xs readable-text-chrome">Show download progress notifications</label>
+              <input type="checkbox" id="show-notifications" class="w-4 h-4" checked>
+            </div>
+            <div class="flex items-center justify-between">
+              <label class="text-xs readable-text-chrome">Enable experimental features</label>
+              <input type="checkbox" id="experimental-features" class="w-4 h-4">
+            </div>
+            <div>
+              <label class="block text-xs readable-text-chrome mb-2">Max concurrent downloads</label>
+              <select id="max-downloads" class="w-full bg-retro-shadow border border-retro-purple readable-text-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Performance Settings -->
+        <div class="bg-retro-shadow rounded-lg p-4 border border-retro-purple">
+          <h4 class="font-retro text-sm text-retro-chrome mb-3">⚡ PERFORMANCE SETTINGS</h4>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs readable-text-chrome mb-2">Default Temperature (Creativity Level)</label>
+              <input type="range" id="default-temperature" min="0" max="1" step="0.1" value="0.7" class="w-full">
+              <div class="flex justify-between text-xs readable-text-chrome">
+                <span>Focused (0.0)</span>
+                <span id="temp-value">0.7</span>
+                <span>Creative (1.0)</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs readable-text-chrome mb-2">Max Response Length (tokens)</label>
+              <select id="max-tokens" class="w-full bg-retro-shadow border border-retro-purple readable-text-chrome text-sm p-2 rounded focus:border-retro-neon focus:outline-none">
+                <option value="512">512 (Short)</option>
+                <option value="1024">1024 (Medium)</option>
+                <option value="2048" selected>2048 (Long)</option>
+                <option value="4096">4096 (Very Long)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Storage Management -->
+        <div class="bg-retro-shadow rounded-lg p-4 border border-retro-purple">
+          <h4 class="font-retro text-sm text-retro-chrome mb-3">💾 STORAGE MANAGEMENT</h4>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-xs readable-text-chrome">Total Models Storage:</span>
+              <span id="storage-used" class="text-xs readable-text-chrome">Calculating...</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs readable-text-chrome">Available Space:</span>
+              <span id="storage-free" class="text-xs readable-text-chrome">Calculating...</span>
+            </div>
+            <button onclick="cleanupOldModels()" class="w-full text-xs bg-retro-shadow button-text px-3 py-2 rounded hover:bg-retro-purple transition-colors">
+              🧹 Cleanup Old/Unused Models
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex space-x-2 mt-6">
+        <button onclick="saveSystemConfig()" class="flex-1 retro-button button-text px-4 py-2 rounded text-sm">💾 SAVE CONFIG</button>
+        <button onclick="resetToDefaults()" class="flex-1 text-xs bg-retro-shadow button-text px-4 py-2 rounded hover:bg-retro-purple transition-colors">🔄 RESET</button>
+        <button onclick="closeSystemConfig()" class="flex-1 text-xs bg-retro-shadow button-text px-4 py-2 rounded hover:bg-retro-purple transition-colors">CANCEL</button>
       </div>
     </div>
   </div>
@@ -262,12 +402,29 @@
     let installedModels = [];
     let searchResults = [];
     let currentDownloadModel = null;
+    let systemConfig = {
+      agentModel: '',
+      codingAgentModel: '',
+      researchModel: '',
+      autoRefresh: false,
+      showNotifications: true,
+      experimentalFeatures: false,
+      maxDownloads: 2,
+      defaultTemperature: 0.7,
+      maxTokens: 2048
+    };
 
     // Initialize page
     document.addEventListener('DOMContentLoaded', function() {
       loadInstalledModels();
       checkSystemStatus();
       startDownloadMonitoring(); // Monitor downloads on models page
+      loadSystemConfig();
+      
+      // Temperature slider update
+      document.getElementById('default-temperature').addEventListener('input', function(e) {
+        document.getElementById('temp-value').textContent = e.target.value;
+      });
     });
 
     // Download monitoring for models page
@@ -334,7 +491,7 @@
       const container = document.getElementById('installed-models');
       
       if (installedModels.length === 0) {
-        container.innerHTML = '<div class="text-retro-chrome text-sm opacity-70 text-center py-8">No models installed</div>';
+        container.innerHTML = '<div class="readable-text-chrome text-sm opacity-70 text-center py-8">No models installed</div>';
         return;
       }
 
@@ -351,15 +508,15 @@
             <div class="flex-1">
               <div class="flex items-center space-x-2 mb-2">
                 <span class="text-lg">${statusIcon}</span>
-                <span class="text-retro-chrome font-bold text-sm">${model.name}</span>
+                <span class="readable-text-chrome font-bold text-sm">${model.name}</span>
                 ${model.recommended ? '<span class="text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded">⭐ RECOMMENDED</span>' : ''}
               </div>
-              <div class="text-retro-chrome text-xs opacity-70 mb-1">${model.full_name || model.name}</div>
-              <div class="text-retro-chrome text-xs">${statusText}</div>
-              ${model.size > 0 ? `<div class="text-retro-chrome text-xs opacity-50">Size: ${(model.size / 1024 / 1024 / 1024).toFixed(1)} GB</div>` : ''}
+              <div class="readable-text-chrome text-xs opacity-70 mb-1">${model.full_name || model.name}</div>
+              <div class="readable-text-chrome text-xs">${statusText}</div>
+              ${model.size > 0 ? `<div class="readable-text-chrome text-xs opacity-50">Size: ${(model.size / 1024 / 1024 / 1024).toFixed(1)} GB</div>` : ''}
             </div>
             <div class="flex space-x-2">
-              ${model.backend === 'MLX' ? `<button onclick="removeModel('${model.name}')" class="text-xs bg-retro-neon text-retro-bg px-2 py-1 rounded hover:bg-retro-chrome transition-colors">🗑️ Remove</button>` : ''}
+              ${model.backend === 'MLX' ? `<button onclick="removeModel('${model.name}')" class="text-xs bg-retro-neon button-text px-2 py-1 rounded hover:bg-retro-chrome transition-colors">🗑️ Remove</button>` : ''}
             </div>
           </div>
         `;
@@ -405,7 +562,7 @@
       resultsContainer.innerHTML = '<div class="text-retro-chrome text-sm">🔍 Searching Hugging Face repository...</div>';
 
       try {
-        const response = await fetch(`/models/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+        const response = await fetch(`/api/models/search?query=${encodeURIComponent(query)}&limit=${limit}`);
         const data = await response.json();
 
         if (response.ok && data.models && data.models.length > 0) {
@@ -434,14 +591,14 @@
           <div class="flex justify-between items-start">
             <div class="flex-1">
               <div class="flex items-center space-x-2 mb-2">
-                <span class="text-retro-chrome font-bold text-sm">${model.name}</span>
+                <span class="readable-text-chrome font-bold text-sm">${model.name}</span>
                 ${model.recommended ? '<span class="text-xs bg-retro-chrome text-retro-bg px-2 py-1 rounded">⭐ POPULAR</span>' : ''}
               </div>
-              <div class="text-retro-chrome text-xs opacity-70 mb-1">${model.id}</div>
-              <div class="text-retro-chrome text-xs">Downloads: ${model.downloads.toLocaleString()}</div>
+              <div class="readable-text-chrome text-xs opacity-70 mb-1">${model.id}</div>
+              <div class="readable-text-chrome text-xs">Downloads: ${model.downloads.toLocaleString()}</div>
             </div>
             <button onclick="showDownloadModal('${model.id}', '${model.name}')" 
-                    class="text-xs bg-retro-neon text-retro-bg px-3 py-2 rounded hover:bg-retro-chrome transition-colors">
+                    class="text-xs bg-retro-neon button-text px-3 py-2 rounded hover:bg-retro-chrome transition-colors">
               📥 Download
             </button>
           </div>
@@ -522,6 +679,8 @@
     async function downloadPopularModel(modelType) {
       const popularModels = {
         'deepseek-r1-0528': 'lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-MLX-4bit',
+        'deepseek-coder-6.7b': 'mlx-community/deepseek-coder-6.7b-instruct',
+        'deepseek-coder-1.3b': 'mlx-community/deepseek-coder-1.3b-instruct',
         'llama-3.2-1b': 'mlx-community/Llama-3.2-1B-Instruct-4bit',
         'llama-3.2-3b': 'mlx-community/Llama-3.2-3B-Instruct-4bit',
         'codellama-7b': 'mlx-community/CodeLlama-7b-Instruct-hf-4bit'
@@ -627,6 +786,148 @@
       
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 5000);
+    }
+
+    function openSystemConfig() {
+      loadSystemConfig();
+      document.getElementById('config-modal').classList.remove('hidden');
+    }
+
+    function closeSystemConfig() {
+      document.getElementById('config-modal').classList.add('hidden');
+    }
+
+    async function loadSystemConfig() {
+      try {
+        // Load saved config from localStorage
+        const savedConfig = localStorage.getItem('systemConfig');
+        if (savedConfig) {
+          systemConfig = JSON.parse(savedConfig);
+        }
+
+        // Populate model dropdowns
+        await populateModelDropdowns();
+        
+        // Update form values
+        document.getElementById('agent-model').value = systemConfig.agentModel;
+        document.getElementById('coding-agent-model').value = systemConfig.codingAgentModel;
+        document.getElementById('research-model').value = systemConfig.researchModel;
+        document.getElementById('auto-refresh').checked = systemConfig.autoRefresh;
+        document.getElementById('show-notifications').checked = systemConfig.showNotifications;
+        document.getElementById('experimental-features').checked = systemConfig.experimentalFeatures;
+        document.getElementById('max-downloads').value = systemConfig.maxDownloads;
+        document.getElementById('default-temperature').value = systemConfig.defaultTemperature;
+        document.getElementById('temp-value').textContent = systemConfig.defaultTemperature;
+        document.getElementById('max-tokens').value = systemConfig.maxTokens;
+        
+        // Update storage info
+        updateStorageInfo();
+        
+      } catch (error) {
+        console.error('Failed to load system config:', error);
+      }
+    }
+
+    async function populateModelDropdowns() {
+      try {
+        const response = await fetch('/api/models');
+        const data = await response.json();
+        const models = data.models || [];
+        
+        const agentSelect = document.getElementById('agent-model');
+        const codingSelect = document.getElementById('coding-agent-model');
+        const researchSelect = document.getElementById('research-model');
+        
+        // Clear existing options
+        [agentSelect, codingSelect, researchSelect].forEach(select => {
+          select.innerHTML = '<option value="">Select a model...</option>';
+        });
+        
+        // Add model options
+        models.forEach(model => {
+          const option = document.createElement('option');
+          option.value = model.name;
+          option.textContent = `${model.name} (${model.backend})`;
+          
+          agentSelect.appendChild(option.cloneNode(true));
+          codingSelect.appendChild(option.cloneNode(true));
+          researchSelect.appendChild(option.cloneNode(true));
+        });
+        
+      } catch (error) {
+        console.error('Failed to load models for config:', error);
+      }
+    }
+
+    function saveSystemConfig() {
+      // Get form values
+      systemConfig.agentModel = document.getElementById('agent-model').value;
+      systemConfig.codingAgentModel = document.getElementById('coding-agent-model').value;
+      systemConfig.researchModel = document.getElementById('research-model').value;
+      systemConfig.autoRefresh = document.getElementById('auto-refresh').checked;
+      systemConfig.showNotifications = document.getElementById('show-notifications').checked;
+      systemConfig.experimentalFeatures = document.getElementById('experimental-features').checked;
+      systemConfig.maxDownloads = parseInt(document.getElementById('max-downloads').value);
+      systemConfig.defaultTemperature = parseFloat(document.getElementById('default-temperature').value);
+      systemConfig.maxTokens = parseInt(document.getElementById('max-tokens').value);
+      
+      // Save to localStorage
+      localStorage.setItem('systemConfig', JSON.stringify(systemConfig));
+      
+      showToast('✅ System configuration saved!', 'success');
+      closeSystemConfig();
+    }
+
+    function resetToDefaults() {
+      if (confirm('Reset all settings to defaults? This cannot be undone.')) {
+        systemConfig = {
+          agentModel: '',
+          codingAgentModel: '',
+          researchModel: '',
+          autoRefresh: false,
+          showNotifications: true,
+          experimentalFeatures: false,
+          maxDownloads: 2,
+          defaultTemperature: 0.7,
+          maxTokens: 2048
+        };
+        
+        localStorage.removeItem('systemConfig');
+        loadSystemConfig();
+        showToast('🔄 Settings reset to defaults', 'info');
+      }
+    }
+
+    async function updateStorageInfo() {
+      try {
+        const response = await fetch('/api/storage/info');
+        const data = await response.json();
+        
+        document.getElementById('storage-used').textContent = data.used || 'Unknown';
+        document.getElementById('storage-free').textContent = data.free || 'Unknown';
+      } catch (error) {
+        document.getElementById('storage-used').textContent = 'Error';
+        document.getElementById('storage-free').textContent = 'Error';
+      }
+    }
+
+    async function cleanupOldModels() {
+      if (confirm('Remove unused and old model files? This will free up disk space.')) {
+        try {
+          const response = await fetch('/api/storage/cleanup', { method: 'POST' });
+          const data = await response.json();
+          
+          if (response.ok) {
+            showToast(`✅ Cleanup complete: ${data.message}`, 'success');
+            updateStorageInfo();
+            loadInstalledModels(); // Refresh model list
+          } else {
+            showToast(`❌ Cleanup failed: ${data.error}`, 'error');
+          }
+        } catch (error) {
+          showToast(`❌ Cleanup error: ${error.message}`, 'error');
+        }
+      }
     }
   </script>
 </body>

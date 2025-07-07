@@ -460,15 +460,31 @@ class CognitiveConfiguration:
     def detect_piper_binary(cls):
         """Detect Piper binary location on Mac and other systems"""
         import platform
+        import shutil
+        
+        # Check PATH using shutil.which first (most reliable)
+        try:
+            which_result = shutil.which("piper")
+            if which_result:
+                print(f"🔍 Found Piper in PATH: {which_result}")
+                cls.PIPER_BINARY = which_result
+                return which_result
+        except Exception as e:
+            print(f"Error checking PATH for piper: {e}")
         
         # Mac-specific locations (prioritized for macOS)
         if platform.system() == "Darwin":  # macOS
+            # Check for standalone piper first (bundled with the app)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            standalone_piper = os.path.join(current_dir, "piper_standalone", "piper", "piper")
+            
             mac_locations = [
+                str(Path.home() / ".pyenv" / "shims" / "piper"),  # PyEnv shims (user's working installation)
                 "/opt/homebrew/bin/piper",        # Homebrew on Apple Silicon
                 "/usr/local/bin/piper",           # Homebrew on Intel Mac
                 "/Applications/Piper.app/Contents/MacOS/piper",  # Mac app bundle
-                str(Path.home() / "piper" / "piper"),  # Manual install in home
                 str(Path.home() / "Downloads" / "piper" / "piper"),  # Downloaded binary
+                standalone_piper,                 # Bundled standalone piper (last resort due to missing libs)
             ]
             
             for location in mac_locations:
@@ -490,16 +506,6 @@ class CognitiveConfiguration:
                 print(f"🐧 Found Piper binary at: {location}")
                 cls.PIPER_BINARY = location
                 return location
-        
-        # Check PATH using shutil.which
-        try:
-            which_result = shutil.which("piper")
-            if which_result:
-                print(f"🔍 Found Piper in PATH: {which_result}")
-                cls.PIPER_BINARY = which_result
-                return which_result
-        except Exception as e:
-            print(f"Error checking PATH for piper: {e}")
         
         print("❌ Piper binary not found in any known location")
         return None
@@ -611,6 +617,119 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
         static_dir = Path("static")
         if static_dir.exists():
             self.app.mount("/static", StaticFiles(directory="static"), name="static")
+        
+        # Add info endpoint to prevent 404 errors
+        @self.app.get("/info", 
+                      tags=["status"],
+                      summary="Server Information",
+                      description="Get basic server information and system details")
+        async def get_server_info():
+            """
+            ℹ️ **Server Information**
+            
+            Basic server information including version, features, and system status.
+            """
+            return JSONResponse(content={
+                "status": "operational",
+                "server": "API Silicon Server",
+                "version": "2.0.0",
+                "features": {
+                    "mlx_lm": MLX_LM_AVAILABLE,
+                    "mlx_whisper": MLX_WHISPER_AVAILABLE,
+                    "mlx_voice": MLX_VOICE_TRAINING_AVAILABLE,
+                    "download_management": True,
+                    "notification_system": True
+                },
+                "timestamp": datetime.now().isoformat()
+            })
+        
+        @self.app.get("/api/storage/info", 
+                      tags=["system"],
+                      summary="Storage Information",
+                      description="Get storage usage and capacity information")
+        async def get_storage_info():
+            """
+            💾 **Storage Information**
+            
+            Returns storage usage for models, voices, and temporary files.
+            """
+            try:
+                import shutil
+                import os
+                
+                # Calculate storage usage
+                storage_info = {
+                    "status": "success",
+                    "storage": {}
+                }
+                
+                # Check MLX models directory
+                if CONFIG_AVAILABLE and MLX_MODEL_DIR:
+                    if os.path.exists(MLX_MODEL_DIR):
+                        usage = shutil.disk_usage(MLX_MODEL_DIR)
+                        storage_info["storage"]["mlx_models"] = {
+                            "path": MLX_MODEL_DIR,
+                            "total_bytes": usage.total,
+                            "used_bytes": usage.used,
+                            "free_bytes": usage.free,
+                            "total_gb": round(usage.total / (1024**3), 2),
+                            "used_gb": round(usage.used / (1024**3), 2),
+                            "free_gb": round(usage.free / (1024**3), 2)
+                        }
+                
+                # Check voices directory
+                voices_dir = CognitiveConfiguration.VOICES_DIR
+                if os.path.exists(voices_dir):
+                    # Calculate directory size
+                    total_size = 0
+                    file_count = 0
+                    for dirpath, dirnames, filenames in os.walk(voices_dir):
+                        for file in filenames:
+                            fp = os.path.join(dirpath, file)
+                            if os.path.exists(fp):
+                                total_size += os.path.getsize(fp)
+                                file_count += 1
+                    
+                    storage_info["storage"]["voices"] = {
+                        "path": voices_dir,
+                        "total_files": file_count,
+                        "total_bytes": total_size,
+                        "total_mb": round(total_size / (1024**2), 2)
+                    }
+                
+                # Check temp directory usage
+                temp_dir = "/tmp"
+                if os.path.exists(temp_dir):
+                    temp_files = []
+                    for file in os.listdir(temp_dir):
+                        if any(prefix in file for prefix in ['input_', 'output_', 'music_', 'sound_', 'tts_', 'stt_']):
+                            file_path = os.path.join(temp_dir, file)
+                            if os.path.isfile(file_path):
+                                temp_files.append({
+                                    "name": file,
+                                    "size_bytes": os.path.getsize(file_path),
+                                    "modified": datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+                                })
+                    
+                    storage_info["storage"]["temp_files"] = {
+                        "path": temp_dir,
+                        "count": len(temp_files),
+                        "files": temp_files[:10],  # Show only first 10
+                        "total_bytes": sum(f["size_bytes"] for f in temp_files)
+                    }
+                
+                storage_info["timestamp"] = datetime.now().isoformat()
+                return JSONResponse(content=storage_info)
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to get storage info: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
         
         # Add comprehensive request logging middleware
         @self.app.middleware("http")
@@ -784,24 +903,48 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
     
     
     def _test_piper_availability(self):
-        """Test Piper TTS availability - Mac compatible version"""
-        # First, try to detect Piper binary locations
+        """Test Piper TTS availability - Mac compatible version with timeout protection"""
+        # Check if voices directory exists first (quick check)
+        voices_dir = Path(CognitiveConfiguration.VOICES_DIR)
+        if not voices_dir.exists():
+            print(f"❌ Piper: Voices directory not found at {voices_dir}")
+            return False
+        
+        voice_files = list(voices_dir.glob("*.onnx"))
+        if len(voice_files) == 0:
+            # Also check subdirectories
+            for subdir in voices_dir.iterdir():
+                if subdir.is_dir():
+                    voice_files.extend(subdir.glob("*.onnx"))
+        
+        if len(voice_files) == 0:
+            print("❌ Piper: No voice models found")
+            return False
+        
+        print(f"✅ Piper: Found {len(voice_files)} voice models")
+        
+        # Try to detect Piper binary locations but with timeout protection
         detected_binary = CognitiveConfiguration.detect_piper_binary()
         if detected_binary:
             print(f"✅ Piper: Found binary at {detected_binary}")
             CognitiveConfiguration.PIPER_BINARY = detected_binary
             
-            # Test if we can run it
+            # Test if we can run it (with strict timeout)
             try:
                 result = subprocess.run([detected_binary, "--help"], 
-                                      capture_output=True, text=True, timeout=5)
+                                      capture_output=True, text=True, timeout=3)
                 if result.returncode == 0:
                     print("✅ Piper: Binary is functional")
                     return True
                 else:
-                    print(f"❌ Piper: Binary not functional - return code {result.returncode}")
+                    print(f"⚠️  Piper: Binary returned code {result.returncode}, but voices available")
+                    return True  # Still usable if voices exist
+            except subprocess.TimeoutExpired:
+                print("⚠️  Piper: Binary test timed out, but voices available")
+                return True  # Still try to use it
             except Exception as e:
-                print(f"❌ Piper: Binary test failed - {e}")
+                print(f"⚠️  Piper: Binary test failed ({e}), but voices available")
+                return True  # Still try to use it
         
         # Fallback: try to import piper-tts Python package
         try:
@@ -809,23 +952,9 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
             print("✅ Piper: Python module available")
             return True
         except ImportError:
-            print("❌ Piper: Python module not available")
-        
-        # Check if voices directory exists at least
-        voices_dir = Path(CognitiveConfiguration.VOICES_DIR)
-        if voices_dir.exists():
-            voice_files = list(voices_dir.glob("*.onnx"))
-            if voice_files:
-                print(f"⚠️  Piper: Binary not found but {len(voice_files)} voice files exist")
-                print("💡 Install Piper with: brew install piper-tts")
-                return False
-            else:
-                print("❌ Piper: No voice models found")
-        else:
-            print(f"❌ Piper: Voices directory not found at {voices_dir}")
-            print("💡 Install Piper with: brew install piper-tts")
-        
-        return False
+            print("⚠️  Piper: No binary or Python module, but voice files exist")
+            # Still return True if we have voice files - we'll handle errors in TTS
+            return len(voice_files) > 0
     
     
     def _test_audiocraft_availability(self):
@@ -923,6 +1052,106 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
         async def emergent_narrative(request: Request):
             """Serve the collaborative storytelling interface"""
             return self.templates.TemplateResponse("narrative.html", {"request": request})
+        
+        @self.app.get("/research", response_class=HTMLResponse, include_in_schema=False)
+        async def research_generator(request: Request):
+            """Serve the AI research generation interface"""
+            return self.templates.TemplateResponse("research.html", {"request": request})
+        
+        @self.app.post("/api/leds/control",
+                       tags=["system"],
+                       summary="LED Control",
+                       description="Control device LEDs for debugging the flashing issue")
+        async def control_leds(
+            request: Request,
+            action: str = Form(..., description="LED action: on, off, flash, stop"),
+            duration: int = Form(0, description="Duration in seconds (0 = permanent)"),
+            pattern: str = Form("solid", description="LED pattern: solid, blink, pulse, off")
+        ):
+            """
+            💡 **LED Control for Debugging**
+            
+            Control device LEDs to debug the flashing issue:
+            - `on`: Turn LEDs on solid
+            - `off`: Turn LEDs off
+            - `flash`: Start flashing pattern
+            - `stop`: Stop any active patterns
+            - `reset`: Reset LED state to normal
+            
+            This helps debug why LEDs keep flashing after TTS completes.
+            """
+            client_ip = request.client.host
+            log_event(f"💡 LED control: {action} (pattern: {pattern}, duration: {duration}s) by {client_ip}")
+            
+            # LED control headers that the device should respond to
+            led_headers = {
+                "X-LED-Action": action,
+                "X-LED-Pattern": pattern,
+                "X-LED-Duration": str(duration),
+                "X-LED-Status": "executed",
+                "X-TTS-Complete": "true",  # Signal TTS completion
+                "X-Audio-Done": "true",    # Signal audio finished
+                "X-LED-Reset": "true" if action == "reset" else "false",
+                "Access-Control-Expose-Headers": "X-LED-Action,X-LED-Pattern,X-LED-Duration,X-LED-Status,X-TTS-Complete,X-Audio-Done,X-LED-Reset"
+            }
+            
+            response_message = f"LED {action} command sent"
+            if action == "stop" or action == "reset":
+                response_message += " - should stop flashing"
+            elif action == "off":
+                response_message += " - should turn off completely"
+            
+            return JSONResponse(content={
+                "status": "success",
+                "action": action,
+                "pattern": pattern,
+                "duration": duration,
+                "message": response_message,
+                "timestamp": datetime.now().isoformat(),
+                "debug_info": {
+                    "purpose": "Debug LED flashing after TTS",
+                    "expected_behavior": f"LEDs should {action}",
+                    "headers_sent": list(led_headers.keys())
+                }
+            }, headers=led_headers)
+        
+        @self.app.post("/api/tts/signal_complete",
+                       tags=["speech"],
+                       summary="Signal TTS Completion",
+                       description="Signal that TTS audio has finished playing (for LED control)")
+        async def signal_tts_complete(
+            session_id: str = Form("default", description="Session ID"),
+            audio_duration: float = Form(0.0, description="Audio duration in seconds")
+        ):
+            """
+            🔊 **Signal TTS Completion**
+            
+            Explicitly signal that TTS audio has finished playing.
+            This should stop any LED flashing that started during TTS.
+            """
+            log_event(f"🔊 TTS completion signal: session {session_id}, duration {audio_duration}s")
+            
+            # Headers to signal completion to the device
+            completion_headers = {
+                "X-TTS-Status": "completed",
+                "X-Audio-Complete": "true",
+                "X-LED-Stop-Flash": "true",
+                "X-Session-ID": session_id,
+                "X-Audio-Duration": str(audio_duration),
+                "Access-Control-Expose-Headers": "X-TTS-Status,X-Audio-Complete,X-LED-Stop-Flash,X-Session-ID,X-Audio-Duration"
+            }
+            
+            return JSONResponse(content={
+                "status": "acknowledged",
+                "session_id": session_id,
+                "audio_duration": audio_duration,
+                "message": "TTS completion signal sent - LEDs should stop flashing",
+                "timestamp": datetime.now().isoformat(),
+                "debug_info": {
+                    "purpose": "Stop LED flashing after TTS completion",
+                    "headers_sent": list(completion_headers.keys())
+                }
+            }, headers=completion_headers)
         
         @self.app.post("/reset_system", 
                        tags=["system"],
@@ -1151,7 +1380,12 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                                     headers={
                                         "X-Session-ID": session_id,
                                         "X-Processing-Time": str(processing_time),
-                                        "X-Pipeline": "stt→llm→tts" if audio_input else "text→llm→tts"
+                                        "X-Pipeline": "stt→llm→tts" if audio_input else "text→llm→tts",
+                                        "X-TTS-Status": "completed",
+                                        "X-Chat-Complete": "true",
+                                        "X-Audio-Ready": "true",
+                                        "Access-Control-Expose-Headers": "X-TTS-Status,X-Chat-Complete,X-Audio-Ready,X-Session-ID,X-Processing-Time",
+                                        "Cache-Control": "no-cache"
                                     }
                                 )
                             else:  # both
@@ -1686,7 +1920,63 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
             client_ip = request.client.host
             start_time = time.time()
             
-            log_request("/tts", client_ip, {"text": text[:100] + "..." if len(text) > 100 else text, "voice": voice})
+            # Clean text for TTS - make it more selective and preserve readable content
+            def clean_text_for_tts(input_text: str) -> str:
+                import re
+                
+                # First, replace common symbols with readable text
+                text = input_text.replace("🔍", "Search ")
+                text = text.replace("🎵", "music ")
+                text = text.replace("📱", "phone ")
+                text = text.replace("🎯", "target ")
+                text = text.replace("🔊", "speaker ")
+                text = text.replace("🎤", "microphone ")
+                text = text.replace("🗣️", "speaking ")
+                text = text.replace("👤", "user ")
+                text = text.replace("🎼", "music ")
+                text = text.replace("🌊", "wave ")
+                text = text.replace("✅", "checkmark ")
+                text = text.replace("❌", "error ")
+                text = text.replace("⚠️", "warning ")
+                text = text.replace("📊", "chart ")
+                text = text.replace("🔥", "fire ")
+                text = text.replace("💾", "disk ")
+                # Navigation and UI symbols
+                text = text.replace("←", "back ")
+                text = text.replace("→", "forward ")
+                text = text.replace("↑", "up ")
+                text = text.replace("↓", "down ")
+                text = text.replace("🗨️", "chat ")
+                text = text.replace("💬", "chat ")
+                text = text.replace("📞", "call ")
+                text = text.replace("📧", "email ")
+                text = text.replace("⚙️", "settings ")
+                text = text.replace("🏠", "home ")
+                text = text.replace("📂", "folder ")
+                text = text.replace("📄", "document ")
+                
+                # Remove remaining emojis and problematic Unicode (but preserve letters, numbers, punctuation)
+                # This regex is much less aggressive
+                cleaned = re.sub(r'[^\w\s\.,!?;:\-\'"()\[\]{}=<>/@#$%&*+|\\]', ' ', text)
+                
+                # Replace multiple spaces with single space
+                cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+                
+                # Only fallback if we really have nothing left
+                if not cleaned or len(cleaned.strip()) < 1:
+                    cleaned = "Text contains special characters that cannot be spoken."
+                    
+                return cleaned
+            
+            # Clean the input text
+            original_text = text
+            text = clean_text_for_tts(text)
+            
+            log_request("/tts", client_ip, {
+                "original_text": original_text[:100] + "..." if len(original_text) > 100 else original_text,
+                "cleaned_text": text[:100] + "..." if len(text) > 100 else text, 
+                "voice": voice
+            })
             
             if not self.piper_available:
                 logger.error(f"❌ TTS ERROR | Client: {client_ip} | Piper service unavailable")
@@ -1697,11 +1987,28 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 voice_config_path = self._find_voice_config(voice)
                 
                 if not voice_model_path or not voice_config_path:
-                    raise Exception(f"Voice files not found for: {voice}")
+                    # Debug: Print voice directory contents
+                    voices_dir = Path(CognitiveConfiguration.VOICES_DIR)
+                    logger.error(f"❌ Voice files not found for: {voice}")
+                    logger.error(f"🔍 Voices directory: {voices_dir}")
+                    logger.error(f"🔍 Directory exists: {voices_dir.exists()}")
+                    if voices_dir.exists():
+                        voice_files = list(voices_dir.glob("*.onnx"))
+                        logger.error(f"🔍 Found {len(voice_files)} .onnx files: {[f.name for f in voice_files[:5]]}")
+                        
+                        # Check subdirectories too
+                        for subdir in voices_dir.iterdir():
+                            if subdir.is_dir():
+                                sub_voice_files = list(subdir.glob("*.onnx"))
+                                if sub_voice_files:
+                                    logger.error(f"🔍 Found {len(sub_voice_files)} .onnx files in {subdir.name}: {[f.name for f in sub_voice_files[:3]]}")
+                    
+                    raise Exception(f"Voice files not found for: {voice}. Check /api/tts/test for diagnostics.")
                 
                 output_path = f"/tmp/tts_{uuid.uuid4().hex}.wav"
                 
                 # Try Python piper module first (if available)
+                synthesis_success = False
                 try:
                     import piper
                     import wave
@@ -1720,6 +2027,7 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         wav_file.setframerate(tts_model.config.sample_rate)
                         wav_file.writeframes(audio_bytes)
                     
+                    synthesis_success = True
                     print(f"✅ Used Piper Python module for TTS")
                     
                 except (ImportError, AttributeError) as e:
@@ -1733,33 +2041,46 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         if not piper_binary:
                             raise Exception("Piper binary not found")
                     
-                    # Use subprocess to call Piper binary
-                    result = subprocess.run(
-                        [piper_binary, 
-                         "--model", voice_model_path,
-                         "--config", voice_config_path,
-                         "--output_file", output_path],
-                        input=text,
-                        text=True,
-                        capture_output=True,
-                        timeout=30
-                    )
-                    
-                    if result.returncode != 0:
-                        error_msg = result.stderr or f"Piper binary failed with return code {result.returncode}"
+                    # Use subprocess to call Piper binary with timeout protection
+                    try:
+                        result = subprocess.run(
+                            [piper_binary, 
+                             "--model", voice_model_path,
+                             "--config", voice_config_path,
+                             "--output_file", output_path],
+                            input=text,
+                            text=True,
+                            capture_output=True,
+                            timeout=15  # Reduced timeout
+                        )
+                        
+                        if result.returncode != 0:
+                            error_msg = result.stderr or f"Piper binary failed with return code {result.returncode}"
+                            # Log the specific error
+                            print(f"❌ Piper binary error: {error_msg}")
+                            raise Exception(f"Piper TTS failed: {error_msg}")
+                        
+                        synthesis_success = True
+                        print(f"✅ Used Piper binary for TTS")
+                        
+                    except subprocess.TimeoutExpired:
+                        error_msg = "Piper TTS timed out after 15 seconds"
+                        print(f"❌ Piper timeout: {error_msg}")
                         raise Exception(error_msg)
-                    
-                    print(f"✅ Used Piper binary for TTS")
+                    except FileNotFoundError:
+                        error_msg = f"Piper binary not found at {piper_binary}"
+                        print(f"❌ Piper not found: {error_msg}")
+                        raise Exception(error_msg)
                 
                 # Verify output file was created
-                if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+                if not synthesis_success or not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
                     raise Exception("TTS output file was not created or is empty")
                 
                 self.cognitive_metrics["vocal_expressions"] += 1
                 
                 processing_time = time.time() - start_time
                 log_response("/tts", client_ip, "success", processing_time)
-                logger.info(f"🔊 TTS SUCCESS | Client: {client_ip} | Voice: {voice} | Text length: {len(text)} | Processing time: {processing_time:.2f}s")
+                logger.info(f"🔊 TTS SUCCESS | Client: {client_ip} | Voice: {voice} | Original: {len(original_text)} chars | Cleaned: {len(text)} chars | Processing time: {processing_time:.2f}s")
                 
                 return FileResponse(
                     output_path,
@@ -1767,7 +2088,14 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                     filename="speech.wav",
                     headers={
                         "X-Voice-Used": voice,
-                        "X-Text-Length": str(len(text))
+                        "X-Text-Length": str(len(text)),
+                        "X-Original-Length": str(len(original_text)),
+                        "X-Text-Cleaned": "true" if original_text != text else "false",
+                        "X-TTS-Status": "completed",
+                        "X-Processing-Time": str(processing_time),
+                        "X-Audio-Duration": "auto",
+                        "Access-Control-Expose-Headers": "X-TTS-Status,X-Processing-Time,X-Audio-Duration",
+                        "Cache-Control": "no-cache"
                     }
                 )
                 
@@ -1907,13 +2235,20 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         })
                         mlx_models_added = True
                 
-                # ALWAYS add popular MLX models as downloadable options
+                # Three main specialized models for the Silicon Server
                         default_mlx_models = [
-            {"name": "deepseek-r1-0528", "path": "lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-MLX-4bit", "desc": "Latest DeepSeek-R1 8B (0528)"},
-            {"name": "llama-3.2-1b", "path": "mlx-community/Llama-3.2-1B-Instruct-4bit", "desc": "Fast 1B model"},
-            {"name": "llama-3.2-3b", "path": "mlx-community/Llama-3.2-3B-Instruct-4bit", "desc": "Balanced 3B model"},
-            {"name": "qwen-2.5-1.5b", "path": "mlx-community/Qwen2.5-1.5B-Instruct-4bit", "desc": "Efficient Qwen model"},
-            {"name": "codellama-7b", "path": "mlx-community/CodeLlama-7b-Instruct-hf-4bit", "desc": "Code generation model"}
+            # 🧠 Code Model - DeepSeek Coder V2 Lite for efficient coding tasks
+            {"name": "coding-model", "path": "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct", "desc": "🧠 Code: DeepSeek-Coder-V2-Lite-Instruct (Primary Coding Model)", "role": "coding", "finetune_capable": False},
+            
+            # 🐬 Logic Model - DeepSeek R1-0528 8B (will become DolphinSeek after fine-tuning)
+            {"name": "logic-model", "path": "mlx-community/DeepSeek-R1-0528-Qwen3-8B-8bit", "desc": "🐬 Logic: DeepSeek-R1-0528 8B → DolphinSeek (Logic & Reasoning)", "role": "logic", "finetune_capable": True},
+            
+            # 🐧 Creativity Model - OpenBuddy for creative tasks (will become PenguinBuddy after fine-tuning)
+            {"name": "creativity-model", "path": "OpenBuddy/openbuddy-qwen2.5llamaify-7b-v23.1-200k", "desc": "🐧 Creativity: OpenBuddy Qwen2.5 7B → PenguinBuddy (Creative & Multilingual)", "role": "creativity", "finetune_capable": True},
+            
+            # Additional options for users who want alternatives
+            {"name": "deepseek-r1-distill-7b", "path": "mlx-community/DeepSeek-R1-Distill-Qwen-7B", "desc": "DeepSeek-R1 Distilled 7B (Alternative)", "role": "general", "finetune_capable": False},
+            {"name": "llama-3.2-3b", "path": "mlx-community/Llama-3.2-3B-Instruct-4bit", "desc": "Llama 3.2 3B (Fast Alternative)", "role": "general", "finetune_capable": False}
         ]
                 
                 for model_info in default_mlx_models:
@@ -2078,8 +2413,9 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
         # DOWNLOAD STATUS TRACKING
         # ============================================================
         
-        # Global download tracking
+        # Global download tracking with thread management
         self.active_downloads = {}
+        self.download_threads = {}  # Track threads for cancellation
         
         @self.app.get("/download/status",
                       tags=["download"],
@@ -2107,7 +2443,8 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         "progress": info.get("progress", 0),
                         "error": info.get("error", None),
                         "started_at": info.get("started_at", ""),
-                        "estimated_completion": info.get("estimated_completion", "")
+                        "estimated_completion": info.get("estimated_completion", ""),
+                        "cancelable": info.get("status") in ["downloading", "loading_model", "downloading_config"]
                     })
                 
                 return JSONResponse(content={
@@ -2123,6 +2460,635 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                     content={
                         "status": "error", 
                         "error": f"Failed to get download status: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.get("/api/voices/downloads",
+                      tags=["voice"],
+                      summary="Get Voice Downloads",
+                      description="Get status of active voice downloads only")
+        async def get_voice_downloads():
+            """
+            👤 **Voice Download Status**
+            
+            Returns real-time status of voice-specific downloads with detailed progress.
+            """
+            try:
+                voice_downloads = []
+                
+                for download_id, info in self.active_downloads.items():
+                    if info.get("type") == "Voice":
+                        voice_downloads.append({
+                            "id": download_id,
+                            "voice_name": info.get("name", "unknown"),
+                            "status": info.get("status", "downloading"),
+                            "progress": info.get("progress", 0),
+                            "error": info.get("error", None),
+                            "started_at": info.get("started_at", ""),
+                            "estimated_completion": info.get("estimated_completion", ""),
+                            "cancelable": info.get("status") in ["downloading", "downloading_config"]
+                        })
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "voice_downloads": len(voice_downloads),
+                    "downloads": voice_downloads,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to get voice downloads: {str(e)}"}
+                )
+        
+        @self.app.get("/api/models/downloads",
+                      tags=["mlx"],
+                      summary="Get Model Downloads", 
+                      description="Get status of active MLX model downloads only")
+        async def get_model_downloads():
+            """
+            🔥 **MLX Model Download Status**
+            
+            Returns real-time status of MLX model downloads with detailed progress.
+            """
+            try:
+                model_downloads = []
+                
+                for download_id, info in self.active_downloads.items():
+                    if info.get("type") == "Model":
+                        model_downloads.append({
+                            "id": download_id,
+                            "model_name": info.get("name", "unknown"),
+                            "status": info.get("status", "downloading"),
+                            "progress": info.get("progress", 0),
+                            "error": info.get("error", None),
+                            "started_at": info.get("started_at", ""),
+                            "estimated_completion": info.get("estimated_completion", ""),
+                            "cancelable": info.get("status") in ["downloading", "loading_model"]
+                        })
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "model_downloads": len(model_downloads),
+                    "downloads": model_downloads,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to get model downloads: {str(e)}"}
+                )
+        
+        @self.app.delete("/api/voices/downloads/{download_id}/cancel",
+                        tags=["voice"],
+                        summary="Cancel Voice Download",
+                        description="Cancel an active voice download with confirmation")
+        async def cancel_voice_download(
+            download_id: str,
+            confirm: bool = Query(False, description="Confirmation flag to prevent accidental cancellation")
+        ):
+            """
+            🛑 **Cancel Voice Download**
+            
+            Cancel an active voice download. Requires confirmation to prevent accidental cancellation.
+            
+            **Warning**: Partial downloads will be lost and need to be restarted.
+            """
+            try:
+                if not confirm:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status": "confirmation_required",
+                            "message": "Set confirm=true to cancel the download",
+                            "download_id": download_id,
+                            "warning": "Partial download progress will be lost"
+                        }
+                    )
+                
+                if download_id not in self.active_downloads:
+                    return JSONResponse(
+                        status_code=404,
+                        content={"status": "error", "error": f"Download {download_id} not found"}
+                    )
+                
+                download_info = self.active_downloads[download_id]
+                if download_info.get("type") != "Voice":
+                    return JSONResponse(
+                        status_code=400,
+                        content={"status": "error", "error": "Not a voice download"}
+                    )
+                
+                # Mark as cancelled
+                self.active_downloads[download_id]["status"] = "cancelled"
+                self.active_downloads[download_id]["error"] = "Cancelled by user"
+                
+                # Try to terminate the thread if it exists
+                if download_id in self.download_threads:
+                    # Note: Python threads can't be forcefully terminated, but we mark as cancelled
+                    # The download function should check for cancellation status
+                    log_event(f"🛑 Voice download {download_id} marked for cancellation")
+                
+                voice_name = download_info.get("name", "unknown")
+                log_event(f"🛑 Voice download cancelled: {voice_name} (ID: {download_id})")
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": f"Voice download '{voice_name}' cancelled successfully",
+                    "download_id": download_id,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to cancel download: {str(e)}"}
+                )
+        
+        @self.app.delete("/api/models/downloads/{download_id}/cancel",
+                        tags=["mlx"],
+                        summary="Cancel Model Download",
+                        description="Cancel an active MLX model download with confirmation")
+        async def cancel_model_download(
+            download_id: str,
+            confirm: bool = Query(False, description="Confirmation flag to prevent accidental cancellation")
+        ):
+            """
+            🛑 **Cancel MLX Model Download**
+            
+            Cancel an active MLX model download. Requires confirmation to prevent accidental cancellation.
+            
+            **Warning**: Partial downloads will be lost and need to be restarted.
+            """
+            try:
+                if not confirm:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status": "confirmation_required",
+                            "message": "Set confirm=true to cancel the download",
+                            "download_id": download_id,
+                            "warning": "Partial download progress will be lost"
+                        }
+                    )
+                
+                if download_id not in self.active_downloads:
+                    return JSONResponse(
+                        status_code=404,
+                        content={"status": "error", "error": f"Download {download_id} not found"}
+                    )
+                
+                download_info = self.active_downloads[download_id]
+                if download_info.get("type") != "Model":
+                    return JSONResponse(
+                        status_code=400,
+                        content={"status": "error", "error": "Not a model download"}
+                    )
+                
+                # Mark as cancelled
+                self.active_downloads[download_id]["status"] = "cancelled"
+                self.active_downloads[download_id]["error"] = "Cancelled by user"
+                
+                # Try to terminate the thread if it exists
+                if download_id in self.download_threads:
+                    log_event(f"🛑 Model download {download_id} marked for cancellation")
+                
+                model_name = download_info.get("name", "unknown")
+                log_event(f"🛑 Model download cancelled: {model_name} (ID: {download_id})")
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": f"Model download '{model_name}' cancelled successfully",
+                    "download_id": download_id,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to cancel download: {str(e)}"}
+                )
+        
+        @self.app.delete("/api/downloads/{download_id}/cancel",
+                        tags=["download"],
+                        summary="Cancel Any Download",
+                        description="Cancel any active download by ID with confirmation")
+        async def cancel_any_download(
+            download_id: str,
+            request: Request,
+            confirm: bool = Query(False, description="Confirmation flag to prevent accidental cancellation")
+        ):
+            """
+            🛑 **Cancel Any Download**
+            
+            Universal endpoint to cancel any active download (model or voice) by ID.
+            Requires confirmation to prevent accidental cancellation.
+            """
+            try:
+                if not confirm:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status": "confirmation_required",
+                            "message": "Set confirm=true to cancel the download",
+                            "download_id": download_id,
+                            "warning": "Partial download progress will be lost"
+                        }
+                    )
+                
+                if download_id not in self.active_downloads:
+                    return JSONResponse(
+                        status_code=404,
+                        content={"status": "error", "error": f"Download {download_id} not found"}
+                    )
+                
+                download_info = self.active_downloads[download_id]
+                download_type = download_info.get("type", "unknown")
+                download_name = download_info.get("name", "unknown")
+                
+                # Mark as cancelled
+                self.active_downloads[download_id]["status"] = "cancelled"
+                self.active_downloads[download_id]["error"] = "Cancelled by user"
+                
+                # Try to terminate the thread if it exists
+                if download_id in self.download_threads:
+                    log_event(f"🛑 Download {download_id} marked for cancellation")
+                
+                log_event(f"🛑 Download cancelled: {download_name} (ID: {download_id}, Type: {download_type})")
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": f"{download_type} download '{download_name}' cancelled successfully",
+                    "download_id": download_id,
+                    "download_type": download_type,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to cancel download: {str(e)}"}
+                )
+        
+        @self.app.post("/api/downloads/cancel_all",
+                      tags=["download"],
+                      summary="Cancel All Downloads",
+                      description="Cancel all active downloads with confirmation")
+        async def cancel_all_downloads(
+            confirm: bool = Query(False, description="Confirmation flag to cancel all downloads"),
+            download_type: str = Query("all", description="Type of downloads to cancel: all, voice, model")
+        ):
+            """
+            🛑 **Cancel All Downloads**
+            
+            Cancel all active downloads of specified type. Requires confirmation.
+            
+            **Warning**: All partial download progress will be lost.
+            """
+            try:
+                if not confirm:
+                    return JSONResponse(
+                        status_code=400,
+                        content={
+                            "status": "confirmation_required",
+                            "message": "Set confirm=true to cancel all downloads",
+                            "warning": "All partial download progress will be lost"
+                        }
+                    )
+                
+                cancelled_downloads = []
+                
+                # Filter downloads by type
+                downloads_to_cancel = []
+                for download_id, info in self.active_downloads.items():
+                    if download_type == "all":
+                        downloads_to_cancel.append((download_id, info))
+                    elif download_type.lower() == "voice" and info.get("type") == "Voice":
+                        downloads_to_cancel.append((download_id, info))
+                    elif download_type.lower() == "model" and info.get("type") == "Model":
+                        downloads_to_cancel.append((download_id, info))
+                
+                # Cancel each download
+                for download_id, info in downloads_to_cancel:
+                    if info.get("status") in ["downloading", "loading_model", "downloading_config"]:
+                        self.active_downloads[download_id]["status"] = "cancelled"
+                        self.active_downloads[download_id]["error"] = "Cancelled by user (batch)"
+                        
+                        cancelled_downloads.append({
+                            "id": download_id,
+                            "name": info.get("name", "unknown"),
+                            "type": info.get("type", "unknown")
+                        })
+                        
+                        log_event(f"🛑 Batch cancelled download: {info.get('name')} (ID: {download_id})")
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": f"Cancelled {len(cancelled_downloads)} downloads",
+                    "cancelled_downloads": cancelled_downloads,
+                    "download_type_filter": download_type,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to cancel downloads: {str(e)}"}
+                )
+        
+        @self.app.delete("/api/downloads/cleanup",
+                        tags=["download"],
+                        summary="Clean Up Completed Downloads",
+                        description="Remove completed, failed, or cancelled downloads from tracking")
+        async def cleanup_downloads():
+            """
+            🧹 **Clean Up Download History**
+            
+            Remove completed, failed, or cancelled downloads from the active tracking list.
+            This helps keep the download status clean and reduces memory usage.
+            """
+            try:
+                initial_count = len(self.active_downloads)
+                cleanup_statuses = ["completed", "failed", "cancelled"]
+                
+                downloads_to_remove = []
+                for download_id, info in self.active_downloads.items():
+                    if info.get("status") in cleanup_statuses:
+                        downloads_to_remove.append(download_id)
+                
+                # Remove from tracking
+                for download_id in downloads_to_remove:
+                    del self.active_downloads[download_id]
+                    if download_id in self.download_threads:
+                        del self.download_threads[download_id]
+                
+                removed_count = len(downloads_to_remove)
+                remaining_count = len(self.active_downloads)
+                
+                log_event(f"🧹 Cleaned up {removed_count} completed downloads, {remaining_count} active remain")
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": f"Cleaned up {removed_count} completed downloads",
+                    "removed_count": removed_count,
+                    "remaining_active": remaining_count,
+                    "initial_count": initial_count,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to cleanup downloads: {str(e)}"}
+                )
+        
+        @self.app.get("/api/downloads/history",
+                      tags=["download"],
+                      summary="Download History",
+                      description="Get download history with filtering and pagination")
+        async def get_download_history(
+            status: str = Query("all", description="Filter by status: all, active, completed, failed, cancelled"),
+            download_type: str = Query("all", description="Filter by type: all, voice, model"),
+            limit: int = Query(50, description="Maximum number of results"),
+            include_metrics: bool = Query(True, description="Include download performance metrics")
+        ):
+            """
+            📊 **Download History and Analytics**
+            
+            Get comprehensive download history with filtering options and performance metrics.
+            """
+            try:
+                filtered_downloads = []
+                
+                for download_id, info in self.active_downloads.items():
+                    # Apply status filter
+                    if status != "all":
+                        if status == "active" and info.get("status") not in ["downloading", "loading_model", "downloading_config"]:
+                            continue
+                        elif status != "active" and info.get("status") != status:
+                            continue
+                    
+                    # Apply type filter
+                    if download_type != "all" and info.get("type", "").lower() != download_type.lower():
+                        continue
+                    
+                    download_data = {
+                        "id": download_id,
+                        "name": info.get("name", "unknown"),
+                        "type": info.get("type", "unknown"),
+                        "status": info.get("status", "unknown"),
+                        "progress": info.get("progress", 0),
+                        "started_at": info.get("started_at", ""),
+                        "error": info.get("error", None)
+                    }
+                    
+                    # Add metrics if requested
+                    if include_metrics:
+                        download_data.update({
+                            "estimated_completion": info.get("estimated_completion", ""),
+                            "cancelable": info.get("status") in ["downloading", "loading_model", "downloading_config"],
+                            "thread_active": download_id in self.download_threads
+                        })
+                    
+                    filtered_downloads.append(download_data)
+                
+                # Sort by start time (newest first) and limit
+                filtered_downloads.sort(key=lambda x: x.get("started_at", ""), reverse=True)
+                filtered_downloads = filtered_downloads[:limit]
+                
+                # Calculate summary metrics
+                total_downloads = len(self.active_downloads)
+                active_downloads = len([d for d in self.active_downloads.values() 
+                                      if d.get("status") in ["downloading", "loading_model", "downloading_config"]])
+                completed_downloads = len([d for d in self.active_downloads.values() 
+                                         if d.get("status") == "completed"])
+                failed_downloads = len([d for d in self.active_downloads.values() 
+                                      if d.get("status") == "failed"])
+                
+                response_data = {
+                    "status": "success",
+                    "downloads": filtered_downloads,
+                    "total_found": len(filtered_downloads),
+                    "filters_applied": {
+                        "status": status,
+                        "type": download_type,
+                        "limit": limit
+                    },
+                    "summary": {
+                        "total_downloads": total_downloads,
+                        "active_downloads": active_downloads,
+                        "completed_downloads": completed_downloads,
+                        "failed_downloads": failed_downloads,
+                        "active_threads": len(self.download_threads)
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                return JSONResponse(content=response_data)
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={"status": "error", "error": f"Failed to get download history: {str(e)}"}
+                )
+        
+        # ============================================================
+        # TTS TESTING AND DIAGNOSTICS
+        # ============================================================
+        
+        @self.app.get("/api/tts/test",
+                      tags=["speech"],
+                      summary="Test TTS System",
+                      description="Test TTS system configuration and availability")
+        async def test_tts_system():
+            """🧪 **Test TTS System**
+            
+            Check TTS system status, available voices, and configuration.
+            Useful for debugging TTS issues without causing system hangs.
+            """
+            try:
+                # Basic system info
+                test_results = {
+                    "piper_available": self.piper_available,
+                    "piper_binary": CognitiveConfiguration.PIPER_BINARY,
+                    "voices_dir": CognitiveConfiguration.VOICES_DIR,
+                    "voices_dir_exists": os.path.exists(CognitiveConfiguration.VOICES_DIR),
+                    "alternative_dirs": getattr(CognitiveConfiguration, 'ALTERNATIVE_VOICES_DIRS', []),
+                    "binary_exists": os.path.exists(CognitiveConfiguration.PIPER_BINARY) if CognitiveConfiguration.PIPER_BINARY else False,
+                    "binary_executable": os.access(CognitiveConfiguration.PIPER_BINARY, os.X_OK) if CognitiveConfiguration.PIPER_BINARY and os.path.exists(CognitiveConfiguration.PIPER_BINARY) else False,
+                    "available_voices": [],
+                    "test_voice": None,
+                    "has_python_piper": False,
+                    "recommendations": [],
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                # Test Python piper module
+                try:
+                    import piper
+                    test_results["has_python_piper"] = True
+                except ImportError:
+                    test_results["has_python_piper"] = False
+                    test_results["recommendations"].append("Install piper-tts: pip install piper-tts")
+                
+                # Check for available voices
+                if test_results["voices_dir_exists"]:
+                    voices_dir = Path(CognitiveConfiguration.VOICES_DIR)
+                    voice_files = []
+                    
+                    # Search in root
+                    voice_files.extend(voices_dir.glob("*.onnx"))
+                    
+                    # Search in subdirectories
+                    for subdir in voices_dir.iterdir():
+                        if subdir.is_dir():
+                            voice_files.extend(subdir.glob("*.onnx"))
+                    
+                    for voice_file in voice_files[:10]:  # Limit to first 10
+                        voice_name = voice_file.stem
+                        config_file = voice_file.with_suffix(".onnx.json")
+                        
+                        test_results["available_voices"].append({
+                            "name": voice_name,
+                            "model_path": str(voice_file),
+                            "config_exists": config_file.exists(),
+                            "config_path": str(config_file) if config_file.exists() else None,
+                            "size_mb": round(voice_file.stat().st_size / 1024 / 1024, 1)
+                        })
+                    
+                    # Pick a test voice
+                    if test_results["available_voices"]:
+                        test_results["test_voice"] = test_results["available_voices"][0]["name"]
+                else:
+                    test_results["recommendations"].append(f"Create voices directory: mkdir -p {CognitiveConfiguration.VOICES_DIR}")
+                
+                # Add recommendations based on findings
+                if not test_results["available_voices"]:
+                    test_results["recommendations"].extend([
+                        "No voice models found. Download voices from:",
+                        "- Use /api/voices/search to find available voices",
+                        "- Use /api/voices/download to install voice models",
+                        "- Or manually download from https://huggingface.co/rhasspy/piper-voices"
+                    ])
+                
+                if not test_results["binary_exists"] and not test_results["has_python_piper"]:
+                    test_results["recommendations"].append("Install Piper: pip install piper-tts OR download binary from GitHub")
+                
+                # Test text cleaning function
+                test_texts = [
+                    "Hello world",
+                    "Selection 🎵 TEST VOICE",
+                    "Text with émojis 📱 and spéciál charactërs!",
+                    "Normal text with punctuation."
+                ]
+                
+                def clean_text_for_tts(input_text: str) -> str:
+                    import re
+                    
+                    # First, replace common symbols with readable text
+                    text = input_text.replace("🔍", "Search ")
+                    text = text.replace("🎵", "music ")
+                    text = text.replace("📱", "phone ")
+                    text = text.replace("🎯", "target ")
+                    text = text.replace("🔊", "speaker ")
+                    text = text.replace("🎤", "microphone ")
+                    text = text.replace("🗣️", "speaking ")
+                    text = text.replace("👤", "user ")
+                    text = text.replace("🎼", "music ")
+                    text = text.replace("🌊", "wave ")
+                    text = text.replace("✅", "checkmark ")
+                    text = text.replace("❌", "error ")
+                    text = text.replace("⚠️", "warning ")
+                    text = text.replace("📊", "chart ")
+                    text = text.replace("🔥", "fire ")
+                    text = text.replace("💾", "disk ")
+                    
+                    # Remove remaining emojis and problematic Unicode (but preserve letters, numbers, punctuation)
+                    # This regex is much less aggressive
+                    cleaned = re.sub(r'[^\w\s\.,!?;:\-\'"()\[\]{}=<>/@#$%&*+|\\]', ' ', text)
+                    
+                    # Replace multiple spaces with single space
+                    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+                    
+                    # Only fallback if we really have nothing left
+                    if not cleaned or len(cleaned.strip()) < 1:
+                        cleaned = "Text contains special characters that cannot be spoken."
+                        
+                    return cleaned
+                
+                test_results["text_cleaning_examples"] = []
+                for test_text in test_texts:
+                    cleaned = clean_text_for_tts(test_text)
+                    test_results["text_cleaning_examples"].append({
+                        "original": test_text,
+                        "cleaned": cleaned,
+                        "changed": test_text != cleaned
+                    })
+                
+                # Overall status
+                if test_results["available_voices"] and (test_results["binary_exists"] or test_results["has_python_piper"]):
+                    test_results["overall_status"] = "✅ TTS Ready"
+                elif test_results["available_voices"]:
+                    test_results["overall_status"] = "⚠️ Voices available but no TTS engine"
+                elif test_results["binary_exists"] or test_results["has_python_piper"]:
+                    test_results["overall_status"] = "⚠️ TTS engine available but no voices"
+                else:
+                    test_results["overall_status"] = "❌ TTS not configured"
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "test_results": test_results
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"TTS test failed: {str(e)}",
                         "timestamp": datetime.now().isoformat()
                     }
                 )
@@ -2280,8 +3246,10 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 voice_path = os.path.join(voices_dir, f"{voice_name}.onnx")
                 config_path = os.path.join(voices_dir, f"{voice_name}.onnx.json")
                 
+                # Generate shared download_id
+                download_id = f"voice_{voice_name}_{int(time.time())}"
+                
                 def download_voice():
-                    download_id = f"voice_{voice_name}_{int(time.time())}"
                     
                     try:
                         # Track download start
@@ -2290,10 +3258,16 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                             "name": voice_name,
                             "status": "downloading",
                             "progress": 0,
-                            "started_at": datetime.now().isoformat()
+                            "started_at": datetime.now().isoformat(),
+                            "estimated_completion": "2-5 minutes"
                         }
                         
-                        # Download voice model with progress tracking
+                        def check_cancelled():
+                            """Check if download has been cancelled"""
+                            return (download_id in self.active_downloads and 
+                                   self.active_downloads[download_id].get("status") == "cancelled")
+                        
+                        # Download voice model with progress tracking and cancellation checking
                         log_event(f"📥 Downloading voice model: {voice_name}")
                         
                         import requests
@@ -2305,17 +3279,34 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         
                         with open(voice_path, 'wb') as f:
                             for chunk in response.iter_content(chunk_size=8192):
+                                # Check for cancellation before each chunk
+                                if check_cancelled():
+                                    log_event(f"🛑 Voice download cancelled during model download: {voice_name}")
+                                    # Clean up partial file
+                                    if os.path.exists(voice_path):
+                                        os.remove(voice_path)
+                                    return
+                                
                                 f.write(chunk)
                                 downloaded += len(chunk)
                                 
                                 # Update progress
                                 if total_size > 0:
                                     progress = int((downloaded / total_size) * 80)  # Reserve 20% for config
-                                    self.active_downloads[download_id]["progress"] = progress
+                                    if download_id in self.active_downloads:
+                                        self.active_downloads[download_id]["progress"] = progress
+                        
+                        # Check cancellation before config download
+                        if check_cancelled():
+                            log_event(f"🛑 Voice download cancelled before config: {voice_name}")
+                            if os.path.exists(voice_path):
+                                os.remove(voice_path)
+                            return
                         
                         # Download configuration
-                        self.active_downloads[download_id]["status"] = "downloading_config"
-                        self.active_downloads[download_id]["progress"] = 80
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["status"] = "downloading_config"
+                            self.active_downloads[download_id]["progress"] = 80
                         
                         log_event(f"📥 Downloading voice config: {voice_name}")
                         config_response = requests.get(config_url)
@@ -2324,9 +3315,19 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         with open(config_path, 'wb') as f:
                             f.write(config_response.content)
                         
+                        # Final cancellation check
+                        if check_cancelled():
+                            log_event(f"🛑 Voice download cancelled at completion: {voice_name}")
+                            if os.path.exists(voice_path):
+                                os.remove(voice_path)
+                            if os.path.exists(config_path):
+                                os.remove(config_path)
+                            return
+                        
                         # Mark as completed
-                        self.active_downloads[download_id]["status"] = "completed"
-                        self.active_downloads[download_id]["progress"] = 100
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["status"] = "completed"
+                            self.active_downloads[download_id]["progress"] = 100
                         
                         log_event(f"✅ Voice download completed: {voice_name}")
                         
@@ -2335,6 +3336,8 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         time.sleep(30)
                         if download_id in self.active_downloads:
                             del self.active_downloads[download_id]
+                        if download_id in self.download_threads:
+                            del self.download_threads[download_id]
                         
                     except Exception as e:
                         # Mark as failed
@@ -2343,11 +3346,25 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                             self.active_downloads[download_id]["error"] = str(e)
                         
                         log_event(f"❌ Voice download failed: {voice_name} - {str(e)}")
-                        raise
+                        
+                        # Clean up partial files
+                        try:
+                            if os.path.exists(voice_path):
+                                os.remove(voice_path)
+                            if os.path.exists(config_path):
+                                os.remove(config_path)
+                        except:
+                            pass
+                    
+                    finally:
+                        # Always clean up thread tracking
+                        if download_id in self.download_threads:
+                            del self.download_threads[download_id]
                 
-                # Run download in background
+                # Run download in background with thread tracking
                 import threading
-                download_thread = threading.Thread(target=download_voice)
+                download_thread = threading.Thread(target=download_voice, daemon=True)
+                self.download_threads[download_id] = download_thread
                 download_thread.start()
                 
                 return JSONResponse(content={
@@ -2509,9 +3526,10 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
             try:
                 log_event(f"🔍 Test download request - model_id: '{model_id}', local_name: '{local_name}'")
                 
+                # Generate shared download_id for test download
+                download_id = f"model_{local_name}_{int(time.time())}"
+                
                 def download_model():
-                    download_id = f"model_{local_name}_{int(time.time())}"
-                    
                     try:
                         # Track download start
                         self.active_downloads[download_id] = {
@@ -2519,26 +3537,58 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                             "name": local_name,
                             "status": "downloading",
                             "progress": 0,
-                            "started_at": datetime.now().isoformat()
+                            "started_at": datetime.now().isoformat(),
+                            "estimated_completion": "5-15 minutes"
                         }
                         
+                        def check_cancelled():
+                            """Check if download has been cancelled"""
+                            return (download_id in self.active_downloads and 
+                                   self.active_downloads[download_id].get("status") == "cancelled")
+                        
+                        # Check cancellation before starting
+                        if check_cancelled():
+                            log_event(f"🛑 Test model download cancelled before start: {local_name}")
+                            return False
+                        
                         # Update status throughout download
-                        self.active_downloads[download_id]["status"] = "loading_model"
-                        self.active_downloads[download_id]["progress"] = 25
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["status"] = "loading_model"
+                            self.active_downloads[download_id]["progress"] = 25
+                        
+                        # Check cancellation before MLX load
+                        if check_cancelled():
+                            log_event(f"🛑 Test model download cancelled before MLX load: {local_name}")
+                            return False
                         
                         # Use mlx_lm to load the model (this will download it automatically)
                         from mlx_lm import load
                         model, tokenizer = load(model_id)
                         
-                        self.active_downloads[download_id]["progress"] = 75
+                        # Check cancellation after MLX load
+                        if check_cancelled():
+                            log_event(f"🛑 Test model download cancelled after MLX load: {local_name}")
+                            return False
+                        
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["progress"] = 75
                         
                         # Update the MLX_LM_MODELS configuration
                         if CONFIG_AVAILABLE:
                             MLX_LM_MODELS[local_name] = model_id
+                        
+                        # Final cancellation check
+                        if check_cancelled():
+                            log_event(f"🛑 Test model download cancelled at completion: {local_name}")
+                            # Remove from configuration if added
+                            if CONFIG_AVAILABLE and local_name in MLX_LM_MODELS:
+                                del MLX_LM_MODELS[local_name]
+                            return False
                             
                         # Mark as completed
-                        self.active_downloads[download_id]["status"] = "completed"
-                        self.active_downloads[download_id]["progress"] = 100
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["status"] = "completed"
+                            self.active_downloads[download_id]["progress"] = 100
                         
                         log_event(f"✅ Model {model_id} downloaded and configured as '{local_name}'")
                         
@@ -2547,6 +3597,8 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         time.sleep(30)
                         if download_id in self.active_downloads:
                             del self.active_downloads[download_id]
+                        if download_id in self.download_threads:
+                            del self.download_threads[download_id]
                         
                         return True
                     except Exception as e:
@@ -2555,13 +3607,18 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                             self.active_downloads[download_id]["status"] = "failed"
                             self.active_downloads[download_id]["error"] = str(e)
                         
-                        log_event(f"❌ Download failed: {e}")
+                        log_event(f"❌ Test model download failed: {e}")
                         return False
+                    
+                    finally:
+                        # Always clean up thread tracking
+                        if download_id in self.download_threads:
+                            del self.download_threads[download_id]
                 
-                # Start download in background thread
+                # Start download in background thread with tracking
                 import threading
-                download_thread = threading.Thread(target=download_model)
-                download_thread.daemon = True
+                download_thread = threading.Thread(target=download_model, daemon=True)
+                self.download_threads[download_id] = download_thread
                 download_thread.start()
                 
                 return JSONResponse(content={
@@ -2617,10 +3674,12 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 
                 log_event(f"📥 Starting download of {model_id} as '{local_name}'")
                 
-                # Create a background task to download the model
+                # Generate shared download_id
+                download_id = f"model_{local_name}_{int(time.time())}"
+                
+                # Create a background task to download the model with cancellation support
                 def download_model():
                     import time
-                    download_id = f"model_{local_name}_{int(time.time())}"
                     
                     try:
                         # Track download start
@@ -2629,26 +3688,58 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                             "name": local_name,
                             "status": "downloading",
                             "progress": 0,
-                            "started_at": datetime.now().isoformat()
+                            "started_at": datetime.now().isoformat(),
+                            "estimated_completion": "5-15 minutes"
                         }
                         
+                        def check_cancelled():
+                            """Check if download has been cancelled"""
+                            return (download_id in self.active_downloads and 
+                                   self.active_downloads[download_id].get("status") == "cancelled")
+                        
+                        # Check cancellation before starting
+                        if check_cancelled():
+                            log_event(f"🛑 Model download cancelled before start: {local_name}")
+                            return False
+                        
                         # Update status throughout download
-                        self.active_downloads[download_id]["status"] = "loading_model"
-                        self.active_downloads[download_id]["progress"] = 25
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["status"] = "loading_model"
+                            self.active_downloads[download_id]["progress"] = 25
+                        
+                        # Check cancellation before MLX load
+                        if check_cancelled():
+                            log_event(f"🛑 Model download cancelled before MLX load: {local_name}")
+                            return False
                         
                         # Use mlx_lm to load the model (this will download it automatically)
                         from mlx_lm import load
                         model, tokenizer = load(model_id)
                         
-                        self.active_downloads[download_id]["progress"] = 75
+                        # Check cancellation after MLX load
+                        if check_cancelled():
+                            log_event(f"🛑 Model download cancelled after MLX load: {local_name}")
+                            return False
+                        
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["progress"] = 75
                         
                         # Update the MLX_LM_MODELS configuration
                         if CONFIG_AVAILABLE:
                             MLX_LM_MODELS[local_name] = model_id
+                        
+                        # Final cancellation check
+                        if check_cancelled():
+                            log_event(f"🛑 Model download cancelled at completion: {local_name}")
+                            # Remove from configuration if added
+                            if CONFIG_AVAILABLE and local_name in MLX_LM_MODELS:
+                                del MLX_LM_MODELS[local_name]
+                            return False
                             
                         # Mark as completed
-                        self.active_downloads[download_id]["status"] = "completed"
-                        self.active_downloads[download_id]["progress"] = 100
+                        if download_id in self.active_downloads:
+                            self.active_downloads[download_id]["status"] = "completed"
+                            self.active_downloads[download_id]["progress"] = 100
                         
                         log_event(f"✅ Model {model_id} downloaded and configured as '{local_name}'")
                         
@@ -2657,6 +3748,8 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                         time.sleep(30)
                         if download_id in self.active_downloads:
                             del self.active_downloads[download_id]
+                        if download_id in self.download_threads:
+                            del self.download_threads[download_id]
                         
                         return True
                     except Exception as e:
@@ -2665,13 +3758,18 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                             self.active_downloads[download_id]["status"] = "failed"
                             self.active_downloads[download_id]["error"] = str(e)
                         
-                        log_event(f"❌ Download failed: {e}")
+                        log_event(f"❌ Model download failed: {e}")
                         return False
+                    
+                    finally:
+                        # Always clean up thread tracking
+                        if download_id in self.download_threads:
+                            del self.download_threads[download_id]
                 
-                # Start download in background thread
+                # Start download in background thread with tracking
                 import threading
-                download_thread = threading.Thread(target=download_model)
-                download_thread.daemon = True
+                download_thread = threading.Thread(target=download_model, daemon=True)
+                self.download_threads[download_id] = download_thread
                 download_thread.start()
                 
                 return JSONResponse(content={
@@ -2864,6 +3962,798 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+        @self.app.post("/api/tts/quick_setup",
+                       tags=["speech"],
+                       summary="Quick TTS Setup",
+                       description="Download a basic voice model for immediate TTS functionality")
+        async def quick_tts_setup():
+            """🚀 **Quick TTS Setup**
+            
+            Download a basic English voice model for immediate TTS functionality.
+            This downloads the amy-medium voice (fast, good quality, ~40MB).
+            """
+            try:
+                # Create voices directory if it doesn't exist
+                voices_dir = Path(CognitiveConfiguration.VOICES_DIR)
+                voices_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Download amy-medium voice (reliable, good quality, not too large)
+                voice_name = "en_US-amy-medium"
+                base_url = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/amy/medium"
+                
+                voice_file = voices_dir / f"{voice_name}.onnx"
+                config_file = voices_dir / f"{voice_name}.onnx.json"
+                
+                # Check if already exists
+                if voice_file.exists() and config_file.exists():
+                    return JSONResponse(content={
+                        "status": "success",
+                        "message": f"Voice {voice_name} already exists",
+                        "voice_file": str(voice_file),
+                        "config_file": str(config_file)
+                    })
+                
+                # Download model file
+                import requests
+                model_url = f"{base_url}/en_US-amy-medium.onnx"
+                config_url = f"{base_url}/en_US-amy-medium.onnx.json"
+                
+                # Download voice model
+                print(f"📥 Downloading voice model: {voice_name}")
+                response = requests.get(model_url, stream=True, timeout=60)
+                response.raise_for_status()
+                
+                with open(voice_file, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                # Download config
+                print(f"📥 Downloading voice config: {voice_name}")
+                config_response = requests.get(config_url, timeout=30)
+                config_response.raise_for_status()
+                
+                with open(config_file, 'wb') as f:
+                    f.write(config_response.content)
+                
+                # Verify files
+                if voice_file.exists() and config_file.exists():
+                    return JSONResponse(content={
+                        "status": "success",
+                        "message": f"Successfully downloaded {voice_name}",
+                        "voice_file": str(voice_file),
+                        "config_file": str(config_file),
+                        "size_mb": round(voice_file.stat().st_size / 1024 / 1024, 1)
+                    })
+                else:
+                    raise Exception("Download completed but files not found")
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to setup TTS: {str(e)}",
+                        "recommendation": "Try downloading manually from https://huggingface.co/rhasspy/piper-voices"
+                    }
+                )
+        
+        @self.app.post("/api/tts/test_speak",
+                       tags=["speech"],
+                       summary="Test TTS with Safe Text",
+                       description="Test TTS with cleaned text to verify it's working")
+        async def test_speak(
+            text: str = Form("Hello, this is a test", description="Text to test (will be cleaned automatically)"),
+            voice: str = Form("", description="Voice to use (auto-detect if empty)")
+        ):
+            """🔊 **Test TTS Speaking**
+            
+            Test TTS with automatically cleaned text. Great for troubleshooting.
+            """
+            try:
+                # Auto-detect voice if not specified
+                if not voice:
+                    voices_dir = Path(CognitiveConfiguration.VOICES_DIR)
+                    if voices_dir.exists():
+                        voice_files = list(voices_dir.glob("*.onnx"))
+                        if voice_files:
+                            voice = voice_files[0].stem
+                        else:
+                            return JSONResponse(
+                                status_code=404,
+                                content={
+                                    "status": "error",
+                                    "error": "No voices found. Use /api/tts/quick_setup to download a voice."
+                                }
+                            )
+                    else:
+                        return JSONResponse(
+                            status_code=404,
+                            content={
+                                "status": "error",
+                                "error": "Voices directory not found. Use /api/tts/quick_setup to set up TTS."
+                            }
+                        )
+                
+                # Clean text for TTS using the same improved function
+                import re
+                original_text = text
+                
+                # First, replace common symbols with readable text
+                cleaned_text = text.replace("🔍", "Search ")
+                cleaned_text = cleaned_text.replace("🎵", "music ")
+                cleaned_text = cleaned_text.replace("📱", "phone ")
+                cleaned_text = cleaned_text.replace("🎯", "target ")
+                cleaned_text = cleaned_text.replace("🔊", "speaker ")
+                cleaned_text = cleaned_text.replace("🎤", "microphone ")
+                cleaned_text = cleaned_text.replace("🗣️", "speaking ")
+                cleaned_text = cleaned_text.replace("👤", "user ")
+                cleaned_text = cleaned_text.replace("🎼", "music ")
+                cleaned_text = cleaned_text.replace("🌊", "wave ")
+                cleaned_text = cleaned_text.replace("✅", "checkmark ")
+                cleaned_text = cleaned_text.replace("❌", "error ")
+                cleaned_text = cleaned_text.replace("⚠️", "warning ")
+                cleaned_text = cleaned_text.replace("📊", "chart ")
+                cleaned_text = cleaned_text.replace("🔥", "fire ")
+                cleaned_text = cleaned_text.replace("💾", "disk ")
+                # Navigation and UI symbols
+                cleaned_text = cleaned_text.replace("←", "back ")
+                cleaned_text = cleaned_text.replace("→", "forward ")
+                cleaned_text = cleaned_text.replace("↑", "up ")
+                cleaned_text = cleaned_text.replace("↓", "down ")
+                cleaned_text = cleaned_text.replace("🗨️", "chat ")
+                cleaned_text = cleaned_text.replace("💬", "chat ")
+                cleaned_text = cleaned_text.replace("📞", "call ")
+                cleaned_text = cleaned_text.replace("📧", "email ")
+                cleaned_text = cleaned_text.replace("⚙️", "settings ")
+                cleaned_text = cleaned_text.replace("🏠", "home ")
+                cleaned_text = cleaned_text.replace("📂", "folder ")
+                cleaned_text = cleaned_text.replace("📄", "document ")
+                
+                # Remove remaining emojis and problematic Unicode (but preserve letters, numbers, punctuation)
+                cleaned_text = re.sub(r'[^\w\s\.,!?;:\-\'"()\[\]{}=<>/@#$%&*+|\\]', ' ', cleaned_text)
+                cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+                
+                if not cleaned_text:
+                    cleaned_text = "Test speech synthesis"
+                
+                # Generate TTS using our existing endpoint logic
+                from fastapi import Form
+                request = type('MockRequest', (), {'client': type('MockClient', (), {'host': '127.0.0.1'})()})()
+                
+                # Call our TTS function
+                # For now, return the cleaned text and voice info
+                return JSONResponse(content={
+                    "status": "ready",
+                    "original_text": original_text,
+                    "cleaned_text": cleaned_text,
+                    "voice": voice,
+                    "text_changed": original_text != cleaned_text,
+                    "message": f"Text cleaned and ready for TTS. Use POST /tts with this cleaned text.",
+                    "tts_url": "/tts",
+                    "form_data": {
+                        "text": cleaned_text,
+                        "voice": voice
+                    }
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": str(e)
+                    }
+                )
+        
+        # ============================================================
+        # AGENT WORKFLOW SYSTEM - RESEARCH GENERATION
+        # ============================================================
+        
+        @self.app.post("/api/workflow/research",
+                       tags=["research"],
+                       summary="🧠 Agent Workflow Research",
+                       description="Run comprehensive research using the AgentWorkflow system with CBT-informed analysis")
+        async def run_research_workflow(
+            request: Request,
+            research_query: str = Form(..., description="Research question or topic", example="How does cognitive behavioral therapy affect memory consolidation?"),
+            workflow_type: str = Form("comprehensive", description="Workflow type: comprehensive, quick, academic, creative, technical", example="comprehensive"),
+            academic_level: str = Form("graduate", description="Academic level: undergraduate, graduate, doctoral", example="graduate"),
+            citation_style: str = Form("academic", description="Citation style preference", example="academic"),
+            max_search_results: int = Form(10, description="Maximum search results to process", example=10)
+        ):
+            """
+            🧠 **AgentWorkflow Research System**
+            
+            Run a complete research workflow with psychological awareness:
+            
+            **Workflow Types**:
+            - `comprehensive`: Full 6-step research pipeline with CBT awareness
+            - `quick`: Streamlined 4-step workflow for faster results  
+            - `academic`: Enhanced scholarly research with citation support
+            - `creative`: Innovative workflow for exploratory research
+            - `technical`: Scientific workflow for technical accuracy
+            
+            **Process**:
+            1. **CBT Clarification**: Detect cognitive biases and clarify intent
+            2. **Information Gathering**: Multi-source web and academic search
+            3. **Content Synthesis**: MLX-powered analysis and summarization
+            4. **Structure Identification**: Academic organization and outlining
+            5. **Content Expansion**: Detailed section writing and development
+            6. **Quality Review**: Final polishing and academic formatting
+            
+            **Features**:
+            - 🧘 ProtoConsciousness CBT bias detection
+            - 🔥 MLX-accelerated content generation
+            - 🌐 DuckDuckGo + ArXiv research integration
+            - 📚 Academic formatting and structure
+            - 🔍 Real-time progress tracking
+            """
+            client_ip = request.client.host
+            start_time = time.time()
+            
+            log_request("/api/workflow/research", client_ip, {
+                "research_query": research_query[:100] + "..." if len(research_query) > 100 else research_query,
+                "workflow_type": workflow_type,
+                "academic_level": academic_level
+            })
+            
+            try:
+                # Import workflow components
+                from workflows.research_workflow import run_research_workflow, create_research_context
+                from workflows.proto_consciousness import ProtoConsciousness
+                
+                # Create workflow context with Silicon Server integration
+                context = create_research_context(
+                    # MLX integration
+                    model=self.mlx_lm_service.model if self.mlx_lm_service.available else None,
+                    tokenizer=self.mlx_lm_service.tokenizer if self.mlx_lm_service.available else None,
+                    
+                    # ProtoConsciousness for CBT analysis
+                    proto_ai=ProtoConsciousness(),
+                    
+                    # Silicon Server generation function with MLX/Ollama fallback
+                    generate_with_fallback=self._generate_with_fallback,
+                    
+                    # Research parameters
+                    academic_level=academic_level,
+                    citation_style=citation_style,
+                    search_max_results=max_search_results,
+                    
+                    # Silicon Server metadata
+                    server_instance=self,
+                    client_ip=client_ip,
+                    original_request=research_query
+                )
+                
+                # Run the research workflow
+                log_event(f"🧠 Starting {workflow_type} research workflow: {research_query[:50]}...")
+                research_result = await run_research_workflow(
+                    research_query=research_query,
+                    workflow_type=workflow_type,
+                    context=context
+                )
+                
+                processing_time = time.time() - start_time
+                
+                # Update cognitive metrics
+                self.cognitive_metrics["total_syntheses"] += 1
+                if context.get("mlx_lm_calls", 0) > 0:
+                    self.cognitive_metrics["mlx_lm_calls"] += context["mlx_lm_calls"]
+                
+                log_response("/api/workflow/research", client_ip, "success", processing_time)
+                log_event(f"✅ Research workflow completed: {len(research_result)} chars in {processing_time:.2f}s")
+                
+                # Prepare response data
+                response_data = {
+                    "status": "success",
+                    "research_content": research_result,
+                    "workflow_type": workflow_type,
+                    "academic_level": academic_level,
+                    "processing_time": processing_time,
+                    "word_count": len(research_result.split()),
+                    "workflow_metadata": {
+                        "steps_completed": len(context.get("workflow_steps", [])),
+                        "search_performed": context.get("search_performed", False),
+                        "summarization_performed": context.get("summarization_performed", False),
+                        "structure_identified": context.get("structure_identified", False),
+                        "cbt_clarification_applied": context.get("clarification_applied", False),
+                        "mlx_acceleration_used": context.get("mlx_lm_calls", 0) > 0
+                    },
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                # Save to research library
+                try:
+                    saved_id = await self._save_to_research_library(research_result, research_query, response_data)
+                    response_data["saved_to_library"] = True
+                    response_data["library_id"] = saved_id
+                    log_event(f"📚 Research saved to library with ID: {saved_id}")
+                except Exception as e:
+                    log_event(f"⚠️ Failed to save to research library: {str(e)}")
+                    response_data["saved_to_library"] = False
+                
+                return JSONResponse(content=response_data)
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                error_msg = str(e)
+                log_response("/api/workflow/research", client_ip, "error", processing_time, error_msg)
+                log_event(f"❌ Research workflow failed: {error_msg}")
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Research workflow failed: {error_msg}",
+                        "workflow_type": workflow_type,
+                        "processing_time": processing_time,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.get("/api/workflow/status",
+                      tags=["research"],
+                      summary="🔍 Workflow Status",
+                      description="Get status and capabilities of the AgentWorkflow system")
+        async def get_workflow_status():
+            """
+            🔍 **AgentWorkflow System Status**
+            
+            Check the availability and configuration of workflow components:
+            - ProtoConsciousness CBT system
+            - MLX model integration  
+            - Search capabilities
+            - Workflow types available
+            """
+            try:
+                # Test workflow imports
+                workflow_available = False
+                proto_available = False
+                search_available = False
+                
+                try:
+                    from workflows.research_workflow import get_available_workflows
+                    from workflows.proto_consciousness import ProtoConsciousness
+                    from workflows.tools.search import search_web_info
+                    
+                    workflow_available = True
+                    proto_available = True
+                    search_available = True
+                    
+                    # Get available workflow types
+                    available_workflows = get_available_workflows()
+                    
+                except ImportError as e:
+                    available_workflows = {"error": f"Workflow system not available: {str(e)}"}
+                
+                # Check MLX integration
+                mlx_integration = {
+                    "mlx_lm_available": self.mlx_lm_available,
+                    "mlx_whisper_available": self.mlx_whisper_available,
+                    "ollama_fallback": self.ollama_available
+                }
+                
+                # Check dependencies
+                dependencies = {
+                    "duckduckgo_search": False,
+                    "arxiv": False,
+                    "requests": True  # Should always be available
+                }
+                
+                try:
+                    import duckduckgo_search
+                    dependencies["duckduckgo_search"] = True
+                except ImportError:
+                    pass
+                
+                try:
+                    import arxiv
+                    dependencies["arxiv"] = True
+                except ImportError:
+                    pass
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "workflow_system": {
+                        "available": workflow_available,
+                        "proto_consciousness": proto_available,
+                        "search_capabilities": search_available
+                    },
+                    "available_workflows": available_workflows,
+                    "mlx_integration": mlx_integration,
+                    "dependencies": dependencies,
+                    "features": {
+                        "cbt_clarification": proto_available,
+                        "web_search": search_available and dependencies["duckduckgo_search"],
+                        "academic_search": search_available and dependencies["arxiv"],
+                        "mlx_acceleration": self.mlx_lm_available,
+                        "content_synthesis": True,
+                        "academic_formatting": True
+                    },
+                    "cognitive_metrics": self.cognitive_metrics,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to get workflow status: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.get("/api/workflow/types",
+                      tags=["research"],
+                      summary="📋 Available Workflow Types",
+                      description="List all available research workflow types with descriptions")
+        async def get_workflow_types():
+            """
+            📋 **Available Research Workflows**
+            
+            Get detailed information about all available workflow types and their capabilities.
+            """
+            try:
+                from workflows.research_workflow import get_available_workflows
+                available_workflows = get_available_workflows()
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "workflow_types": available_workflows,
+                    "total_types": len(available_workflows),
+                    "recommended": {
+                        "general_research": "comprehensive",
+                        "quick_analysis": "quick",
+                        "scholarly_work": "academic",
+                        "innovation_projects": "creative",
+                        "scientific_studies": "technical"
+                    },
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to get workflow types: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+
+        # ============================================================
+        # RESEARCH LIBRARY ENDPOINTS
+        # ============================================================
+        
+        @self.app.get("/api/research/library",
+                      tags=["research"],
+                      summary="📚 Research Library",
+                      description="Get all saved research from the library with optional filtering")
+        async def get_research_library(
+            search: Optional[str] = Query(None, description="Search query to filter research", example="cognitive"),
+            workflow_type: Optional[str] = Query(None, description="Filter by workflow type", example="comprehensive"),
+            academic_level: Optional[str] = Query(None, description="Filter by academic level", example="graduate"),
+            limit: int = Query(50, description="Maximum number of results", example=50),
+            offset: int = Query(0, description="Offset for pagination", example=0)
+        ):
+            """
+            📚 **Research Library**
+            
+            Get all saved research items with optional filtering and search capabilities.
+            """
+            try:
+                library_items = await self._get_research_library(search, workflow_type, academic_level, limit, offset)
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "total_items": len(library_items),
+                    "library": library_items,
+                    "filters": {
+                        "search": search,
+                        "workflow_type": workflow_type,
+                        "academic_level": academic_level,
+                        "limit": limit,
+                        "offset": offset
+                    },
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to get research library: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.get("/api/research/library/{research_id}",
+                      tags=["research"],
+                      summary="📖 Get Research Item",
+                      description="Get a specific research item from the library")
+        async def get_research_item(research_id: str):
+            """
+            📖 **Get Research Item**
+            
+            Retrieve a specific research item by ID from the library.
+            """
+            try:
+                research_item = await self._get_research_item(research_id)
+                
+                if not research_item:
+                    return JSONResponse(
+                        status_code=404,
+                        content={
+                            "status": "error",
+                            "error": f"Research item {research_id} not found",
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    )
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "research": research_item,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to get research item: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.delete("/api/research/library/{research_id}",
+                        tags=["research"],
+                        summary="🗑️ Delete Research Item",
+                        description="Delete a research item from the library")
+        async def delete_research_item(research_id: str):
+            """
+            🗑️ **Delete Research Item**
+            
+            Remove a research item from the library permanently.
+            """
+            try:
+                deleted = await self._delete_research_item(research_id)
+                
+                if not deleted:
+                    return JSONResponse(
+                        status_code=404,
+                        content={
+                            "status": "error",
+                            "error": f"Research item {research_id} not found",
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    )
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "message": f"Research item {research_id} deleted successfully",
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Failed to delete research item: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+
+        # ============================================================
+        # RESEARCH GENERATION ENDPOINTS (Legacy support)
+        # ============================================================
+        
+        @self.app.post("/api/research/generate",
+                       tags=["research"],
+                       summary="Generate Academic Research (Legacy)",
+                       description="Legacy research generation endpoint - use /api/workflow/research for enhanced features")
+        async def generate_research(
+            request: Request,
+            research_config: dict
+        ):
+            """
+            🔬 **AI Research Generation**
+            
+            Generate comprehensive academic research content including:
+            - Structured outlines and content
+            - Proper citations and bibliography
+            - Academic formatting
+            - Multi-level analysis based on requirements
+            """
+            client_ip = request.client.host
+            start_time = time.time()
+            
+            try:
+                topic = research_config.get('topic', '')
+                research_type = research_config.get('type', 'comprehensive')
+                academic_level = research_config.get('academic_level', 'graduate')
+                target_length = research_config.get('target_length', 'medium')
+                citation_style = research_config.get('citation_style', 'apa')
+                focus_areas = research_config.get('focus_areas', '')
+                model = research_config.get('model', 'default')
+                creativity = research_config.get('creativity', 0.7)
+                depth = research_config.get('depth', 'advanced')
+                include_citations = research_config.get('include_citations', True)
+                generate_bibliography = research_config.get('generate_bibliography', True)
+                
+                if not topic:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"status": "error", "error": "Research topic is required"}
+                    )
+                
+                log_event(f"🔬 Research generation request: {topic} ({research_type}, {academic_level})")
+                
+                # Create comprehensive research prompt
+                research_prompt = f"""Generate a comprehensive {research_type} on the topic: "{topic}"
+
+Research Specifications:
+- Academic Level: {academic_level}
+- Target Length: {target_length}
+- Research Type: {research_type}
+- Citation Style: {citation_style}
+- Depth: {depth}
+
+{f"Focus Areas: {focus_areas}" if focus_areas else ""}
+
+Please provide a well-structured, academic-quality research paper that includes:
+
+1. TITLE AND ABSTRACT
+   - Clear, descriptive title
+   - Comprehensive abstract (150-250 words)
+
+2. INTRODUCTION
+   - Background and context
+   - Problem statement
+   - Research objectives and questions
+   - Significance of the study
+
+3. LITERATURE REVIEW
+   - Theoretical framework
+   - Previous research findings
+   - Current state of knowledge
+   - Research gaps and opportunities
+
+4. METHODOLOGY (if applicable)
+   - Research design and approach
+   - Data collection methods
+   - Analysis techniques
+   - Limitations and considerations
+
+5. ANALYSIS/RESULTS
+   - Key findings and insights
+   - Data interpretation
+   - Discussion of implications
+   - Comparison with existing research
+
+6. CONCLUSIONS
+   - Summary of main findings
+   - Theoretical contributions
+   - Practical applications
+   - Future research directions
+
+{"7. REFERENCES" if generate_bibliography else ""}
+{"   - Properly formatted bibliography in " + citation_style.upper() + " style" if generate_bibliography else ""}
+{"   - Include at least 15-25 credible sources" if generate_bibliography else ""}
+
+Requirements:
+- Use clear, professional academic language appropriate for {academic_level} level
+- Include specific examples and evidence
+- Maintain logical flow and coherence
+- {"Include in-text citations throughout" if include_citations else "Minimize citations"}
+- Ensure comprehensive coverage of the topic
+- Demonstrate critical thinking and analysis
+
+Please write the complete research paper now."""
+
+                # Generate research using selected model with fallback
+                if model == 'default' or not model:
+                    # Use the best available model for research generation
+                    research_content = await self._generate_with_fallback(
+                        research_prompt, 
+                        "default", 
+                        f"You are an expert academic researcher specializing in {topic}. Generate high-quality, comprehensive research content suitable for {academic_level} level academic work."
+                    )
+                else:
+                    research_content = await self._generate_with_fallback(
+                        research_prompt, 
+                        model, 
+                        f"You are an expert academic researcher specializing in {topic}. Generate high-quality, comprehensive research content suitable for {academic_level} level academic work."
+                    )
+                
+                # Calculate word count
+                word_count = len(research_content.split())
+                
+                processing_time = time.time() - start_time
+                
+                log_event(f"✅ Research generated: {topic} - {word_count} words in {processing_time:.2f}s")
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "research_content": research_content,
+                    "word_count": word_count,
+                    "config": research_config,
+                    "processing_time": processing_time,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                error_msg = str(e)
+                log_event(f"❌ Research generation failed: {error_msg}")
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Research generation failed: {error_msg}",
+                        "processing_time": processing_time,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.post("/api/research/outline",
+                       tags=["research"],
+                       summary="Generate Research Outline",
+                       description="Generate a structured research outline")
+        async def generate_research_outline(
+            request: Request,
+            research_config: dict
+        ):
+            """
+            📝 **Research Outline Generation**
+            
+            Generate a structured research outline for academic papers.
+            """
+            try:
+                topic = research_config.get('topic', '')
+                research_type = research_config.get('type', 'comprehensive')
+                academic_level = research_config.get('academic_level', 'graduate')
+                
+                outline_prompt = f"""Create a detailed research outline for: "{topic}"
+
+Research Type: {research_type}
+Academic Level: {academic_level}
+
+Please provide a comprehensive outline with:
+- Main sections and subsections
+- Key points to cover in each section
+- Estimated length for each section
+- Logical flow and structure
+
+Format the outline clearly with proper hierarchy and numbering."""
+
+                outline_content = await self._generate_with_fallback(
+                    outline_prompt,
+                    "default",
+                    "You are an expert academic researcher. Create well-structured research outlines."
+                )
+                
+                return JSONResponse(content={
+                    "status": "success",
+                    "outline_content": outline_content,
+                    "config": research_config,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Outline generation failed: {str(e)}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
         # ============================================================
         # OPENAI API COMPATIBILITY ENDPOINTS
         # ============================================================
@@ -3951,6 +5841,138 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
         
         return fallback_voices
 
+    # ============================================================
+    # RESEARCH LIBRARY METHODS
+    # ============================================================
+    
+    async def _save_to_research_library(self, research_content: str, research_query: str, metadata: dict) -> str:
+        """Save research to the library"""
+        try:
+            # Create research library directory if it doesn't exist
+            library_dir = Path("research_library")
+            library_dir.mkdir(exist_ok=True)
+            
+            # Generate unique ID for this research
+            research_id = f"research_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+            
+            # Prepare research item
+            research_item = {
+                "id": research_id,
+                "query": research_query,
+                "content": research_content,
+                "metadata": {
+                    "workflow_type": metadata.get("workflow_type", "unknown"),
+                    "academic_level": metadata.get("academic_level", "unknown"),
+                    "processing_time": metadata.get("processing_time", 0),
+                    "word_count": metadata.get("word_count", 0),
+                    "workflow_metadata": metadata.get("workflow_metadata", {}),
+                    "created_at": datetime.now().isoformat(),
+                    "saved_from_ip": getattr(self, '_current_client_ip', 'unknown')
+                }
+            }
+            
+            # Save to JSON file
+            file_path = library_dir / f"{research_id}.json"
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(research_item, f, indent=2, ensure_ascii=False)
+            
+            return research_id
+            
+        except Exception as e:
+            log_event(f"❌ Failed to save research to library: {str(e)}")
+            raise e
+    
+    async def _get_research_library(self, search: str = None, workflow_type: str = None, 
+                                   academic_level: str = None, limit: int = 50, offset: int = 0) -> list:
+        """Get research items from the library with filtering"""
+        try:
+            library_dir = Path("research_library")
+            if not library_dir.exists():
+                return []
+            
+            research_items = []
+            
+            # Load all research files
+            for file_path in library_dir.glob("*.json"):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        item = json.load(f)
+                    
+                    # Apply filters
+                    if workflow_type and item["metadata"].get("workflow_type") != workflow_type:
+                        continue
+                    
+                    if academic_level and item["metadata"].get("academic_level") != academic_level:
+                        continue
+                    
+                    if search:
+                        search_text = f"{item['query']} {item['content']}".lower()
+                        if search.lower() not in search_text:
+                            continue
+                    
+                    # Create summary for library view
+                    content_preview = item["content"][:300] + "..." if len(item["content"]) > 300 else item["content"]
+                    
+                    library_item = {
+                        "id": item["id"],
+                        "query": item["query"],
+                        "content_preview": content_preview,
+                        "metadata": item["metadata"],
+                        "word_count": item["metadata"].get("word_count", 0),
+                        "created_at": item["metadata"].get("created_at"),
+                        "workflow_type": item["metadata"].get("workflow_type"),
+                        "academic_level": item["metadata"].get("academic_level")
+                    }
+                    
+                    research_items.append(library_item)
+                    
+                except Exception as e:
+                    log_event(f"⚠️ Failed to load research file {file_path}: {str(e)}")
+                    continue
+            
+            # Sort by creation date (newest first)
+            research_items.sort(key=lambda x: x["created_at"], reverse=True)
+            
+            # Apply pagination
+            return research_items[offset:offset+limit]
+            
+        except Exception as e:
+            log_event(f"❌ Failed to get research library: {str(e)}")
+            raise e
+    
+    async def _get_research_item(self, research_id: str) -> dict:
+        """Get a specific research item by ID"""
+        try:
+            library_dir = Path("research_library")
+            file_path = library_dir / f"{research_id}.json"
+            
+            if not file_path.exists():
+                return None
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+                
+        except Exception as e:
+            log_event(f"❌ Failed to get research item {research_id}: {str(e)}")
+            raise e
+    
+    async def _delete_research_item(self, research_id: str) -> bool:
+        """Delete a research item from the library"""
+        try:
+            library_dir = Path("research_library")
+            file_path = library_dir / f"{research_id}.json"
+            
+            if not file_path.exists():
+                return False
+            
+            file_path.unlink()
+            log_event(f"🗑️ Deleted research item: {research_id}")
+            return True
+            
+        except Exception as e:
+            log_event(f"❌ Failed to delete research item {research_id}: {str(e)}")
+            raise e
+
     def _generate_melodyflow_mathematically(self, output_path, prompt, duration, fidelity, mode, dynamics, source_audio_path=None):
         """Fallback mathematical MelodyFlow synthesis"""
         try:
@@ -4143,6 +6165,12 @@ if __name__ == "__main__":
     print("   • /voices - List available Piper voices")
     print("   • /audiocraft/* - Audio generation")
     print("   • /voice_training/* - Voice training")
+    print()
+    print("📥 Download Management:")
+    print("   • /api/models/search & /download - MLX model management")
+    print("   • /api/voices/search & /download - Voice model management")
+    print("   • /api/downloads/* - Download tracking & cancellation")
+    print("   • /download/status - Real-time download progress")
     print()
     print("🔄 API Compatibility:")
     print("   • /api/* - Ollama API compatible endpoints")

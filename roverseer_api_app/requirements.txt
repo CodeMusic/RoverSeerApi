@@ -1,0 +1,38 @@
+# RoverSeer API Dependencies
+# Core FastAPI framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+python-multipart>=0.0.6
+jinja2>=3.1.0
+
+# Network and HTTP
+requests>=2.31.0
+httpx>=0.25.0
+
+# Audio processing
+numpy>=1.24.0
+soundfile>=0.12.0
+wave>=0.0.2
+
+# Speech recognition and TTS (fallback services)
+openai-whisper>=20231117
+piper-tts>=1.2.0
+
+# LLM integration
+ollama>=0.1.0
+
+# Hardware interface (Pi-specific)
+gpiozero>=1.6.0
+colorzero>=2.0
+
+# Audio synthesis
+audiocraft>=1.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+pyyaml>=6.0
+
+# Development and testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0 
