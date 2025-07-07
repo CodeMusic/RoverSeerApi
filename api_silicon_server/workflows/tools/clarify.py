@@ -7,6 +7,7 @@ the true intent behind research requests.
 """
 
 import logging
+import time
 from typing import Any, Dict
 from ..proto_consciousness import ProtoConsciousness
 
@@ -305,27 +306,88 @@ def auto_clarify_research_request(input_data: Any, context: Dict) -> str:
     clarify_logger.info("🤖 Starting auto-adaptive research clarification...")
     
     try:
+        start_time = time.time()
+        
+        # Convert input to analyzable text
+        request_text = str(input_data) if not isinstance(input_data, str) else input_data
+        
         # Analyze complexity
         complexity_analysis = detect_research_complexity(input_data, context)
         
         # Store analysis in context
         context["complexity_analysis"] = complexity_analysis
         
-        # Apply appropriate clarification
+        # Determine approach and provide detailed feedback
         if complexity_analysis["requires_advanced_clarification"]:
             clarify_logger.info("🧠 Applying advanced CBT clarification...")
             recommended = complexity_analysis["recommended_approach"]
-            return clarify_with_cbt(
+            
+            clarified_result = clarify_with_cbt(
                 input_data, 
                 context,
                 emotional_preset=recommended["emotional_preset"],
                 cognitive_preset=recommended["cognitive_preset"]
             )
+            
+            approach_details = f"Advanced CBT ({recommended['emotional_preset']}/{recommended['cognitive_preset']})"
+            rationale = recommended["rationale"]
         else:
             clarify_logger.info("🧘 Applying standard CBT clarification...")
-            return clarify_request(input_data, context)
+            clarified_result = clarify_request(input_data, context)
+            approach_details = "Standard CBT clarification"
+            rationale = "Simple request suitable for basic clarification"
+        
+        execution_time = time.time() - start_time
+        
+        # Calculate clarification metrics
+        clarification_metrics = {
+            "complexity_score": complexity_analysis["complexity_score"],
+            "approach_used": approach_details,
+            "processing_time": execution_time,
+            "text_expansion_ratio": len(clarified_result) / len(request_text) if request_text else 1,
+            "cognitive_enhancement": "high" if complexity_analysis["requires_advanced_clarification"] else "standard"
+        }
+        
+        # Provide detailed step output information
+        complexity_flags = [flag for flag, detected in complexity_analysis["complexity_indicators"].items() if detected]
+        
+        context["step_output_details"] = {
+            "summary": f"Applied {approach_details} to clarify research intent with complexity score {complexity_analysis['complexity_score']}/5",
+            "actions": [
+                f"Analyzed research request complexity (score: {complexity_analysis['complexity_score']}/5)",
+                f"Detected complexity indicators: {', '.join(complexity_flags) if complexity_flags else 'none'}",
+                f"Selected approach: {approach_details}",
+                f"Applied CBT principles for bias detection",
+                f"Generated clarified research intent ({len(clarified_result)} chars)"
+            ],
+            "data_processed": {
+                "original_request_length": len(request_text),
+                "clarified_request_length": len(clarified_result),
+                "complexity_indicators_found": len(complexity_flags),
+                "processing_time_seconds": execution_time
+            },
+            "metrics": clarification_metrics
+        }
+        
+        clarify_logger.info(f"✅ Auto-clarification completed: {approach_details} "
+                           f"(complexity: {complexity_analysis['complexity_score']}/5, time: {execution_time:.2f}s)")
+        
+        return clarified_result
             
     except Exception as e:
         clarify_logger.error(f"❌ Auto-clarification failed: {str(e)}")
+        
+        # Provide error feedback
+        context["step_output_details"] = {
+            "summary": f"Clarification failed, using fallback: {str(e)[:100]}",
+            "actions": [
+                "Attempted complexity analysis",
+                f"Error occurred: {type(e).__name__}",
+                "Falling back to basic clarification"
+            ],
+            "data_processed": {"error": str(e)},
+            "metrics": {"success": False, "fallback_used": True}
+        }
+        
         # Ultimate fallback to basic clarification
         return clarify_request(input_data, context) 

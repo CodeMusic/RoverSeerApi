@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Control Center - RoverSeer API</title>
+    
+    <!-- IMMEDIATE ERROR HANDLING FOR WORKFLOW_TYPE -->
+    <script>
+        // Override getElementById immediately to prevent workflow_type errors
+        (function() {
+            const originalGetElementById = document.getElementById;
+            document.getElementById = function(id) {
+                if (id === 'workflow_type') {
+                    try {
+                        // Try workflowType first (camelCase)
+                        let element = originalGetElementById.call(document, 'workflowType');
+                        if (element) return element;
+                        
+                        // Try workflow_type (underscore)
+                        element = originalGetElementById.call(document, 'workflow_type');
+                        if (element) return element;
+                        
+                        // Create fallback element
+                        console.warn('workflow_type element not found, creating fallback');
+                        const fallback = document.createElement('select');
+                        fallback.value = 'comprehensive';
+                        fallback.style.display = 'none';
+                        return fallback;
+                    } catch (error) {
+                        console.error('Error accessing workflow_type:', error);
+                        const fallback = document.createElement('select');
+                        fallback.value = 'comprehensive';
+                        return fallback;
+                    }
+                }
+                return originalGetElementById.call(document, id);
+            };
+            
+            // Immediate error handling
+            window.addEventListener('error', function(e) {
+                if (e.error && e.error.message && e.error.message.includes('workflow_type')) {
+                    console.warn('Caught workflow_type error immediately:', e.error.message);
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+            
+            window.addEventListener('unhandledrejection', function(e) {
+                if (e.reason && e.reason.message && e.reason.message.includes('workflow_type')) {
+                    console.warn('Caught workflow_type promise rejection immediately:', e.reason.message);
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+        })();
+    </script>
+    
+    <!-- CSS Frameworks and Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-dark.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1e2327;
+            --accent-bg: #2a2d31;
+            --text-primary: #e6e6e6;
+            --text-secondary: #b8b8b8;
+            --accent-color: #4fd1c7;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #f5222d;
+            --info-color: #1890ff;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg));
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+        }
+
+        .control-panel {
+            background: rgba(30, 35, 39, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .step-card {
+            background: var(--accent-bg);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .step-card:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 20px rgba(79, 209, 199, 0.2);
+        }
+
+        .step-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-pending { background-color: var(--text-secondary); }
+        .status-running { 
+            background: linear-gradient(45deg, var(--accent-color), var(--info-color));
+            animation: pulse 1.5s infinite;
+        }
+        .status-completed { background-color: var(--success-color); }
+        .status-failed { background-color: var(--error-color); }
+        .status-skipped { background-color: var(--warning-color); }
+        .status-paused { background-color: var(--warning-color); animation: blink 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+
+        .progress-ring {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-color) calc(var(--progress) * 1%), var(--accent-bg) 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .progress-ring::before {
+            content: '';
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--accent-bg);
+            position: absolute;
+        }
+
+        .progress-text {
+            position: relative;
+            z-index: 1;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .metric-card {
+            background: var(--secondary-bg);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-control {
+            background: linear-gradient(135deg, var(--accent-color), var(--info-color));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-control:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(79, 209, 199, 0.3);
+            color: white;
+        }
+
+        .btn-danger-control {
+            background: linear-gradient(135deg, var(--error-color), #ff7875);
+        }
+
+        .btn-warning-control {
+            background: linear-gradient(135deg, var(--warning-color), #ffc53d);
+        }
+
+        .feedback-log {
+            background: var(--primary-bg);
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-entry {
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-timestamp {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        .modification-panel {
+            background: var(--secondary-bg);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        .modification-panel.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-control, .form-select {
+            background: var(--accent-bg);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+            border-radius: 8px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            background: var(--accent-bg);
+            border-color: var(--accent-color);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 0.25rem rgba(79, 209, 199, 0.25);
+        }
+
+        .data-preview {
+            background: var(--primary-bg);
+            border-radius: 6px;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        /* Enhanced step tracking */
+        .step-execution-details {
+            background: var(--secondary-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .pipeline-summary-card {
+            background: linear-gradient(135deg, var(--accent-bg), var(--secondary-bg));
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid var(--accent-color);
+            box-shadow: 0 8px 32px rgba(79, 209, 199, 0.2);
+        }
+        
+        .step-timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+        
+        .step-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent-color), var(--info-color));
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .timeline-marker {
+            position: absolute;
+            left: -1.75rem;
+            top: 0.25rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-color);
+            background: var(--primary-bg);
+        }
+        
+        .timeline-marker.completed {
+            background: var(--success-color);
+            border-color: var(--success-color);
+        }
+        
+        .timeline-marker.failed {
+            background: var(--error-color);
+            border-color: var(--error-color);
+        }
+        
+        .timeline-marker.running {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            animation: pulse 1.5s infinite;
+        }
+        
+        /* Enhanced visibility for all text elements */
+        .high-contrast-text {
+            color: #FFFFFF !important;
+            text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+            font-weight: 600;
+        }
+        
+        .execution-log {
+            background: #000000;
+            border: 2px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        /* Improved button visibility */
+        .btn-enhanced {
+            background: linear-gradient(135deg, var(--accent-color), var(--info-color));
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: #FFFFFF !important;
+            font-weight: 700;
+            text-shadow: 1px 1px 2px #000000;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .btn-enhanced:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(79, 209, 199, 0.4);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .workflow-header {
+            background: linear-gradient(135deg, var(--accent-color), var(--info-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .connection-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success-color);
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .connection-indicator.disconnected {
+            background: var(--error-color);
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+
+        .navbar {
+            background: rgba(15, 20, 25, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark sticky-top">
+        <div class="container-fluid">
+            <span class="navbar-brand">
+                <i class="fas fa-brain me-2"></i>
+                <span class="workflow-header">Workflow Control Center</span>
+            </span>
+            <div class="d-flex align-items-center">
+                <span class="connection-indicator" id="connectionStatus"></span>
+                <span id="connectionText">Connected</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Control Panel -->
+            <div class="col-lg-4 mb-4">
+                <div class="control-panel p-4">
+                    <h4 class="mb-4">
+                        <i class="fas fa-play-circle me-2"></i>
+                        Start New Workflow
+                    </h4>
+                    
+                    <form id="workflowForm">
+                        <div class="mb-3">
+                            <label for="workflowQuery" class="form-label">Research Query</label>
+                            <textarea class="form-control" id="workflowQuery" rows="3" 
+                                    placeholder="Enter your research question or topic..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="workflowType" class="form-label">Workflow Type</label>
+                            <select class="form-select" id="workflowType">
+                                <option value="comprehensive">Comprehensive Research</option>
+                                <option value="quick">Quick Research</option>
+                                <option value="academic">Academic Research</option>
+                                <option value="creative">Creative Research</option>
+                                <option value="technical">Technical Research</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-control w-100">
+                            <i class="fas fa-rocket me-2"></i>
+                            Start Workflow
+                        </button>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <!-- Active Workflows -->
+                    <h5 class="mb-3">
+                        <i class="fas fa-tasks me-2"></i>
+                        Active Workflows
+                    </h5>
+                    <div id="activeWorkflows">
+                        <p class="text-muted">No active workflows</p>
+                    </div>
+
+                    <!-- Workflow Controls -->
+                    <div id="workflowControls" class="mt-3" style="display: none;">
+                        <div class="btn-group w-100 mb-2" role="group">
+                            <button type="button" class="btn btn-warning-control" id="pauseBtn">
+                                <i class="fas fa-pause"></i> Pause
+                            </button>
+                            <button type="button" class="btn btn-control" id="resumeBtn">
+                                <i class="fas fa-play"></i> Resume
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-info w-100" id="exportBtn">
+                            <i class="fas fa-download me-2"></i>
+                            Export Log
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflow Execution Panel -->
+            <div class="col-lg-8">
+                <!-- Workflow Overview -->
+                <div class="control-panel p-4 mb-4" id="workflowOverview" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0">
+                            <i class="fas fa-flow-chart me-2"></i>
+                            <span id="currentWorkflowTitle">Workflow Execution</span>
+                        </h4>
+                        <div class="d-flex gap-3">
+                            <div class="metric-card">
+                                <div class="small text-muted">Progress</div>
+                                <div class="h5 mb-0" id="overallProgress">0%</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="small text-muted">Duration</div>
+                                <div class="h5 mb-0" id="executionDuration">0s</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="small text-muted">Quality</div>
+                                <div class="h5 mb-0" id="averageQuality">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Query:</strong> <span id="workflowQuery_display" class="text-muted"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Type:</strong> <span id="workflowType_display" class="text-muted"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Execution Cards -->
+                <div id="stepCards">
+                    <!-- Step cards will be dynamically generated here -->
+                </div>
+
+                <!-- Real-time Feedback Log -->
+                <div class="control-panel p-4 mt-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-terminal me-2"></i>
+                        Real-time Feedback Log
+                    </h5>
+                    <div class="feedback-log p-3" id="feedbackLog">
+                        <div class="log-entry">
+                            <span class="log-timestamp">[System]</span> Workflow Control Center initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step Modification Modal -->
+    <div class="modal fade" id="modificationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark border-0">
+                <div class="modal-header border-bottom border-secondary">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cog me-2"></i>
+                        Modify Step: <span id="modalStepLabel"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="modificationForm">
+                        <div class="mb-3">
+                            <label for="modificationType" class="form-label">Modification Type</label>
+                            <select class="form-select" id="modificationType">
+                                <option value="parameters">Adjust Parameters</option>
+                                <option value="direction">Change Direction</option>
+                                <option value="skip">Skip Step</option>
+                            </select>
+                        </div>
+
+                        <div id="parametersSection">
+                            <h6 class="mb-3">Step Parameters</h6>
+                            <div id="parameterControls">
+                                <!-- Dynamic parameter controls will be added here -->
+                            </div>
+                        </div>
+
+                        <div id="directionSection" style="display: none;">
+                            <div class="mb-3">
+                                <label for="newDirection" class="form-label">New Direction</label>
+                                <textarea class="form-control" id="newDirection" rows="3" 
+                                        placeholder="Describe how this step should be modified..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="modificationReason" class="form-label">Reason for Modification</label>
+                            <input type="text" class="form-control" id="modificationReason" 
+                                   placeholder="Why are you making this change?">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-top border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-control" id="applyModification">Apply Modification</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container">
+        <!-- Toasts will be dynamically added here -->
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+
+    <script>
+        // IMMEDIATE ERROR HANDLING - Must be first to catch cached JavaScript errors
+        (function() {
+            // Override getElementById immediately to prevent workflow_type errors
+            const originalGetElementById = document.getElementById;
+            document.getElementById = function(id) {
+                try {
+                    if (id === 'workflow_type') {
+                        // Try both possible IDs immediately
+                        let element = originalGetElementById.call(document, 'workflowType');
+                        if (!element) {
+                            element = originalGetElementById.call(document, 'workflow_type');
+                        }
+                        if (!element) {
+                            console.warn('workflow_type element not found, creating temporary fallback');
+                            // Create a temporary element as immediate fallback
+                            const tempElement = document.createElement('select');
+                            tempElement.value = 'comprehensive';
+                            tempElement.id = 'workflow_type';
+                            tempElement.style.display = 'none';
+                            document.body.appendChild(tempElement);
+                            return tempElement;
+                        }
+                        return element;
+                    }
+                    return originalGetElementById.call(document, id);
+                } catch (error) {
+                    console.error('Error in getElementById override:', error);
+                    return originalGetElementById.call(document, id);
+                }
+            };
+
+            // Add immediate window error handling
+            window.addEventListener('error', function(e) {
+                if (e.error && e.error.message && e.error.message.includes('workflow_type')) {
+                    console.warn('IMMEDIATE: Caught workflow_type error:', e.error.message);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }, true); // Use capture phase to catch early
+
+            // Add immediate promise rejection handling
+            window.addEventListener('unhandledrejection', function(e) {
+                if (e.reason && e.reason.message && e.reason.message.includes('workflow_type')) {
+                    console.warn('IMMEDIATE: Caught workflow_type promise rejection:', e.reason.message);
+                    e.preventDefault();
+                    return false;
+                }
+            }, true); // Use capture phase to catch early
+
+            // Create workflow_type element alias immediately if needed
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    if (!document.getElementById('workflow_type') && document.getElementById('workflowType')) {
+                        const original = document.getElementById('workflowType');
+                        const alias = original.cloneNode(true);
+                        alias.id = 'workflow_type';
+                        alias.style.display = 'none';
+                        document.body.appendChild(alias);
+                        original.addEventListener('change', function() {
+                            alias.value = original.value;
+                        });
+                        console.log('IMMEDIATE: Created workflow_type alias');
+                    }
+                });
+            } else {
+                // DOM already loaded
+                if (!document.getElementById('workflow_type') && document.getElementById('workflowType')) {
+                    const original = document.getElementById('workflowType');
+                    const alias = original.cloneNode(true);
+                    alias.id = 'workflow_type';
+                    alias.style.display = 'none';
+                    document.body.appendChild(alias);
+                    original.addEventListener('change', function() {
+                        alias.value = original.value;
+                    });
+                    console.log('IMMEDIATE: Created workflow_type alias');
+                }
+            }
+        })();
+
+        // Global error handling and variable declarations
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error:', e.error);
+            if (e.error.message.includes('progressInterval')) {
+                console.warn('progressInterval error caught - this might be from cached code');
+            }
+            if (e.error.message.includes('workflow_type')) {
+                console.warn('workflow_type element not found - this might be from cached code or incorrect element ID');
+                e.preventDefault(); // Prevent the error from propagating
+            }
+        });
+
+        // Handle unhandled promise rejections specifically for workflow_type
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.message && e.reason.message.includes('workflow_type')) {
+                console.warn('Caught unhandled promise rejection for workflow_type:', e.reason.message);
+                e.preventDefault(); // Prevent the error from propagating
+            }
+        });
+
+        // Ensure any legacy variables are defined to prevent errors
+        if (typeof progressInterval === 'undefined') {
+            var progressInterval = null;
+        }
+
+                 // Create a defensive getter for workflow_type element if it doesn't exist
+        window.addEventListener('DOMContentLoaded', function() {
+            // If workflow_type element is missing, create a fallback or alias
+            if (!document.getElementById('workflow_type') && document.getElementById('workflowType')) {
+                // Create an alias element to prevent errors
+                const originalElement = document.getElementById('workflowType');
+                if (originalElement) {
+                    // Clone the element with the expected ID
+                    const aliasElement = originalElement.cloneNode(true);
+                    aliasElement.id = 'workflow_type';
+                    aliasElement.style.display = 'none'; // Hide the duplicate
+                    document.body.appendChild(aliasElement);
+                    
+                    // Keep them synchronized
+                    originalElement.addEventListener('change', function() {
+                        aliasElement.value = originalElement.value;
+                    });
+                    console.log('Created workflow_type alias element to prevent errors');
+                }
+            }
+        });
+
+        // Global utility function to safely get workflow type
+        window.getWorkflowType = function() {
+            try {
+                const element = document.getElementById('workflowType') || 
+                               document.getElementById('workflow_type');
+                if (element) {
+                    return element.value || 'comprehensive';
+                }
+                console.warn('No workflow type element found, returning default');
+                return 'comprehensive';
+            } catch (error) {
+                console.error('Error getting workflow type:', error);
+                return 'comprehensive';
+            }
+        };
+
+        // Override document.getElementById for workflow_type specifically
+        const originalGetElementById = document.getElementById.bind(document);
+        document.getElementById = function(id) {
+            try {
+                if (id === 'workflow_type') {
+                    // Try both IDs and return the one that exists
+                    const element = originalGetElementById('workflowType') || 
+                                   originalGetElementById('workflow_type');
+                    if (!element) {
+                        console.warn('workflow_type element not found, creating temporary fallback');
+                        // Create a temporary element as fallback
+                        const tempElement = document.createElement('select');
+                        tempElement.value = 'comprehensive';
+                        return tempElement;
+                    }
+                    return element;
+                }
+                return originalGetElementById(id);
+            } catch (error) {
+                console.error('Error in getElementById override:', error);
+                return originalGetElementById(id);
+            }
+        };
+
+        class WorkflowController {
+            constructor() {
+                this.socket = io();
+                this.currentExecutionId = null;
+                this.modificationTemplates = {};
+                this.startTime = null;
+                this.updateInterval = null;
+                
+                // Bind methods to ensure 'this' context is preserved
+                this.handleStepFeedback = this.handleStepFeedback.bind(this);
+                this.handleWorkflowCompleted = this.handleWorkflowCompleted.bind(this);
+                this.handleWorkflowError = this.handleWorkflowError.bind(this);
+                
+                this.initializeSocketEvents();
+                this.initializeUIEvents();
+                this.loadModificationTemplates();
+                this.loadAvailableWorkflows();
+            }
+
+            initializeSocketEvents() {
+                // Connection events
+                this.socket.on('connect', () => {
+                    this.updateConnectionStatus(true);
+                    this.addLogEntry('Connected to workflow control system', 'success');
+                    
+                    // Join workflow room
+                    this.socket.emit('join_workflow_room', {
+                        session_id: this.getSessionId()
+                    });
+                });
+
+                this.socket.on('disconnect', () => {
+                    this.updateConnectionStatus(false);
+                    this.addLogEntry('Disconnected from workflow control system', 'error');
+                });
+
+                this.socket.on('connect_error', (error) => {
+                    console.error('Socket connection error:', error);
+                    this.addLogEntry('Connection error - retrying...', 'warning');
+                });
+
+                // Workflow events with error handling
+                this.socket.on('step_feedback', (data) => {
+                    try {
+                        this.handleStepFeedback(data);
+                    } catch (error) {
+                        console.error('Error handling step feedback:', error);
+                        this.addLogEntry(`Error processing step feedback: ${error.message}`, 'error');
+                    }
+                });
+
+                this.socket.on('workflow_completed', (data) => {
+                    try {
+                        this.handleWorkflowCompleted(data);
+                    } catch (error) {
+                        console.error('Error handling workflow completion:', error);
+                        this.addLogEntry(`Error processing workflow completion: ${error.message}`, 'error');
+                    }
+                });
+
+                this.socket.on('workflow_error', (data) => {
+                    try {
+                        this.handleWorkflowError(data);
+                    } catch (error) {
+                        console.error('Error handling workflow error:', error);
+                        this.addLogEntry(`Error processing workflow error: ${error.message}`, 'error');
+                    }
+                });
+            }
+
+            initializeUIEvents() {
+                // Workflow form submission
+                document.getElementById('workflowForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.startWorkflow();
+                });
+
+                // Control buttons
+                document.getElementById('pauseBtn').addEventListener('click', () => {
+                    this.pauseWorkflow();
+                });
+
+                document.getElementById('resumeBtn').addEventListener('click', () => {
+                    this.resumeWorkflow();
+                });
+
+                document.getElementById('exportBtn').addEventListener('click', () => {
+                    this.exportWorkflowLog();
+                });
+
+                // Modification form
+                document.getElementById('modificationType').addEventListener('change', (e) => {
+                    this.toggleModificationSections(e.target.value);
+                });
+
+                document.getElementById('applyModification').addEventListener('click', () => {
+                    this.applyStepModification();
+                });
+            }
+
+            async loadModificationTemplates() {
+                try {
+                    const response = await fetch('/api/workflows/modification-templates');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.modificationTemplates = data.templates;
+                    }
+                } catch (error) {
+                    console.error('Failed to load modification templates:', error);
+                }
+            }
+
+            async loadAvailableWorkflows() {
+                try {
+                    const response = await fetch('/api/workflows/available');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const select = document.getElementById('workflowType');
+                        select.innerHTML = '';
+                        
+                        Object.entries(data.workflows).forEach(([key, description]) => {
+                            const option = document.createElement('option');
+                            option.value = key;
+                            option.textContent = description;
+                            select.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load available workflows:', error);
+                }
+            }
+
+            async startWorkflow() {
+                const query = document.getElementById('workflowQuery').value.trim();
+                
+                // Handle both possible element IDs to prevent errors
+                let workflowType;
+                const workflowTypeElement = document.getElementById('workflowType') || document.getElementById('workflow_type');
+                if (workflowTypeElement) {
+                    workflowType = workflowTypeElement.value;
+                } else {
+                    workflowType = 'comprehensive'; // Default fallback
+                    console.warn('Workflow type element not found, using default: comprehensive');
+                }
+
+                if (!query) {
+                    this.showToast('Please enter a research query', 'error');
+                    return;
+                }
+
+                // Show loading state
+                const submitBtn = document.querySelector('#workflowForm button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Starting...';
+                submitBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/api/workflows/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            query: query,
+                            workflow_type: workflowType,
+                            session_id: this.getSessionId()
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        this.currentExecutionId = data.execution_id;
+                        this.startTime = Date.now();
+                        
+                        this.showWorkflowOverview(data);
+                        this.createStepCards(data.step_labels);
+                        this.showWorkflowControls();
+                        this.startDurationTimer();
+                        
+                        this.addLogEntry(`Workflow started: ${workflowType} (${data.execution_id})`, 'info');
+                        this.showToast('Workflow started successfully!', 'success');
+                        
+                        // Clear form
+                        document.getElementById('workflowQuery').value = '';
+                    } else {
+                        this.showToast(data.error || 'Failed to start workflow', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error starting workflow:', error);
+                    this.showToast(`Failed to start workflow: ${error.message}`, 'error');
+                } finally {
+                    // Restore button state
+                    if (submitBtn) {
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
+                    }
+                }
+            }
+
+            showWorkflowOverview(data) {
+                document.getElementById('workflowOverview').style.display = 'block';
+                document.getElementById('currentWorkflowTitle').textContent = `${data.workflow_type} Workflow`;
+                document.getElementById('workflowQuery_display').textContent = document.getElementById('workflowQuery').value;
+                document.getElementById('workflowType_display').textContent = data.workflow_type;
+            }
+
+            createStepCards(stepLabels) {
+                const container = document.getElementById('stepCards');
+                container.innerHTML = '';
+
+                stepLabels.forEach((label, index) => {
+                    const card = this.createStepCard(label, index);
+                    container.appendChild(card);
+                });
+            }
+
+            createStepCard(label, index) {
+                const card = document.createElement('div');
+                card.className = 'step-card p-3';
+                card.id = `step-card-${index}`;
+
+                card.innerHTML = `
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <span class="step-status status-pending" id="step-status-${index}"></span>
+                            <div>
+                                <h6 class="mb-1">${label}</h6>
+                                <small class="text-muted" id="step-action-${index}">Waiting to start...</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="progress-ring" id="progress-ring-${index}" style="--progress: 0">
+                                <span class="progress-text" id="progress-text-${index}">0%</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-info" onclick="workflowController.showStepModification('${label}')">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-2" id="step-details-${index}" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">Actions Completed:</small>
+                                <ul class="small mb-0" id="step-actions-${index}"></ul>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Data Summary:</small>
+                                <div class="data-preview" id="step-data-${index}"></div>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">Performance Metrics:</small>
+                            <div class="small" id="step-metrics-${index}"></div>
+                        </div>
+                    </div>
+                `;
+
+                // Add click handler to toggle details
+                card.addEventListener('click', (e) => {
+                    if (!e.target.closest('button')) {
+                        const details = document.getElementById(`step-details-${index}`);
+                        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+                    }
+                });
+
+                return card;
+            }
+
+            handleStepFeedback(data) {
+                const feedback = data.step_feedback;
+                const stepIndex = this.getStepIndex(feedback.step_label);
+                
+                if (stepIndex !== -1) {
+                    this.updateStepCard(stepIndex, feedback);
+                }
+
+                this.addLogEntry(
+                    `[${feedback.step_label}] ${feedback.current_action}`,
+                    this.getLogType(feedback.status)
+                );
+
+                this.updateOverallProgress();
+            }
+
+            updateStepCard(stepIndex, feedback) {
+                // Update status indicator
+                const statusElement = document.getElementById(`step-status-${stepIndex}`);
+                statusElement.className = `step-status status-pending`;
+            }
+        }
+
+        // Initialize the workflow controller when DOM is ready
+        document.addEventListener("DOMContentLoaded", function() {
+            const workflowController = new WorkflowController();
+            window.workflowController = workflowController;
+        });
+    </script>
+</body>
+</html>

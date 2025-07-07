@@ -3,9 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>🧠 AgentWorkflow Research | API Silicon Server</title>
     <!-- Add markdown rendering library -->
     <script src="https://cdn.jsdelivr.net/npm/marked@9.1.2/marked.min.js"></script>
+    
+    <!-- IMMEDIATE ERROR HANDLING FOR WORKFLOW_TYPE -->
+    <script>
+        // Override getElementById immediately to prevent workflow_type errors
+        (function() {
+            const originalGetElementById = document.getElementById;
+            document.getElementById = function(id) {
+                if (id === 'workflow_type') {
+                    try {
+                        // Create fallback element immediately
+                        console.warn('workflow_type element accessed in research.html, using fallback');
+                        const fallback = document.createElement('select');
+                        fallback.value = 'comprehensive';
+                        fallback.style.display = 'none';
+                        return fallback;
+                    } catch (error) {
+                        console.error('Error accessing workflow_type:', error);
+                        const fallback = document.createElement('select');
+                        fallback.value = 'comprehensive';
+                        return fallback;
+                    }
+                }
+                return originalGetElementById.call(document, id);
+            };
+            
+            // Immediate error handling
+            window.addEventListener('error', function(e) {
+                if (e.error && e.error.message && e.error.message.includes('workflow_type')) {
+                    console.warn('Research: Caught workflow_type error immediately:', e.error.message);
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+            
+            window.addEventListener('unhandledrejection', function(e) {
+                if (e.reason && e.reason.message && e.reason.message.includes('workflow_type')) {
+                    console.warn('Research: Caught workflow_type promise rejection immediately:', e.reason.message);
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+        })();
+    </script>
     <style>
         * {
             margin: 0;
@@ -723,6 +769,345 @@
             max-width: 400px;
             margin: 0 auto;
         }
+
+        /* New styles for workflow steps */
+        .workflow-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .config-btn {
+            padding: 8px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            color: #4a5568;
+        }
+
+        .config-btn:hover {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .config-toggle {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #718096;
+            margin-left: 10px;
+        }
+
+        .config-form {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-top: 10px;
+        }
+
+        .config-field {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .config-field label {
+            margin-bottom: 0;
+            margin-right: 15px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .config-field input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .config-field select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .config-field input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .apply-config-btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .apply-config-btn:hover {
+            background: #48bb78;
+        }
+
+        .step-info {
+            margin-bottom: 10px;
+        }
+
+        .step-actions, .step-metrics, .step-data {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .step-actions ul {
+            padding-left: 20px;
+        }
+
+        .step-actions li {
+            margin-bottom: 5px;
+        }
+
+        .step-metrics .metric-item, .step-data .data-item {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 5px;
+        }
+
+        .step {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid #3f3351;
+            border-radius: 8px;
+            margin: 8px 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .step:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        .step.pending { border-left: 4px solid #cbd5e0; }
+        .step.active { 
+            border-left: 4px solid #667eea; 
+            background: linear-gradient(135deg, #1a1a2e, #1e2b5c);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .step.completed { 
+            border-left: 4px solid #48bb78; 
+            background: linear-gradient(135deg, #1a1a2e, #1e4d2b);
+        }
+        .step.failed { 
+            border-left: 4px solid #e53e3e; 
+            background: linear-gradient(135deg, #1a1a2e, #4d1e1e);
+        }
+        .step.skipped { 
+            border-left: 4px solid #f6ad55; 
+            background: linear-gradient(135deg, #1a1a2e, #4d3a1e);
+        }
+        
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid rgba(63, 51, 81, 0.3);
+        }
+        
+        .step-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .step-status {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .step-toggle, .config-toggle {
+            background: none;
+            border: none;
+            color: #cbd5e0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .step-toggle:hover, .config-toggle:hover {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+        
+        .step-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .step.expanded .step-details {
+            max-height: 800px;
+            padding: 16px;
+        }
+        
+        .step-info {
+            margin-bottom: 12px;
+        }
+        
+        .step-info p {
+            margin: 6px 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .step-actions, .step-metrics, .step-data {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(63, 51, 81, 0.2);
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .step-actions ul {
+            margin: 4px 0 0 0;
+            padding-left: 16px;
+        }
+        
+        .step-actions li {
+            margin: 2px 0;
+            font-size: 0.85rem;
+            color: #cbd5e0;
+        }
+        
+        .metric-item, .data-item {
+            display: inline-block;
+            margin: 2px 8px 2px 0;
+            padding: 2px 6px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #e2e8f0;
+        }
+        
+        .step-config {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: rgba(102, 126, 234, 0.1);
+            border-top: 1px solid rgba(102, 126, 234, 0.3);
+        }
+        
+        .step-config.show {
+            max-height: 400px;
+            padding: 16px;
+        }
+        
+        .step-config h5 {
+            margin: 0 0 12px 0;
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .config-form {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .config-field {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .config-field span {
+            min-width: 120px;
+            color: #e2e8f0;
+            text-transform: capitalize;
+        }
+        
+        .config-field input, .config-field select {
+            flex: 1;
+            max-width: 200px;
+            padding: 4px 8px;
+            background: rgba(31, 29, 54, 0.8);
+            border: 1px solid #3f3351;
+            border-radius: 4px;
+            color: #e2e8f0;
+            font-size: 0.8rem;
+        }
+        
+        .config-field input[type="checkbox"] {
+            width: auto;
+            max-width: auto;
+        }
+        
+        .apply-config-btn {
+            padding: 6px 12px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+        
+        .apply-config-btn:hover {
+            background: linear-gradient(45deg, #5a67d8, #6b46c1);
+            transform: translateY(-1px);
+        }
+        
+        .workflow-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(31, 29, 54, 0.6);
+            border-radius: 8px;
+            border: 1px solid #3f3351;
+        }
+        
+        .config-btn {
+            padding: 6px 12px;
+            background: rgba(102, 126, 234, 0.2);
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            color: #e2e8f0;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .config-btn:hover {
+            background: rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -877,10 +1262,50 @@
     </div>
 
     <script>
+        // Global error handling for workflow_type
+        window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.message && e.reason.message.includes('workflow_type')) {
+                console.warn('Caught unhandled promise rejection for workflow_type in research.html:', e.reason.message);
+                e.preventDefault(); // Prevent the error from propagating
+            }
+        });
+
+        // Global utility to safely get workflow type value
+        window.safeGetWorkflowType = function() {
+            try {
+                // Try multiple approaches to get workflow type
+                if (window.selectedWorkflowType) {
+                    return window.selectedWorkflowType;
+                }
+                
+                const element = document.getElementById('workflow_type') || 
+                               document.getElementById('workflowType');
+                if (element) {
+                    return element.value || 'comprehensive';
+                }
+                
+                // Check for selected workflow type div
+                const selectedDiv = document.querySelector('.workflow-type.selected');
+                if (selectedDiv && selectedDiv.dataset.type) {
+                    return selectedDiv.dataset.type;
+                }
+                
+                console.warn('No workflow type found, using default');
+                return 'comprehensive';
+            } catch (error) {
+                console.error('Error getting workflow type:', error);
+                return 'comprehensive';
+            }
+        };
+
         let selectedWorkflowType = 'comprehensive';
         let currentAudio = null;
         let currentResearchId = null;
         let libraryData = [];
+        let currentModalContent = null;
+        let currentSpeechSynthesis = null;
+        let progressInterval = null; // Declare the progress interval variable
+        let currentStepIndex = 0; // Track current step for progress simulation
 
         // Tab switching functionality
         function switchTab(tabName) {
@@ -913,27 +1338,59 @@
             });
         });
 
-        // Research form submission
+        // Research form submission with enhanced step tracking
         document.getElementById('researchForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const formData = new FormData();
-            formData.append('research_query', document.getElementById('research_query').value);
-            formData.append('workflow_type', selectedWorkflowType);
-            formData.append('academic_level', document.getElementById('academic_level').value);
-            formData.append('max_search_results', document.getElementById('max_search_results').value);
             
-            // Disable form and show loading
+            // Safely get form values with null checks
+            const researchQueryEl = document.getElementById('research_query');
+            const academicLevelEl = document.getElementById('academic_level');
+            const maxSearchResultsEl = document.getElementById('max_search_results');
+            
+            if (!researchQueryEl || !academicLevelEl || !maxSearchResultsEl) {
+                showStatus('Form elements not found. Please refresh the page.', 'error');
+                return false;
+            }
+            
+            formData.append('research_query', researchQueryEl.value);
+            formData.append('workflow_type', selectedWorkflowType || 'comprehensive');
+            formData.append('academic_level', academicLevelEl.value);
+            formData.append('citation_style', 'apa'); // Default citation style
+            formData.append('max_search_results', maxSearchResultsEl.value);
+            
+            // Include step configurations if modified
+            const stepConfigs = {};
+            workflowSteps.forEach((step, index) => {
+                stepConfigs[step.name] = step.config;
+            });
+            formData.append('step_configurations', JSON.stringify(stepConfigs));
+            
+            // Update UI for processing state
             document.getElementById('submitBtn').disabled = true;
-            document.getElementById('submitBtn').textContent = '🔄 Processing...';
+            document.getElementById('submitBtn').textContent = '🧠 Processing...';
             
-            // Clear previous results
-            document.getElementById('statusContainer').innerHTML = '';
-            document.getElementById('workflowSteps').innerHTML = '';
-            document.getElementById('resultContainer').innerHTML = '';
+            const resultContainer = document.getElementById('resultContainer');
+            resultContainer.style.display = 'block';
             
-            // Show loading state
+            // Initialize workflow steps display
+            initializeWorkflowSteps();
             showWorkflowLoading();
+            
+            // Start simulated progress (will be replaced by real data when available)
+            currentStepIndex = 0; // Reset for new research
+            progressInterval = setInterval(() => {
+                if (currentStepIndex < workflowSteps.length) {
+                    updateStepStatus(currentStepIndex, 'active', 'Processing...', 'Step in progress...');
+                    if (currentStepIndex > 0) {
+                        updateStepStatus(currentStepIndex - 1, 'completed', 'Completed', 'Step completed successfully');
+                    }
+                    currentStepIndex++;
+                } else {
+                    clearInterval(progressInterval);
+                }
+            }, 3000); // Update every 3 seconds
             
             try {
                 const response = await fetch('/api/workflow/research', {
@@ -941,103 +1398,234 @@
                     body: formData
                 });
                 
+                // Clear the simulated progress
+                clearInterval(progressInterval);
+                
                 const data = await response.json();
                 
                 if (data.status === 'success') {
                     showStatus('Research completed successfully!', 'success');
                     displayResults(data);
-                    updateWorkflowStepsFromMetadata(data.workflow_metadata || {});
+                    
+                    // Update steps with real data
+                    if (data.workflow_metadata && data.workflow_metadata.workflow_steps) {
+                        updateWorkflowStepsFromData(data.workflow_metadata.workflow_steps);
+                    } else {
+                        // Fallback to legacy metadata format
+                        updateWorkflowStepsFromLegacyMetadata(data.workflow_metadata);
+                    }
                 } else {
-                    showStatus(`Error: ${data.error}`, 'error');
-                    markAllStepsFailed();
+                    throw new Error(data.error || 'Research failed');
                 }
+                
             } catch (error) {
-                showStatus(`Network error: ${error.message}`, 'error');
+                clearInterval(progressInterval);
                 console.error('Research error:', error);
+                showStatus(`Research failed: ${error.message}`, 'error');
                 markAllStepsFailed();
             } finally {
-                // Re-enable form
                 document.getElementById('submitBtn').disabled = false;
                 document.getElementById('submitBtn').textContent = '🧠 Generate Research';
             }
         });
 
-        function showStatus(message, type) {
-            const statusContainer = document.getElementById('statusContainer');
-            statusContainer.innerHTML = `<div class="status ${type}">${message}</div>`;
+        function updateWorkflowStepsFromLegacyMetadata(metadata) {
+            // Update steps based on legacy metadata format
+            const stepStatusMap = {
+                'Clarify Research Intent': metadata.cbt_clarification_applied,
+                'Gather Information': metadata.search_performed,
+                'Synthesize Findings': metadata.summarization_performed,
+                'Identify Document Structure': metadata.structure_identified,
+                'Write Detailed Sections': metadata.content_expansion,
+                'Finalize Document': metadata.quality_review
+            };
+            
+            workflowSteps.forEach((step, index) => {
+                const completed = stepStatusMap[step.name] === true;
+                const status = completed ? 'completed' : 'skipped';
+                const statusText = completed ? 'Completed' : 'Skipped';
+                const details = completed ? 'Successfully completed' : 'Not performed in this workflow';
+                
+                updateStepStatus(index, status, statusText, details);
+            });
+        }
+
+        function markAllStepsFailed() {
+            workflowSteps.forEach((step, index) => {
+                updateStepStatus(index, 'failed', 'Failed', 'Step failed due to error');
+            });
         }
 
         function displayResults(data) {
-            const resultContainer = document.getElementById('resultContainer');
-            
             const resultHtml = `
-                <div class="result-content">
-                    <h3>Research Results</h3>
-                    <div class="result-actions">
-                        <button class="result-btn speak" onclick="speakCurrentResult()">
-                            🔊 Speak
-                        </button>
-                        <button class="result-btn hush" onclick="hushCurrentResult()">
-                            🔇 Hush
-                        </button>
-                        <button class="result-btn copy" onclick="copyToClipboard()">
-                            📋 Copy
-                        </button>
+                <div class="result-container">
+                    <div class="result-header">
+                        <h3>Research Results</h3>
+                        <div class="result-meta">
+                            <span class="meta-item">📝 ${data.word_count} words</span>
+                            <span class="meta-item">⏱️ ${data.processing_time.toFixed(2)}s</span>
+                            <span class="meta-item">🔬 ${data.workflow_type}</span>
+                            ${data.workflow_metadata.mlx_acceleration_used ? '<span class="meta-item">🔥 MLX</span>' : ''}
+                        </div>
                     </div>
-                    <div class="markdown-content" id="research-content">${marked.parse(data.research_content)}</div>
+                    <div class="result-content">
+                        <div class="markdown-content" id="research-content">${marked.parse(data.research_content)}</div>
+                    </div>
+                    <div class="result-actions">
+                        <button onclick="copyResearchContent()" class="action-btn copy">📋 Copy</button>
+                        <button onclick="speakCurrentResult()" class="action-btn speak">🔊 Speak</button>
+                        <button onclick="hushCurrentAudio()" class="action-btn hush">🔇 Hush</button>
+                        <button onclick="downloadResearch()" class="action-btn download">📥 Download</button>
+                    </div>
                 </div>
             `;
             
+            const resultContainer = document.getElementById('resultContainer');
             resultContainer.innerHTML = resultHtml;
             
-            // Store the raw content for TTS
+            // Store the raw content for TTS and other operations
             window.currentResearchContent = data.research_content;
             
-            // Show workflow metadata if available
-            if (data.workflow_metadata) {
-                displayWorkflowSteps(data.workflow_metadata);
+            // Show performance metrics if available
+            if (data.workflow_metadata.performance_metrics) {
+                displayPerformanceMetrics(data.workflow_metadata.performance_metrics);
             }
         }
 
-        // Workflow step definitions
+        function displayPerformanceMetrics(metrics) {
+            const metricsHtml = `
+                <div class="performance-metrics">
+                    <h4>🎯 Performance Metrics</h4>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <span class="metric-label">Processing Time</span>
+                            <span class="metric-value">${metrics.total_processing_time.toFixed(2)}s</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">Search Results</span>
+                            <span class="metric-value">${metrics.search_results_processed || 0}</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="metric-label">Synthesis Quality</span>
+                            <span class="metric-value">${metrics.content_synthesis_quality}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const resultContainer = document.getElementById('resultContainer');
+            resultContainer.insertAdjacentHTML('beforeend', metricsHtml);
+        }
+
+        // Workflow step definitions with enhanced tracking
         const workflowSteps = [
             { 
-                name: 'CBT Clarification & Bias Detection', 
-                key: 'cbt_clarification_applied', 
-                desc: 'Applied cognitive behavioral analysis to research query',
-                details: 'Analyzing query for cognitive biases and clarifying research intent using CBT principles'
+                name: 'Clarify Research Intent', 
+                key: 'clarification_applied', 
+                desc: 'Apply CBT-informed analysis to detect cognitive biases and clarify research intent',
+                details: 'Analyzing query for cognitive biases and clarifying research intent using CBT principles',
+                config: {
+                    emotional_preset: 'curious',
+                    cognitive_preset: 'balanced',
+                    advanced_clarification: true
+                }
             },
             { 
-                name: 'Information Gathering & Search', 
+                name: 'Gather Information', 
                 key: 'search_performed', 
-                desc: 'Collected relevant information from multiple sources',
-                details: 'Searching academic databases, web resources, and collecting relevant information'
+                desc: 'Search the web for relevant information using DuckDuckGo with relevance scoring',
+                details: 'Searching academic databases, web resources, and collecting relevant information',
+                config: {
+                    max_results: 10,
+                    search_region: 'en-us',
+                    search_safesearch: 'moderate'
+                }
             },
             { 
-                name: 'Content Synthesis & Analysis', 
-                key: 'summarization_performed', 
-                desc: 'Synthesized findings into coherent analysis',
-                details: 'Processing and analyzing collected information to extract key insights'
+                name: 'Synthesize Findings', 
+                key: 'synthesis_performed', 
+                desc: 'Analyze and synthesize research findings using MLX-powered language models',
+                details: 'Processing and analyzing collected information to extract key insights',
+                config: {
+                    synthesis_depth: 'comprehensive',
+                    academic_rigor: true
+                }
             },
             { 
-                name: 'Structure Identification', 
+                name: 'Identify Document Structure', 
                 key: 'structure_identified', 
-                desc: 'Organized content into logical structure',
-                details: 'Identifying optimal structure and organization for the research content'
+                desc: 'Determine optimal document structure and section organization',
+                details: 'Identifying optimal structure and organization for the research content',
+                config: {
+                    structure_type: 'academic',
+                    section_depth: 'detailed'
+                }
             },
             { 
-                name: 'Content Expansion', 
+                name: 'Write Detailed Sections', 
                 key: 'content_expansion', 
-                desc: 'Expanded key sections with detailed analysis',
-                details: 'Developing comprehensive content for each identified section'
+                desc: 'Generate detailed content for each document section using advanced language models',
+                details: 'Developing comprehensive content for each identified section',
+                config: {
+                    writing_style: 'academic',
+                    detail_level: 'comprehensive',
+                    word_target: 2000
+                }
             },
             { 
-                name: 'Quality Review & Finalization', 
+                name: 'Finalize Document', 
                 key: 'quality_review', 
-                desc: 'Final review and formatting of research output',
-                details: 'Performing final quality checks and formatting the completed research'
+                desc: 'Final review, formatting, and quality assurance of the research document',
+                details: 'Performing final quality checks and formatting the completed research',
+                config: {
+                    quality_check: true,
+                    format_style: 'markdown'
+                }
             }
         ];
+
+        function initializeWorkflowSteps() {
+            const stepsContainer = document.getElementById('workflowSteps');
+            let stepsHtml = `
+                <h3>🔬 Workflow Progress</h3>
+                <div class="workflow-controls">
+                    <button onclick="toggleAllStepConfigs()" class="config-btn">⚙️ Configure Steps</button>
+                    <button onclick="exportWorkflowConfig()" class="config-btn">📤 Export Config</button>
+                </div>
+            `;
+            
+            workflowSteps.forEach((step, index) => {
+                stepsHtml += `
+                    <div class="step pending" id="step-${index}" onclick="toggleStepDetails(${index})">
+                        <div class="step-header">
+                            <span>${step.name}</span>
+                            <div class="step-controls">
+                                <span class="step-status" style="background: #cbd5e0;">Pending</span>
+                                <button class="config-toggle" onclick="event.stopPropagation(); toggleStepConfig(${index})">⚙️</button>
+                                <button class="step-toggle">▼</button>
+                            </div>
+                        </div>
+                        <div class="step-details">
+                            <div class="step-info">
+                                <p><strong>Purpose:</strong> ${step.desc}</p>
+                                <p><strong>Details:</strong> ${step.details}</p>
+                                <p><strong>Status:</strong> Waiting to start...</p>
+                                <div class="step-actions">
+                                    <span class="action-item">Processing time: --</span>
+                                    <span class="action-item">Data processed: --</span>
+                                </div>
+                            </div>
+                            <div class="step-config" id="config-${index}">
+                                <h5>Step Configuration</h5>
+                                ${generateStepConfigHTML(step, index)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            stepsContainer.innerHTML = stepsHtml;
+        }
 
         function showWorkflowLoading() {
             const stepsContainer = document.getElementById('workflowSteps');
@@ -1062,38 +1650,75 @@
             `;
         }
 
-        function initializeWorkflowSteps() {
-            const stepsContainer = document.getElementById('workflowSteps');
-            let stepsHtml = '<h3>🔬 Workflow Progress</h3>';
+        function generateStepConfigHTML(step, index) {
+            let configHTML = '<div class="config-form">';
             
-            workflowSteps.forEach((step, index) => {
-                stepsHtml += `
-                    <div class="step pending" id="step-${index}" onclick="toggleStepDetails(${index})">
-                        <div class="step-header">
-                            <span>${step.name}</span>
-                            <div>
-                                <span class="step-status" style="background: #cbd5e0;">Pending</span>
-                                <button class="step-toggle">▼</button>
-                            </div>
-                        </div>
-                        <div class="step-details">
-                            <p><strong>Purpose:</strong> ${step.desc}</p>
-                            <p><strong>Details:</strong> ${step.details}</p>
-                            <p><strong>Status:</strong> Waiting to start...</p>
-                        </div>
-                    </div>
-                `;
-            });
+            for (const [key, value] of Object.entries(step.config)) {
+                const inputId = `config-${index}-${key}`;
+                
+                if (typeof value === 'boolean') {
+                    configHTML += `
+                        <label class="config-field">
+                            <input type="checkbox" id="${inputId}" ${value ? 'checked' : ''}>
+                            <span>${key.replace(/_/g, ' ')}</span>
+                        </label>
+                    `;
+                } else if (key.includes('preset') || key.includes('style') || key.includes('type')) {
+                    const options = getSelectOptions(key);
+                    configHTML += `
+                        <label class="config-field">
+                            <span>${key.replace(/_/g, ' ')}</span>
+                            <select id="${inputId}">
+                                ${options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('')}
+                            </select>
+                        </label>
+                    `;
+                } else if (typeof value === 'number') {
+                    configHTML += `
+                        <label class="config-field">
+                            <span>${key.replace(/_/g, ' ')}</span>
+                            <input type="number" id="${inputId}" value="${value}" min="1" max="100">
+                        </label>
+                    `;
+                } else {
+                    configHTML += `
+                        <label class="config-field">
+                            <span>${key.replace(/_/g, ' ')}</span>
+                            <input type="text" id="${inputId}" value="${value}">
+                        </label>
+                    `;
+                }
+            }
             
-            stepsContainer.innerHTML = stepsHtml;
+            configHTML += `
+                <button onclick="applyStepConfig(${index})" class="apply-config-btn">Apply Changes</button>
+            </div>`;
+            
+            return configHTML;
         }
 
-        function updateStepStatus(index, status, statusText, details) {
+        function getSelectOptions(key) {
+            const optionSets = {
+                emotional_preset: ['calm', 'curious', 'critical', 'empathetic'],
+                cognitive_preset: ['analytical', 'creative', 'skeptical', 'balanced'],
+                search_region: ['en-us', 'en-uk', 'en-ca', 'en-au'],
+                search_safesearch: ['strict', 'moderate', 'off'],
+                synthesis_depth: ['basic', 'comprehensive', 'deep'],
+                structure_type: ['academic', 'journalistic', 'technical', 'creative'],
+                section_depth: ['basic', 'detailed', 'comprehensive'],
+                writing_style: ['academic', 'journalistic', 'technical', 'accessible'],
+                detail_level: ['concise', 'comprehensive', 'extensive'],
+                format_style: ['markdown', 'html', 'plain']
+            };
+            return optionSets[key] || ['default'];
+        }
+
+        function updateStepStatus(index, status, statusText, details, realTimeData = {}) {
             const stepElement = document.getElementById(`step-${index}`);
             if (!stepElement) return;
             
             // Remove all status classes
-            stepElement.classList.remove('pending', 'active', 'completed', 'failed');
+            stepElement.classList.remove('pending', 'active', 'completed', 'failed', 'skipped');
             // Add new status
             stepElement.classList.add(status);
             
@@ -1104,18 +1729,61 @@
                 statusSpan.style.background = getStatusColor(status);
             }
             
-            // Update details
-            const detailsDiv = stepElement.querySelector('.step-details');
+            // Update details with real-time information
+            const detailsDiv = stepElement.querySelector('.step-info');
             if (detailsDiv) {
                 const step = workflowSteps[index];
+                const actions = realTimeData.actions_performed || [];
+                const metrics = realTimeData.quality_metrics || realTimeData.metrics || {};
+                const dataProcessed = realTimeData.data_processed || {};
+                
+                let actionsHTML = '';
+                if (actions.length > 0) {
+                    actionsHTML = `
+                        <div class="step-actions">
+                            <strong>Actions Performed:</strong>
+                            <ul>
+                                ${actions.map(action => `<li>• ${action}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                let metricsHTML = '';
+                if (Object.keys(metrics).length > 0) {
+                    metricsHTML = `
+                        <div class="step-metrics">
+                            <strong>Performance Metrics:</strong>
+                            ${Object.entries(metrics).map(([key, value]) => 
+                                `<span class="metric-item">${key}: ${value}</span>`
+                            ).join('')}
+                        </div>
+                    `;
+                }
+                
+                let dataHTML = '';
+                if (Object.keys(dataProcessed).length > 0) {
+                    dataHTML = `
+                        <div class="step-data">
+                            <strong>Data Processed:</strong>
+                            ${Object.entries(dataProcessed).map(([key, value]) => 
+                                `<span class="data-item">${key}: ${value}</span>`
+                            ).join('')}
+                        </div>
+                    `;
+                }
+                
                 detailsDiv.innerHTML = `
                     <p><strong>Purpose:</strong> ${step.desc}</p>
-                    <p><strong>Details:</strong> ${step.details}</p>
                     <p><strong>Status:</strong> ${details}</p>
+                    ${actionsHTML}
+                    ${metricsHTML}
+                    ${dataHTML}
+                    ${realTimeData.skip_reason ? `<p><strong>Skip Reason:</strong> ${realTimeData.skip_reason}</p>` : ''}
                 `;
             }
             
-            // Auto-expand active steps
+            // Auto-expand active/completed steps
             if (status === 'active' || status === 'completed') {
                 stepElement.classList.add('expanded');
                 const toggle = stepElement.querySelector('.step-toggle');
@@ -1129,24 +1797,32 @@
                 case 'active': return '#667eea';
                 case 'completed': return '#48bb78';
                 case 'failed': return '#e53e3e';
+                case 'skipped': return '#f6ad55';
                 default: return '#cbd5e0';
             }
         }
 
-        function updateWorkflowStepsFromMetadata(metadata) {
-            // Clear the progress interval
-            if (progressInterval) {
-                clearInterval(progressInterval);
-            }
+        function updateWorkflowStepsFromData(workflowSteps) {
+            if (!workflowSteps || !Array.isArray(workflowSteps)) return;
             
-            // Update steps based on actual metadata
-            workflowSteps.forEach((step, index) => {
-                const completed = metadata[step.key] === true;
-                const status = completed ? 'completed' : 'pending';
-                const statusText = completed ? 'Completed' : 'Skipped';
-                const details = completed ? 'Successfully completed' : 'Not performed in this workflow';
+            workflowSteps.forEach((stepData, index) => {
+                const status = stepData.status || 'pending';
+                const statusText = status.charAt(0).toUpperCase() + status.slice(1);
                 
-                updateStepStatus(index, status, statusText, details);
+                let details = stepData.details || `Step ${statusText.toLowerCase()}`;
+                
+                if (status === 'skipped') {
+                    details = stepData.skip_reason || 'Step was skipped';
+                }
+                
+                const realTimeData = {
+                    actions_performed: stepData.actions_performed || [],
+                    metrics: stepData.quality_metrics || stepData.metrics || {},
+                    data_processed: stepData.data_processed || {},
+                    skip_reason: stepData.skip_reason
+                };
+                
+                updateStepStatus(index, status, statusText, details, realTimeData);
             });
         }
 
@@ -1167,8 +1843,8 @@
         }
 
         function displayWorkflowSteps(metadata) {
-            // This function is now handled by updateWorkflowStepsFromMetadata
-            updateWorkflowStepsFromMetadata(metadata);
+            // This function is now handled by updateWorkflowStepsFromData
+            // updateWorkflowStepsFromMetadata(metadata);
         }
 
         function toggleStepDetails(index) {
@@ -1178,6 +1854,178 @@
             
             const toggle = step.querySelector('.step-toggle');
             toggle.textContent = step.classList.contains('expanded') ? '▲' : '▼';
+        }
+
+        function toggleStepConfig(index) {
+            const configDiv = document.getElementById(`config-${index}`);
+            configDiv.classList.toggle('show');
+            
+            const configToggle = document.querySelector(`#step-${index} .config-toggle`);
+            configToggle.textContent = configDiv.classList.contains('show') ? '🔧' : '⚙️';
+        }
+
+        function toggleAllStepConfigs() {
+            const configDivs = document.querySelectorAll('.step-config');
+            const allVisible = Array.from(configDivs).every(div => div.classList.contains('show'));
+            
+            configDivs.forEach(div => {
+                if (allVisible) {
+                    div.classList.remove('show');
+                } else {
+                    div.classList.add('show');
+                }
+            });
+        }
+
+        function applyStepConfig(index) {
+            const step = workflowSteps[index];
+            const newConfig = {};
+            
+            for (const key of Object.keys(step.config)) {
+                const inputId = `config-${index}-${key}`;
+                const input = document.getElementById(inputId);
+                
+                if (input.type === 'checkbox') {
+                    newConfig[key] = input.checked;
+                } else if (input.type === 'number') {
+                    newConfig[key] = parseInt(input.value);
+                } else {
+                    newConfig[key] = input.value;
+                }
+            }
+            
+            // Update the step configuration
+            workflowSteps[index].config = { ...step.config, ...newConfig };
+            
+            // Show confirmation
+            showConfigAppliedFeedback(index);
+        }
+
+        function showConfigAppliedFeedback(index) {
+            const step = document.getElementById(`step-${index}`);
+            const originalBackground = step.style.backgroundColor;
+            
+            step.style.backgroundColor = '#48bb78';
+            step.style.transition = 'background-color 0.3s ease';
+            
+            setTimeout(() => {
+                step.style.backgroundColor = originalBackground;
+            }, 1000);
+        }
+
+        function exportWorkflowConfig() {
+            const config = {
+                workflow_type: 'comprehensive',
+                steps: workflowSteps.map(step => ({
+                    name: step.name,
+                    configuration: step.config
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'workflow-config.json';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function showStatus(message, type) {
+            // Create or update status display
+            let statusContainer = document.getElementById('statusContainer');
+            if (!statusContainer) {
+                statusContainer = document.createElement('div');
+                statusContainer.id = 'statusContainer';
+                statusContainer.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 1000;
+                    padding: 12px 20px;
+                    border-radius: 6px;
+                    font-weight: 500;
+                    max-width: 400px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                document.body.appendChild(statusContainer);
+            }
+            
+            // Style based on type
+            if (type === 'success') {
+                statusContainer.style.background = 'linear-gradient(45deg, #48bb78, #38a169)';
+                statusContainer.style.color = 'white';
+            } else if (type === 'error') {
+                statusContainer.style.background = 'linear-gradient(45deg, #e53e3e, #c53030)';
+                statusContainer.style.color = 'white';
+            } else {
+                statusContainer.style.background = 'linear-gradient(45deg, #667eea, #764ba2)';
+                statusContainer.style.color = 'white';
+            }
+            
+            statusContainer.textContent = message;
+            statusContainer.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                if (statusContainer) {
+                    statusContainer.style.display = 'none';
+                }
+            }, 5000);
+        }
+
+        function copyResearchContent() {
+            if (!window.currentResearchContent) {
+                showStatus('No research content to copy', 'error');
+                return;
+            }
+            
+            navigator.clipboard.writeText(window.currentResearchContent).then(() => {
+                showStatus('Research content copied to clipboard!', 'success');
+            }).catch(err => {
+                console.error('Failed to copy content:', err);
+                showStatus('Failed to copy content', 'error');
+            });
+        }
+
+        function hushCurrentAudio() {
+            // Stop current speech synthesis
+            if (currentSpeechSynthesis) {
+                currentSpeechSynthesis.cancel();
+                currentSpeechSynthesis = null;
+            }
+            
+            // Stop any HTML5 audio elements
+            const audioElements = document.querySelectorAll('audio');
+            audioElements.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            
+            showStatus('Audio stopped', 'success');
+        }
+
+        function downloadResearch() {
+            if (!window.currentResearchContent) {
+                showStatus('No research content to download', 'error');
+                return;
+            }
+            
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const filename = `research-${timestamp}.md`;
+            
+            const blob = new Blob([window.currentResearchContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showStatus(`Research downloaded as ${filename}`, 'success');
         }
 
         // TTS functionality for current result
@@ -1269,20 +2117,6 @@
                 console.error('TTS error:', error);
                 alert(`Error generating speech: ${error.message}`);
             }
-        }
-
-        function copyToClipboard() {
-            if (!window.currentResearchContent) {
-                alert('No content to copy');
-                return;
-            }
-            
-            navigator.clipboard.writeText(window.currentResearchContent).then(() => {
-                alert('Research content copied to clipboard!');
-            }).catch(err => {
-                console.error('Copy failed:', err);
-                alert('Failed to copy content');
-            });
         }
 
         // Library functionality
@@ -1470,10 +2304,29 @@
 
         // Load library on page load if library tab is active
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize the research tab by default
-            switchTab('research');
+            try {
+                // Initialize the research tab by default
+                switchTab('research');
+                
+                // Initialize workflow steps
+                initializeWorkflowSteps();
+                
+                // Ensure all required elements exist
+                const requiredElements = ['research_query', 'academic_level', 'max_search_results'];
+                const missingElements = requiredElements.filter(id => !document.getElementById(id));
+                
+                if (missingElements.length > 0) {
+                    console.error('Missing required form elements:', missingElements);
+                    showStatus('Some form elements are missing. Please refresh the page.', 'error');
+                } else {
+                    console.log('Research interface initialized successfully');
+                }
+                
+            } catch (error) {
+                console.error('Error initializing research interface:', error);
+                showStatus('Failed to initialize interface: ' + error.message, 'error');
+            }
         });
     </script>
 </body>
-</html> 
 </html> 

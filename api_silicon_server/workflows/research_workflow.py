@@ -49,7 +49,20 @@ def build_research_workflow(context: Dict[str, Any]) -> AgentWorkflow:
         "Clarify Research Intent",
         auto_clarify_research_request,
         auto=True,
-        retry_attempts=2
+        retry_attempts=2,
+        description="Apply CBT-informed analysis to detect cognitive biases and clarify the true research intent",
+        configuration={
+            "emotional_preset": "curious",
+            "cognitive_preset": "balanced",
+            "advanced_clarification": True,
+            "bias_detection": True,
+            "schema": {
+                "emotional_preset": {"type": "select", "options": ["calm", "curious", "critical", "empathetic"], "description": "Emotional approach for clarification"},
+                "cognitive_preset": {"type": "select", "options": ["analytical", "creative", "skeptical", "balanced"], "description": "Cognitive framework for analysis"},
+                "advanced_clarification": {"type": "boolean", "description": "Use advanced CBT techniques"},
+                "bias_detection": {"type": "boolean", "description": "Enable cognitive bias detection"}
+            }
+        }
     )
     
     # Step 2: Information Gathering
@@ -57,7 +70,20 @@ def build_research_workflow(context: Dict[str, Any]) -> AgentWorkflow:
         "Gather Information",
         search_web_info,
         auto=True,
-        retry_attempts=3
+        retry_attempts=3,
+        description="Search the web for relevant information using DuckDuckGo with relevance scoring",
+        configuration={
+            "max_results": 10,
+            "search_region": "en-us",
+            "search_safesearch": "moderate",
+            "relevance_threshold": 0.5,
+            "schema": {
+                "max_results": {"type": "integer", "min": 5, "max": 20, "description": "Maximum number of search results"},
+                "search_region": {"type": "select", "options": ["en-us", "en-uk", "en-ca", "en-au"], "description": "Search region"},
+                "search_safesearch": {"type": "select", "options": ["strict", "moderate", "off"], "description": "Safe search level"},
+                "relevance_threshold": {"type": "number", "min": 0, "max": 1, "description": "Minimum relevance score for results"}
+            }
+        }
     )
     
     # Step 3: Content Synthesis
@@ -65,7 +91,18 @@ def build_research_workflow(context: Dict[str, Any]) -> AgentWorkflow:
         "Synthesize Findings",
         synthesize_findings,
         auto=True,
-        retry_attempts=2
+        retry_attempts=2,
+        description="Analyze and synthesize research findings using MLX-powered language models",
+        configuration={
+            "synthesis_depth": "comprehensive",
+            "academic_rigor": True,
+            "analysis_framework": "structured",
+            "schema": {
+                "synthesis_depth": {"type": "select", "options": ["basic", "comprehensive", "deep"], "description": "Level of synthesis detail"},
+                "academic_rigor": {"type": "boolean", "description": "Apply academic standards"},
+                "analysis_framework": {"type": "select", "options": ["structured", "creative", "critical"], "description": "Analysis approach"}
+            }
+        }
     )
     
     # Step 4: Structure Identification
@@ -73,7 +110,18 @@ def build_research_workflow(context: Dict[str, Any]) -> AgentWorkflow:
         "Identify Document Structure",
         identify_sections,
         auto=True,
-        retry_attempts=2
+        retry_attempts=2,
+        description="Determine optimal document structure and section organization",
+        configuration={
+            "structure_type": "academic",
+            "section_depth": "detailed",
+            "include_methodology": True,
+            "schema": {
+                "structure_type": {"type": "select", "options": ["academic", "journalistic", "technical", "creative"], "description": "Document structure style"},
+                "section_depth": {"type": "select", "options": ["basic", "detailed", "comprehensive"], "description": "Section detail level"},
+                "include_methodology": {"type": "boolean", "description": "Include methodology sections"}
+            }
+        }
     )
     
     # Step 5: Content Expansion
@@ -81,7 +129,20 @@ def build_research_workflow(context: Dict[str, Any]) -> AgentWorkflow:
         "Write Detailed Sections",
         write_sections,
         auto=True,
-        retry_attempts=2
+        retry_attempts=2,
+        description="Generate detailed content for each document section using advanced language models",
+        configuration={
+            "writing_style": "academic",
+            "detail_level": "comprehensive",
+            "include_citations": True,
+            "word_target": 2000,
+            "schema": {
+                "writing_style": {"type": "select", "options": ["academic", "journalistic", "technical", "accessible"], "description": "Writing style"},
+                "detail_level": {"type": "select", "options": ["concise", "comprehensive", "extensive"], "description": "Content detail level"},
+                "include_citations": {"type": "boolean", "description": "Include citation placeholders"},
+                "word_target": {"type": "integer", "min": 500, "max": 5000, "description": "Target word count"}
+            }
+        }
     )
     
     # Step 6: Final Review and Polish
@@ -89,7 +150,18 @@ def build_research_workflow(context: Dict[str, Any]) -> AgentWorkflow:
         "Finalize Document",
         finalize_document,
         auto=True,
-        retry_attempts=1
+        retry_attempts=1,
+        description="Final review, formatting, and quality assurance of the research document",
+        configuration={
+            "quality_check": True,
+            "format_style": "markdown",
+            "include_executive_summary": True,
+            "schema": {
+                "quality_check": {"type": "boolean", "description": "Perform final quality review"},
+                "format_style": {"type": "select", "options": ["markdown", "html", "plain"], "description": "Output format"},
+                "include_executive_summary": {"type": "boolean", "description": "Add executive summary"}
+            }
+        }
     )
     
     workflow_logger.info("✅ Research workflow built with 6 cognitive processing steps")

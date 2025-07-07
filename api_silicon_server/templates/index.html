@@ -56,12 +56,51 @@
       text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
     }
     
-    /* Enhanced text readability */
-    .readable-text {
-      color: #FFFFFF !important;
-      text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
-      font-weight: 500;
-    }
+            /* Enhanced text readability and improved visibility */
+        .readable-text {
+            color: #FFFFFF !important;
+            text-shadow: 2px 2px 4px #000000, 0 0 10px #000000;
+            font-weight: 500;
+        }
+        
+        /* Enhanced link visibility */
+        .nav-link {
+            color: #03C988 !important;
+            text-shadow: 2px 2px 6px #000000, 0 0 15px #000000;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.5) !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            border: 2px solid rgba(3, 201, 136, 0.4) !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+        }
+        
+        .nav-link:hover {
+            color: #E94560 !important;
+            border-color: rgba(233, 69, 96, 0.6) !important;
+            background: rgba(233, 69, 96, 0.1) !important;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.3) !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        /* Workflow control specific styling */
+        .workflow-nav-section {
+            background: linear-gradient(135deg, rgba(31, 29, 54, 0.9), rgba(63, 51, 81, 0.8));
+            border: 2px solid rgba(3, 201, 136, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+        
+        .workflow-nav-title {
+            color: #03C988 !important;
+            text-shadow: 2px 2px 6px #000000, 0 0 20px #000000;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
     
     .readable-text-chrome {
       color: #03C988 !important;
@@ -309,6 +348,8 @@
         <li><a href="/voice" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🎙️</span> Voice Center</a></li>
         <li><a href="/improv" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🎭</span> Improv Games</a></li>
         <li><a href="/narrative" class="menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">📘</span> Emergent Narrative</a></li>
+        <li><a href="/workflow-control" class="nav-link menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🔄</span> Workflow Control</a></li>
+        <li><a href="/research" class="nav-link menu-item hover:text-retro-neon transition-colors"><span class="menu-emoji">🧪</span> Research Pipeline</a></li>
         <li class="border-t border-retro-shadow pt-2">
           <button onclick="resetSystem()" class="menu-item text-retro-neon hover:text-white transition-colors"><span class="menu-emoji">🔄</span> Reset All Systems</button>
         </li>
@@ -384,6 +425,38 @@
               <button type="button" onclick="insertQuickMessage('Generate some code')" class="text-xs bg-retro-shadow text-retro-chrome px-2 py-1 rounded hover:bg-retro-purple transition-colors"><span class="menu-emoji">💻</span> Code</button>
             </div>
           </form>
+        </div>
+        
+        <!-- Workflow Navigation Section -->
+        <div class="workflow-nav-section">
+          <h3 class="workflow-nav-title"><span class="menu-emoji">🔬</span> Advanced Workflow Systems</h3>
+          <p class="readable-text text-sm mb-4">Access sophisticated AI pipeline management and monitoring tools for complex cognitive tasks.</p>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <a href="/workflow-control" class="nav-link block text-center">
+              <div class="menu-emoji text-2xl mb-1">🔄</div>
+              <div class="font-semibold">Workflow Control</div>
+              <div class="text-xs opacity-80">Real-time pipeline monitoring</div>
+            </a>
+            
+            <a href="/research" class="nav-link block text-center">
+              <div class="menu-emoji text-2xl mb-1">🧪</div>
+              <div class="font-semibold">Research Pipeline</div>
+              <div class="text-xs opacity-80">Advanced research workflows</div>
+            </a>
+          </div>
+          
+          <div class="mt-4 p-3 bg-black bg-opacity-40 rounded-lg">
+            <div class="text-xs text-retro-chrome opacity-90">
+              <strong>📊 Pipeline Features:</strong>
+              <ul class="mt-1 space-y-1 text-xs">
+                <li>• Real-time step tracking and monitoring</li>
+                <li>• Detailed execution logs and metrics</li>
+                <li>• Interactive step modification controls</li>
+                <li>• Comprehensive performance analytics</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,0 +1,31 @@
+# MLX Voice Training Requirements
+# Install these for full MLX voice training functionality
+
+# Core MLX framework for Apple Silicon acceleration
+mlx>=0.12.0
+
+# Audio processing
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.11.0
+
+# Machine learning and model handling  
+torch>=2.0.0
+onnx>=1.15.0
+onnxruntime>=1.16.0
+
+# Optional: Enhanced audio processing
+noisereduce>=3.0.0
+pyworld>=0.3.0
+
+# MLX-specific packages (if available)
+# mlx-lm  # For LLM integration
+# mlx-whisper  # For MLX-optimized Whisper
+
+# Standard requirements already in main requirements.txt:
+# fastapi>=0.100.0
+# uvicorn[standard]>=0.23.0  
+# python-multipart>=0.0.6
+# requests>=2.31.0
+# numpy>=1.24.0
+# Pillow>=10.0.0 

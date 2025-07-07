@@ -1,0 +1,99 @@
+# API Silicon Server - Complete Requirements
+# MLX-Accelerated Cognitive Services Gateway for Apple Silicon
+
+# ====== CORE WEB FRAMEWORK ====== #
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+jinja2>=3.1.0
+
+# ====== MLX FRAMEWORK (Apple Silicon Acceleration) ====== #
+mlx>=0.0.8
+mlx-lm>=0.0.8
+mlx-whisper>=0.1.0
+
+# ====== AUDIO PROCESSING ====== #
+# Audio I/O and processing
+soundfile>=0.12.1
+librosa>=0.10.1
+scipy>=1.11.0
+
+# TTS (Text-to-Speech)
+piper-tts>=1.2.0
+
+# STT (Speech-to-Text) - Fallback support
+openai-whisper>=20231117
+
+# ====== MACHINE LEARNING CORE ====== #
+# PyTorch (for AudioCraft and fallback models)
+torch>=2.1.0
+torchaudio>=2.1.0
+
+# Model utilities
+huggingface-hub>=0.17.0
+transformers>=4.35.0
+
+# AudioCraft for music generation
+audiocraft>=1.2.0
+
+# ====== DATA PROCESSING ====== #
+numpy>=1.24.0
+pandas>=2.1.0
+
+# ====== HTTP CLIENT & API ====== #
+requests>=2.31.0
+httpx>=0.25.0
+
+# ====== DEVELOPMENT & TESTING ====== #
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# ====== LOGGING & MONITORING ====== #
+python-json-logger>=2.0.7
+
+# ====== SYSTEM UTILITIES ====== #
+psutil>=5.9.0
+pathlib2>=2.3.7
+
+# ====== SERIALIZATION ====== #
+pydantic>=2.5.0
+
+# ====== OPTIONAL DEPENDENCIES ====== #
+# Uncomment if you need these features:
+
+# GPU acceleration (if using CUDA fallbacks)
+# nvidia-cublas-cu12
+# nvidia-cuda-cupti-cu12 
+# nvidia-cuda-nvrtc-cu12
+# nvidia-cuda-runtime-cu12
+# nvidia-cudnn-cu12
+# nvidia-cufft-cu12
+# nvidia-curand-cu12
+# nvidia-cusolver-cu12
+# nvidia-cusparse-cu12
+# nvidia-nccl-cu12
+# nvidia-nvjitlink-cu12
+# nvidia-nvtx-cu12
+
+# Advanced audio processing
+# pyrubberband>=0.3.0
+# pedalboard>=0.7.0
+
+# Video processing (if adding video features)
+# opencv-python>=4.8.0
+
+# ====== PLATFORM-SPECIFIC NOTES ====== #
+# This requirements file is optimized for:
+# - macOS with Apple Silicon (M1/M2/M3)
+# - Python 3.9+
+# - MLX framework support
+
+# Installation order recommendation:
+# 1. pip install --upgrade pip
+# 2. pip install -r requirements_complete.txt
+# 3. Verify MLX installation: python -c "import mlx.core as mx; print(f'MLX available: {mx.metal.is_available()}')"
+
+# ====== VERSION CONSTRAINTS ====== #
+# Minimum Python version: 3.9
+# Recommended Python version: 3.11
+# Maximum tested Python version: 3.12 

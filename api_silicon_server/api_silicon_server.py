@@ -346,25 +346,20 @@ class MLXLanguageModelService:
             await self.load_model()
             
         try:
-            from mlx_lm.sample_utils import make_sampler
-            
             start_time = time.time()
             
             # Set default parameters
             max_tokens = kwargs.get("max_tokens", 512)
             temperature = kwargs.get("temperature", 0.7)
-            top_p = kwargs.get("top_p", 1.0)
             
-            # Create sampler for MLX-LM
-            sampler = make_sampler(temp=temperature, top_p=top_p)
-            
-            # Generate response using correct MLX-LM API
+            # Generate response using current MLX-LM API
+            # Use the correct parameter names for current MLX-LM version
             response = generate(
                 self.model, 
                 self.tokenizer, 
                 prompt=prompt,
                 max_tokens=max_tokens,
-                sampler=sampler,
+                temperature=temperature,  # Current MLX-LM uses 'temperature'
                 verbose=False
             )
             
@@ -4201,6 +4196,7 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 # Import workflow components
                 from workflows.research_workflow import run_research_workflow, create_research_context
                 from workflows.proto_consciousness import ProtoConsciousness
+                from workflows.agent_workflow_engine import AgentWorkflow  # Import enhanced workflow engine
                 
                 # Create workflow context with Silicon Server integration
                 context = create_research_context(
@@ -4222,7 +4218,11 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                     # Silicon Server metadata
                     server_instance=self,
                     client_ip=client_ip,
-                    original_request=research_query
+                    original_request=research_query,  # Store the actual research query for workflow tools
+                    
+                    # Enhanced workflow tracking integration
+                    enhanced_tracking=True,
+                    workflow_engine_class=AgentWorkflow
                 )
                 
                 # Run the research workflow
@@ -4243,7 +4243,7 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 log_response("/api/workflow/research", client_ip, "success", processing_time)
                 log_event(f"✅ Research workflow completed: {len(research_result)} chars in {processing_time:.2f}s")
                 
-                # Prepare response data
+                # Prepare response data with enhanced workflow tracking
                 response_data = {
                     "status": "success",
                     "research_content": research_result,
@@ -4252,12 +4252,30 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                     "processing_time": processing_time,
                     "word_count": len(research_result.split()),
                     "workflow_metadata": {
-                        "steps_completed": len(context.get("workflow_steps", [])),
+                        # Enhanced step tracking with real-time data
+                        "workflow_steps": context.get("workflow_steps", []),
+                        "steps_completed": len([s for s in context.get("workflow_steps", []) if s.get("status") == "completed"]),
+                        "steps_skipped": len([s for s in context.get("workflow_steps", []) if s.get("status") == "skipped"]),
+                        "steps_failed": len([s for s in context.get("workflow_steps", []) if s.get("status") == "failed"]),
+                        "total_steps": len(context.get("workflow_steps", [])),
+                        
+                        # Legacy compatibility
                         "search_performed": context.get("search_performed", False),
-                        "summarization_performed": context.get("summarization_performed", False),
+                        "summarization_performed": context.get("synthesis_performed", False),
                         "structure_identified": context.get("structure_identified", False),
                         "cbt_clarification_applied": context.get("clarification_applied", False),
-                        "mlx_acceleration_used": context.get("mlx_lm_calls", 0) > 0
+                        "content_expansion": context.get("content_expansion", False),
+                        "quality_review": context.get("quality_review", False),
+                        
+                        # Performance metrics
+                        "mlx_acceleration_used": context.get("mlx_lm_calls", 0) > 0,
+                        "total_mlx_calls": context.get("mlx_lm_calls", 0),
+                        "performance_metrics": {
+                            "total_processing_time": processing_time,
+                            "search_results_processed": context.get("search_results_processed", 0),
+                            "content_synthesis_quality": context.get("synthesis_quality", "unknown"),
+                            "step_efficiency": context.get("step_efficiency_metrics", {})
+                        }
                     },
                     "timestamp": datetime.now().isoformat()
                 }
@@ -5156,7 +5174,7 @@ Format the outline clearly with proper hierarchy and numbering."""
             full_prompt = f"Human: {prompt}\n\nAssistant:"
         
         # Try MLX-LM first
-        if self.mlx_lm_available and CONFIG_AVAILABLE and should_use_mlx("lm"):
+        if self.mlx_lm_available and (not CONFIG_AVAILABLE or should_use_mlx("lm")):
             try:
                 log_event("🔥 Using MLX-LM for generation", "mlx")
                 start_time = time.time()
