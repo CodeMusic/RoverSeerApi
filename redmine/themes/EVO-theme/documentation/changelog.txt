@@ -1,0 +1,24 @@
+EVO THEME
+
+Changelog
+
+Version 1.02 – December 19, 2023
+
+- Redmine support is 5.1.0.
+- Fixed Calendar.
+- Fixed icons redmineUP
+- Fixed dms plugin
+
+Version 1.01 – October 06, 2023
+
+- Fixed some visual moments
+- Border radius adjustment
+- Two types of main menu: Left or default location
+
+Version 1.0 – June 27, 2023
+
+- Initial release
+- Compatibility with:
+  - Redmine – from 4.x.+ to 5.x. version
+  - Full support for RedmineUP’s plugins
+  - Full support for Redmine-X’s plugins

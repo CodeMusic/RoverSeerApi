@@ -1,0 +1,154 @@
+RE-classic THEME
+(previously called REDMINE-EVOLUTION theme)
+
+Changelog
+
+v2.1.5 � December 19, 2023
+- Added:
+  -- Redmine support is 5.1.0
+- Fixed:
+  -- Calendar
+  -- dms
+
+v2.1.4 � August 26, 2023
+  - Fixed:
+    -- Plugin Badge
+    -- Some icons
+    -- Menu resize
+
+v2.1.3 � June 27, 2023
+  - REDMINE-EVOLUTION theme renamed to RE-classic theme
+  - Support for new plugins:
+    -- RE-timer
+
+v2.1.2 � March 09, 2023
+  - Fixed:
+    -- Small bugs.
+
+v2.1.1 � March 01, 2023
+  - Support for new plugins:
+    -- Redmine X Agile My Page plugin
+    -- RedmineX Gantt
+    -- RedmineX Statistics
+    -- RedmineX Resources
+    -- RedmineX Issue List Inline Edit
+  - Fixed:
+    -- some visual edits.
+
+v2.1 � January 14, 2023
+  - Support for new plugins:
+    -- redmine_wysiwyg_editor
+  - Fixed:
+    -- Visual edits.
+    -- Fixed scrolling errors in the menu in the sidebar.
+  - New developments
+    A function has been developed that allows each user to customize the color scheme and type of icons.
+    You have the opportunity to choose
+    -- One of the colors.
+    -- One of the four types of icons.
+    Depending on the type of icon design, changes are automatically made to the boldness of fonts and the thickness of design
+    decisions such as the thickness of borders and more.
+
+
+v2.0 � August 22, 2022
+  - Added new skins:
+    -- dark theme - Dracula skin
+    -- light theme - Classic skin, Purple skin
+  - Updated:
+    -- Redmine 5 compatibility
+
+v1.8 � December 15, 2021
+  - Support for new plugins:
+     -- Plugin "Add note" - https://www.redmine.org/issues/3143
+  - Added/Updated:
+    -- Plugin redmine issue badge
+    -- The ability to view pdf files
+    -- Search in the block - "context-menu"
+    -- The ability to small view the list of tasks
+    -- Visual solutions for "Time Logger plugin"
+  - Fixed:
+    -- Menu adaptation
+    -- Changes to the sidebar function
+
+
+v1.7.1 � August 27, 2021
+  - Fixed
+    -- Date display
+    -- Select "assign to me"
+
+
+v1.7 � July 15, 2021
+  - Support for new plugins
+    -- redmine-plugin-scrum - partial plugin support
+    -- plugin Release logs by Lazarus Lazaridis/@iridakos
+
+  - Fixed
+    -- Tooltips
+    -- Custom select 2
+       --- duplicate select
+       --- connection select
+    -- Plugins
+       --- booking from redmineup
+       --- fix positioning error
+       --- visual changes to paopap
+    -- Revision of pages - repository
+    -- Project levels - added nesting of projects
+    -- A lot of work has been done to fix minor visual problems.
+
+v1.6 � April 18, 2021
+  - Changed select (drop-down list) - by popular demand. Select with search and native scrolling.
+  - An analysis was made of the page loading speed. Based on the data received, we redid the assembly of our product, which allowed us to optimize the theme loading speed by 25%.
+  - Added support for two plugins:
+    -- Drive plugin
+    -- CMS plugin
+
+v1.5 � January 16, 2021
+  - Fixed bugs on the Wiki page
+
+v1.4 � January 13, 2021
+  - Functionality has been implemented that remembers the state of the menu, sidebar, and block with the search.
+  - And depending on this, it keeps it open or closed.
+  - Some bugs have been fixed:
+    -- "Tag" plugin from RedmineUp
+    -- info button in the main menu
+    -- changed styles for the main menu
+
+v1.3 � November 09, 2020
+  - New block with search.
+  - Changes have been made to the Redmine Agile plugin.
+  - Support for new plugins:
+    -- dmsf
+    -- progressive projects list
+    -- periodictask plugin
+    -- time logger
+    -- ERPmine
+
+v1.2 - 23.07.2020
+  - The theme is divided into 2 versions depending on the Redmine version you are using.
+    -- Added Fancybox 2 for Redmine from 2.6+ to 3.x version
+
+  - Included plugins:
+    -- Extra Queries plugin
+    -- A common libraries
+    -- Global Roles plugin
+    -- Unread Issues plugin
+    -- Additionals
+    -- Easy Gantt plugin
+    -- Easy WBS plugin
+    -- Redmine Issue Badge plugin
+    -- Redmine Issue Templates plugin
+    -- Redmine Messenger
+
+v1.1 - 08.05.2020
+
+  - Added comfortable image preview with Fancybox 3
+
+
+v1.0 - 15.04.2020
+
+  - Initial release
+
+  - Compatibility with:
+    -- Redmine - from 2.6+ to 4.x. version
+    -- Browsers - Chrome, Firefox, Safari, Opera, Edge and Internet Explorer
+    -- Plugins - all popular plugins from RedmineUP company

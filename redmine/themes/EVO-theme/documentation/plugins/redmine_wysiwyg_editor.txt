@@ -1,0 +1,17 @@
+redmine_wysiwyg_editor
+
+If you are using this plugin and have problems with this plugin.
+You need to manually make the following changes
+
+Go to the server and look for the following folders
+>> plugins >> redmine_wysiwyg_editor >> app >> views >> redmine_wysiwyg_editor >> _redmine_wysiwyg_editor_partial.html.erb
+
+In this file - _redmine_wysiwyg_editor_partial.html.erb you need find line 216
+
+$('.jstEditor').each(initRedmineWysiwygEditor); need to dell this line
+
+And put next
+
+jQuery(window).on('load', function(){
+  $('.jstEditor').each(initRedmineWysiwygEditor);
+});
