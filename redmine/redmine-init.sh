@@ -52,12 +52,30 @@ bundle config build.nokogiri --use-system-libraries
 # 🎯 Install exact Nokogiri version manually FIRST
 gem install nokogiri -v 1.18.3 -- --use-system-libraries
 bundle config set --local path 'vendor/bundle' # Optional: avoids polluting system gems
-bundle install || true
 
 
-echo "🧠 Running database migrations..."
-bundle exec rake db:migrate RAILS_ENV=production || true
-bundle exec rake redmine:plugins:migrate RAILS_ENV=production || true
+set -e
+
+echo "📦 Checking and installing missing gems..."
+bundle check || bundle install
+
+echo "🧠 Running core Redmine DB migrations..."
+gosu redmine bundle exec rake db:migrate RAILS_ENV=production || {
+  echo "❌ Core DB migration failed."
+  exit 1
+}
+
+echo "🧠 Running plugin migration: redmine_agile..."
+gosu redmine bundle exec rake redmine:plugins:migrate NAME=redmine_agile RAILS_ENV=production || {
+  echo "❌ redmine_agile plugin migration failed."
+  exit 1
+}
+
+echo "🧠 Running all other plugin migrations..."
+gosu redmine bundle exec rake redmine:plugins:migrate RAILS_ENV=production || {
+  echo "❌ General plugin migration failed."
+  exit 1
+}
 
 
 echo "🚀 Launching Redmine server..."

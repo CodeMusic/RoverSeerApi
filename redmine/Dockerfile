@@ -1,11 +1,11 @@
 # ✅ Base Redmine image
 FROM redmine:6
 
-# ✅ Environment setup (optional but helpful)
+# ✅ Environment setup
 ENV BUNDLE_FORCE_RUBY_PLATFORM=true \
     NOKOGIRI_USE_SYSTEM_LIBRARIES=true
 
-# ✅ Install dependencies BEFORE gems
+# ✅ Install native dependencies for Ruby gems (nokogiri, mysql2, etc.)
 RUN apt-get update && apt-get install -y \
   libxml2-dev \
   libxslt1-dev \
@@ -27,21 +27,32 @@ RUN apt-get update && apt-get install -y \
   patch \
   && rm -rf /var/lib/apt/lists/*
 
+# ✅ Clean any conflicting gem remains
 RUN rm -rf /usr/src/redmine/vendor/bundle/ruby/3.3.0/gems/nokogiri*
+
+# ✅ Ensure nokogiri builds against system libraries
 RUN bundle config build.nokogiri --use-system-libraries
 
-# ✅ Install critical Ruby gems
+# ✅ Install critical gems with correct native extensions
 RUN gem install json -v 2.12.2 -- --with-cflags="-Wno-error=implicit-function-declaration"
 RUN gem install simplecov-cobertura
 
-# ✅ Rebuild mysql2 gem with native bindings
+# ✅ Rebuild mysql2 with proper MySQL client linkage
 RUN gem uninstall -x -I mysql2 || true && \
     gem install mysql2 -v 0.5.6 -- --with-mysql-config=/usr/bin/mysql_config
 
-# ✅ Copy in custom entrypoint if you have one
-# COPY docker-entrypoint.sh /usr/local/bin/
-# RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-# ENTRYPOINT ["docker-entrypoint.sh"]
+# ✅ Optional: Custom entrypoint script
+COPY redmine-init.sh /usr/local/bin/redmine-init.sh
+RUN chmod +x /usr/local/bin/redmine-init.sh
+#RUN chown -R redmine:redmine /usr/src/redmine/db
 
-# Default CMD (can be overridden in docker-compose)
+# Ensure db folder exists and is writable
+RUN mkdir -p /usr/src/redmine/db && \
+    chown -R redmine:redmine /usr/src/redmine/db && \
+    chmod -R u+rw /usr/src/redmine/db
+
+# ✅ Use custom entrypoint
+ENTRYPOINT ["/usr/local/bin/redmine-init.sh"]
+
+# (Optional) fallback CMD (let the script decide normally)
 # CMD ["rails", "server", "-b", "0.0.0.0"]

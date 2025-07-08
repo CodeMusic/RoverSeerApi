@@ -29,6 +29,7 @@ services:
       REDMINE_DB_USERNAME: redmine
       REDMINE_DB_PASSWORD: xunjmq84
       RAILS_SECRET_KEY_BASE: "a48309b38e8c96802542047f786b0e6bce7cb89905159f7e468d3904476d25c8692c3c68ec36b18f498d7d4758c3bdc7857ef7bb5c3e7cb5d91f3ab8d9ea2553"
+      SECRET_KEY_BASE: "4264a6e1fd5986b14caea17de75a6e284bb896432719f25e8f21a7bf879970eaeea163bd04c5cb440bf2b520c31b61f01a17929fbde636a384915e7c694eb37e"
     volumes:
       - redmine_data:/usr/src/redmine/files
       - ./config/database.yml:/usr/src/redmine/config/database.yml
