@@ -30,6 +30,7 @@ import asyncio
 import json
 import shutil
 import logging
+import threading
 from pathlib import Path
 from datetime import datetime
 import platform
@@ -4141,6 +4142,346 @@ A high-performance, Apple Silicon optimized API that orchestrates multiple AI se
                 )
         
         # ============================================================
+        # SPEECH CONTROL SYSTEM - CONSCIOUS VOCAL REGULATION
+        # ============================================================
+        
+        @self.app.post("/speech/speak",
+                       tags=["speech-control"],
+                       summary="🗣️ Conscious Speech Generation",
+                       description="Generate speech with psychological awareness and vocal state control")
+        async def conscious_speak(
+            request: Request,
+            text: str = Form(..., description="Text to speak", example="Hello, I am experiencing contemplative awareness"),
+            voice: Optional[str] = Form(None, description="Voice to use (None for default)", example="en_US-amy-medium"),
+            vocal_state: str = Form("neutral", description="Psychological vocal state", example="contemplative"),
+            priority: bool = Form(False, description="High priority speech (interrupts queue)"),
+            session_id: str = Form("default", description="Session identifier for tracking"),
+            generate_audio: bool = Form(True, description="Actually generate TTS audio file")
+        ):
+            """
+            🗣️ **Conscious Speech Generation**
+            
+            Generate speech with psychological depth and awareness:
+            
+            **Vocal States**:
+            - `neutral`: Balanced, clear speech
+            - `contemplative`: Thoughtful with pauses and reflection
+            - `enthusiastic`: Energetic with exclamatory emphasis
+            - `calm`: Slow, peaceful delivery
+            - `urgent`: Fast, direct communication
+            
+            **Features**:
+            - 🧠 Psychological vocal state modulation
+            - 🎯 Priority queue management
+            - 📊 Session-based tracking
+            - 🔊 Integration with existing TTS system
+            """
+            client_ip = request.client.host
+            start_time = time.time()
+            
+            log_request("/speech/speak", client_ip, {
+                "text": text[:100] + "..." if len(text) > 100 else text,
+                "vocal_state": vocal_state,
+                "priority": priority,
+                "session_id": session_id
+            })
+            
+            try:
+                # Generate speech using speech controller
+                speech_result = speech_controller.speak(
+                    text=text,
+                    voice=voice,
+                    vocal_state=vocal_state,
+                    priority=priority,
+                    session_id=session_id
+                )
+                
+                processing_time = time.time() - start_time
+                
+                # If speech was queued and we should generate audio
+                if speech_result["status"] == "queued" and generate_audio:
+                    # Process the speech queue to generate actual audio
+                    speech_entry = speech_controller.process_speech_queue()
+                    
+                    if speech_entry:
+                        # Generate TTS audio using existing system
+                        try:
+                            # Use the existing TTS system
+                            modulated_text = speech_entry["text"]
+                            active_voice = speech_entry["voice"]
+                            
+                            # Clean text for TTS
+                            def clean_text_for_tts(input_text: str) -> str:
+                                cleaned = input_text.strip()
+                                cleaned = ''.join(char for char in cleaned if char.isprintable())
+                                cleaned = ' '.join(cleaned.split())
+                                return cleaned
+                            
+                            cleaned_text = clean_text_for_tts(modulated_text)
+                            
+                            # Generate unique filename
+                            output_filename = f"speech_{speech_entry['speech_id']}.wav"
+                            output_path = os.path.join("/tmp", output_filename)
+                            
+                            # Find voice model and generate TTS
+                            voice_model_path = self._find_voice_model(active_voice)
+                            voice_config_path = self._find_voice_config(active_voice)
+                            
+                            if voice_model_path and voice_config_path:
+                                # Use Piper for TTS generation
+                                piper_cmd = [
+                                    CognitiveConfiguration.PIPER_BINARY,
+                                    "--model", voice_model_path,
+                                    "--config", voice_config_path,
+                                    "--output_file", output_path
+                                ]
+                                
+                                result = subprocess.run(
+                                    piper_cmd,
+                                    input=cleaned_text,
+                                    text=True,
+                                    capture_output=True
+                                )
+                                
+                                if result.returncode == 0 and os.path.exists(output_path):
+                                    # Get audio file info
+                                    file_size = os.path.getsize(output_path)
+                                    
+                                    log_response("/speech/speak", client_ip, "success", processing_time)
+                                    log_event(f"🗣️ Speech generated: {speech_entry['speech_id']} ({file_size} bytes)")
+                                    
+                                    return FileResponse(
+                                        path=output_path,
+                                        media_type="audio/wav",
+                                        filename=output_filename,
+                                        headers={
+                                            "X-Speech-ID": speech_entry["speech_id"],
+                                            "X-Vocal-State": vocal_state,
+                                            "X-Session-ID": session_id,
+                                            "X-Processing-Time": str(processing_time)
+                                        }
+                                    )
+                                else:
+                                    log_event(f"❌ TTS generation failed: {result.stderr}")
+                            
+                        except Exception as tts_error:
+                            log_event(f"❌ TTS generation error: {str(tts_error)}")
+                
+                # Return JSON response if no audio generation requested or failed
+                log_response("/speech/speak", client_ip, "success", processing_time)
+                
+                return JSONResponse(content={
+                    "status": speech_result["status"],
+                    "speech_id": speech_result.get("speech_id"),
+                    "text": text,
+                    "voice_used": voice or speech_controller.current_voice,
+                    "vocal_state": vocal_state,
+                    "session_id": session_id,
+                    "processing_time": processing_time,
+                    "queue_position": speech_result.get("queue_position"),
+                    "estimated_delay": speech_result.get("estimated_delay"),
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                error_msg = str(e)
+                log_response("/speech/speak", client_ip, "error", processing_time, error_msg)
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Speech generation failed: {error_msg}",
+                        "processing_time": processing_time,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.post("/speech/hush",
+                       tags=["speech-control"],
+                       summary="🤫 Conscious Speech Suppression",
+                       description="Suppress speech with varying degrees of silence")
+        async def conscious_hush(
+            request: Request,
+            session_id: Optional[str] = Form(None, description="Specific session to hush (None for all)"),
+            global_mute: bool = Form(False, description="Enable global speech muting"),
+            soft_hush: bool = Form(True, description="Soft hush (preserve queue) vs hard hush (clear queue)")
+        ):
+            """
+            🤫 **Conscious Speech Suppression**
+            
+            Intelligently control vocal expression:
+            
+            **Hush Types**:
+            - `Session-specific`: Hush only specified session
+            - `Global mute`: Completely disable all speech
+            - `Soft hush`: Disable speech but preserve queue
+            - `Hard hush`: Clear queue and disable speech
+            
+            **Use Cases**:
+            - 🔇 Emergency silence during interruptions
+            - 🎯 Session-specific muting for multi-user scenarios
+            - 🧠 Contemplative silence periods
+            """
+            client_ip = request.client.host
+            start_time = time.time()
+            
+            log_request("/speech/hush", client_ip, {
+                "session_id": session_id,
+                "global_mute": global_mute,
+                "soft_hush": soft_hush
+            })
+            
+            try:
+                # Apply hush using speech controller
+                hush_result = speech_controller.hush(
+                    session_id=session_id,
+                    global_mute=global_mute
+                )
+                
+                processing_time = time.time() - start_time
+                log_response("/speech/hush", client_ip, "success", processing_time)
+                
+                log_event(f"🤫 Speech hushed: {hush_result['status']}")
+                
+                return JSONResponse(content={
+                    **hush_result,
+                    "processing_time": processing_time,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                error_msg = str(e)
+                log_response("/speech/hush", client_ip, "error", processing_time, error_msg)
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Hush operation failed: {error_msg}",
+                        "processing_time": processing_time,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.post("/speech/unhush",
+                       tags=["speech-control"],
+                       summary="🔊 Restore Vocal Expression",
+                       description="Restore speech capabilities after hushing")
+        async def conscious_unhush(
+            request: Request,
+            session_id: Optional[str] = Form(None, description="Specific session to unhush (None for all)"),
+            global_unmute: bool = Form(False, description="Disable global muting")
+        ):
+            """
+            🔊 **Restore Vocal Expression**
+            
+            Reactivate conscious speech generation:
+            
+            **Restoration Types**:
+            - `Session-specific`: Restore only specified session
+            - `Global unmute`: Restore all speech capabilities
+            - `Queue preservation`: Resume processing queued speech
+            """
+            client_ip = request.client.host
+            start_time = time.time()
+            
+            log_request("/speech/unhush", client_ip, {
+                "session_id": session_id,
+                "global_unmute": global_unmute
+            })
+            
+            try:
+                # Restore speech using speech controller
+                unhush_result = speech_controller.unhush(
+                    session_id=session_id,
+                    global_unmute=global_unmute
+                )
+                
+                processing_time = time.time() - start_time
+                log_response("/speech/unhush", client_ip, "success", processing_time)
+                
+                log_event(f"🔊 Speech restored: {unhush_result['status']}")
+                
+                return JSONResponse(content={
+                    **unhush_result,
+                    "processing_time": processing_time,
+                    "timestamp": datetime.now().isoformat()
+                })
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                error_msg = str(e)
+                log_response("/speech/unhush", client_ip, "error", processing_time, error_msg)
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Unhush operation failed: {error_msg}",
+                        "processing_time": processing_time,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        @self.app.get("/speech/status",
+                      response_model=SpeechControlStatus,
+                      tags=["speech-control"],
+                      summary="📊 Speech Control Status",
+                      description="Get comprehensive speech control system status")
+        async def get_speech_status(request: Request):
+            """
+            📊 **Speech Control Status**
+            
+            Monitor the conscious speech system:
+            
+            **Status Information**:
+            - 🎤 Speaking enabled/disabled state
+            - 🔇 Global muting status
+            - 📋 Active sessions and queue size
+            - 🗣️ Current voice and last speech time
+            - 🧠 Available vocal states
+            """
+            client_ip = request.client.host
+            start_time = time.time()
+            
+            log_request("/speech/status", client_ip)
+            
+            try:
+                # Get status from speech controller
+                status_data = speech_controller.get_status()
+                
+                processing_time = time.time() - start_time
+                log_response("/speech/status", client_ip, "success", processing_time)
+                
+                return {
+                    "status": "active",
+                    "is_speaking_enabled": status_data["is_speaking_enabled"],
+                    "is_globally_muted": status_data["is_globally_muted"],
+                    "active_sessions": status_data["active_sessions"],
+                    "speech_queue_size": status_data["speech_queue_size"],
+                    "current_voice": status_data["current_voice"],
+                    "last_speech_time": status_data["last_speech_time"],
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+            except Exception as e:
+                processing_time = time.time() - start_time
+                error_msg = str(e)
+                log_response("/speech/status", client_ip, "error", processing_time, error_msg)
+                
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "status": "error",
+                        "error": f"Status check failed: {error_msg}",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                )
+        
+        # ============================================================
         # AGENT WORKFLOW SYSTEM - RESEARCH GENERATION
         # ============================================================
         
@@ -6142,6 +6483,279 @@ Format the outline clearly with proper hierarchy and numbering."""
             return False
 
 
+# -------- SPEECH CONTROL SYSTEM -------- #
+
+class SpeechControlStatus(BaseModel):
+    """Speech control status response model"""
+    status: str
+    is_speaking_enabled: bool
+    is_globally_muted: bool
+    active_sessions: int
+    speech_queue_size: int
+    current_voice: str
+    last_speech_time: Optional[str] = None
+    timestamp: str
+
+class SpeechResponse(BaseModel):
+    """Speech generation response model"""
+    status: str
+    speech_id: str
+    text: str
+    voice_used: str
+    audio_file: Optional[str] = None
+    duration: Optional[float] = None
+    processing_time: float
+    timestamp: str
+
+class SpeechControlManager:
+    """
+    Advanced speech control system with conscious vocal regulation.
+    
+    Provides sophisticated speak/hush functionality that integrates with
+    the cognitive architecture for natural vocal expression management.
+    """
+    
+    def __init__(self):
+        """Initialize speech control consciousness"""
+        self.is_speaking_enabled = True
+        self.is_globally_muted = False
+        self.active_sessions = {}
+        self.speech_queue = []
+        self.speech_history = []
+        self.current_voice = CognitiveConfiguration.DEFAULT_VOICE
+        self.last_speech_time = None
+        self.speech_lock = threading.Lock()
+        
+        # Voice state tracking with psychological depth
+        self.vocal_states = {
+            "contemplative": {"voice_speed": 0.9, "voice_pitch": 0.95},
+            "enthusiastic": {"voice_speed": 1.1, "voice_pitch": 1.05},
+            "calm": {"voice_speed": 0.85, "voice_pitch": 0.98},
+            "urgent": {"voice_speed": 1.2, "voice_pitch": 1.08}
+        }
+        
+        log_event("🗣️ Speech Control Manager initialized", "mlx")
+    
+    def speak(self, text: str, voice: Optional[str] = None, 
+              vocal_state: str = "neutral", priority: bool = False,
+              session_id: str = "default") -> Dict[str, Any]:
+        """
+        Conscious speech generation with psychological awareness.
+        
+        Args:
+            text: Text to vocalize
+            voice: Voice model to use (None for default)
+            vocal_state: Psychological vocal state
+            priority: High priority speech (interrupts queue)
+            session_id: Session identifier for tracking
+        
+        Returns:
+            Dict with speech generation results and metadata
+        """
+        if self.is_globally_muted:
+            log_event(f"🔇 Speech blocked (globally muted): {text[:50]}...", "mlx")
+            return {
+                "status": "muted",
+                "speech_id": None,
+                "message": "Speech is globally muted"
+            }
+        
+        if not self.is_speaking_enabled:
+            log_event(f"🔇 Speech blocked (disabled): {text[:50]}...", "mlx")
+            return {
+                "status": "disabled", 
+                "speech_id": None,
+                "message": "Speech is disabled"
+            }
+        
+        # Generate unique speech ID
+        speech_id = f"speech_{uuid.uuid4().hex[:8]}"
+        
+        # Use provided voice or current default
+        active_voice = voice or self.current_voice
+        
+        # Apply vocal state modulations
+        modulated_text = self._apply_vocal_state(text, vocal_state)
+        
+        with self.speech_lock:
+            # Create speech entry
+            speech_entry = {
+                "speech_id": speech_id,
+                "text": modulated_text,
+                "original_text": text,
+                "voice": active_voice,
+                "vocal_state": vocal_state,
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat(),
+                "priority": priority,
+                "status": "queued"
+            }
+            
+            # Queue management based on priority
+            if priority:
+                self.speech_queue.insert(0, speech_entry)
+                log_event(f"🔊 Priority speech queued: {speech_id}", "mlx")
+            else:
+                self.speech_queue.append(speech_entry)
+                log_event(f"🗣️ Speech queued: {speech_id}", "mlx")
+            
+            # Update session tracking
+            self.active_sessions[session_id] = {
+                "last_speech": speech_id,
+                "speech_count": self.active_sessions.get(session_id, {}).get("speech_count", 0) + 1,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        return {
+            "status": "queued",
+            "speech_id": speech_id,
+            "queue_position": len(self.speech_queue),
+            "estimated_delay": len(self.speech_queue) * 2.5  # Rough estimate
+        }
+    
+    def hush(self, session_id: Optional[str] = None, global_mute: bool = False) -> Dict[str, Any]:
+        """
+        Conscious speech suppression with varying degrees of silence.
+        
+        Args:
+            session_id: Specific session to hush (None for all)
+            global_mute: Enable global speech muting
+        
+        Returns:
+            Dict with hush operation results
+        """
+        with self.speech_lock:
+            if global_mute:
+                self.is_globally_muted = True
+                self.speech_queue.clear()
+                log_event("🔇 Global speech muting activated", "mlx")
+                return {
+                    "status": "globally_muted",
+                    "sessions_affected": len(self.active_sessions),
+                    "queue_cleared": True
+                }
+            
+            elif session_id:
+                # Hush specific session
+                if session_id in self.active_sessions:
+                    # Remove session's queued speech
+                    removed_count = 0
+                    self.speech_queue = [
+                        entry for entry in self.speech_queue 
+                        if entry["session_id"] != session_id or (lambda: (removed_count := removed_count + 1, False)[1])()
+                    ]
+                    
+                    log_event(f"🤫 Session {session_id} hushed, removed {removed_count} speech items", "mlx")
+                    return {
+                        "status": "session_hushed",
+                        "session_id": session_id,
+                        "removed_items": removed_count
+                    }
+                else:
+                    return {
+                        "status": "session_not_found",
+                        "session_id": session_id
+                    }
+            
+            else:
+                # General hush - pause speaking but don't clear queue
+                self.is_speaking_enabled = False
+                log_event("🤫 Speech disabled (soft hush)", "mlx")
+                return {
+                    "status": "speaking_disabled",
+                    "queue_preserved": len(self.speech_queue)
+                }
+    
+    def unhush(self, session_id: Optional[str] = None, global_unmute: bool = False) -> Dict[str, Any]:
+        """
+        Restore vocal expression capabilities.
+        
+        Args:
+            session_id: Specific session to restore (None for all)
+            global_unmute: Disable global muting
+        
+        Returns:
+            Dict with restoration results
+        """
+        with self.speech_lock:
+            if global_unmute:
+                self.is_globally_muted = False
+                self.is_speaking_enabled = True
+                log_event("🔊 Global speech unmuting activated", "mlx")
+                return {
+                    "status": "globally_unmuted",
+                    "queue_size": len(self.speech_queue)
+                }
+            
+            elif session_id:
+                # Session-specific unhushing (mainly for logging)
+                log_event(f"🔊 Session {session_id} unhushed", "mlx")
+                return {
+                    "status": "session_unhushed",
+                    "session_id": session_id
+                }
+            
+            else:
+                # General unhush - restore speaking
+                self.is_speaking_enabled = True
+                log_event("🔊 Speech enabled (unhushed)", "mlx")
+                return {
+                    "status": "speaking_enabled",
+                    "queue_size": len(self.speech_queue)
+                }
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get comprehensive speech control status"""
+        with self.speech_lock:
+            return {
+                "is_speaking_enabled": self.is_speaking_enabled,
+                "is_globally_muted": self.is_globally_muted,
+                "active_sessions": len(self.active_sessions),
+                "speech_queue_size": len(self.speech_queue),
+                "current_voice": self.current_voice,
+                "last_speech_time": self.last_speech_time,
+                "speech_history_count": len(self.speech_history),
+                "vocal_states_available": list(self.vocal_states.keys())
+            }
+    
+    def process_speech_queue(self) -> Optional[Dict[str, Any]]:
+        """Process next item in speech queue"""
+        with self.speech_lock:
+            if not self.speech_queue or not self.is_speaking_enabled or self.is_globally_muted:
+                return None
+            
+            # Get next speech item
+            speech_entry = self.speech_queue.pop(0)
+            speech_entry["status"] = "processing"
+            
+            # Add to history
+            self.speech_history.append(speech_entry)
+            self.last_speech_time = datetime.now().isoformat()
+            
+            return speech_entry
+    
+    def _apply_vocal_state(self, text: str, vocal_state: str) -> str:
+        """Apply psychological vocal state modulations to text"""
+        if vocal_state == "contemplative":
+            # Add thoughtful pauses
+            text = text.replace(".", "... ")
+            text = text.replace(",", ", ")
+        elif vocal_state == "enthusiastic":
+            # Add exclamatory emphasis
+            text = text.replace(".", "!")
+            if not text.endswith(("!", "?")):
+                text += "!"
+        elif vocal_state == "urgent":
+            # Remove unnecessary pauses
+            text = text.replace(",", "")
+            text = text.replace(";", "")
+        
+        return text
+
+# Global speech control manager instance
+speech_controller = SpeechControlManager()
+
+
 def create_silicon_consciousness():
     """
     Bootstrap the API Silicon Server consciousness.
@@ -6183,6 +6797,7 @@ if __name__ == "__main__":
     print("   • /voices - List available Piper voices")
     print("   • /audiocraft/* - Audio generation")
     print("   • /voice_training/* - Voice training")
+    print("   • /speech/* - Speech control (speak/hush)")
     print()
     print("📥 Download Management:")
     print("   • /api/models/search & /download - MLX model management")

@@ -578,18 +578,29 @@
         }
         
         .step {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
             border-left: 4px solid #e2e8f0;
             background: #f8f9fa;
             transition: all 0.3s ease;
-            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .readable-step {
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 15px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: visible;
+            min-height: auto;
+            height: auto;
         }
         
         .step.pending {
             border-left-color: #cbd5e0;
-            opacity: 0.6;
         }
         
         .step.active {
@@ -613,6 +624,297 @@
             50% { opacity: 0.7; }
         }
         
+        /* New readable layout styles */
+        .step-header-readable {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .step-title-section {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin: 0 0 8px 0;
+            line-height: 1.3;
+        }
+        
+        .readable-status {
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .pending-status {
+            background: #ffd6cc;
+            color: #c53030;
+            border: 1px solid #fc8181;
+            font-weight: 600;
+        }
+        
+        .active-status {
+            background: #ebf4ff;
+            color: #667eea;
+            border: 1px solid #a4cafe;
+        }
+        
+        .completed-status {
+            background: #f0fff4;
+            color: #48bb78;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .failed-status {
+            background: #fed7d7;
+            color: #e53e3e;
+            border: 1px solid #feb2b2;
+        }
+        
+        .step-action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-left: 15px;
+        }
+        
+        .readable-btn {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #4a5568;
+        }
+        
+        .readable-btn:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+            transform: translateY(-1px);
+        }
+        
+        .step-summary {
+            margin-bottom: 15px;
+        }
+        
+        .step-purpose,
+        .step-details-text,
+        .step-current-status {
+            margin: 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #4a5568;
+        }
+        
+        .step-purpose strong,
+        .step-details-text strong,
+        .step-current-status strong {
+            color: #2d3748;
+            font-weight: 600;
+        }
+        
+        .step-progress-info {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .progress-metrics {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #718096;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .step-config {
+            margin-top: 15px;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            transition: all 0.3s ease;
+            overflow: visible;
+            max-height: none;
+            min-height: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .step-config.collapsed {
+            display: none;
+            max-height: 0;
+            overflow: hidden;
+            padding: 0 20px;
+            opacity: 0;
+        }
+        
+        .step-config.expanded {
+            display: block;
+            max-height: 1000px;
+            overflow: visible;
+            padding: 20px;
+            opacity: 1;
+            background: #ffffff;
+            border: 2px solid #667eea;
+        }
+        
+        /* Configuration form styles */
+        .config-form {
+            margin-top: 15px;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .step-config h5 {
+            color: #1a202c;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .config-field {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            min-height: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .config-field label {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            cursor: pointer;
+        }
+        
+        .config-field span {
+            min-width: 140px;
+            color: #1a202c;
+            font-weight: 600;
+            text-transform: capitalize;
+            flex-shrink: 0;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .config-field input,
+        .config-field select {
+            padding: 10px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 160px;
+            background: white;
+            transition: all 0.2s ease;
+            flex: 1;
+            max-width: 250px;
+        }
+        
+        .config-field input:focus,
+        .config-field select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .config-field input:hover,
+        .config-field select:hover {
+            border-color: #cbd5e0;
+        }
+        
+        .config-field input[type="checkbox"] {
+            min-width: auto;
+            margin: 0;
+            width: 18px;
+            height: 18px;
+            flex: none;
+            cursor: pointer;
+        }
+        
+        .config-field input[type="number"] {
+            max-width: 100px;
+        }
+        
+        .apply-config-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .apply-config-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+        }
+        
+        .workflow-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .config-btn {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #4a5568;
+        }
+        
+        .config-btn:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+        
+        /* Legacy styles for compatibility */
         .step-header {
             display: flex;
             justify-content: space-between;
@@ -1596,29 +1898,44 @@
             
             workflowSteps.forEach((step, index) => {
                 stepsHtml += `
-                    <div class="step pending" id="step-${index}" onclick="toggleStepDetails(${index})">
-                        <div class="step-header">
-                            <span>${step.name}</span>
-                            <div class="step-controls">
-                                <span class="step-status" style="background: #cbd5e0;">Pending</span>
-                                <button class="config-toggle" onclick="event.stopPropagation(); toggleStepConfig(${index})">⚙️</button>
-                                <button class="step-toggle">▼</button>
+                    <div class="step pending readable-step" id="step-${index}">
+                        <div class="step-header-readable">
+                            <div class="step-title-section">
+                                <h4 class="step-title">${step.name}</h4>
+                                <span class="step-status readable-status pending-status">Pending</span>
+                            </div>
+                            <div class="step-action-buttons">
+                                <button class="config-toggle readable-btn" onclick="event.stopPropagation(); toggleStepConfig(${index})" title="Configure Step">
+                                    ⚙️
+                                </button>
+                                <button class="step-toggle readable-btn" onclick="toggleStepDetails(${index})" title="Show Details">
+                                    ▲
+                                </button>
                             </div>
                         </div>
-                        <div class="step-details">
-                            <div class="step-info">
-                                <p><strong>Purpose:</strong> ${step.desc}</p>
-                                <p><strong>Details:</strong> ${step.details}</p>
-                                <p><strong>Status:</strong> Waiting to start...</p>
-                                <div class="step-actions">
-                                    <span class="action-item">Processing time: --</span>
-                                    <span class="action-item">Data processed: --</span>
-                                </div>
+                        
+                        <div class="step-summary">
+                            <p class="step-purpose"><strong>Purpose:</strong> ${step.desc}</p>
+                            <p class="step-details-text"><strong>Details:</strong> ${step.details}</p>
+                            <p class="step-current-status"><strong>Status:</strong> Waiting to start...</p>
+                        </div>
+                        
+                        <div class="step-progress-info">
+                            <div class="progress-metrics">
+                                <span class="metric-item">
+                                    <span class="metric-label">Processing time:</span>
+                                    <span class="metric-value">--</span>
+                                </span>
+                                <span class="metric-item">
+                                    <span class="metric-label">Data processed:</span>
+                                    <span class="metric-value">--</span>
+                                </span>
                             </div>
-                            <div class="step-config" id="config-${index}">
-                                <h5>Step Configuration</h5>
-                                ${generateStepConfigHTML(step, index)}
-                            </div>
+                        </div>
+                        
+                        <div class="step-config collapsed" id="config-${index}">
+                            <h5>Step Configuration</h5>
+                            ${generateStepConfigHTML(step, index)}
                         </div>
                     </div>
                 `;
@@ -1655,43 +1972,54 @@
             
             for (const [key, value] of Object.entries(step.config)) {
                 const inputId = `config-${index}-${key}`;
+                const labelText = key.replace(/_/g, ' ');
                 
                 if (typeof value === 'boolean') {
                     configHTML += `
-                        <label class="config-field">
-                            <input type="checkbox" id="${inputId}" ${value ? 'checked' : ''}>
-                            <span>${key.replace(/_/g, ' ')}</span>
-                        </label>
+                        <div class="config-field">
+                            <label for="${inputId}">
+                                <input type="checkbox" id="${inputId}" ${value ? 'checked' : ''}>
+                                <span>${labelText}</span>
+                            </label>
+                        </div>
                     `;
                 } else if (key.includes('preset') || key.includes('style') || key.includes('type')) {
                     const options = getSelectOptions(key);
                     configHTML += `
-                        <label class="config-field">
-                            <span>${key.replace(/_/g, ' ')}</span>
-                            <select id="${inputId}">
-                                ${options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('')}
-                            </select>
-                        </label>
+                        <div class="config-field">
+                            <label for="${inputId}">
+                                <span>${labelText}</span>
+                                <select id="${inputId}">
+                                    ${options.map(opt => `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`).join('')}
+                                </select>
+                            </label>
+                        </div>
                     `;
                 } else if (typeof value === 'number') {
                     configHTML += `
-                        <label class="config-field">
-                            <span>${key.replace(/_/g, ' ')}</span>
-                            <input type="number" id="${inputId}" value="${value}" min="1" max="100">
-                        </label>
+                        <div class="config-field">
+                            <label for="${inputId}">
+                                <span>${labelText}</span>
+                                <input type="number" id="${inputId}" value="${value}" min="1" max="100">
+                            </label>
+                        </div>
                     `;
                 } else {
                     configHTML += `
-                        <label class="config-field">
-                            <span>${key.replace(/_/g, ' ')}</span>
-                            <input type="text" id="${inputId}" value="${value}">
-                        </label>
+                        <div class="config-field">
+                            <label for="${inputId}">
+                                <span>${labelText}</span>
+                                <input type="text" id="${inputId}" value="${value}">
+                            </label>
+                        </div>
                     `;
                 }
             }
             
             configHTML += `
-                <button onclick="applyStepConfig(${index})" class="apply-config-btn">Apply Changes</button>
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
+                    <button onclick="applyStepConfig(${index})" class="apply-config-btn">Apply Changes</button>
+                </div>
             </div>`;
             
             return configHTML;
@@ -1847,90 +2175,154 @@
             // updateWorkflowStepsFromMetadata(metadata);
         }
 
+        // Toggle functions for the new readable layout
         function toggleStepDetails(index) {
-            const steps = document.querySelectorAll('.step');
-            const step = steps[index];
-            step.classList.toggle('expanded');
+            const stepElement = document.getElementById(`step-${index}`);
+            const toggleButton = stepElement.querySelector('.step-toggle');
+            const summary = stepElement.querySelector('.step-summary');
+            const progressInfo = stepElement.querySelector('.step-progress-info');
             
-            const toggle = step.querySelector('.step-toggle');
-            toggle.textContent = step.classList.contains('expanded') ? '▲' : '▼';
+            if (summary.style.display === 'none') {
+                // Show details
+                summary.style.display = 'block';
+                progressInfo.style.display = 'block';
+                toggleButton.textContent = '▲';
+                toggleButton.title = 'Hide Details';
+            } else {
+                // Hide details
+                summary.style.display = 'none';
+                progressInfo.style.display = 'none';
+                toggleButton.textContent = '▼';
+                toggleButton.title = 'Show Details';
+            }
         }
-
+        
         function toggleStepConfig(index) {
-            const configDiv = document.getElementById(`config-${index}`);
-            configDiv.classList.toggle('show');
+            const configElement = document.getElementById(`config-${index}`);
+            const configButton = document.querySelector(`#step-${index} .config-toggle`);
             
-            const configToggle = document.querySelector(`#step-${index} .config-toggle`);
-            configToggle.textContent = configDiv.classList.contains('show') ? '🔧' : '⚙️';
+            if (configElement.classList.contains('collapsed')) {
+                configElement.classList.remove('collapsed');
+                configElement.classList.add('expanded');
+                configButton.style.background = '#667eea';
+                configButton.style.color = 'white';
+            } else {
+                configElement.classList.remove('expanded');
+                configElement.classList.add('collapsed');
+                configButton.style.background = '#f7fafc';
+                configButton.style.color = '#4a5568';
+            }
         }
-
+        
         function toggleAllStepConfigs() {
-            const configDivs = document.querySelectorAll('.step-config');
-            const allVisible = Array.from(configDivs).every(div => div.classList.contains('show'));
+            const allConfigs = document.querySelectorAll('.step-config');
+            const anyExpanded = Array.from(allConfigs).some(config => config.classList.contains('expanded'));
             
-            configDivs.forEach(div => {
-                if (allVisible) {
-                    div.classList.remove('show');
+            allConfigs.forEach((config, index) => {
+                const configButton = document.querySelector(`#step-${index} .config-toggle`);
+                if (anyExpanded) {
+                    // Collapse all
+                    config.classList.remove('expanded');
+                    config.classList.add('collapsed');
+                    if (configButton) {
+                        configButton.style.background = '#f7fafc';
+                        configButton.style.color = '#4a5568';
+                    }
                 } else {
-                    div.classList.add('show');
+                    // Expand all
+                    config.classList.remove('collapsed');
+                    config.classList.add('expanded');
+                    if (configButton) {
+                        configButton.style.background = '#667eea';
+                        configButton.style.color = 'white';
+                    }
                 }
             });
         }
-
+        
         function applyStepConfig(index) {
             const step = workflowSteps[index];
-            const newConfig = {};
+            const configForm = document.querySelector(`#config-${index} .config-form`);
             
-            for (const key of Object.keys(step.config)) {
-                const inputId = `config-${index}-${key}`;
-                const input = document.getElementById(inputId);
-                
-                if (input.type === 'checkbox') {
-                    newConfig[key] = input.checked;
-                } else if (input.type === 'number') {
-                    newConfig[key] = parseInt(input.value);
-                } else {
-                    newConfig[key] = input.value;
+            // Update step configuration
+            for (const [key, value] of Object.entries(step.config)) {
+                const inputElement = document.getElementById(`config-${index}-${key}`);
+                if (inputElement) {
+                    if (inputElement.type === 'checkbox') {
+                        step.config[key] = inputElement.checked;
+                    } else if (inputElement.type === 'number') {
+                        step.config[key] = parseInt(inputElement.value);
+                    } else {
+                        step.config[key] = inputElement.value;
+                    }
                 }
             }
             
-            // Update the step configuration
-            workflowSteps[index].config = { ...step.config, ...newConfig };
-            
             // Show confirmation
-            showConfigAppliedFeedback(index);
-        }
-
-        function showConfigAppliedFeedback(index) {
-            const step = document.getElementById(`step-${index}`);
-            const originalBackground = step.style.backgroundColor;
-            
-            step.style.backgroundColor = '#48bb78';
-            step.style.transition = 'background-color 0.3s ease';
+            const applyButton = configForm.querySelector('.apply-config-btn');
+            const originalText = applyButton.textContent;
+            applyButton.textContent = '✓ Applied';
+            applyButton.style.background = '#48bb78';
             
             setTimeout(() => {
-                step.style.backgroundColor = originalBackground;
-            }, 1000);
+                applyButton.textContent = originalText;
+                applyButton.style.background = '';
+            }, 2000);
         }
-
+        
         function exportWorkflowConfig() {
             const config = {
-                workflow_type: 'comprehensive',
+                workflow_type: selectedWorkflowType,
                 steps: workflowSteps.map(step => ({
                     name: step.name,
-                    configuration: step.config
+                    config: step.config
                 }))
             };
             
             const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'workflow-config.json';
+            a.download = `research_workflow_config_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
             a.click();
-            
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+        
+        // Enhanced step status update function for readable layout
+        function updateStepStatusReadable(index, status, statusText, details, realTimeData = {}) {
+            const stepElement = document.getElementById(`step-${index}`);
+            if (!stepElement) return;
+            
+            // Remove all status classes
+            stepElement.classList.remove('pending', 'active', 'completed', 'failed', 'skipped');
+            // Add new status
+            stepElement.classList.add(status);
+            
+            // Update status badge
+            const statusSpan = stepElement.querySelector('.readable-status');
+            if (statusSpan) {
+                statusSpan.textContent = statusText;
+                statusSpan.className = `readable-status ${status}-status`;
+            }
+            
+            // Update status text in summary
+            const currentStatusP = stepElement.querySelector('.step-current-status');
+            if (currentStatusP) {
+                currentStatusP.innerHTML = `<strong>Status:</strong> ${details || statusText}`;
+            }
+            
+            // Update metrics if provided
+            if (realTimeData.processing_time) {
+                const timeMetric = stepElement.querySelector('.metric-item:first-child .metric-value');
+                if (timeMetric) timeMetric.textContent = `${realTimeData.processing_time}s`;
+            }
+            
+            if (realTimeData.data_processed) {
+                const dataMetric = stepElement.querySelector('.metric-item:last-child .metric-value');
+                if (dataMetric) dataMetric.textContent = realTimeData.data_processed;
+            }
         }
 
         function showStatus(message, type) {

@@ -430,6 +430,69 @@ class Character:
         )
         
         return character
+    
+    def speak(self, text: str, priority: bool = False, metadata: Dict = None) -> bool:
+        """
+        Make this character speak the given text.
+        
+        Args:
+            text: What the character should say
+            priority: Whether to prioritize this speech
+            metadata: Additional context about the speech
+            
+        Returns:
+            True if speech was queued successfully
+        """
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        return manager.speak_character_dialogue(self, text, priority, metadata)
+    
+    def hush(self) -> None:
+        """Mute this character from speaking"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        manager.hush_character(self.id)
+    
+    def unhush(self) -> None:
+        """Restore speech for this character"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        manager.unhush_character(self.id)
+    
+    def toggle_speech(self) -> bool:
+        """
+        Toggle speech state for this character.
+        
+        Returns:
+            True if character can now speak, False if muted
+        """
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        return manager.toggle_character_speech(self.id)
+    
+    def can_speak(self) -> bool:
+        """Check if this character is currently allowed to speak"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        return manager._can_character_speak(self.id)
+    
+    def get_speech_history(self, limit: int = 10) -> List[Dict]:
+        """Get recent speech history for this character"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        return manager.get_character_speech_history(self.id, limit)
 
 
 @dataclass
@@ -802,6 +865,98 @@ class EmergentNarrative:
         with open(file_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return cls.from_dict(data)
+    
+    def speak_narrator(self, text: str, voice: str = "narrator", metadata: Dict = None) -> bool:
+        """
+        Make the narrator speak (scene descriptions, stage directions, etc.)
+        
+        Args:
+            text: Narrator text to speak
+            voice: Voice to use for narrator
+            metadata: Additional context
+            
+        Returns:
+            True if speech was queued successfully
+        """
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        return manager.speak_narrator_text(text, voice, metadata)
+    
+    def hush_narrative(self) -> None:
+        """Silence all speech in this narrative (global mute)"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        manager.hush_all()
+    
+    def unhush_narrative(self) -> None:
+        """Restore speech for all characters in this narrative"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        manager.unhush_all()
+    
+    def hush_character_by_name(self, character_name: str) -> bool:
+        """
+        Mute a character by name.
+        
+        Args:
+            character_name: Name of the character to mute
+            
+        Returns:
+            True if character was found and muted, False otherwise
+        """
+        character = self.get_character_by_name(character_name)
+        if character:
+            character.hush()
+            return True
+        return False
+    
+    def unhush_character_by_name(self, character_name: str) -> bool:
+        """
+        Restore speech for a character by name.
+        
+        Args:
+            character_name: Name of the character to unmute
+            
+        Returns:
+            True if character was found and unmuted, False otherwise
+        """
+        character = self.get_character_by_name(character_name)
+        if character:
+            character.unhush()
+            return True
+        return False
+    
+    def get_character_by_name(self, character_name: str) -> Optional[Character]:
+        """Get character by name (case insensitive)"""
+        for character in self.characters:
+            if character.name.lower() == character_name.lower():
+                return character
+        return None
+    
+    def get_speech_status(self) -> Dict:
+        """Get speech status for the entire narrative"""
+        # Lazy import to avoid circular dependencies
+        from ..narrative_speech_manager import get_narrative_speech_manager
+        
+        manager = get_narrative_speech_manager()
+        status = manager.get_speech_status()
+        
+        # Add character-specific status
+        status['characters'] = {}
+        for character in self.characters:
+            status['characters'][character.name] = {
+                'id': character.id,
+                'can_speak': character.can_speak(),
+                'voice': character.voice
+            }
+        
+        return status
 
 
 @dataclass 

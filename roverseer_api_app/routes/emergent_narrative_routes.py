@@ -26,6 +26,7 @@ from emergent_narrative.models.narrative_models import (
     PERSONALITY_TRAIT_CATEGORIES
 )
 from emergent_narrative.character_library import character_library
+from emergent_narrative.narrative_speech_manager import get_narrative_speech_manager
 
 # Create router
 router = APIRouter()
@@ -3535,3 +3536,332 @@ def assign_characters_to_scene(character_names: List[str], character_usage: Dict
     character_usage[char_b] = character_usage.get(char_b, 0) + 1
     
     return char_a, char_b
+
+
+# ========== SPEECH CONTROL ROUTES ========== #
+
+@router.post('/emergent_narrative/speech/character/{narrative_id}/{character_id}')
+async def speak_character_dialogue(request: Request, narrative_id: str, character_id: str):
+    """Make a specific character speak dialogue"""
+    try:
+        data = await request.json()
+        text = data.get('text', '')
+        priority = data.get('priority', False)
+        metadata = data.get('metadata', {})
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
+        
+        # Load narrative to get character details
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        character = narrative.get_character_by_id(character_id)
+        
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        # Use the character's speak method
+        success = character.speak(text, priority, metadata)
+        
+        if success:
+            logger.info(f"Character {character.name} speaking: \"{text[:50]}{'...' if len(text) > 50 else ''}\"")
+            return JSONResponse({
+                "status": "success",
+                "message": f"Character {character.name} speech queued",
+                "character_name": character.name,
+                "text": text,
+                "voice": character.voice
+            })
+        else:
+            return JSONResponse({
+                "status": "blocked",
+                "message": f"Character {character.name} is muted or speech failed",
+                "character_name": character.name
+            })
+    
+    except Exception as e:
+        logger.error(f"Error in character speech: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/narrator/{narrative_id}')
+async def speak_narrator_text(request: Request, narrative_id: str):
+    """Make the narrator speak (scene descriptions, stage directions, etc.)"""
+    try:
+        data = await request.json()
+        text = data.get('text', '')
+        voice = data.get('voice', 'narrator')
+        metadata = data.get('metadata', {})
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="Text is required")
+        
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        
+        # Use the narrative's narrator speak method
+        success = narrative.speak_narrator(text, voice, metadata)
+        
+        if success:
+            logger.info(f"Narrator speaking: \"{text[:50]}{'...' if len(text) > 50 else ''}\"")
+            return JSONResponse({
+                "status": "success",
+                "message": "Narrator speech queued",
+                "text": text,
+                "voice": voice
+            })
+        else:
+            return JSONResponse({
+                "status": "blocked",
+                "message": "Narrator is muted or speech failed"
+            })
+    
+    except Exception as e:
+        logger.error(f"Error in narrator speech: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/hush/{narrative_id}')
+async def hush_narrative_speech(narrative_id: str):
+    """Silence all speech in the narrative (global mute)"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        narrative.hush_narrative()
+        
+        logger.info(f"Narrative {narrative.title} speech silenced")
+        return JSONResponse({
+            "status": "success",
+            "message": f"All speech silenced for narrative: {narrative.title}"
+        })
+    
+    except Exception as e:
+        logger.error(f"Error hushing narrative: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/unhush/{narrative_id}')
+async def unhush_narrative_speech(narrative_id: str):
+    """Restore speech for all characters in the narrative"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        narrative.unhush_narrative()
+        
+        logger.info(f"Narrative {narrative.title} speech restored")
+        return JSONResponse({
+            "status": "success",
+            "message": f"Speech restored for narrative: {narrative.title}"
+        })
+    
+    except Exception as e:
+        logger.error(f"Error unhushing narrative: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/hush_character/{narrative_id}/{character_id}')
+async def hush_character_speech(narrative_id: str, character_id: str):
+    """Mute a specific character"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        character = narrative.get_character_by_id(character_id)
+        
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        character.hush()
+        
+        logger.info(f"Character {character.name} muted in narrative {narrative.title}")
+        return JSONResponse({
+            "status": "success",
+            "message": f"Character {character.name} muted",
+            "character_name": character.name
+        })
+    
+    except Exception as e:
+        logger.error(f"Error hushing character: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/unhush_character/{narrative_id}/{character_id}')
+async def unhush_character_speech(narrative_id: str, character_id: str):
+    """Restore speech for a specific character"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        character = narrative.get_character_by_id(character_id)
+        
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        character.unhush()
+        
+        logger.info(f"Character {character.name} speech restored in narrative {narrative.title}")
+        return JSONResponse({
+            "status": "success",
+            "message": f"Character {character.name} speech restored",
+            "character_name": character.name
+        })
+    
+    except Exception as e:
+        logger.error(f"Error unhushing character: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/toggle_character/{narrative_id}/{character_id}')
+async def toggle_character_speech(narrative_id: str, character_id: str):
+    """Toggle speech state for a specific character"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        character = narrative.get_character_by_id(character_id)
+        
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        can_speak = character.toggle_speech()
+        status = "enabled" if can_speak else "muted"
+        
+        logger.info(f"Character {character.name} speech toggled to {status}")
+        return JSONResponse({
+            "status": "success",
+            "message": f"Character {character.name} speech {status}",
+            "character_name": character.name,
+            "can_speak": can_speak
+        })
+    
+    except Exception as e:
+        logger.error(f"Error toggling character speech: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/emergent_narrative/speech/status/{narrative_id}')
+async def get_speech_status(narrative_id: str):
+    """Get speech status for the narrative and all characters"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        speech_status = narrative.get_speech_status()
+        
+        return JSONResponse({
+            "status": "success",
+            "narrative_title": narrative.title,
+            "speech_status": speech_status
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting speech status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/emergent_narrative/speech/history/{narrative_id}/{character_id}')
+async def get_character_speech_history(narrative_id: str, character_id: str, limit: int = 10):
+    """Get recent speech history for a specific character"""
+    try:
+        # Load narrative
+        narrative_file = os.path.join(NARRATIVES_DIR, f"{narrative_id}.json")
+        if not os.path.exists(narrative_file):
+            raise HTTPException(status_code=404, detail="Narrative not found")
+        
+        narrative = EmergentNarrative.load_from_file(narrative_file)
+        character = narrative.get_character_by_id(character_id)
+        
+        if not character:
+            raise HTTPException(status_code=404, detail="Character not found")
+        
+        speech_history = character.get_speech_history(limit)
+        
+        return JSONResponse({
+            "status": "success",
+            "character_name": character.name,
+            "speech_history": speech_history
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting character speech history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get('/emergent_narrative/speech/global_status')
+async def get_global_speech_status():
+    """Get global speech manager status across all narratives"""
+    try:
+        manager = get_narrative_speech_manager()
+        status = manager.get_speech_status()
+        
+        return JSONResponse({
+            "status": "success",
+            "global_speech_status": status
+        })
+    
+    except Exception as e:
+        logger.error(f"Error getting global speech status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/global_hush')
+async def global_hush_speech():
+    """Silence all speech across all narratives (emergency stop)"""
+    try:
+        manager = get_narrative_speech_manager()
+        manager.hush_all()
+        
+        logger.info("Global speech emergency stop activated")
+        return JSONResponse({
+            "status": "success",
+            "message": "All narrative speech silenced globally"
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in global speech hush: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post('/emergent_narrative/speech/global_unhush')
+async def global_unhush_speech():
+    """Restore speech globally across all narratives"""
+    try:
+        manager = get_narrative_speech_manager()
+        manager.unhush_all()
+        
+        logger.info("Global speech restored")
+        return JSONResponse({
+            "status": "success",
+            "message": "Speech restored globally for all narratives"
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in global speech unhush: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
