@@ -1,7 +1,0 @@
-production:
-  adapter: mysql2
-  database: redmine_db
-  host: db
-  username: redmine
-  password: xunjmq84
-  encoding: utf8mb4

@@ -3,5 +3,5 @@ production:
   database: redmine_db
   host: db
   username: redmine
-  password: xunjmq84
+  password: fake_password
   encoding: utf8mb4

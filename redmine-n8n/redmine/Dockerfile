@@ -42,7 +42,7 @@ RUN gem uninstall -x -I mysql2 || true && \
     gem install mysql2 -v 0.5.6 -- --with-mysql-config=/usr/bin/mysql_config
 
 # ✅ Optional: Custom entrypoint script
-COPY redmine-init.sh /usr/local/bin/redmine-init.sh
+COPY ./redmine-init.sh /usr/local/bin/redmine-init.sh
 RUN chmod +x /usr/local/bin/redmine-init.sh
 #RUN chown -R redmine:redmine /usr/src/redmine/db
 

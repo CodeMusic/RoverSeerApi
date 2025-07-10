@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: redmine-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: redmine_db
+      MYSQL_USER: redmine
+      MYSQL_PASSWORD: fake_password
+      MYSQL_ROOT_PASSWORD: Fake_Password!!!
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ai_net
+
+  redmine:
+    build:
+      context: ./redmine
+      dockerfile: Dockerfile
+    container_name: redmine-app
+    restart: always
+    depends_on:
+      - db
+    environment:
+      BUNDLE_FORCE_RUBY_PLATFORM: true
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_PORT: 3306
+      REDMINE_DB_DATABASE: redmine_db
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: fake_password
+      RAILS_SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERATE "
+      SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERATE "
+    volumes:
+      - redmine_data:/usr/src/redmine/files
+      - ./redmine/config/database.yml:/usr/src/redmine/config/database.yml
+      - ./redmine/plugins:/usr/src/redmine/plugins
+      - ./redmine/themes:/usr/src/redmine/public/themes
+      - ./redmine/redmine-init.sh:/usr/local/bin/redmine-init.sh
+    networks:
+      - ai_net
+    entrypoint: ["/usr/local/bin/redmine-init.sh"]
+    command: ["rails", "server", "-b", "0.0.0.0"]
+
+  nginx:
+    image: nginx:latest
+    container_name: redmine-nginx
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - redmine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - ai_net
+
+  n8n:
+    build:
+      context: ./n8n
+      dockerfile: Dockerfile
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_ENV_VAR=value
+      - N8N_CUSTOM_EXTENSIONS=/data/packages
+      - N8N_HOST=n8n.codemusic.ca
+      - N8N_PROTOCOL=https
+      - N8N_PORT=5678
+      - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/plugins:/data/packages  # optional if you have plugins
+    networks:
+      - ai_net
+    extra_hosts:
+      - "rovermind.codemusic.ca:10.0.0.151"
+
+volumes:
+  mysql_data:
+  redmine_data:
+  n8n_data:
+
+networks:
+  ai_net:
