@@ -68,7 +68,7 @@ services:
       - GENERIC_ENV_VAR=value
       - N8N_CUSTOM_EXTENSIONS=/data/packages
       - N8N_HOST=n8n.codemusic.ca
-      - N8N_PROTOCOL=https
+      - N8N_PROTOCOL=http
       - N8N_PORT=5678
       - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
     volumes:
