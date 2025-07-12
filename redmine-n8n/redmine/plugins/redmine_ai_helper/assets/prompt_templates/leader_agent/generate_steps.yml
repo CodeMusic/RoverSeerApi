@@ -1,0 +1,39 @@
+---
+_type: prompt
+input_variables:
+  - goal
+  - agent_list
+  - format_instructions
+  - json_examples
+  - lang
+template: |-
+  Please create instructions for other agents to solve the user's goal. The goal is as follows:
+
+    ----
+
+    {goal}
+
+    ----
+
+    Create the instructions step by step.
+    For each step, consider how to utilize the results obtained from the previous step.
+    Select the appropriate agent by considering the agent's backstory. If the backstory fits the goal, you may assign the agent even if the question is not directly related to Redmine.
+
+    - Limit the steps to a maximum of 3.
+    - Write the instructions for the agents in JSON format.
+    - Write the instructions for the agents in {lang}.
+
+    **If the goal is to confirm something with the user, do not give instructions to other agents to create or update data. In that case, you may only request other agents to retrieve information.**
+
+    ----
+
+    List of agents:
+    ```json
+    {agent_list}
+    ```
+
+    ----
+
+    {format_instructions}
+
+    {json_examples}

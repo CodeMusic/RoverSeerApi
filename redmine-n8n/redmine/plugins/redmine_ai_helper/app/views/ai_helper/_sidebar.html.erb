@@ -1,0 +1,117 @@
+<% if @project&.id and @project.module_enabled?(:ai_helper) and User.current.allowed_to?({ controller: :ai_helper, action: :chat_form }, @project) and AiHelperSetting.find_or_create.model_profile %>
+  <% content_for :sidebar do %>
+    <div id="aihelper-sidebar">
+      <div class="aihelper-header">
+        <span class="aihelper-hamburger">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+        <span class="aihelper-title">
+          <%= t(:label_ai_helper) %>
+        </span>
+        <span class="aihelper-arrow-button">
+          <span class="aihelper-arrow-container">
+            <%= link_to "", "#", onclick: "ai_helper.fold_chat(true)", class: "aihelper-arrow down", id: "aihelper-arrow-down" %>
+            <%= link_to "", "#", onclick: "ai_helper.fold_chat(false)", class: "aihelper-arrow left", id: "aihelper-arrow-left", style: "display: none" %>
+          </span>
+        </span>
+        <div class="aihelper-dropdown-menu">
+          <div id="aihelper-chat-clear">
+            <ul>
+              <li>
+                <%= link_to sprite_icon("add", t(:label_ai_helper_start_new_chat)), "javascript:void(0);", onclick: "ai_helper.clear_chat();" %>
+              </li>
+            </ul>
+            <hr>
+          </div>
+          <div id="aihelper-history">
+          </div>
+        </div>
+      </div>
+      <div id="aihelper-foldable-area">
+        <div id="aihelper-chat-conversation"></div>
+        <div id="aihelper-chat-form-area"></div>
+        <span><%= t(:label_ai_helper_input_newline) %></span>
+        <hr>
+      </div>
+    </div>
+    <% content_id = nil
+       additional_info = {}
+       case controller_name
+       when "issues"
+         content_id = @issue.id if @issue
+       when "wiki"
+         if @page.nil? and action_name == "show"
+           @page = WikiPage.find_by_title(@wiki.start_page)
+         end
+         content_id = @page.id if @page
+       when "repositories"
+         content_id = @repository.id if @repository
+         additional_info[:path] = @path if @path
+         additional_info[:rev] = @rev if @rev
+         additional_info[:rev_to] = @rev_to if @rev_to
+         additional_info[:diff] = @diff if @diff
+         additional_info[:changeset] = @changeset if @changeset
+         additional_info[:changeset_to] = @changeset_to if @changeset_to
+       when "boards"
+         content_id = @board.id if @board
+       when "messages"
+         content_id = @message.id if @message
+       when "versions"
+         content_id = @version.id if @version
+       end %>
+    <script>
+      const is_sidebar_exist = function() {
+        return document.getElementById('sidebar-wrapper') !== null;
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        if (!is_sidebar_exist()) {
+          return;
+        }
+
+        // div#aihelper-sidebar を div#sidebar-wrapper の最初に追加
+        const sidebarElement = document.getElementById('aihelper-sidebar');
+        const sidebarWrapper = document.getElementById('sidebar-wrapper');
+        if (sidebarElement && sidebarWrapper) {
+          sidebarWrapper.insertBefore(sidebarElement, sidebarWrapper.firstChild);
+        }
+
+        ai_helper.init_fold_flag();
+
+        ai_helper_urls = {
+          chat: '<%= ai_helper_chat_path(@project) %>',
+          reload: '<%= ai_helper_reload_path(@project) %>',
+          clear: '<%= ai_helper_clear_path(@project) %>',
+          call_llm: '<%= ai_helper_call_llm_path(@project) %>',
+          history: '<%= ai_helper_history_path(@project) %>'
+        };
+        ai_helper.reload_chat();
+
+        const chatForm = document.getElementById('aihelper-chat-form-area');
+        const form_url = '<%= ai_helper_chat_form_path(@project) %>';
+
+        if (chatForm) {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', form_url, true);
+          xhr.onload = function() {
+            if (xhr.status === 200) {
+              ai_helper.innerHTMLwithScripts(chatForm, xhr.responseText);
+            }
+          };
+          xhr.send();
+        }
+
+        ai_helper.page_info['content_id'] = '<%= content_id %>';
+        ai_helper.page_info['controller_name'] = '<%= controller_name %>';
+        ai_helper.page_info['action_name'] = '<%= action_name %>';
+        <% additional_info.each do |key, value|%>
+          ai_helper.page_info['additional_info']['<%= key %>'] = '<%= value %>';
+        <% end %>
+
+        ai_helper.set_hamberger_menu();
+      });
+    </script>
+  <% end %>
+<% end %>

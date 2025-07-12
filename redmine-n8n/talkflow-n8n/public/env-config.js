@@ -1,0 +1,8 @@
+
+window.env = {
+  VITE_N8N_WEBHOOK_URL: "",
+  VITE_WELCOME_MESSAGE: "",
+  VITE_SITE_TITLE: "",
+  VITE_ASSISTANT_NAME: ""
+};
+

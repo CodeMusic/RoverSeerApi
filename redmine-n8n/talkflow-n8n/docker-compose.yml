@@ -1,0 +1,16 @@
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8009:80"
+    environment:
+      - VITE_N8N_WEBHOOK_URL=${VITE_N8N_WEBHOOK_URL}
+      - VITE_WELCOME_MESSAGE=${VITE_WELCOME_MESSAGE}
+      - VITE_SITE_TITLE=${VITE_SITE_TITLE}
+      - VITE_N8N_WEBHOOK_USERNAME=${VITE_N8N_WEBHOOK_USERNAME}
+      - VITE_N8N_WEBHOOK_SECRET=${VITE_N8N_WEBHOOK_SECRET}
+      - VITE_ASSISTANT_NAME=${VITE_ASSISTANT_NAME}
+    restart: unless-stopped
