@@ -7,7 +7,7 @@ services:
       MYSQL_DATABASE: redmine_db
       MYSQL_USER: redmine
       MYSQL_PASSWORD: enter_password_here
-      MYSQL_ROOT_PASSWORD: Enter_password_here!
+      MYSQL_ROOT_PASSWORD: Enter_password_here!!
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -32,8 +32,8 @@ services:
       REDMINE_DB_DATABASE: redmine_db
       REDMINE_DB_USERNAME: redmine
       REDMINE_DB_PASSWORD: enter_password_here
-      RAILS_SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERATE"
-      SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERATE"
+      RAILS_SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERAT"
+      SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERAT"
     volumes:
       - redmine_data:/usr/src/redmine/files
       - ./redmine/config/database.yml:/usr/src/redmine/config/database.yml
@@ -82,6 +82,43 @@ services:
       - VITE_N8N_WEBHOOK_USERNAME=codemusai
       - VITE_N8N_WEBHOOK_SECRET=R0V3RBY73
       - VITE_ASSISTANT_NAME=CodeMusai
+    networks:
+      - ai_net
+
+  wyoming-whisper:
+    image: rhasspy/wyoming-whisper
+    container_name: wyoming-whisper
+    restart: unless-stopped
+    ports:
+      - "10300:10300"
+    volumes:
+      - ./whisper-models:/models
+    command: --model base.en --language en --uri tcp://0.0.0.0:10300
+    networks:
+      - ai_net
+
+  wyoming-piper:
+    image: rhasspy/wyoming-piper
+    container_name: wyoming-piper
+    restart: unless-stopped
+    ports:
+      - "10200:10200"
+    volumes:
+      - ./piper-voices:/voices
+    command: --voice en_US-amy-low --uri tcp://0.0.0.0:10200
+    networks:
+      - ai_net
+
+  silverbullet:
+    image: zefhemel/silverbullet
+    container_name: roverbyte-notes
+    restart: unless-stopped
+    ports:
+      - "3030:3000"  # Access via localhost:3030 or behind Apache/Nginx
+    volumes:
+      - ./data/notes:/notes
+    environment:
+      - BASE_URL=http://localhost:3030
     networks:
       - ai_net
 
