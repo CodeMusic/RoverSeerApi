@@ -6,8 +6,8 @@ services:
     environment:
       MYSQL_DATABASE: redmine_db
       MYSQL_USER: redmine
-      MYSQL_PASSWORD: enter_password_here
-      MYSQL_ROOT_PASSWORD: Enter_password_here!!
+      MYSQL_PASSWORD: enter_password
+      MYSQL_ROOT_PASSWORD: Enter_Password!
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -25,13 +25,13 @@ services:
       - db
     environment:
       BUNDLE_FORCE_RUBY_PLATFORM: true
-      REDMINE_HOST: rovermind.codemusic.ca
+      REDMINE_HOST: m2cbook.local
       REDMINE_HTTPS: true
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PORT: 3306
       REDMINE_DB_DATABASE: redmine_db
       REDMINE_DB_USERNAME: redmine
-      REDMINE_DB_PASSWORD: enter_password_here
+      REDMINE_DB_PASSWORD: enter_password
       RAILS_SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERAT"
       SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERAT"
     volumes:
@@ -70,15 +70,15 @@ services:
     build:
       context: ./talkflow-n8n
       dockerfile: Dockerfile
-    container_name: talkflow
+    container_name: roverchat
     restart: always
     ports:
       - "5680:80"  # Only for internal routing; Apache will reverse-proxy
     environment:
       - VITE_BASE_PATH=/chat
       - VITE_N8N_WEBHOOK_URL=https://n8n.codemusic.ca/webhook/codemusai/R0V3RBY73
-      - VITE_WELCOME_MESSAGE=Welcome+to+CodeMusai
-      - VITE_SITE_TITLE=TalkFlow
+      - VITE_WELCOME_MESSAGE=Welcome+to+RoverChat
+      - VITE_SITE_TITLE=RoverChat
       - VITE_N8N_WEBHOOK_USERNAME=codemusai
       - VITE_N8N_WEBHOOK_SECRET=R0V3RBY73
       - VITE_ASSISTANT_NAME=CodeMusai
@@ -111,7 +111,7 @@ services:
 
   silverbullet:
     image: zefhemel/silverbullet
-    container_name: roverbyte-notes
+    container_name: rovervault
     restart: unless-stopped
     ports:
       - "3030:3000"  # Access via localhost:3030 or behind Apache/Nginx
