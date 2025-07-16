@@ -109,18 +109,22 @@ services:
     networks:
       - ai_net
 
+
   silverbullet:
-    image: zefhemel/silverbullet
+    image: ghcr.io/silverbulletmd/silverbullet:latest
     container_name: rovervault
     restart: unless-stopped
     ports:
-      - "3030:3000"  # Access via localhost:3030 or behind Apache/Nginx
+      - "3030:3000"
     volumes:
-      - ./data/notes:/notes
+      - ./data/notes:/space                        # Your note vault and config store
+      - ./silverbullet-init.sh:/init.sh:ro         # Init script for AI plug + config
+    entrypoint: ["/bin/sh", "/init.sh"]            # 👈 Bootstrap logic first
     environment:
       - BASE_URL=http://localhost:3030
+      - SB_USER=admin:EnterPasswordHere!!               # 🔐 Password login
     networks:
-      - ai_net
+      - ai_net     
 
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
