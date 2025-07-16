@@ -66,9 +66,9 @@ services:
     networks:
       - ai_net
 
-  talkflow:
+  roverchat:
     build:
-      context: ./talkflow-n8n
+      context: ./roverchat-n8n
       dockerfile: Dockerfile
     container_name: roverchat
     restart: always
