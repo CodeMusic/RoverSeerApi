@@ -122,6 +122,20 @@ services:
     networks:
       - ai_net
 
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    ports:
+      - "8123:8123"  # Keep private; access via VPN or n8n
+    volumes: #Use a local folder unique to this environment:
+      - ./homeassist-configs/dev-config:/config #Macbook
+#  - ./homeassist-configs/staging-config:/config #iMac
+#  - ./homeassist-configs/prod-config:/config #Pi5
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+       - ai_net
+
 volumes:
   mysql_data:
   redmine_data:
