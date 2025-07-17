@@ -142,10 +142,69 @@ services:
     networks:
        - ai_net
 
+  musai:
+    image: ghcr.io/kortix-ai/suna:latest
+    container_name: musai
+    restart: unless-stopped
+    depends_on:
+      - musai-db
+      - musai-redis
+    ports:
+      - "8000:8000"  # Reverse-proxied by Apache to https://musai.codemusic.ca
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://sunauser:sunapass@musai-db:5432/suna
+      - REDIS_URL=redis://musai-redis:6379/0
+      - OPENAI_API_KEY=ollama
+      - OPENAI_API_BASE=http://host.docker.internal:11434/v1
+    networks:
+      - ai_net
+
+  # ⚙️ Background worker (task queue)
+  musai-worker:
+    image: ghcr.io/kortix-ai/suna:latest
+    container_name: musai-worker
+    restart: unless-stopped
+    command: celery -A suna.main.celery_app worker --loglevel=info
+    depends_on:
+      - musai
+      - musai-db
+      - musai-redis
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://sunauser:sunapass@musai-db:5432/suna
+      - REDIS_URL=redis://musai-redis:6379/0
+      - OPENAI_API_KEY=ollama
+      - OPENAI_API_BASE=http://host.docker.internal:11434/v1
+    networks:
+      - ai_net
+
+  # 🗃 PostgreSQL DB
+  musai-db:
+    image: postgres:15
+    container_name: musai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: suna
+      POSTGRES_USER: sunauser
+      POSTGRES_PASSWORD: sunapass
+    volumes:
+      - musai_db_data:/var/lib/postgresql/data
+    networks:
+      - ai_net
+
+  # 🚦 Redis for Celery queue
+  musai-redis:
+    image: redis:7
+    container_name: musai-redis
+    restart: unless-stopped
+    networks:
+      - ai_net
+
 volumes:
   mysql_data:
   redmine_data:
   n8n_data:
+  musai_db_data:
 
 networks:
   ai_net:
+    external: true
