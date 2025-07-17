@@ -118,7 +118,7 @@ services:
       - "3030:3000"
     volumes:
       - ./silverbullet/data/notes:/space
-      - ./silverbullet/silverbullet-ai:/space/PLUGINS/silverbullet-ai
+      - ./silverbullet/PLUGINS:/space/PLUGINS
       - ./silverbullet/SECRETS:/space/SECRETS
       - ./silverbullet/SETTINGS:/space/SETTINGS
     environment:
