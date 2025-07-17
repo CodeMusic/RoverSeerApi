@@ -1,8 +1,6 @@
 #!/bin/sh
-
 echo "🧠 Bootstrapping SilverBullet AI config..."
 
-# Create default AI config files if they don't exist
 mkdir -p /space
 
 [ ! -f /space/PLUGS ] && cat <<EOF > /space/PLUGS
@@ -24,4 +22,5 @@ OLLAMA_BASE: "http://host.docker.internal:11434"
 EOF
 
 echo "✅ Config ready. Launching SilverBullet..."
-exec /silverbullet
+export HOME=/space
+exec deno run --unstable -A /silverbullet.js
