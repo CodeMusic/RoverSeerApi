@@ -1,4 +1,5 @@
 name: silverbullet-ai
+enabled: true
 requiredPermissions:
   - fetch
 functions:
