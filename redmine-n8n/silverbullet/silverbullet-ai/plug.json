@@ -1,5 +1,5 @@
 {
   "name": "silverbullet-ai",
   "enabled": true,
-  "script": "scripts/sbai.ts"
+  "script": "sbai.ts"
 }

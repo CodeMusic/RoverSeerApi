@@ -111,14 +111,16 @@ services:
 
   silverbullet:
     build:
-      context: ./silverbullet 
+      context: ./silverbullet
     container_name: rovervault
     restart: unless-stopped
     ports:
       - "3030:3000"
     volumes:
-      - ./data/notes:/space
-      - ./silverbullet-ai:/space/PLUGINS/silverbullet-ai
+      - ./silverbullet/data/notes:/space
+      - ./silverbullet/silverbullet-ai:/space/PLUGINS/silverbullet-ai
+      - ./silverbullet/SECRETS:/space/SECRETS
+      - ./silverbullet/SETTINGS:/space/SETTINGS
     environment:
       - BASE_URL=http://localhost:3030
       - SB_USER=admin:EnterPasswordHere!!
