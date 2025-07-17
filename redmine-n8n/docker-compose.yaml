@@ -118,7 +118,7 @@ services:
       - "3030:3000"
     volumes:
       - ./data/notes:/space
-      - ./silverbullet-ai:/space/PLUGS/silverbullet-ai
+      - ./silverbullet-ai:/space/PLUGINS/silverbullet-ai
     environment:
       - BASE_URL=http://localhost:3030
       - SB_USER=admin:EnterPasswordHere!!
