@@ -1,0 +1,15 @@
+test-space/
+*.js
+*.js.map
+*.db-shm
+*.db-wal
+*.db
+.DS_Store
+silverbullet-ai.plug.js
+docs/_public
+docs/Library/Core
+!docs/_plug
+SECRETS.md
+cov_profile
+test?space*
+site/
