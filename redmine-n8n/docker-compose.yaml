@@ -111,14 +111,15 @@ services:
 
   silverbullet:
     build:
-      context: ./silverbullet
+      context: .
+      dockerfile: silverbullet/Dockerfile
     container_name: rovervault
     restart: unless-stopped
     ports:
       - "3030:3000"
     volumes:
       - ./silverbullet/data/notes:/space
-#      - ./silverbullet/PLUGINS:/space/PLUGINS
+      - ./silverbullet/PLUGINS/silverbullet-ai:/space/PLUGINS/silverbullet-ai
       - ./silverbullet/SECRETS:/space/SECRETS
       - ./silverbullet/SETTINGS:/space/SETTINGS
     environment:

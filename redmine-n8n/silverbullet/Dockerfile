@@ -1,10 +1,8 @@
 FROM ghcr.io/silverbulletmd/silverbullet:latest
 
-# Copy AI plugin into the container (fully offline!)
-COPY PLUGINS/silverbullet-ai /space/PLUGINS/silverbullet-ai
+# Copy AI plugin
+#COPY silverbullet/PLUGINS/silverbullet-ai /space/PLUGINS/silverbullet-ai
 
-# Optionally bake in config files
-COPY SETTINGS /space/SETTINGS
-COPY SECRETS /space/SECRETS
-
-
+# Copy configs
+#COPY silverbullet/SETTINGS /space/SETTINGS
+#COPY silverbullet/SECRETS /space/SECRETS
