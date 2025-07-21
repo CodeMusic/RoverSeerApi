@@ -44,6 +44,7 @@ services:
       - ai_net
     entrypoint: ["/usr/local/bin/redmine-init.sh"]
     command: ["rails", "server", "-b", "0.0.0.0", "-p", "3000"]
+
   n8n:
     build:
       context: ./n8n
@@ -66,6 +67,61 @@ services:
     networks:
       - ai_net
 
+  # ========================
+  # 🚀 Musai Integration
+  # ========================
+  
+  musai:
+    image: claraverse/clara-ollama:latest
+    container_name: musai
+    restart: always
+    ports:
+      - "8000:8069"  # Frontend to Apache port 8000
+    environment:
+      - NODE_ENV=production
+      - N8N_URL=http://n8n:5678  # Connect to your existing n8n
+      - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
+      - CLARA_HOST=musai.codemusic.ca  # Your actual domain
+      - CLARA_PROTOCOL=http  # Apache terminates SSL
+      - OLLAMA_URL=http://host.docker.internal:11434  # Local Ollama
+    volumes:
+      - clara_data:/app/data
+      - clara_models:/app/models
+      - ./clara/config:/app/config  # Custom configuration
+    depends_on:
+      - n8n
+    networks:
+      - ai_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Access host Ollama
+
+  # Note: Ollama runs on local metal (not containerized)
+  # Accessible at localhost:11434 from host machine
+
+  # Optional: ComfyUI for image generation
+  comfyui:
+    image: clara17verse/clara-comfyui:with-custom-nodes
+    container_name: musai_comfyui
+    restart: always
+    ports:
+      - "3333:8188"  # API to Apache port 3333
+    volumes:
+      - comfyui_data:/app/ComfyUI/models
+      - comfyui_output:/app/ComfyUI/output
+    environment:
+      - COMFYUI_HOST=0.0.0.0
+      - COMFYUI_PORT=8188
+    networks:
+      - ai_net
+    # Uncomment if you have GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
   roverchat:
     build:
       context: ./roverchat-n8n
@@ -82,6 +138,8 @@ services:
       - VITE_N8N_WEBHOOK_USERNAME=codemusai
       - VITE_N8N_WEBHOOK_SECRET=R0V3RBY73
       - VITE_ASSISTANT_NAME=CodeMusai
+      # Optional: Connect RoverChat to Musai
+      - VITE_CLARA_URL=http://musai:8069
     networks:
       - ai_net
 
@@ -142,69 +200,15 @@ services:
     networks:
        - ai_net
 
-  musai:
-    image: ghcr.io/kortix-ai/suna:latest
-    container_name: musai
-    restart: unless-stopped
-    depends_on:
-      - musai-db
-      - musai-redis
-    ports:
-      - "8000:8000"  # Reverse-proxied by Apache to https://musai.codemusic.ca
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://sunauser:sunapass@musai-db:5432/suna
-      - REDIS_URL=redis://musai-redis:6379/0
-      - OPENAI_API_KEY=ollama
-      - OPENAI_API_BASE=http://host.docker.internal:11434/v1
-    networks:
-      - ai_net
-
-  # ⚙️ Background worker (task queue)
-  musai-worker:
-    image: ghcr.io/kortix-ai/suna:latest
-    container_name: musai-worker
-    restart: unless-stopped
-    command: celery -A suna.main.celery_app worker --loglevel=info
-    depends_on:
-      - musai
-      - musai-db
-      - musai-redis
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://sunauser:sunapass@musai-db:5432/suna
-      - REDIS_URL=redis://musai-redis:6379/0
-      - OPENAI_API_KEY=ollama
-      - OPENAI_API_BASE=http://host.docker.internal:11434/v1
-    networks:
-      - ai_net
-
-  # 🗃 PostgreSQL DB
-  musai-db:
-    image: postgres:15
-    container_name: musai-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: suna
-      POSTGRES_USER: sunauser
-      POSTGRES_PASSWORD: sunapass
-    volumes:
-      - musai_db_data:/var/lib/postgresql/data
-    networks:
-      - ai_net
-
-  # 🚦 Redis for Celery queue
-  musai-redis:
-    image: redis:7
-    container_name: musai-redis
-    restart: unless-stopped
-    networks:
-      - ai_net
-
 volumes:
   mysql_data:
   redmine_data:
   n8n_data:
-  musai_db_data:
+  # Musai volumes
+  clara_data:
+  clara_models:
+  comfyui_data:
+  comfyui_output:
 
 networks:
-  ai_net:
-    external: true
+  ai_net: 
