@@ -1,0 +1,211 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: redmine-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: redmine_db
+      MYSQL_USER: redmine
+      MYSQL_PASSWORD: enter_password
+      MYSQL_ROOT_PASSWORD: Enter_Password!
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - ai_net
+
+  redmine:
+    build:
+      context: ./redmine
+      dockerfile: Dockerfile
+    container_name: redmine-app
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      BUNDLE_FORCE_RUBY_PLATFORM: true
+      REDMINE_HOST: m2cbook.local
+      REDMINE_HTTPS: true
+      REDMINE_DB_MYSQL: db
+      REDMINE_DB_PORT: 3306
+      REDMINE_DB_DATABASE: redmine_db
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: enter_password
+      RAILS_SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERAT"
+      SECRET_KEY_BASE: "RUN rails secret      OR     openssl rand -hex 64    to GENERAT"
+    volumes:
+      - redmine_data:/usr/src/redmine/files
+      - ./redmine/config/database.yml:/usr/src/redmine/config/database.yml
+      - ./redmine/plugins:/usr/src/redmine/plugins
+      - ./redmine/themes:/usr/src/redmine/public/themes
+      - ./redmine/redmine-init.sh:/usr/local/bin/redmine-init.sh
+    networks:
+      - ai_net
+    entrypoint: ["/usr/local/bin/redmine-init.sh"]
+    command: ["rails", "server", "-b", "0.0.0.0", "-p", "3000"]
+
+  n8n:
+    build:
+      context: ./n8n
+      dockerfile: Dockerfile
+    container_name: n8n
+    restart: always
+    ports:
+      - "5678:5678"  # Internal only; external SSL handled by Apache
+    environment:
+      - N8N_CUSTOM_EXTENSIONS=/data/packages
+      - N8N_HOST=n8n.codemusic.ca
+      - N8N_PROTOCOL=http  # NOTE: Apache terminates SSL
+      - N8N_PORT=5678
+      - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
+      - WEBHOOK_URL=https://n8n.codemusic.ca/
+      - WEBHOOK_TUNNEL_URL=https://n8n.codemusic.ca/
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n/plugins:/data/packages
+    networks:
+      - ai_net
+
+  # ========================
+  # 🚀 Musai Integration
+  # ========================
+  
+  musai:
+    image: claraverse/clara-ollama:latest
+    container_name: musai
+    restart: always
+    ports:
+      - "8000:8069"  # Frontend to Apache port 8000
+    environment:
+      - NODE_ENV=production
+      - N8N_URL=http://n8n:5678  # Connect to your existing n8n
+      - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
+      - CLARA_HOST=musai.codemusic.ca  # Your actual domain
+      - CLARA_PROTOCOL=http  # Apache terminates SSL
+      - OLLAMA_URL=http://host.docker.internal:11434  # Local Ollama
+    volumes:
+      - clara_data:/app/data
+      - clara_models:/app/models
+      - ./clara/config:/app/config  # Custom configuration
+    depends_on:
+      - n8n
+    networks:
+      - ai_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Access host Ollama
+
+  # Note: Ollama runs on local metal (not containerized)
+  # Accessible at localhost:11434 from host machine
+
+  # ComfyUI for image generation (Official image)
+  comfyui:
+    # image: comfyanonymous/comfyui:latest
+    container_name: musai_comfyui
+    build:
+      context: ./musai/comfyui
+      dockerfile: Dockerfile
+    restart: always
+    platform: linux/arm64
+    ports:
+      - "3333:8188"  # API to Apache port 3333
+    volumes:
+      - comfyui_data:/app/models
+      - comfyui_output:/app/output
+      - comfyui_input:/app/input
+    environment:
+      - CLI_ARGS=--listen 0.0.0.0 --port 8188
+    networks:
+      - ai_net
+
+  roverchat:
+    build:
+      context: ./roverchat-n8n
+      dockerfile: Dockerfile
+    container_name: roverchat
+    restart: always
+    ports:
+      - "5680:80"  # Only for internal routing; Apache will reverse-proxy
+    environment:
+      - VITE_BASE_PATH=/chat
+      - VITE_N8N_WEBHOOK_URL=https://n8n.codemusic.ca/webhook/codemusai/R0V3RBY73
+      - VITE_WELCOME_MESSAGE=Welcome+to+RoverChat
+      - VITE_SITE_TITLE=RoverChat
+      - VITE_N8N_WEBHOOK_USERNAME=codemusai
+      - VITE_N8N_WEBHOOK_SECRET=R0V3RBY73
+      - VITE_ASSISTANT_NAME=CodeMusai
+      # Optional: Connect RoverChat to Musai
+      - VITE_CLARA_URL=http://musai:8069
+    networks:
+      - ai_net
+
+  wyoming-whisper:
+    image: rhasspy/wyoming-whisper
+    container_name: wyoming-whisper
+    restart: unless-stopped
+    ports:
+      - "10300:10300"
+    volumes:
+      - ./whisper-models:/models
+    command: --model base.en --language en --uri tcp://0.0.0.0:10300
+    networks:
+      - ai_net
+
+  wyoming-piper:
+    image: rhasspy/wyoming-piper
+    container_name: wyoming-piper
+    restart: unless-stopped
+    ports:
+      - "10200:10200"
+    volumes:
+      - ./piper-voices:/voices
+    command: --voice en_US-amy-low --uri tcp://0.0.0.0:10200
+    networks:
+      - ai_net
+
+  silverbullet:
+    build:
+      context: .
+      dockerfile: silverbullet/Dockerfile
+    container_name: rovervault
+    restart: unless-stopped
+    ports:
+      - "3030:3000"
+    volumes:
+      - ./silverbullet/data/notes:/space
+      - ./silverbullet/PLUGINS/silverbullet-ai:/space/PLUGINS/silverbullet-ai
+      - ./silverbullet/SECRETS:/space/SECRETS
+      - ./silverbullet/SETTINGS:/space/SETTINGS
+    environment:
+      - BASE_URL=http://localhost:3030
+      - SB_USER=admin:EnterPasswordHere!!
+    networks:
+      - ai_net
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    ports:
+      - "8123:8123"  # Keep private; access via VPN or n8n
+    volumes: #Use a local folder unique to this environment:
+      - ./homeassist-configs/dev-config:/config #Macbook
+#  - ./homeassist-configs/staging-config:/config #iMac
+#  - ./homeassist-configs/prod-config:/config #Pi5
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+       - ai_net
+
+volumes:
+  mysql_data:
+  redmine_data:
+  n8n_data:
+  # Musai volumes
+  clara_data:
+  clara_models:
+  comfyui_data:
+  comfyui_output:
+  comfyui_input:
+
+networks:
+  ai_net: 

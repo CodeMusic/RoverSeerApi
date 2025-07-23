@@ -1,1 +1,0 @@
-ALTER TYPE workflow_step_type ADD VALUE 'instruction'; 

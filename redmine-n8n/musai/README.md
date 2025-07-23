@@ -1,162 +1,447 @@
 <div align="center">
+  <img src="/public/logo.png" alt="ClaraVerse Logo" width="120" height="120" />
+  
+  # 🚀 ClaraVerse
+  
+  ### **Your Fully Local AI Superstack — Privacy-First, Cloud-Free, Limitless**
+  
+  *ClaraVerse isn't just another chat UI. It's a complete AI ecosystem that runs 100% on your machine.*
+  
+  <p>
+    <img src="https://img.shields.io/github/v/release/badboysm890/ClaraVerse?style=for-the-badge&color=FFD700" alt="Latest Release" />
+    <img src="https://img.shields.io/github/stars/badboysm890/ClaraVerse?style=for-the-badge&color=gold" alt="GitHub Stars" />
+    <img src="https://img.shields.io/github/license/badboysm890/ClaraVerse?style=for-the-badge&color=blue" alt="License" />
+    <img src="https://img.shields.io/github/downloads/badboysm890/ClaraVerse/total?style=for-the-badge&color=green" alt="Total Downloads" />
+  </p>
+  
+  <p>
+    <a href="https://claraverse.space/" target="_blank">
+      <img src="https://img.shields.io/badge/🌐_Try_Clara_Online-4A90E2?style=for-the-badge&logo=web&logoColor=white" alt="Try Online" />
+    </a>
+    <a href="https://claraverse.space/" target="_blank">
+      <img src="https://img.shields.io/badge/⬇️_Download_Desktop-2ECC71?style=for-the-badge&logo=download&logoColor=white" alt="Download" />
+    </a>
+    <a href="https://discord.gg/j633fsrAne" target="_blank">
+      <img src="https://img.shields.io/badge/💬_Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
+    </a>
+    <a href="https://www.reddit.com/r/claraverse/" target="_blank">
+      <img src="https://img.shields.io/badge/🗨️_Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" alt="Reddit" />
+    </a>
+  </p>
+  
+  <p>
+    <strong>💬 LLM Chat • 🧠 AI Agents • 🔄 Automation • 🎨 Image Gen • 🧩 App Builder • 🧱 Widgets</strong><br/>
+    <em>Powered by open-source, privacy-first, zero-cloud technology</em>
+  </p>
 
-# Suna - Open Source Generalist AI Agent
+  💡 Heads up: ClaraVerse is in early development. Expect some rough edges while we build toward stability.
 
-(that acts on your behalf)
+  
+</div>
 
-![Suna Screenshot](frontend/public/banner.png)
+---
 
-Suna is a fully open source AI assistant that helps you accomplish real-world tasks with ease. Through natural conversation, Suna becomes your digital companion for research, data analysis, and everyday challenges—combining powerful capabilities with an intuitive interface that understands what you need and delivers results.
+## 🌟 **What Makes ClaraVerse Special?**
 
-Suna's powerful toolkit includes seamless browser automation to navigate the web and extract data, file management for document creation and editing, web crawling and extended search capabilities, command-line execution for system tasks, website deployment, and integration with various APIs and services. These capabilities work together harmoniously, allowing Suna to solve your complex problems and automate workflows through simple conversations!
+> **Clara is what happens when you give Ollama, N8N, and OpenInterpreter a shared brain — and run them offline with a beautiful UI.**
 
-[![License](https://img.shields.io/badge/License-Apache--2.0-blue)](./license)
-[![Discord Follow](https://dcbadge.limes.pink/api/server/Py6pCBUUPw?style=flat)](https://discord.gg/Py6pCBUUPw)
-[![Twitter Follow](https://img.shields.io/twitter/follow/kortixai)](https://x.com/kortixai)
-[![GitHub Repo stars](https://img.shields.io/github/stars/kortix-ai/suna)](https://github.com/kortix-ai/suna)
-[![Issues](https://img.shields.io/github/issues/kortix-ai/suna)](https://github.com/kortix-ai/suna/labels/bug)
+ClaraVerse is a **complete AI development suite** that runs entirely on your machine. No cloud. No API keys. No data leaving your computer. Ever.
 
-<!-- Keep these links. Translations will automatically update with the README. -->
-[Deutsch](https://www.readme-i18n.com/kortix-ai/suna?lang=de) | 
-[Español](https://www.readme-i18n.com/kortix-ai/suna?lang=es) | 
-[français](https://www.readme-i18n.com/kortix-ai/suna?lang=fr) | 
-[日本語](https://www.readme-i18n.com/kortix-ai/suna?lang=ja) | 
-[한국어](https://www.readme-i18n.com/kortix-ai/suna?lang=ko) | 
-[Português](https://www.readme-i18n.com/kortix-ai/suna?lang=pt) | 
-[Русский](https://www.readme-i18n.com/kortix-ai/suna?lang=ru) | 
-[中文](https://www.readme-i18n.com/kortix-ai/suna?lang=zh)
+### 🎯 **Built for Everyone**
+- **Developers**: Full-stack AI development environment
+- **Creators**: Visual workflow automation and image generation
+- **Privacy Advocates**: 100% local processing, no telemetry
+- **Businesses**: Self-hosted AI infrastructure without vendor lock-in
+
+---
+
+## 🚀 **Feature Universe**
+
+<table>
+<tr>
+<td width="50%">
+
+### 🧠 **Clara AI Assistant**
+- **Advanced Chat Interface** with vision model support
+- **File Processing** - documents, images, code
+- **Voice Integration** - TTS/STT capabilities
+- **Context Awareness** - remembers your conversations
+- **Multi-Provider Support** - Ollama, OpenAI, OpenRouter
+
+</td>
+<td width="50%">
+
+### 🧩 **LumaUI Code Builder**
+- **WebContainer-Powered** development environment
+- **Live Preview** with Monaco editor
+- **AI Code Generation** and assistance
+- **Project Templates** - React, Vue, Vanilla JS
+- **Real-time Synchronization**
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔄 **N8N Automation Hub**
+- **1000+ Workflow Templates**
+- **Drag-and-Drop** automation builder
+- **Webhook Testing** and tool creation
+- **Native Integration** - no external setup
+- **Visual Workflow Designer**
+
+</td>
+<td width="50%">
+
+### 🎨 **ComfyUI Image Studio**
+- **Local Stable Diffusion** - SDXL, SD 1.5, Flux
+- **LoRA & ControlNet** support
+- **Model Management** with download progress
+- **Prompt Enhancement** using local LLMs
+- **Image Gallery** with metadata
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🧠 **Agent Builder Studio**
+- **Visual Flow Programming** with React Flow
+- **Custom Node Creation** - Auto & Manual modes
+- **Real-time Execution** with debugging
+- **Import/Export** agent workflows
+- **Template Library** with prebuilt agents
+
+</td>
+<td width="50%">
+
+### 🧱 **Dynamic Widget System**
+- **Draggable Dashboard** with grid layout
+- **Custom Widget Types** - Chat, Email, Flow, Webhook
+- **Persistent Configurations**
+- **Context Menu Management**
+- **Real-time Updates**
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📸 **Visual Showcase**
+
+<details>
+<summary><strong>🖼️ Click to see screenshots</strong></summary>
+
+### 💬 **AI Assistant Interface**
+<img src="/public/screenshots/assistant-screenshot.png" width="100%" alt="Clara AI Assistant" />
+
+### 🧩 **LumaUI Code Builder**
+<img src="/public/screenshots/app-builder-screenshot.png" width="100%" alt="LumaUI Code Builder" />
+
+### 🔄 **N8N Automation Studio**
+<img src="/public/screenshots/n8n_ScreenShot.png" width="100%" alt="N8N Automation" />
+
+### 🎨 **Image Generation Lab**
+<img src="/public/screenshots/image-gen-screenshot.png" width="100%" alt="Image Generation" />
+
+### 🧱 **Widget Dashboard**
+<img src="/public/screenshots/desktop_widgets.png" width="100%" alt="Widget Dashboard" />
+
+</details>
+
+---
+
+## 🆚 **Clara vs The Competition**
+
+| Feature | **ClaraVerse** | OpenWebUI | LibreChat | Ollama WebUI |
+|---------|----------------|-----------|-----------|--------------|
+| 💻 **100% Local Stack** | ✅ Complete | ✅ Yes | ✅ Yes | ✅ Basic |
+| 🧩 **Visual App Builder** | ✅ Built-in | ❌ No | ❌ No | ❌ No |
+| 🔄 **Native Automation** | ✅ N8N Integrated | ❌ No | ❌ No | ❌ No |
+| 🧠 **Agent Builder** | ✅ Visual Designer | ❌ No | ❌ No | ❌ No |
+| 🎨 **Image Generation** | ✅ ComfyUI | ✅ Basic DALL-E | ❌ No | ❌ No |
+| 🧱 **Widget System** | ✅ Dynamic Dashboard | ❌ No | ✅ Basic | ❌ No |
+| 🔧 **Code Execution** | ✅ OpenInterpreter | ❌ No | ❌ No | ❌ No |
+| 📱 **Desktop App** | ✅ Electron | ❌ Web Only | ❌ Web Only | ❌ Web Only |
+
+---
+
+## 🗓️ **Release Timeline & Roadmap**
+
+<div align="center">
+
+### **🎯 Current Release Status**
+
+| **Component** | **Status** | **Description** |
+|---------------|------------|-----------------|
+| 🧠 **Clara AI Assistant** | ✅ **Released** | Advanced chat interface with multi-provider support |
+| 🧩 **LumaUI Code Builder** | ✅ **Released** | WebContainer-powered development environment |
+| 🧱 **Widget System** | ✅ **Released** | Dynamic dashboard with draggable widgets |
+| 🔄 **N8N Integration** | ✅ **Released** | Native workflow automation |
+| 🎨 **Image Generation** | ✅ **Released** | ComfyUI integration for local Stable Diffusion |
+| 🧠 **Agent Builder** | ✅ **Released** | Visual flow programming for AI agents |
+| 📱 **Desktop Apps** | ✅ **Released** | Windows, macOS, Linux support |
+| 🐳 **Docker Deployment** | ✅ **Released** | One-command local deployment |
+
+### **🚀 Coming Soon**
+
+```mermaid
+timeline
+    title Upcoming Features
+    
+    section Next Release
+        Enhanced UX : Improved onboarding
+                    : Better mobile experience
+                    : Advanced tutorials
+    
+    section Future Releases
+        Mobile Apps : iOS/Android support
+                    : Cross-platform sync
+                    : Mobile-optimized UI
+        
+        Enterprise : Team collaboration
+                   : Role-based access
+                   : Advanced analytics
+        
+        Extensions : Plugin marketplace
+                   : Custom integrations
+                   : Third-party connectors
+```
 
 </div>
 
-## Table of Contents
+---
 
-- [Suna Architecture](#project-architecture)
-  - [Backend API](#backend-api)
-  - [Frontend](#frontend)
-  - [Agent Docker](#agent-docker)
-  - [Supabase Database](#supabase-database)
-- [Use Cases](#use-cases)
-- [Self-Hosting](#self-hosting)
-- [Acknowledgements](#acknowledgements)
-- [License](#license)
+## 🚀 **Quick Start**
 
-## Project Architecture
+### 💻 **Desktop App**
 
-![Architecture Diagram](docs/images/diagram.png)
+<table>
+<tr>
+<td align="center">
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/windows8/windows8-original.svg" width="40"/>
+<br/><strong>Windows</strong><br/>
+<a href="https://github.com/badboysm890/ClaraVerse/releases/latest">
+<img src="https://img.shields.io/badge/Download-.exe-blue?style=for-the-badge" />
+</a>
+</td>
+<td align="center">
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg" width="40"/>
+<br/><strong>macOS</strong><br/>
+<a href="https://github.com/badboysm890/ClaraVerse/releases/latest">
+<img src="https://img.shields.io/badge/Download-.dmg-lightgrey?style=for-the-badge" />
+</a>
+</td>
+<td align="center">
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" width="40"/>
+<br/><strong>Linux</strong><br/>
+<a href="https://github.com/badboysm890/ClaraVerse/releases/latest">
+<img src="https://img.shields.io/badge/Download-.AppImage-orange?style=for-the-badge" />
+</a>
+</td>
+</tr>
+</table>
 
-Suna consists of four main components:
-
-### Backend API
-
-Python/FastAPI service that handles REST endpoints, thread management, and LLM integration with Anthropic, and others via LiteLLM.
-
-### Frontend
-
-Next.js/React application providing a responsive UI with chat interface, dashboard, etc.
-
-### Agent Docker
-
-Isolated execution environment for every agent - with browser automation, code interpreter, file system access, tool integration, and security features.
-
-### Supabase Database
-
-Handles data persistence with authentication, user management, conversation history, file storage, agent state, analytics, and real-time subscriptions.
-
-## Use Cases
-
-1. **Competitor Analysis** ([Watch](https://www.suna.so/share/5ee791ac-e19c-4986-a61c-6d0659d0e5bc)) - _"Analyze the market for my next company in the healthcare industry, located in the UK. Give me the major players, their market size, strengths, and weaknesses, and add their website URLs. Once done, generate a PDF report."_
-
-2. **VC List** ([Watch](https://www.suna.so/share/804d20a3-cf1c-4adb-83bb-0e77cc6adeac)) - _"Give me the list of the most important VC Funds in the United States based on Assets Under Management. Give me website URLs, and if possible an email to reach them out."_
-
-3. **Looking for Candidates** ([Watch](https://www.suna.so/share/3ae581b0-2db8-4c63-b324-3b8d29762e74)) - _"Go on LinkedIn, and find me 10 profiles available - they are not working right now - for a junior software engineer position, who are located in Munich, Germany. They should have at least one bachelor's degree in Computer Science or anything related to it, and 1-year of experience in any field/role."_
-
-4. **Planning Company Trip** ([Watch](https://www.suna.so/share/725e64a0-f1e2-4bb6-8a1f-703c2833fd72)) - _"Generate me a route plan for my company. We should go to California. We'll be in 8 people. Compose the trip from the departure (Paris, France) to the activities we can do considering that the trip will be 7 days long - departure on the 21st of Apr 2025. Check the weather forecast and temperature for the upcoming days, and based on that, you can plan our activities (outdoor vs indoor)."_
-
-5. **Working on Excel** ([Watch](https://www.suna.so/share/128f23a4-51cd-42a6-97a0-0b458b32010e)) - _"My company asked me to set up an Excel spreadsheet with all the information about Italian lottery games (Lotto, 10eLotto, and Million Day). Based on that, generate and send me a spreadsheet with all the basic information (public ones)."_
-
-6. **Automate Event Speaker Prospecting** ([Watch](https://www.suna.so/share/7a7592ea-ed44-4c69-bcb5-5f9bb88c188c)) - _"Find 20 AI ethics speakers from Europe who've spoken at conferences in the past year. Scrapes conference sites, cross-references LinkedIn and YouTube, and outputs contact info + talk summaries."_
-
-7. **Summarize and Cross-Reference Scientific Papers** ([Watch](https://www.suna.so/share/c2081b3c-786e-4e7c-9bf4-46e9b23bb662)) - _"Research and compare scientific papers talking about Alcohol effects on our bodies during the last 5 years. Generate a report about the most important scientific papers talking about the topic I wrote before."_
-
-8. **Research + First Contact Draft** ([Watch](https://www.suna.so/share/6b6296a6-8683-49e5-9ad0-a32952d12c44)) - _"Research my potential customers (B2B) on LinkedIn. They should be in the clean tech industry. Find their websites and their email addresses. After that, based on the company profile, generate a personalized first contact email where I present my company which is offering consulting services to cleantech companies to maximize their profits and reduce their costs."_
-
-9. **SEO Analysis** ([Watch](https://www.suna.so/share/43491cb0-cd6c-45f0-880c-66ddc8c4b842)) - _"Based on my website suna.so, generate an SEO report analysis, find top-ranking pages by keyword clusters, and identify topics I'm missing."_
-
-10. **Generate a Personal Trip** ([Watch](https://www.suna.so/share/37b31907-8349-4f63-b0e5-27ca597ed02a)) - _"Generate a personal trip to London, with departure from Bangkok on the 1st of May. The trip will last 10 days. Find an accommodation in the center of London, with a rating on Google reviews of at least 4.5. Find me interesting outdoor activities to do during the journey. Generate a detailed itinerary plan."_
-
-11. **Recently Funded Startups** ([Watch](https://www.suna.so/share/8b2a897e-985a-4d5e-867b-15239274f764)) - _"Go on Crunchbase, Dealroom, and TechCrunch, filter by Series A funding rounds in the SaaS Finance Space, and build a report with company data, founders, and contact info for outbound sales."_
-
-12. **Scrape Forum Discussions** ([Watch](https://www.suna.so/share/7d7a5d93-a20d-48b0-82cc-e9a876e9fd04)) - _"I need to find the best beauty centers in Rome, but I want to find them by using open forums that speak about this topic. Go on Google, and scrape the forums by looking for beauty center discussions located in Rome. Then generate a list of 5 beauty centers with the best comments about them."_
-
-## Self-Hosting
-
-Suna can be self-hosted on your own infrastructure using our comprehensive setup wizard. For a complete guide to self-hosting Suna, please refer to our [Self-Hosting Guide](./docs/SELF-HOSTING.md).
-
-The setup process includes:
-
-- Setting up a Supabase project for database and authentication
-- Configuring Redis for caching and session management
-- Setting up Daytona for secure agent execution
-- Integrating with LLM providers (Anthropic, OpenAI, OpenRouter, etc.)
-- Configuring web search and scraping capabilities (Tavily, Firecrawl)
-- Setting up QStash for background job processing and workflows
-- Configuring webhook handling for automated tasks
-- Optional integrations (RapidAPI, Smithery for custom agents)
-
-### Quick Start
-
-1. **Clone the repository**:
-
+### 🛠️ **Development Setup**
 ```bash
-git clone https://github.com/kortix-ai/suna.git
-cd suna
+# Install dependencies
+npm install
+
+# Development server
+npm run dev           # Web version
+npm run electron:dev  # Desktop version
+
+# Build for production
+npm run build              # Web build
+npm run electron:build     # Desktop build
 ```
 
-2. **Run the setup wizard**:
+---
 
-```bash
-python setup.py
+## 🔐 **Privacy & Security**
+
+<div align="center">
+
+| 🛡️ **Privacy Feature** | **Status** | **Details** |
+|------------------------|------------|-------------|
+| **Local Processing** | ✅ 100% | All AI models run on your machine |
+| **No Telemetry** | ✅ Zero | No data collection or phone home |
+| **Open Source** | ✅ Full | Complete codebase transparency |
+| **Self-Hosted** | ✅ Complete | Own your entire AI stack |
+| **No Cloud APIs** | ✅ Optional | Cloud providers only if you choose |
+| **Encrypted Storage** | ✅ Built-in | Local data encrypted by default |
+
+</div>
+
+> **Your Data, Your Rules**: ClaraVerse processes everything locally. Your conversations, files, and generated content never leave your machine unless you explicitly choose to use cloud providers.
+
+---
+
+## 🏗️ **Architecture Overview**
+
+<div align="center">
+
+```mermaid
+graph TB
+    subgraph "🖥️ ClaraVerse Desktop App"
+        UI[React Frontend]
+        API[API Layer]
+        DB[(Local Database)]
+    end
+    
+    subgraph "🧠 AI Stack"
+        LLM[Clara Core<br/>Llama.cpp]
+        VISION[Vision Models]
+        TTS[Text-to-Speech]
+        STT[Speech-to-Text]
+    end
+    
+    subgraph "🔧 Developer Tools"
+        LUMA[LumaUI<br/>Code Builder]
+        AGENT[Agent Builder<br/>Studio]
+        WEB[WebContainer<br/>Environment]
+    end
+    
+    subgraph "🎨 Creative Tools"
+        COMFY[ComfyUI<br/>Image Gen]
+        N8N[N8N Workflows<br/>Automation]
+        WIDGETS[Widget System<br/>Dashboard]
+    end
+    
+    UI --> API
+    API --> LLM
+    API --> LUMA
+    API --> AGENT
+    API --> COMFY
+    API --> N8N
+    API --> WIDGETS
+    LLM --> VISION
+    LLM --> TTS
+    LLM --> STT
+    LUMA --> WEB
+    API --> DB
 ```
 
-The wizard will guide you through 14 steps with progress saving, so you can resume if interrupted.
+</div>
 
-3. **Start or stop the containers**:
+---
 
-```bash
-python start.py
-```
+## 🌍 **Community & Support**
 
-### Manual Setup
+<div align="center">
 
-See the [Self-Hosting Guide](./docs/SELF-HOSTING.md) for detailed manual setup instructions.
+### **Join the ClaraVerse Community**
 
-The wizard will guide you through all necessary steps to get your Suna instance up and running. For detailed instructions, troubleshooting tips, and advanced configuration options, see the [Self-Hosting Guide](./docs/SELF-HOSTING.md).
+<table>
+<tr>
+<td align="center">
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg" width="50"/>
+<br/><strong>GitHub</strong><br/>
+<a href="https://github.com/badboysm890/ClaraVerse">Issues & PRs</a>
+</td>
+<td align="center">
+<img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6ca814282eca7172c6_icon_clyde_white_RGB.svg" width="50"/>
+<br/><strong>Discord</strong><br/>
+<a href="https://discord.gg/j633fsrAne">Live Chat</a>
+</td>
+<td align="center">
+<img src="https://www.redditstatic.com/shreddit/assets/thinking-snoo.png" width="50"/>
+<br/><strong>Reddit</strong><br/>
+<a href="https://www.reddit.com/r/claraverse/">Community</a>
+</td>
+<td align="center">
+<img src="https://upload.wikimedia.org/wikipedia/commons/4/4f/Twitter-logo.svg" width="50"/>
+<br/><strong>Twitter</strong><br/>
+<a href="https://twitter.com/intent/tweet?text=Clara%20is%20a%20fully%20offline%20AI%20superstack%20with%20LLMs%2C%20automations%2C%20agents%2C%20image%20generation%20%2B%20more%20%E2%80%94%20all%20open-source.%20Get%20it%20here%20%F0%9F%91%87&url=https%3A%2F%2Fgithub.com%2Fbadboysm890%2FClaraVerse">Share Clara</a>
+</td>
+</tr>
+</table>
 
-## Contributing
+### **Get Help & Share Ideas**
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/badboysm890/ClaraVerse/issues)
+- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/badboysm890/ClaraVerse/discussions)
+- 📧 **Direct Contact**: [praveensm890@gmail.com](mailto:praveensm890@gmail.com)
+- 🔥 **Show & Tell**: Share your workflows, agents, and creations!
 
-We welcome contributions from the community! Please see our [Contributing Guide](./CONTRIBUTING.md) for more details.
+</div>
 
-## Acknowledgements
+---
 
-### Main Contributors
+## 🤝 **Contributing**
 
-- [Adam Cohen Hillel](https://x.com/adamcohenhillel)
-- [Dat-lequoc](https://x.com/datlqqq)
-- [Marko Kraemer](https://twitter.com/markokraemer)
+We love contributions! Here's how you can help make ClaraVerse even better:
 
-### Technologies
+### **🌟 Ways to Contribute**
+- ⭐ **Star the repository** to show your support
+- 🐛 **Report bugs** and suggest improvements
+- 📝 **Improve documentation** and tutorials
+- 🧩 **Create new templates** for agents and workflows
+- 🎨 **Design new widgets** and UI components
+- 🔧 **Add new features** and integrations
 
-- [Daytona](https://daytona.io/) - Secure agent execution environment
-- [Supabase](https://supabase.com/) - Database and authentication
-- [Playwright](https://playwright.dev/) - Browser automation
-- [OpenAI](https://openai.com/) - LLM provider
-- [Anthropic](https://www.anthropic.com/) - LLM provider
-- [Tavily](https://tavily.com/) - Search capabilities
-- [Firecrawl](https://firecrawl.dev/) - Web scraping capabilities
-- [QStash](https://upstash.com/qstash) - Background job processing and workflows
-- [RapidAPI](https://rapidapi.com/) - API services
-- [Smithery](https://smithery.ai/) - Custom agent development
+### **🛠️ Development Guidelines**
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes and test thoroughly
+4. Commit with clear messages: `git commit -m 'Add amazing feature'`
+5. Push to your branch: `git push origin feature/amazing-feature`
+6. Open a Pull Request with detailed description
 
-## License
+---
 
-Kortix Suna is licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE) for the full license text.
+## 📊 **GitHub Stats**
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=badboysm890/ClaraVerse&type=Date)](https://star-history.com/#badboysm890/ClaraVerse&Date)
+
+<p>
+  <img src="https://img.shields.io/github/contributors/badboysm890/ClaraVerse?style=for-the-badge&color=orange" alt="Contributors" />
+  <img src="https://img.shields.io/github/forks/badboysm890/ClaraVerse?style=for-the-badge&color=blue" alt="Forks" />
+  <img src="https://img.shields.io/github/issues/badboysm890/ClaraVerse?style=for-the-badge&color=red" alt="Issues" />
+  <img src="https://img.shields.io/github/issues-pr/badboysm890/ClaraVerse?style=for-the-badge&color=green" alt="Pull Requests" />
+</p>
+
+</div>
+
+---
+
+## 📜 **License**
+
+ClaraVerse is open-source software licensed under the [MIT License](LICENSE). This means you can:
+
+- ✅ Use it commercially
+- ✅ Modify and distribute
+- ✅ Use it privately
+- ✅ Contribute back to the community
+
+---
+
+## 🚀 **Ready to Launch Your AI Journey?**
+
+<div align="center">
+
+**ClaraVerse gives you the complete local AI stack — no vendor lock-in, no API hell, no GPU bills.**
+
+<p>
+  <a href="https://claraverse.space/" target="_blank">
+    <img src="https://img.shields.io/badge/🚀_Launch_Clara_Now-FF6B6B?style=for-the-badge&logo=rocket&logoColor=white" alt="Launch Clara" />
+  </a>
+</p>
+
+### **Clara's your rocket. Light it up. 🚀**
+
+<sub>Made with ❤️ by the ClaraVerse community</sub>
+
+</div>
+
+---
+
+<div align="center">
+
+*"The future of AI is local, private, and in your hands."*
+
+**⭐ Star us on GitHub • 🗨️ Join our Discord • 🎯 Follow our journey**
+
+</div> 
