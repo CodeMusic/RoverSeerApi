@@ -26,6 +26,7 @@ interface ChatLayoutProps {
   onUnlock?: (code: string) => boolean;
   onDebugState?: () => void;
   onClearData?: () => void;
+  onCheckLimit?: () => boolean;
 }
 
 export const ChatLayout = ({
@@ -44,6 +45,7 @@ export const ChatLayout = ({
   onUnlock,
   onDebugState,
   onClearData,
+  onCheckLimit,
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -74,6 +76,7 @@ export const ChatLayout = ({
 
     // Check if user has reached limit and show unlock prompt
     if (hasReachedLimit && !isUnlocked) {
+      console.log('Limit reached, showing SignupPrompt');
       setShowSignupPrompt(true);
       return false;
     }
@@ -126,6 +129,7 @@ export const ChatLayout = ({
         onToggleFavorite={onToggleFavorite}
         onDebugState={onDebugState}
         onClearData={onClearData}
+        onCheckLimit={onCheckLimit}
       />
 
       <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">

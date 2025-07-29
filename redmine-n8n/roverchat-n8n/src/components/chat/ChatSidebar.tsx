@@ -24,6 +24,7 @@ interface ChatSidebarProps {
   onToggleFavorite: (sessionId: string) => void;
   onDebugState?: () => void;
   onClearData?: () => void;
+  onCheckLimit?: () => boolean;
 }
 
 export const ChatSidebar = ({
@@ -39,6 +40,7 @@ export const ChatSidebar = ({
   onToggleFavorite,
   onDebugState,
   onClearData,
+  onCheckLimit,
 }: ChatSidebarProps) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -162,6 +164,14 @@ export const ChatSidebar = ({
                 className="text-xs h-6"
               >
                 Clear Data
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onCheckLimit}
+                className="text-xs h-6"
+              >
+                Check Limit
               </Button>
             </div>
           </div>

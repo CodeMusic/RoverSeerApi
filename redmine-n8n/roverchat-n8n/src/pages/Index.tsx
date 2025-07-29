@@ -24,6 +24,7 @@ const Index = () => {
     unlockUser,
     clearAllData,
     debugState,
+    checkLimit,
   } = useChatSessions();
 
   // Create a stable callback for sending the initial message
@@ -84,6 +85,7 @@ const Index = () => {
         onUnlock={unlockUser}
         onDebugState={debugState}
         onClearData={clearAllData}
+        onCheckLimit={checkLimit}
       />
     </div>
   );

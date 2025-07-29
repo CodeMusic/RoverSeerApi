@@ -130,7 +130,7 @@ export const ChatInput = ({
         )}
         <div className="relative">
           <Textarea
-            placeholder={isLimited ? "Interaction limit reached. Enter secret code to continue..." : "Type a message or paste an image..."}
+            placeholder="Type a message or paste an image..."
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}

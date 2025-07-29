@@ -106,6 +106,11 @@ export const useChatSessions = () => {
     return reached;
   };
 
+  // Manually check limit (for debugging or when needed)
+  const checkLimit = () => {
+    return checkInteractionLimit();
+  };
+
   // Unlock the user with secret code
   const unlockUser = (code: string) => {
     if (code === SECRET_CODE) {
@@ -153,8 +158,8 @@ export const useChatSessions = () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSessions(parsed);
           setCurrentSessionId(parsed[0].id);
-          console.log('Loaded existing sessions, checking limit');
-          checkInteractionLimit();
+          // Don't check limit immediately on load, only after user interactions
+          console.log('Loaded existing sessions, not checking limit yet');
         } else {
           console.log('No valid sessions found, creating new session');
           createNewSession();
@@ -267,7 +272,12 @@ export const useChatSessions = () => {
     // Check limit after sending message
     setTimeout(() => {
       console.log('Checking limit after sending message');
-      checkInteractionLimit();
+      const newTotalInteractions = getTotalInteractions();
+      console.log('New total interactions after sending:', newTotalInteractions);
+      if (newTotalInteractions >= INTERACTION_LIMIT && !isUnlocked) {
+        console.log('Limit reached after sending message');
+        setHasReachedLimit(true);
+      }
     }, 100);
   };
 
@@ -302,5 +312,6 @@ export const useChatSessions = () => {
     unlockUser,
     clearAllData,
     debugState,
+    checkLimit,
   };
 };
