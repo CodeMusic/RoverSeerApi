@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
+import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Playground from "./pages/Playground";
 import NotFound from "./pages/NotFound";
@@ -32,7 +33,8 @@ const App = () => {
         <Sonner />
         <BrowserRouter basename="/chat">
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/chat" element={<Index />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
