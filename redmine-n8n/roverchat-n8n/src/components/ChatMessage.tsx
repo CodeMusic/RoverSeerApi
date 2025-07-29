@@ -20,7 +20,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
   const isAssistant = message.role === 'assistant';
   const { toast } = useToast();
   const formattedTime = format(new Date(message.timestamp), 'MMM d, yyyy h:mm a');
-  const assistantName = window.env?.VITE_ASSISTANT_NAME || import.meta.env.VITE_ASSISTANT_NAME || "Lovable";
+  const assistantName = window.env?.VITE_ASSISTANT_NAME || import.meta.env.VITE_ASSISTANT_NAME || "Musai";
 
   const handleCopy = async () => {
     try {

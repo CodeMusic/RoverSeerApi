@@ -4,16 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co https://cdn.jsdelivr.net; worker-src blob:; object-src 'none';" />
-    <title id="page-title">Loading...</title>
-    <meta name="description" content="Chat Agent" />
+    <title>MusaiChat - Reflective AI for Recursive Minds</title>
+    <meta name="description" content="Your adaptive digital muse — bridging raw data and emergent insight through reflective AI for recursive minds." />
     <meta name="author" content="Jim Martin" />
     <meta property="og:image" content="/og-image.png" />
     <script src="/env-config.js"></script>
     <script>
       // Set the page title from environment variable with fallback
       window.addEventListener('load', function() {
-        const title = window.env && window.env.VITE_SITE_TITLE ? window.env.VITE_SITE_TITLE : 'Chat Application';
-        document.getElementById('page-title').textContent = title;
+        const title = window.env && window.env.VITE_SITE_TITLE ? window.env.VITE_SITE_TITLE : 'MusaiChat - Reflective AI for Recursive Minds';
+        document.title = title;
       });
     </script>
   </head>

@@ -12,6 +12,7 @@ const Index = () => {
     currentSessionId,
     isLoading,
     isTyping,
+    hasReachedLimit,
     createNewSession,
     deleteSession,
     renameSession,
@@ -68,6 +69,7 @@ const Index = () => {
         currentSessionId={currentSessionId}
         isLoading={isLoading}
         isTyping={isTyping}
+        hasReachedLimit={hasReachedLimit}
         onNewChat={createNewSession}
         onSessionSelect={setCurrentSessionId}
         onDeleteSession={deleteSession}

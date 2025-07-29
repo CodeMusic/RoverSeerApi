@@ -2,6 +2,7 @@
 import { ChatMessages } from "@/components/chat/ChatMessages";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
+import { SignupPrompt } from "@/components/SignupPrompt";
 import { ChatSession } from "@/types/chat";
 import { useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,6 +14,7 @@ interface ChatLayoutProps {
   currentSessionId: string;
   isLoading: boolean;
   isTyping: boolean;
+  hasReachedLimit?: boolean;
   onNewChat: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
@@ -26,6 +28,7 @@ export const ChatLayout = ({
   currentSessionId,
   isLoading,
   isTyping,
+  hasReachedLimit = false,
   onNewChat,
   onSessionSelect,
   onDeleteSession,
@@ -35,10 +38,19 @@ export const ChatLayout = ({
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
   const currentSession = sessions.find(s => s.id === currentSessionId);
+
+  const handleNewChat = useCallback(() => {
+    if (hasReachedLimit) {
+      setShowSignupPrompt(true);
+    } else {
+      onNewChat();
+    }
+  }, [hasReachedLimit, onNewChat]);
 
   const handleSend = useCallback(async (e: React.FormEvent, file?: File): Promise<boolean> => {
     e.preventDefault();
@@ -90,7 +102,8 @@ export const ChatLayout = ({
         sessions={sessions}
         currentSessionId={currentSessionId}
         isSidebarOpen={isSidebarOpen}
-        onNewChat={onNewChat}
+        hasReachedLimit={hasReachedLimit}
+        onNewChat={handleNewChat}
         onSessionSelect={handleSessionClick}
         onDeleteSession={onDeleteSession}
         onRenameSession={onRenameSession}
@@ -121,6 +134,10 @@ export const ChatLayout = ({
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
           onClick={() => setIsSidebarOpen(false)}
         />
+      )}
+
+      {showSignupPrompt && (
+        <SignupPrompt onClose={() => setShowSignupPrompt(false)} />
       )}
     </div>
   );

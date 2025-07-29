@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, History, Sparkles } from "lucide-react";
+import { Send, History, Sparkles, ExternalLink, User, Brain } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { createNewSession, sessions } = useChatSessions();
+  const { createNewSession, sessions, hasReachedLimit } = useChatSessions();
   const [isAnimating, setIsAnimating] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -15,6 +15,12 @@ const Landing = () => {
     setIsAnimating(true);
     // Create a new session
     const sessionId = createNewSession();
+    
+    // If session creation failed due to limit, don't navigate
+    if (!sessionId) {
+      setIsAnimating(false);
+      return;
+    }
     
     // Add a small delay for the animation effect
     setTimeout(() => {
@@ -85,15 +91,15 @@ const Landing = () => {
           <form onSubmit={handleSendMessage} className="flex w-full max-w-md gap-2">
             <Input
               type="text"
-              placeholder="Start a new conversation..."
+              placeholder={hasReachedLimit ? "Interaction limit reached" : "Start a new conversation..."}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              disabled={isAnimating}
+              disabled={isAnimating || hasReachedLimit}
               className="flex-1 px-4 py-3 text-lg rounded-xl border-2 border-purple-500/30 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
             />
             <Button
               type="submit"
-              disabled={isAnimating || !message.trim()}
+              disabled={isAnimating || !message.trim() || hasReachedLimit}
               className="group relative overflow-hidden bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
@@ -111,6 +117,45 @@ const Landing = () => {
             </Button>
           )}
         </div>
+
+        {/* Additional Navigation Links */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
+          <Button
+            onClick={() => navigate("/meet-musai")}
+            variant="outline"
+            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
+          >
+            <User className="w-4 h-4 mr-2" />
+            Meet Musai
+          </Button>
+          
+          <Button
+            onClick={() => navigate("/neuroscience")}
+            variant="outline"
+            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
+          >
+            <Brain className="w-4 h-4 mr-2" />
+            The Neuroscience
+          </Button>
+          
+          <Button
+            onClick={() => navigate("/roverbyte")}
+            variant="outline"
+            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/10 transition-all duration-300"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Musai x RoverByte Integration
+          </Button>
+        </div>
+
+        {/* Interaction Limit Warning */}
+        {hasReachedLimit && (
+          <div className="mt-4 p-4 bg-muted/50 rounded-xl border border-orange-200 dark:border-orange-800">
+            <p className="text-sm text-muted-foreground">
+              You've reached the free interaction limit. Sign up coming soon to continue chatting!
+            </p>
+          </div>
+        )}
 
         {/* Subtle Animation Elements */}
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-500/30 rounded-full animate-pulse" />

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 const STORAGE_VERSION = "v1";
 const STORAGE_KEY = `chat_sessions_${STORAGE_VERSION}`;
+const INTERACTION_LIMIT = 7; // Number of interactions before requiring signup
 
 // Fallback to import.meta.env if window.env is not available
 console.log('Configuration Sources:');
@@ -16,15 +17,19 @@ console.log('window.env:', {
   VITE_WELCOME_MESSAGE: window.env?.VITE_WELCOME_MESSAGE,
   VITE_SITE_TITLE: window.env?.VITE_SITE_TITLE,
   VITE_N8N_WEBHOOK_USERNAME: window.env?.VITE_N8N_WEBHOOK_USERNAME ? '[CONFIGURED]' : '[NOT SET]',
-  VITE_N8N_WEBHOOK_SECRET: window.env?.VITE_N8N_WEBHOOK_SECRET ? '[CONFIGURED]' : '[NOT SET]'
+  VITE_N8N_WEBHOOK_SECRET: window.env?.VITE_N8N_WEBHOOK_SECRET ? '[CONFIGURED]' : '[NOT SET]',
+  VITE_ASSISTANT_NAME: window.env?.VITE_ASSISTANT_NAME,
 });
+
 console.log('import.meta.env:', {
   VITE_N8N_WEBHOOK_URL: import.meta.env.VITE_N8N_WEBHOOK_URL ? '[CONFIGURED]' : '[NOT SET]',
   VITE_WELCOME_MESSAGE: import.meta.env.VITE_WELCOME_MESSAGE,
   VITE_SITE_TITLE: import.meta.env.VITE_SITE_TITLE,
   VITE_N8N_WEBHOOK_USERNAME: import.meta.env.VITE_N8N_WEBHOOK_USERNAME ? '[CONFIGURED]' : '[NOT SET]',
-  VITE_N8N_WEBHOOK_SECRET: import.meta.env.VITE_N8N_WEBHOOK_SECRET ? '[CONFIGURED]' : '[NOT SET]'
+  VITE_N8N_WEBHOOK_SECRET: import.meta.env.VITE_N8N_WEBHOOK_SECRET ? '[CONFIGURED]' : '[NOT SET]',
+  VITE_ASSISTANT_NAME: import.meta.env.VITE_ASSISTANT_NAME,
 });
+
 console.log('DEFAULT_WELCOME_MESSAGE:', "Welcome to the chat!.");
 
 const WELCOME_MESSAGE = window.env?.VITE_WELCOME_MESSAGE || import.meta.env.VITE_WELCOME_MESSAGE || "Welcome to the chat!";
@@ -32,12 +37,12 @@ const WELCOME_MESSAGE = window.env?.VITE_WELCOME_MESSAGE || import.meta.env.VITE
 console.log('WELCOME_MESSAGE sources:');
 console.log('- window.env.VITE_WELCOME_MESSAGE:', window.env?.VITE_WELCOME_MESSAGE);
 console.log('- import.meta.env.VITE_WELCOME_MESSAGE:', import.meta.env.VITE_WELCOME_MESSAGE);
-console.log('- DEFAULT_WELCOME_MESSAGE:', "Welcome to the chat!.");
 console.log('Selected WELCOME_MESSAGE:', WELCOME_MESSAGE);
 
 export const useChatSessions = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [hasReachedLimit, setHasReachedLimit] = useState(false);
   const queryClient = useQueryClient();
 
   const updateSession = (sessionId: string, messages: Message[]) => {
@@ -59,6 +64,23 @@ export const useChatSessions = () => {
     queryClient
   );
 
+  // Calculate total interactions across all sessions
+  const getTotalInteractions = () => {
+    return sessions.reduce((total, session) => {
+      // Count user messages (interactions)
+      const userMessages = session.messages.filter(msg => msg.role === 'user');
+      return total + userMessages.length;
+    }, 0);
+  };
+
+  // Check if user has reached the interaction limit
+  const checkInteractionLimit = () => {
+    const totalInteractions = getTotalInteractions();
+    const reached = totalInteractions >= INTERACTION_LIMIT;
+    setHasReachedLimit(reached);
+    return reached;
+  };
+
   useEffect(() => {
     try {
       const savedSessions = localStorage.getItem(STORAGE_KEY);
@@ -67,6 +89,7 @@ export const useChatSessions = () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSessions(parsed);
           setCurrentSessionId(parsed[0].id);
+          checkInteractionLimit();
         } else {
           createNewSession();
         }
@@ -108,6 +131,7 @@ export const useChatSessions = () => {
     setSessions(prev => {
       const remainingSessions = prev.filter(session => session.id !== sessionId);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingSessions));
+      checkInteractionLimit();
       
       if (sessionId === currentSessionId) {
         if (remainingSessions.length > 0) {
@@ -137,6 +161,12 @@ export const useChatSessions = () => {
   };
 
   const sendMessage = async (input: string, file?: File) => {
+    // Check if user has reached the interaction limit
+    if (hasReachedLimit) {
+      toast.error("You've reached the interaction limit. Sign up coming soon!");
+      return;
+    }
+
     const currentSession = getCurrentSession();
     if (!currentSession) {
       console.error('No current session found');
@@ -151,6 +181,11 @@ export const useChatSessions = () => {
       currentSession.messages,
       file
     );
+
+    // Check limit after sending message
+    setTimeout(() => {
+      checkInteractionLimit();
+    }, 100);
   };
 
   const toggleFavorite = (sessionId: string) => {
@@ -172,6 +207,7 @@ export const useChatSessions = () => {
     currentSessionId,
     isLoading,
     isTyping,
+    hasReachedLimit,
     getCurrentSession,
     createNewSession,
     deleteSession,

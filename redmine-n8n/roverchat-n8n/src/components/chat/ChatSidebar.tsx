@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ChatSession } from "@/types/chat";
-import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code } from "lucide-react";
+import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ interface ChatSidebarProps {
   sessions: ChatSession[];
   currentSessionId: string;
   isSidebarOpen: boolean;
+  hasReachedLimit?: boolean;
   onNewChat: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
@@ -25,6 +26,7 @@ export const ChatSidebar = ({
   sessions,
   currentSessionId,
   isSidebarOpen,
+  hasReachedLimit = false,
   onNewChat,
   onSessionSelect,
   onDeleteSession,
@@ -91,21 +93,36 @@ export const ChatSidebar = ({
         !isSidebarOpen && "-translate-x-full md:translate-x-0"
       )}
     >
-      <div className="p-4 border-b flex flex-col gap-4">
-        <Button 
-          onClick={() => navigate('/playground')} 
-          className="w-full flex items-center gap-2"
+      <div className="p-4 border-b">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Chats</h2>
+          <ThemeToggle />
+        </div>
+        
+        <Button
+          onClick={onNewChat}
+          disabled={hasReachedLimit}
+          className={cn(
+            "w-full justify-start",
+            hasReachedLimit && "opacity-50 cursor-not-allowed"
+          )}
           variant="outline"
         >
-          <Code className="w-4 h-4" />
-          Code Playground
+          <PlusCircle className="w-4 h-4 mr-2" />
+          {hasReachedLimit ? "Interaction Limit Reached" : "New Chat"}
         </Button>
-        <Button onClick={onNewChat} className="w-full flex items-center gap-2">
-          <PlusCircle className="w-4 h-4" />
-          New Chat
-        </Button>
-        <ThemeToggle />
+        
+        {hasReachedLimit && (
+          <div className="mt-2 p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 mb-1">
+              <Lock className="w-3 h-3" />
+              <span className="font-medium">Interaction Limit</span>
+            </div>
+            <p>You've reached the free interaction limit. Sign up coming soon!</p>
+          </div>
+        )}
       </div>
+
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-2">
           {sessions.map((session) => (
