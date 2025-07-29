@@ -2,7 +2,7 @@
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { useLocation } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 const Index = () => {
   const location = useLocation();
@@ -18,7 +18,16 @@ const Index = () => {
     sendMessage,
     setCurrentSessionId,
     toggleFavorite,
+    getCurrentSession,
   } = useChatSessions();
+
+  // Create a stable callback for sending the initial message
+  const sendInitialMessage = useCallback((message: string) => {
+    const currentSession = getCurrentSession();
+    if (currentSession) {
+      sendMessage(message);
+    }
+  }, [getCurrentSession, sendMessage]);
 
   // Handle navigation state from landing page
   useEffect(() => {
@@ -33,10 +42,11 @@ const Index = () => {
         if (location.state?.initialMessage && !hasSentInitialMessage.current) {
           const initialMessage = location.state.initialMessage;
           hasSentInitialMessage.current = true;
-          // Use a small delay to ensure the session is properly set
+          
+          // Use a longer delay to ensure the session is properly set and we can get its messages
           setTimeout(() => {
-            sendMessage(initialMessage);
-          }, 100);
+            sendInitialMessage(initialMessage);
+          }, 200);
         }
       }
     } else if (location.state?.viewPastChats) {
@@ -46,7 +56,7 @@ const Index = () => {
         setCurrentSessionId(sessions[sessions.length - 1].id);
       }
     }
-  }, [location.state, sessions, setCurrentSessionId]);
+  }, [location.state, sessions, setCurrentSessionId, sendInitialMessage]);
 
   // Reset the ref when location changes (new navigation)
   useEffect(() => {
