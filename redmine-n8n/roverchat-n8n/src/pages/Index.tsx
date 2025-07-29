@@ -84,10 +84,6 @@ const Index = () => {
         onToggleFavorite={toggleFavorite}
         onSendMessage={sendMessage}
         onUnlock={unlockUser}
-        onDebugState={debugState}
-        onClearData={clearAllData}
-        onCheckLimit={checkLimit}
-        onResetInteractionState={resetInteractionState}
       />
     </div>
   );

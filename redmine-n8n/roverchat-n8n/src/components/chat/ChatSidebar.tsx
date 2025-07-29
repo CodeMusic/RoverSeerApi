@@ -22,10 +22,6 @@ interface ChatSidebarProps {
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
-  onDebugState?: () => void;
-  onClearData?: () => void;
-  onCheckLimit?: () => boolean;
-  onResetInteractionState?: () => void;
 }
 
 export const ChatSidebar = ({
@@ -39,10 +35,6 @@ export const ChatSidebar = ({
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
-  onDebugState,
-  onClearData,
-  onCheckLimit,
-  onResetInteractionState,
 }: ChatSidebarProps) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -141,49 +133,6 @@ export const ChatSidebar = ({
               <span className="font-medium">Unlocked Mode</span>
             </div>
             <p>You have unlimited interactions with Musai.</p>
-          </div>
-        )}
-        
-        {/* Debug buttons for testing */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-xs">
-            <div className="flex items-center gap-1 mb-1">
-              <span className="font-medium">Debug Tools</span>
-            </div>
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onDebugState}
-                className="text-xs h-6"
-              >
-                Debug State
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onClearData}
-                className="text-xs h-6"
-              >
-                Clear Data
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onCheckLimit}
-                className="text-xs h-6"
-              >
-                Check Limit
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onResetInteractionState}
-                className="text-xs h-6"
-              >
-                Reset Interaction State
-              </Button>
-            </div>
           </div>
         )}
       </div>
