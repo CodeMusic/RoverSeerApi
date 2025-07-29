@@ -25,6 +25,7 @@ interface ChatSidebarProps {
   onDebugState?: () => void;
   onClearData?: () => void;
   onCheckLimit?: () => boolean;
+  onResetInteractionState?: () => void;
 }
 
 export const ChatSidebar = ({
@@ -41,6 +42,7 @@ export const ChatSidebar = ({
   onDebugState,
   onClearData,
   onCheckLimit,
+  onResetInteractionState,
 }: ChatSidebarProps) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -172,6 +174,14 @@ export const ChatSidebar = ({
                 className="text-xs h-6"
               >
                 Check Limit
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onResetInteractionState}
+                className="text-xs h-6"
+              >
+                Reset Interaction State
               </Button>
             </div>
           </div>

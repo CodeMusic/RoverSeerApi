@@ -27,6 +27,7 @@ interface ChatLayoutProps {
   onDebugState?: () => void;
   onClearData?: () => void;
   onCheckLimit?: () => boolean;
+  onResetInteractionState?: () => void;
 }
 
 export const ChatLayout = ({
@@ -46,6 +47,7 @@ export const ChatLayout = ({
   onDebugState,
   onClearData,
   onCheckLimit,
+  onResetInteractionState,
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -130,6 +132,7 @@ export const ChatLayout = ({
         onDebugState={onDebugState}
         onClearData={onClearData}
         onCheckLimit={onCheckLimit}
+        onResetInteractionState={onResetInteractionState}
       />
 
       <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">

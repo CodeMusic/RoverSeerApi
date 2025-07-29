@@ -46,6 +46,7 @@ export const useChatSessions = () => {
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [hasReachedLimit, setHasReachedLimit] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false); // Track if user has actually interacted
   const queryClient = useQueryClient();
 
   // Check if user is unlocked on mount
@@ -131,8 +132,17 @@ export const useChatSessions = () => {
     setCurrentSessionId("");
     setHasReachedLimit(false);
     setIsUnlocked(false);
+    setHasInteracted(false);
     createNewSession();
     toast.success("All data cleared for testing");
+  };
+
+  // Reset interaction state for testing
+  const resetInteractionState = () => {
+    setHasReachedLimit(false);
+    setHasInteracted(false);
+    console.log('Interaction state reset');
+    toast.success("Interaction state reset");
   };
 
   // Debug function to show current state
@@ -143,6 +153,7 @@ export const useChatSessions = () => {
     console.log('Interaction limit:', INTERACTION_LIMIT);
     console.log('Has reached limit:', hasReachedLimit);
     console.log('Is unlocked:', isUnlocked);
+    console.log('Has interacted:', hasInteracted);
     console.log('Sessions count:', sessions.length);
     console.log('Current session ID:', currentSessionId);
     console.log('==================');
@@ -235,7 +246,10 @@ export const useChatSessions = () => {
   };
 
   const sendMessage = async (input: string, file?: File) => {
-    console.log('sendMessage called:', { input: input.substring(0, 50), hasReachedLimit, isUnlocked });
+    console.log('sendMessage called:', { input: input.substring(0, 50), hasReachedLimit, isUnlocked, hasInteracted });
+    
+    // Mark that user has interacted
+    setHasInteracted(true);
     
     // Check if user has reached the interaction limit (unless unlocked)
     if (hasReachedLimit && !isUnlocked) {
@@ -250,14 +264,16 @@ export const useChatSessions = () => {
       return;
     }
     
-    // Check limit before sending message to prevent sending when limit is reached
-    const currentInteractions = getTotalInteractions();
-    console.log('Current interactions before sending:', currentInteractions);
-    if (currentInteractions >= INTERACTION_LIMIT && !isUnlocked) {
-      console.log('Limit reached before sending, setting limit and showing error');
-      setHasReachedLimit(true);
-      toast.error("You've reached the interaction limit. Sign up coming soon!");
-      return;
+    // Only check limit if user has actually interacted and is not unlocked
+    if (hasInteracted && !isUnlocked) {
+      const currentInteractions = getTotalInteractions();
+      console.log('Current interactions before sending:', currentInteractions);
+      if (currentInteractions >= INTERACTION_LIMIT) {
+        console.log('Limit reached before sending, setting limit and showing error');
+        setHasReachedLimit(true);
+        toast.error("You've reached the interaction limit. Sign up coming soon!");
+        return;
+      }
     }
     
     queryClient.setQueryData(['chatSessions', currentSession.id], currentSession.messages);
@@ -269,16 +285,18 @@ export const useChatSessions = () => {
       file
     );
 
-    // Check limit after sending message
-    setTimeout(() => {
-      console.log('Checking limit after sending message');
-      const newTotalInteractions = getTotalInteractions();
-      console.log('New total interactions after sending:', newTotalInteractions);
-      if (newTotalInteractions >= INTERACTION_LIMIT && !isUnlocked) {
-        console.log('Limit reached after sending message');
-        setHasReachedLimit(true);
-      }
-    }, 100);
+    // Check limit after sending message only if user has interacted
+    if (hasInteracted && !isUnlocked) {
+      setTimeout(() => {
+        console.log('Checking limit after sending message');
+        const newTotalInteractions = getTotalInteractions();
+        console.log('New total interactions after sending:', newTotalInteractions);
+        if (newTotalInteractions >= INTERACTION_LIMIT) {
+          console.log('Limit reached after sending message');
+          setHasReachedLimit(true);
+        }
+      }, 100);
+    }
   };
 
   const toggleFavorite = (sessionId: string) => {
@@ -313,5 +331,6 @@ export const useChatSessions = () => {
     clearAllData,
     debugState,
     checkLimit,
+    resetInteractionState,
   };
 };
