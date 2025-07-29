@@ -15,6 +15,7 @@ export const ChatMessages = ({ messages, isTyping = false }: ChatMessagesProps) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [waveTrigger, setWaveTrigger] = useState(false);
   const [lastAssistantMessageId, setLastAssistantMessageId] = useState<string | null>(null);
+  const [previousMessageCount, setPreviousMessageCount] = useState(0);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -26,12 +27,29 @@ export const ChatMessages = ({ messages, isTyping = false }: ChatMessagesProps) 
 
   // Check for new assistant messages and trigger wave effect
   useEffect(() => {
+    const currentMessageCount = messages.length;
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === 'assistant' && lastMessage.id !== lastAssistantMessageId) {
-      setLastAssistantMessageId(lastMessage.id);
-      setWaveTrigger(true);
+    
+    // Only trigger if we have more messages than before and the last message is from assistant
+    if (currentMessageCount > previousMessageCount && 
+        lastMessage && 
+        lastMessage.role === 'assistant' && 
+        lastMessage.id !== lastAssistantMessageId) {
+      
+      // Check if there was a user message before this assistant message
+      const hasUserMessageBefore = messages.some((msg, index) => 
+        index < messages.length - 1 && msg.role === 'user'
+      );
+      
+      if (hasUserMessageBefore) {
+        console.log('New assistant message received after user message, triggering wave effect');
+        setLastAssistantMessageId(lastMessage.id);
+        setWaveTrigger(true);
+      }
     }
-  }, [messages, lastAssistantMessageId]);
+    
+    setPreviousMessageCount(currentMessageCount);
+  }, [messages, lastAssistantMessageId, previousMessageCount]);
 
   // Check if dark mode is enabled
   const isDarkMode = document.documentElement.classList.contains('dark');

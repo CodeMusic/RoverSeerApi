@@ -216,6 +216,17 @@ export const useChatSessions = () => {
     setSessions(prev => {
       const remainingSessions = prev.filter(session => session.id !== sessionId);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingSessions));
+      
+      // Clean up localStorage entries for the deleted session
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`sent_initial_${sessionId}-`)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
       checkInteractionLimit();
       
       if (sessionId === currentSessionId) {
