@@ -305,3 +305,15 @@
     font-size: 0.9em !important;
   }
 }
+
+/* Production-safe chat action buttons */
+.chat-actions-visible {
+  opacity: 1 !important;
+}
+
+/* Ensure chat action buttons are visible in production */
+@media (min-width: 641px) {
+  .chat-session-item:hover .chat-actions-visible {
+    opacity: 1 !important;
+  }
+}

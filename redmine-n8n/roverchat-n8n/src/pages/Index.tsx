@@ -22,6 +22,8 @@ const Index = () => {
     toggleFavorite,
     getCurrentSession,
     unlockUser,
+    clearAllData,
+    debugState,
   } = useChatSessions();
 
   // Create a stable callback for sending the initial message
@@ -80,6 +82,8 @@ const Index = () => {
         onToggleFavorite={toggleFavorite}
         onSendMessage={sendMessage}
         onUnlock={unlockUser}
+        onDebugState={debugState}
+        onClearData={clearAllData}
       />
     </div>
   );

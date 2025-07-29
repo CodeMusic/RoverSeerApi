@@ -6,6 +6,7 @@ import { Loader2, Send, Mic, X } from "lucide-react";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { ImageUpload } from "./ImageUpload";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
   input: string;
@@ -13,6 +14,8 @@ interface ChatInputProps {
   onInputChange: (value: string) => void;
   onSend: (e: React.FormEvent, file?: File) => Promise<boolean>;
   onImageSelect?: (file: File) => void;
+  hasReachedLimit?: boolean;
+  isUnlocked?: boolean;
 }
 
 export const ChatInput = ({
@@ -21,6 +24,8 @@ export const ChatInput = ({
   onInputChange,
   onSend,
   onImageSelect,
+  hasReachedLimit = false,
+  isUnlocked = false,
 }: ChatInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -100,6 +105,7 @@ export const ChatInput = ({
   };
 
   const isInputEmpty = !input.trim() && !previewImage?.file;
+  const isLimited = hasReachedLimit && !isUnlocked;
 
   return (
     <form onSubmit={handleSubmit} className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full px-4 py-2">
@@ -124,15 +130,18 @@ export const ChatInput = ({
         )}
         <div className="relative">
           <Textarea
-            placeholder="Type a message or paste an image..."
+            placeholder={isLimited ? "Interaction limit reached. Enter secret code to continue..." : "Type a message or paste an image..."}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             ref={textareaRef}
             rows={2}
-            className="min-h-[24px] w-full resize-none bg-muted/50 dark:bg-muted/20 text-foreground rounded-xl pr-24 pl-12 py-4 focus-visible:ring-1 border-none overflow-y-hidden"
-            disabled={isLoading}
+            className={cn(
+              "min-h-[24px] w-full resize-none bg-muted/50 dark:bg-muted/20 text-foreground rounded-xl pr-24 pl-12 py-4 focus-visible:ring-1 border-none overflow-y-hidden",
+              isLimited && "opacity-50 cursor-not-allowed"
+            )}
+            disabled={isLoading || isLimited}
             style={{
               height: input ? 'auto' : '80px',
               minHeight: '80px',
@@ -144,7 +153,7 @@ export const ChatInput = ({
             {onImageSelect && (
               <ImageUpload 
                 onImageSelect={handleImageSelection}
-                disabled={isLoading}
+                disabled={isLoading || isLimited}
               />
             )}
           </div>
@@ -155,7 +164,7 @@ export const ChatInput = ({
               variant="ghost"
               className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
               onClick={startListening}
-              disabled={isLoading}
+              disabled={isLoading || isLimited}
             >
               <Mic className="h-4 w-4" />
             </Button>
@@ -163,7 +172,7 @@ export const ChatInput = ({
               type="submit" 
               size="icon"
               className="h-8 w-8"
-              disabled={isLoading || isInputEmpty}
+              disabled={isLoading || isInputEmpty || isLimited}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

@@ -24,6 +24,8 @@ interface ChatLayoutProps {
   onToggleFavorite: (sessionId: string) => void;
   onSendMessage: (message: string, file?: File) => void;
   onUnlock?: (code: string) => boolean;
+  onDebugState?: () => void;
+  onClearData?: () => void;
 }
 
 export const ChatLayout = ({
@@ -40,6 +42,8 @@ export const ChatLayout = ({
   onToggleFavorite,
   onSendMessage,
   onUnlock,
+  onDebugState,
+  onClearData,
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -68,6 +72,12 @@ export const ChatLayout = ({
       return false;
     }
 
+    // Check if user has reached limit and show unlock prompt
+    if (hasReachedLimit && !isUnlocked) {
+      setShowSignupPrompt(true);
+      return false;
+    }
+
     try {
       await onSendMessage(input, file);
       setInput("");
@@ -79,7 +89,7 @@ export const ChatLayout = ({
       });
       return false;
     }
-  }, [input, onSendMessage, toast]);
+  }, [input, onSendMessage, toast, hasReachedLimit, isUnlocked]);
 
   const handleImageSelect = useCallback((file: File) => {
     console.log('Image selected:', file.name);
@@ -114,6 +124,8 @@ export const ChatLayout = ({
         onDeleteSession={onDeleteSession}
         onRenameSession={onRenameSession}
         onToggleFavorite={onToggleFavorite}
+        onDebugState={onDebugState}
+        onClearData={onClearData}
       />
 
       <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">
@@ -140,6 +152,8 @@ export const ChatLayout = ({
                 onInputChange={setInput}
                 onSend={handleSend}
                 onImageSelect={handleImageSelect}
+                hasReachedLimit={hasReachedLimit}
+                isUnlocked={isUnlocked}
               />
             </div>
           </>

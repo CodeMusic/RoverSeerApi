@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatSidebarProps {
   sessions: ChatSession[];
@@ -21,6 +22,8 @@ interface ChatSidebarProps {
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
+  onDebugState?: () => void;
+  onClearData?: () => void;
 }
 
 export const ChatSidebar = ({
@@ -34,10 +37,13 @@ export const ChatSidebar = ({
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
+  onDebugState,
+  onClearData,
 }: ChatSidebarProps) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const getFirstMessage = (messages: ChatSession["messages"]) => {
     const userMessage = messages.find(m => m.role === "user");
@@ -133,6 +139,33 @@ export const ChatSidebar = ({
             <p>You have unlimited interactions with Musai.</p>
           </div>
         )}
+        
+        {/* Debug buttons for testing */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-xs">
+            <div className="flex items-center gap-1 mb-1">
+              <span className="font-medium">Debug Tools</span>
+            </div>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onDebugState}
+                className="text-xs h-6"
+              >
+                Debug State
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onClearData}
+                className="text-xs h-6"
+              >
+                Clear Data
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
@@ -142,10 +175,11 @@ export const ChatSidebar = ({
               key={session.id}
               onClick={() => onSessionSelect(session.id)}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors group",
+                "w-full text-left px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors group chat-session-item",
                 "flex items-center gap-2 text-sm relative cursor-pointer",
                 session.id === currentSessionId && "bg-sidebar-accent"
               )}
+              tabIndex={0}
             >
               <MessageSquare className="w-4 h-4 shrink-0" />
               <div className="truncate flex-1">
@@ -176,7 +210,12 @@ export const ChatSidebar = ({
                 )}
               </div>
               {editingSessionId !== session.id && (
-                <div className="opacity-0 group-hover:opacity-100 absolute right-2 flex gap-1">
+                <div className={cn(
+                  "absolute right-2 flex gap-1 transition-opacity duration-200",
+                  session.id === currentSessionId || isMobile
+                    ? "opacity-100 chat-actions-visible" 
+                    : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 chat-actions-visible"
+                )}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -185,6 +224,8 @@ export const ChatSidebar = ({
                       session.favorite && "text-yellow-500 opacity-100"
                     )}
                     onClick={(e) => handleToggleFavorite(e, session.id)}
+                    title="Toggle favorite"
+                    aria-label="Toggle favorite"
                   >
                     <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
                   </Button>
@@ -193,14 +234,18 @@ export const ChatSidebar = ({
                     size="icon"
                     className="h-6 w-6"
                     onClick={(e) => startEditing(e, session)}
+                    title="Rename chat"
+                    aria-label="Rename chat"
                   >
                     <Pencil className="h-3 w-3" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 hover:bg-destructive hover:text-destructive-foreground"
+                    className="h-6 w-6 hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
                     onClick={(e) => handleDelete(e, session.id)}
+                    title="Delete chat"
+                    aria-label="Delete chat"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
