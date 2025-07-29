@@ -2,10 +2,11 @@
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const Index = () => {
   const location = useLocation();
+  const hasSentInitialMessage = useRef(false);
   const {
     sessions,
     currentSessionId,
@@ -28,9 +29,10 @@ const Index = () => {
         const newSessionId = sessions[sessions.length - 1].id;
         setCurrentSessionId(newSessionId);
         
-        // If there's an initial message, send it automatically
-        if (location.state?.initialMessage) {
+        // If there's an initial message and we haven't sent it yet, send it automatically
+        if (location.state?.initialMessage && !hasSentInitialMessage.current) {
           const initialMessage = location.state.initialMessage;
+          hasSentInitialMessage.current = true;
           // Use a small delay to ensure the session is properly set
           setTimeout(() => {
             sendMessage(initialMessage);
@@ -44,7 +46,12 @@ const Index = () => {
         setCurrentSessionId(sessions[sessions.length - 1].id);
       }
     }
-  }, [location.state, sessions, setCurrentSessionId, sendMessage]);
+  }, [location.state, sessions, setCurrentSessionId]);
+
+  // Reset the ref when location changes (new navigation)
+  useEffect(() => {
+    hasSentInitialMessage.current = false;
+  }, [location.state]);
 
   // Always render the component, don't add any conditional returns
   return (
