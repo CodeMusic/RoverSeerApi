@@ -1,5 +1,5 @@
-export const FETCH_TIMEOUT = 600000; // 10 minutes - increased for longer processing
-export const FETCH_TIMEOUT_SHORT = 300000; // 5 minutes timeout for quick operations - increased from 1 minute
+export const FETCH_TIMEOUT = 1800000; // 30 minutes - increased for very long processing
+export const FETCH_TIMEOUT_SHORT = 600000; // 10 minutes timeout for quick operations
 
 export const fetchWithTimeout = async (
   url: string, 
@@ -25,7 +25,7 @@ export const fetchWithTimeout = async (
     clearTimeout(id);
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        throw new Error('Request timed out');
+        throw new Error('Request timed out after 30 minutes');
       }
       // Handle browser-level timeouts
       if (error.message.includes('timeout') || error.message.includes('aborted')) {

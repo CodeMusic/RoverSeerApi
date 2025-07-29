@@ -41,6 +41,7 @@ export const useMessageSender = (
     while (retryCount <= MAX_RETRIES) {
       let timeoutWarning: NodeJS.Timeout | null = null;
       let longRequestWarning: NodeJS.Timeout | null = null;
+      let veryLongRequestWarning: NodeJS.Timeout | null = null;
       
       try {
         setIsLoading(true);
@@ -49,15 +50,21 @@ export const useMessageSender = (
         // Set up timeout warnings
         timeoutWarning = setTimeout(() => {
           toast.info("Request is taking longer than usual. Please wait...", {
-            duration: 5000,
-          });
-        }, 120000); // Show warning after 2 minutes
-
-        longRequestWarning = setTimeout(() => {
-          toast.warning("Request is taking a very long time. You may want to try again.", {
-            duration: 8000,
+            duration: 10000,
           });
         }, 300000); // Show warning after 5 minutes
+
+        longRequestWarning = setTimeout(() => {
+          toast.warning("Request is taking a very long time. This is normal for complex tasks. Please be patient.", {
+            duration: 15000,
+          });
+        }, 900000); // Show warning after 15 minutes
+
+        veryLongRequestWarning = setTimeout(() => {
+          toast.warning("Request is taking an exceptionally long time. You may want to try again if it doesn't complete soon.", {
+            duration: 20000,
+          });
+        }, 1500000); // Show warning after 25 minutes
 
         console.log('Processing file for message:', file ? {
           name: file.name,
@@ -118,6 +125,7 @@ export const useMessageSender = (
         // Clear timeout warnings on success
         clearTimeout(timeoutWarning);
         clearTimeout(longRequestWarning);
+        clearTimeout(veryLongRequestWarning);
 
         const responseData = await handleApiResponse(response);
 
@@ -152,6 +160,7 @@ export const useMessageSender = (
         // Clear timeout warnings on error
         clearTimeout(timeoutWarning);
         clearTimeout(longRequestWarning);
+        clearTimeout(veryLongRequestWarning);
         
         // Check if we should retry
         if (retryCount < MAX_RETRIES && 
