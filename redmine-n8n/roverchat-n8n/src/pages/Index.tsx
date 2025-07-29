@@ -33,21 +33,18 @@ const Index = () => {
   useEffect(() => {
     if (location.state?.newSession) {
       // A new session was created from the landing page
-      // The session is already created, so we just need to ensure it's selected
-      if (sessions.length > 0) {
-        const newSessionId = sessions[sessions.length - 1].id;
-        setCurrentSessionId(newSessionId);
+      // The session is already created and selected by createNewSession()
+      // We don't need to override the selection
+      
+      // If there's an initial message and we haven't sent it yet, send it automatically
+      if (location.state?.initialMessage && !hasSentInitialMessage.current) {
+        const initialMessage = location.state.initialMessage;
+        hasSentInitialMessage.current = true;
         
-        // If there's an initial message and we haven't sent it yet, send it automatically
-        if (location.state?.initialMessage && !hasSentInitialMessage.current) {
-          const initialMessage = location.state.initialMessage;
-          hasSentInitialMessage.current = true;
-          
-          // Use a longer delay to ensure the session is properly set and we can get its messages
-          setTimeout(() => {
-            sendInitialMessage(initialMessage);
-          }, 200);
-        }
+        // Use a longer delay to ensure the session is properly set and we can get its messages
+        setTimeout(() => {
+          sendInitialMessage(initialMessage);
+        }, 200);
       }
     } else if (location.state?.viewPastChats) {
       // User wants to view past chats
