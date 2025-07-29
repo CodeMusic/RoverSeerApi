@@ -1,5 +1,5 @@
 
-# **TalkFlow N8N Integration**
+# **Musai N8N Integration**
 
 A real-time chat application integrated with **N8N workflows** for automated responses and processing.
 
@@ -32,17 +32,17 @@ VITE_N8N_WEBHOOK_SECRET=your_webhook_secret
 # Optional
 VITE_WELCOME_MESSAGE="Welcome message for your chat"
 VITE_SITE_TITLE="Your Site Title"
-VITE_ASSISTANT_NAME="Your Assistant Name"  # Defaults to "Talkflow" if not set
+VITE_ASSISTANT_NAME="Your Assistant Name"  # Defaults to "Musai" if not set
 ```
 
 ### **Development Setup**
 
 ```bash
 # Clone the repository
-git clone https://github.com/jimmartinquisitive/talkflow-n8n.git
+git clone https://github.com/jimmartinquisitive/roverchat-n8n.git
 
 # Navigate to project directory
-cd talkflow-n8n
+cd roverchat-n8n
 
 # Install dependencies
 npm install
@@ -72,7 +72,7 @@ docker run -d -p 8009:80 \
   -e VITE_WELCOME_MESSAGE="Your welcome message" \
   -e VITE_SITE_TITLE="Your Site Title" \
   -e VITE_ASSISTANT_NAME="Your Assistant Name" \
-  jimmartinquis/n8n-chatui:latest
+  jimmartinquis/roverchat-n8n:latest
 ```
 
 2. **Using Docker Compose**:

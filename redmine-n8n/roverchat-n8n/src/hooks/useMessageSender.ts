@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Message } from '@/types/chat';
 import { fetchWithTimeout, FETCH_TIMEOUT } from '@/utils/fetchWithTimeout';
-import { extractResponseContent } from '@/utils/responseHandler';
+import { extractResponseContent, extractResponseThoughts } from '@/utils/responseHandler';
 import { QueryClient } from '@tanstack/react-query';
 import { handleApiResponse, handleApiError } from '@/utils/apiResponseHandler';
 import { prepareFileData } from '@/utils/fileOperations';
@@ -130,12 +130,14 @@ export const useMessageSender = (
         }
 
         const responseContent = extractResponseContent(responseData);
+        const responseThoughts = extractResponseThoughts(responseData);
 
         const assistantMessage: Message = {
           id: uuidv4(),
           content: responseContent,
           role: "assistant",
           timestamp: Date.now(),
+          ...(responseThoughts && { thoughts: responseThoughts })
         };
 
         const finalMessages = [...newMessages, assistantMessage];

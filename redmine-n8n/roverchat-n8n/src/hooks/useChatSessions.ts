@@ -8,7 +8,9 @@ import { toast } from "sonner";
 
 const STORAGE_VERSION = "v1";
 const STORAGE_KEY = `chat_sessions_${STORAGE_VERSION}`;
-const INTERACTION_LIMIT = 7; // Number of interactions before requiring signup
+const INTERACTION_LIMIT = 5; // Number of interactions before requiring signup
+const SECRET_CODE = "c0d3musai";
+const UNLOCKED_KEY = "musai_unlocked";
 
 // Fallback to import.meta.env if window.env is not available
 console.log('Configuration Sources:');
@@ -43,7 +45,14 @@ export const useChatSessions = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [hasReachedLimit, setHasReachedLimit] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const queryClient = useQueryClient();
+
+  // Check if user is unlocked on mount
+  useEffect(() => {
+    const unlocked = localStorage.getItem(UNLOCKED_KEY) === 'true';
+    setIsUnlocked(unlocked);
+  }, []);
 
   const updateSession = (sessionId: string, messages: Message[]) => {
     setSessions(prev => {
@@ -75,10 +84,28 @@ export const useChatSessions = () => {
 
   // Check if user has reached the interaction limit
   const checkInteractionLimit = () => {
+    // If unlocked, no limit applies
+    if (isUnlocked) {
+      setHasReachedLimit(false);
+      return false;
+    }
+    
     const totalInteractions = getTotalInteractions();
     const reached = totalInteractions >= INTERACTION_LIMIT;
     setHasReachedLimit(reached);
     return reached;
+  };
+
+  // Unlock the user with secret code
+  const unlockUser = (code: string) => {
+    if (code === SECRET_CODE) {
+      setIsUnlocked(true);
+      localStorage.setItem(UNLOCKED_KEY, 'true');
+      setHasReachedLimit(false);
+      toast.success("Access unlocked! You now have unlimited interactions.");
+      return true;
+    }
+    return false;
   };
 
   useEffect(() => {
@@ -100,7 +127,7 @@ export const useChatSessions = () => {
       console.error('Error loading chat sessions:', error);
       createNewSession();
     }
-  }, []);
+  }, [isUnlocked]); // Re-check limit when unlock status changes
 
   const createNewSession = () => {
     const newSession: ChatSession = {
@@ -161,8 +188,8 @@ export const useChatSessions = () => {
   };
 
   const sendMessage = async (input: string, file?: File) => {
-    // Check if user has reached the interaction limit
-    if (hasReachedLimit) {
+    // Check if user has reached the interaction limit (unless unlocked)
+    if (hasReachedLimit && !isUnlocked) {
       toast.error("You've reached the interaction limit. Sign up coming soon!");
       return;
     }
@@ -208,6 +235,7 @@ export const useChatSessions = () => {
     isLoading,
     isTyping,
     hasReachedLimit,
+    isUnlocked,
     getCurrentSession,
     createNewSession,
     deleteSession,
@@ -215,5 +243,6 @@ export const useChatSessions = () => {
     sendMessage,
     setCurrentSessionId,
     toggleFavorite,
+    unlockUser,
   };
 };

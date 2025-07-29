@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { MarkdownRenderer } from './chat/MarkdownRenderer';
+import { ThinkPanel } from './chat/ThinkPanel';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,9 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
   const { toast } = useToast();
   const formattedTime = format(new Date(message.timestamp), 'MMM d, yyyy h:mm a');
   const assistantName = window.env?.VITE_ASSISTANT_NAME || import.meta.env.VITE_ASSISTANT_NAME || "Musai";
+
+  // Check if dark mode is enabled
+  const isDarkMode = document.documentElement.classList.contains('dark');
 
   const handleCopy = async () => {
     try {
@@ -106,6 +110,12 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
             </div>
           </div>
         </div>
+        
+        {/* Think Panel for Assistant Messages */}
+        {isAssistant && message.thoughts && (
+          <ThinkPanel thoughts={message.thoughts} isDarkMode={isDarkMode} />
+        )}
+        
         <div className="mt-2 flex justify-between items-center">
           <span className="text-xs text-slate-500 dark:text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             {formattedTime}

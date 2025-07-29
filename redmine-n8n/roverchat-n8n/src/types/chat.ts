@@ -3,6 +3,7 @@ export interface Message {
   content: string;
   role: 'user' | 'assistant';
   timestamp: number;
+  thoughts?: string; // AI internal thoughts for think tags
   imageData?: {
     data: string;
     mimeType: string;

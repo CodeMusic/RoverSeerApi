@@ -52,3 +52,34 @@ export const extractResponseContent = (data: any): string => {
   
   return "Unexpected response format";
 };
+
+export const extractResponseThoughts = (data: any): string | undefined => {
+  if (typeof data === 'object') {
+    // Check for thoughts in various possible locations
+    const possibleThoughts = data.thoughts || 
+                            data.thinking || 
+                            data.reasoning ||
+                            data.internal_thoughts ||
+                            data.cognitive_process;
+    
+    if (possibleThoughts) return possibleThoughts;
+    
+    // Check nested structures
+    if (data.message?.thoughts) return data.message.thoughts;
+    if (data.response?.thoughts) return data.response.thoughts;
+    
+    // Check array responses
+    if (Array.isArray(data)) {
+      const firstItem = data[0];
+      if (firstItem && typeof firstItem === 'object') {
+        return firstItem.thoughts || 
+               firstItem.thinking || 
+               firstItem.reasoning ||
+               firstItem.internal_thoughts ||
+               firstItem.cognitive_process;
+      }
+    }
+  }
+  
+  return undefined;
+};

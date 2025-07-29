@@ -13,6 +13,7 @@ const Index = () => {
     isLoading,
     isTyping,
     hasReachedLimit,
+    isUnlocked,
     createNewSession,
     deleteSession,
     renameSession,
@@ -20,6 +21,7 @@ const Index = () => {
     setCurrentSessionId,
     toggleFavorite,
     getCurrentSession,
+    unlockUser,
   } = useChatSessions();
 
   // Create a stable callback for sending the initial message
@@ -70,12 +72,14 @@ const Index = () => {
         isLoading={isLoading}
         isTyping={isTyping}
         hasReachedLimit={hasReachedLimit}
+        isUnlocked={isUnlocked}
         onNewChat={createNewSession}
         onSessionSelect={setCurrentSessionId}
         onDeleteSession={deleteSession}
         onRenameSession={renameSession}
         onToggleFavorite={toggleFavorite}
         onSendMessage={sendMessage}
+        onUnlock={unlockUser}
       />
     </div>
   );

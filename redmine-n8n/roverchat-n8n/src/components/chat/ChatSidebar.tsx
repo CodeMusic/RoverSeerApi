@@ -15,6 +15,7 @@ interface ChatSidebarProps {
   currentSessionId: string;
   isSidebarOpen: boolean;
   hasReachedLimit?: boolean;
+  isUnlocked?: boolean;
   onNewChat: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
@@ -27,6 +28,7 @@ export const ChatSidebar = ({
   currentSessionId,
   isSidebarOpen,
   hasReachedLimit = false,
+  isUnlocked = false,
   onNewChat,
   onSessionSelect,
   onDeleteSession,
@@ -101,24 +103,34 @@ export const ChatSidebar = ({
         
         <Button
           onClick={onNewChat}
-          disabled={hasReachedLimit}
+          disabled={hasReachedLimit && !isUnlocked}
           className={cn(
             "w-full justify-start",
-            hasReachedLimit && "opacity-50 cursor-not-allowed"
+            hasReachedLimit && !isUnlocked && "opacity-50 cursor-not-allowed"
           )}
           variant="outline"
         >
           <PlusCircle className="w-4 h-4 mr-2" />
-          {hasReachedLimit ? "Interaction Limit Reached" : "New Chat"}
+          {isUnlocked ? "New Chat (Unlocked)" : hasReachedLimit ? "Interaction Limit Reached" : "New Chat"}
         </Button>
         
-        {hasReachedLimit && (
+        {hasReachedLimit && !isUnlocked && (
           <div className="mt-2 p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground">
             <div className="flex items-center gap-1 mb-1">
               <Lock className="w-3 h-3" />
               <span className="font-medium">Interaction Limit</span>
             </div>
             <p>You've reached the free interaction limit. Sign up coming soon!</p>
+          </div>
+        )}
+        
+        {isUnlocked && (
+          <div className="mt-2 p-2 bg-green-500/10 border border-green-500/20 rounded-lg text-xs text-green-600 dark:text-green-400">
+            <div className="flex items-center gap-1 mb-1">
+              <Check className="w-3 h-3" />
+              <span className="font-medium">Unlocked Mode</span>
+            </div>
+            <p>You have unlimited interactions with Musai.</p>
           </div>
         )}
       </div>

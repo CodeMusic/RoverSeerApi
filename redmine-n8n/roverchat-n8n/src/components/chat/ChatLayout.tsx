@@ -8,6 +8,7 @@ import { useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Check } from "lucide-react";
 
 interface ChatLayoutProps {
   sessions: ChatSession[];
@@ -15,12 +16,14 @@ interface ChatLayoutProps {
   isLoading: boolean;
   isTyping: boolean;
   hasReachedLimit?: boolean;
+  isUnlocked?: boolean;
   onNewChat: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
   onSendMessage: (message: string, file?: File) => void;
+  onUnlock?: (code: string) => boolean;
 }
 
 export const ChatLayout = ({
@@ -29,12 +32,14 @@ export const ChatLayout = ({
   isLoading,
   isTyping,
   hasReachedLimit = false,
+  isUnlocked = false,
   onNewChat,
   onSessionSelect,
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
   onSendMessage,
+  onUnlock,
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -45,12 +50,12 @@ export const ChatLayout = ({
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
   const handleNewChat = useCallback(() => {
-    if (hasReachedLimit) {
+    if (hasReachedLimit && !isUnlocked) {
       setShowSignupPrompt(true);
     } else {
       onNewChat();
     }
-  }, [hasReachedLimit, onNewChat]);
+  }, [hasReachedLimit, isUnlocked, onNewChat]);
 
   const handleSend = useCallback(async (e: React.FormEvent, file?: File): Promise<boolean> => {
     e.preventDefault();
@@ -103,6 +108,7 @@ export const ChatLayout = ({
         currentSessionId={currentSessionId}
         isSidebarOpen={isSidebarOpen}
         hasReachedLimit={hasReachedLimit}
+        isUnlocked={isUnlocked}
         onNewChat={handleNewChat}
         onSessionSelect={handleSessionClick}
         onDeleteSession={onDeleteSession}
@@ -113,6 +119,17 @@ export const ChatLayout = ({
       <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">
         {currentSession && (
           <>
+            {/* Unlocked Mode Indicator */}
+            {isUnlocked && (
+              <div className="flex items-center justify-center p-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-b border-green-500/20">
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <Check className="w-4 h-4" />
+                  <span className="font-medium">Unlocked Mode</span>
+                  <span className="text-xs opacity-75">• Unlimited interactions</span>
+                </div>
+              </div>
+            )}
+            
             <div className="flex-1 min-h-0">
               <ChatMessages messages={currentSession.messages} isTyping={isTyping} />
             </div>
@@ -137,7 +154,11 @@ export const ChatLayout = ({
       )}
 
       {showSignupPrompt && (
-        <SignupPrompt onClose={() => setShowSignupPrompt(false)} />
+        <SignupPrompt 
+          onClose={() => setShowSignupPrompt(false)} 
+          onUnlock={onUnlock}
+          isUnlocked={isUnlocked}
+        />
       )}
     </div>
   );

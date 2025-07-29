@@ -3,7 +3,7 @@ import { Message } from "@/types/chat";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef } from "react";
-import { Loader2 } from "lucide-react";
+import { MysticalTypingIndicator } from "./MysticalTypingIndicator";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -20,6 +20,9 @@ export const ChatMessages = ({ messages, isTyping = false }: ChatMessagesProps) 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Check if dark mode is enabled
+  const isDarkMode = document.documentElement.classList.contains('dark');
 
   return (
     <ScrollArea 
@@ -45,10 +48,7 @@ export const ChatMessages = ({ messages, isTyping = false }: ChatMessagesProps) 
             <ChatMessage key={message.id} message={message} />
           ))}
           {isTyping && (
-            <div className="flex items-center space-x-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Processing your request...</span>
-            </div>
+            <MysticalTypingIndicator isDarkMode={isDarkMode} />
           )}
           <div ref={messagesEndRef} className="h-4" />
         </div>
