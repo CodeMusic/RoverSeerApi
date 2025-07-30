@@ -351,3 +351,46 @@
     opacity: 1 !important;
   }
 }
+
+/* Navigation bar styling */
+.navigation-bar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Sidebar transitions */
+.sidebar-transition {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Improved hover effects for chat items */
+.chat-item-hover {
+  transition: all 0.15s ease-in-out;
+}
+
+.chat-item-hover:hover {
+  transform: translateX(2px);
+}
+
+/* Tooltip animations */
+.tooltip-enter {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+
+.tooltip-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: all 0.2s ease-out;
+}
+
+.tooltip-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.tooltip-exit-active {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.15s ease-in;
+}

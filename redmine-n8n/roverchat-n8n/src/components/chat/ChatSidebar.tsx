@@ -38,6 +38,7 @@ export const ChatSidebar = ({
 }: ChatSidebarProps) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -99,7 +100,7 @@ export const ChatSidebar = ({
     >
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Chats</h2>
+          <h2 className="text-lg font-semibold">Library</h2>
           <ThemeToggle />
         </div>
         
@@ -113,7 +114,7 @@ export const ChatSidebar = ({
           variant="outline"
         >
           <PlusCircle className="w-4 h-4 mr-2" />
-          {isUnlocked ? "New Chat (Unlocked)" : hasReachedLimit ? "Interaction Limit Reached" : "New Chat"}
+          Create a Thread
         </Button>
         
         {hasReachedLimit && !isUnlocked && (
@@ -138,90 +139,104 @@ export const ChatSidebar = ({
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-2">
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              onClick={() => onSessionSelect(session.id)}
-              className={cn(
-                "w-full text-left px-3 py-2 rounded-lg hover:bg-sidebar-accent transition-colors group chat-session-item",
-                "flex items-center gap-2 text-sm relative cursor-pointer",
-                session.id === currentSessionId && "bg-sidebar-accent"
-              )}
-              tabIndex={0}
-            >
-              <MessageSquare className="w-4 h-4 shrink-0" />
-              <div className="truncate flex-1">
-                {editingSessionId === session.id ? (
-                  <form onSubmit={handleRename} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
-                    <Input
-                      value={editingName}
-                      onChange={e => setEditingName(e.target.value)}
-                      className="h-6 text-sm"
-                      autoFocus
-                    />
-                    <Button type="submit" size="icon" variant="ghost" className="h-6 w-6">
-                      <Check className="h-4 w-4" />
+        <div className="p-2 space-y-1">
+          {sessions.map((session) => {
+            const isActive = session.id === currentSessionId;
+            const isHovered = hoveredSessionId === session.id;
+            const showActions = isActive || isHovered || isMobile;
+
+            return (
+              <div
+                key={session.id}
+                onClick={() => onSessionSelect(session.id)}
+                onMouseEnter={() => setHoveredSessionId(session.id)}
+                onMouseLeave={() => setHoveredSessionId(null)}
+                className={cn(
+                  "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
+                  "flex items-center gap-3 text-sm",
+                  isActive 
+                    ? "bg-sidebar-accent border border-border/50 shadow-sm" 
+                    : "hover:bg-sidebar-accent/50 border border-transparent hover:border-border/30"
+                )}
+                tabIndex={0}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-200",
+                    isActive 
+                      ? "bg-primary" 
+                      : "bg-muted-foreground/30 group-hover:bg-muted-foreground/50"
+                  )} />
+                  <div className="truncate flex-1">
+                    {editingSessionId === session.id ? (
+                      <form onSubmit={handleRename} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
+                        <Input
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          className="h-6 text-sm"
+                          autoFocus
+                        />
+                        <Button type="submit" size="icon" variant="ghost" className="h-6 w-6">
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="font-medium truncate">
+                          {session.name || getFirstMessage(session.messages)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(session.lastUpdated, 'MMM d, h:mm a')}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                {editingSessionId !== session.id && showActions && (
+                  <div className="flex gap-1 opacity-100 transition-opacity duration-200">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-6 w-6 hover:bg-sidebar-accent/80",
+                        session.favorite && "text-yellow-500"
+                      )}
+                      onClick={(e) => handleToggleFavorite(e, session.id)}
+                      title="Toggle favorite"
+                      aria-label="Toggle favorite"
+                    >
+                      <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
                     </Button>
-                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={cancelEditing}>
-                      <X className="h-4 w-4" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-sidebar-accent/80"
+                      onClick={(e) => startEditing(e, session)}
+                      title="Rename chat"
+                      aria-label="Rename chat"
+                    >
+                      <Pencil className="h-3 w-3" />
                     </Button>
-                  </form>
-                ) : (
-                  <>
-                    <div className="font-medium truncate">
-                      {session.name || getFirstMessage(session.messages)}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(session.lastUpdated, 'MMM d, h:mm a')}
-                    </div>
-                  </>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      onClick={(e) => handleDelete(e, session.id)}
+                      title="Delete chat"
+                      aria-label="Delete chat"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
               </div>
-              {editingSessionId !== session.id && (
-                <div className={cn(
-                  "absolute right-2 flex gap-1 transition-opacity duration-200",
-                  session.id === currentSessionId || isMobile
-                    ? "opacity-100 chat-actions-visible" 
-                    : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 chat-actions-visible"
-                )}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "h-6 w-6",
-                      session.favorite && "text-yellow-500 opacity-100"
-                    )}
-                    onClick={(e) => handleToggleFavorite(e, session.id)}
-                    title="Toggle favorite"
-                    aria-label="Toggle favorite"
-                  >
-                    <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={(e) => startEditing(e, session)}
-                    title="Rename chat"
-                    aria-label="Rename chat"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground"
-                    onClick={(e) => handleDelete(e, session.id)}
-                    title="Delete chat"
-                    aria-label="Delete chat"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </ScrollArea>
     </div>
