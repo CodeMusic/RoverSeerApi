@@ -49,10 +49,11 @@ export const ComingSoonPanel = ({ tab, onClose }: ComingSoonPanelProps) => {
             "Semantic query processing"
           ]
         };
-      case "agents":
+      case "task-musai":
+      case "agents": // Keep for backward compatibility
         return {
           icon: Bot,
-          title: "AI Agents",
+          title: "TaskMusai",
           subtitle: "Autonomous Task Performers",
           description: "Deploy specialized AI agents that can perform complex tasks and workflows autonomously on your behalf.",
           features: [

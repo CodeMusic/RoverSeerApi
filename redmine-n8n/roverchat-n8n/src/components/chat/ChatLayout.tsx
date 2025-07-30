@@ -6,6 +6,7 @@ import { NavigationBar } from "@/components/common/NavigationBar";
 import { SettingsPanel } from "@/components/chat/SettingsPanel";
 import { ComingSoonPanel } from "@/components/chat/ComingSoonPanel";
 import { SearchLayout } from "@/components/search/SearchLayout";
+import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
 import { SignupPrompt } from "@/components/SignupPrompt";
 import { ChatSession } from "@/types/chat";
 import { useState, useCallback } from "react";
@@ -129,9 +130,11 @@ export const ChatLayout = ({
         return <SettingsPanel onClose={handleCloseSettings} />;
       case "musai-search":
         return <SearchLayout onClose={handleCloseComingSoon} />;
+      case "code-musai":
+        return <CodeMusaiLayout onClose={handleCloseComingSoon} />;
       case "emergent-narrative":
       case "musai-university":
-      case "agents":
+      case "task-musai":
         return <ComingSoonPanel tab={currentTab} onClose={handleCloseComingSoon} />;
       case "chat":
       default:

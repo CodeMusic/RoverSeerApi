@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings } from "lucide-react";
+import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -28,6 +28,25 @@ export const NavigationBar = ({
       available: true,
     },
     {
+      id: "musai-search",
+      icon: Search,
+      label: "Musai Search",
+      available: true,
+    },
+    {
+      id: "code-musai",
+      icon: Code,
+      label: "CodeMusai",
+      available: true,
+    },
+    {
+      id: "task-musai",
+      icon: Bot,
+      label: "TaskMusai",
+      available: true,
+      comingSoon: true,
+    },
+    {
       id: "emergent-narrative",
       icon: Theater,
       label: "Emergent Narrative",
@@ -38,19 +57,6 @@ export const NavigationBar = ({
       id: "musai-university",
       icon: GraduationCap,
       label: "Musai University",
-      available: true,
-      comingSoon: true,
-    },
-    {
-      id: "musai-search",
-      icon: Search,
-      label: "Musai Search",
-      available: true,
-    },
-    {
-      id: "agents",
-      icon: Bot,
-      label: "Agents",
       available: true,
       comingSoon: true,
     },
