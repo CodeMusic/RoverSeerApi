@@ -46,12 +46,23 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     setCurrentQuery(query);
 
     try {
+      const startTime = Date.now();
       // Create timeout controller with configured search timeout
-      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST);
+      // Temporarily increase timeout for debugging and try without signal
+      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST * 2); // Double the timeout for testing
       
       console.log(`Starting search with ${formatTimeout(timeout)} timeout`);
+      console.log(`Search query: "${query}"`);
+      console.log(`Request timestamp: ${new Date().toISOString()}`);
+      
+      // Manual timeout check as backup
+      let manualTimeoutId: NodeJS.Timeout;
+      manualTimeoutId = setTimeout(() => {
+        console.log(`Manual timeout check: ${Date.now() - startTime}ms elapsed`);
+      }, 60000); // Log at 1 minute
       
       // Use the actual n8n musai_search webhook
+      // Try without signal first to see if that's the issue
       const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
         method: 'POST',
         headers: {
@@ -62,19 +73,26 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
           sessionId: Date.now().toString(),
           timestamp: Date.now()
         }),
-        signal,
+        // signal, // Temporarily removed to test if this is causing the issue
       });
       
-      cleanup(); // Clear timeout if request completes
-
+      console.log(`Fetch completed, status: ${response.status}`);
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
+      console.log(`Starting to parse response JSON...`);
       const responseData = await response.json();
+      console.log(`JSON parsing completed`);
+      
+      cleanup(); // Clear timeout after response is fully processed
+      clearTimeout(manualTimeoutId); // Clear manual timeout check
       
       // Log the response to understand the structure from your n8n backend
-      console.log("Search response from n8n:", responseData);
+      console.log("Search response received from n8n:", responseData);
+      console.log(`Response timestamp: ${new Date().toISOString()}`);
+      console.log(`Total request time: ${Date.now() - startTime}ms`);
       
       // Process the response from n8n - handle your specific format
       const results = Array.isArray(responseData) ? responseData : [responseData];
@@ -110,7 +128,7 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           errorTitle = "Search Timeout";
-          errorMessage = `Your search for "${query}" took too long to complete (over ${formatTimeout(TIMEOUTS.SEARCH_REQUEST)}). The n8n workflow might be processing complex requests. Please try again or simplify your query.`;
+          errorMessage = `Your search for "${query}" took too long to complete (over ${formatTimeout(TIMEOUTS.SEARCH_REQUEST)}). The n8n workflow is processing your request but it's taking longer than expected. You can try again or simplify your query.`;
         } else if (error.message.includes('Failed to fetch')) {
           errorTitle = "Connection Error";
           errorMessage = `Unable to connect to the search service. Please check your internet connection and try again.`;
@@ -137,6 +155,7 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       setSearchSessions(prev => [errorSession, ...prev]);
       setCurrentSessionId(sessionId);
     } finally {
+      clearTimeout(manualTimeoutId); // Ensure manual timeout is cleared
       setIsLoading(false);
     }
   }, []);
@@ -374,7 +393,7 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
 
       {/* Main Content Area */}
       <div className={cn(
-        "flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden transition-all duration-300",
+        "flex-1 flex flex-col bg-background h-[100dvh] overflow-auto transition-all duration-300",
         hasSearched && !isMobile ? "ml-0" : "ml-0"
       )}>
         {!hasSearched ? (
