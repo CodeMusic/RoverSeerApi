@@ -45,6 +45,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     setCurrentQuery(query);
 
     try {
+      // Create an AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      
       // Use the actual n8n musai_search webhook
       const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
         method: 'POST',
@@ -56,7 +60,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
           sessionId: Date.now().toString(),
           timestamp: Date.now()
         }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId); // Clear timeout if request completes
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -94,16 +101,32 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     } catch (error) {
       console.error("Search error:", error);
       
+      // Handle different types of errors
+      let errorMessage = `Sorry, there was an error processing your search for "${query}". Please try again.`;
+      let errorTitle = "Search Error";
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorTitle = "Search Timeout";
+          errorMessage = `Your search for "${query}" took too long to complete (over 2 minutes). The n8n workflow might be processing complex requests. Please try again or simplify your query.`;
+        } else if (error.message.includes('Failed to fetch')) {
+          errorTitle = "Connection Error";
+          errorMessage = `Unable to connect to the search service. Please check your internet connection and try again.`;
+        }
+      }
+      
       // Fallback to a simple error result
       const sessionId = Date.now().toString();
       const errorSession: SearchSession = {
         id: sessionId,
         query,
+        intent: 'search',
         results: [{
-          title: "Search Error",
-          content: `Sorry, there was an error processing your search for "${query}". Please try again.`,
+          title: errorTitle,
+          content: errorMessage,
           url: "",
-          snippet: "Error occurred during search"
+          snippet: "Error occurred during search",
+          type: 'search'
         }],
         followUps: [],
         timestamp: Date.now()
@@ -122,6 +145,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     setIsLoading(true);
 
     try {
+      // Create an AbortController for timeout handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      
       // Use the same n8n endpoint for follow-up queries
       const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
         method: 'POST',
@@ -135,7 +162,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
           originalQuery: currentSession.query,
           timestamp: Date.now()
         }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId); // Clear timeout if request completes
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -165,11 +195,22 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     } catch (error) {
       console.error("Follow-up error:", error);
       
+      // Handle different types of errors for follow-ups
+      let errorMessage = `Sorry, there was an error processing your follow-up question "${followUpQuery}". Please try again.`;
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = `Your follow-up question "${followUpQuery}" took too long to complete (over 2 minutes). Please try again or ask a simpler question.`;
+        } else if (error.message.includes('Failed to fetch')) {
+          errorMessage = `Unable to connect to the search service for your follow-up. Please check your internet connection and try again.`;
+        }
+      }
+      
       // Fallback error result
       const errorResult = {
         query: followUpQuery,
         result: {
-          content: `Sorry, there was an error processing your follow-up question "${followUpQuery}". Please try again.`
+          content: errorMessage
         },
         timestamp: Date.now()
       };
