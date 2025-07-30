@@ -1,20 +1,24 @@
-export const FETCH_TIMEOUT = 1800000; // 30 minutes - increased for very long processing
-export const FETCH_TIMEOUT_SHORT = 600000; // 10 minutes timeout for quick operations
+import { TIMEOUTS, createTimeoutController, formatTimeout } from '@/config/timeouts';
+
+// Legacy exports for backward compatibility (now use configured values)
+export const FETCH_TIMEOUT = TIMEOUTS.CHAT_MESSAGE;
+export const FETCH_TIMEOUT_SHORT = TIMEOUTS.API_REQUEST;
 
 export const fetchWithTimeout = async (
   url: string, 
   options: RequestInit,
-  timeout: number = FETCH_TIMEOUT
+  timeout: number = TIMEOUTS.CHAT_MESSAGE
 ) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  const { controller, timeoutId, cleanup, signal } = createTimeoutController(timeout);
+  
+  console.log(`Starting request with ${formatTimeout(timeout)} timeout`);
 
   try {
     const response = await fetch(url, {
       ...options,
-      signal: controller.signal
+      signal
     });
-    clearTimeout(id);
+    cleanup();
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -22,10 +26,10 @@ export const fetchWithTimeout = async (
     
     return response;
   } catch (error) {
-    clearTimeout(id);
+    cleanup();
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        throw new Error('Request timed out after 30 minutes');
+        throw new Error(`Request timed out after ${formatTimeout(timeout)}`);
       }
       // Handle browser-level timeouts
       if (error.message.includes('timeout') || error.message.includes('aborted')) {

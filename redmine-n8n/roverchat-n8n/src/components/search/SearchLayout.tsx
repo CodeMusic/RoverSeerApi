@@ -7,6 +7,7 @@ import { PreSearchView } from "@/components/search/PreSearchView";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu, Search, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TIMEOUTS, createTimeoutController, formatTimeout } from "@/config/timeouts";
 
 interface SearchSession {
   id: string;
@@ -45,9 +46,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     setCurrentQuery(query);
 
     try {
-      // Create an AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      // Create timeout controller with configured search timeout
+      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST);
+      
+      console.log(`Starting search with ${formatTimeout(timeout)} timeout`);
       
       // Use the actual n8n musai_search webhook
       const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
@@ -60,10 +62,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
           sessionId: Date.now().toString(),
           timestamp: Date.now()
         }),
-        signal: controller.signal,
+        signal,
       });
       
-      clearTimeout(timeoutId); // Clear timeout if request completes
+      cleanup(); // Clear timeout if request completes
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -108,7 +110,7 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           errorTitle = "Search Timeout";
-          errorMessage = `Your search for "${query}" took too long to complete (over 2 minutes). The n8n workflow might be processing complex requests. Please try again or simplify your query.`;
+          errorMessage = `Your search for "${query}" took too long to complete (over ${formatTimeout(TIMEOUTS.SEARCH_REQUEST)}). The n8n workflow might be processing complex requests. Please try again or simplify your query.`;
         } else if (error.message.includes('Failed to fetch')) {
           errorTitle = "Connection Error";
           errorMessage = `Unable to connect to the search service. Please check your internet connection and try again.`;
@@ -145,9 +147,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     setIsLoading(true);
 
     try {
-      // Create an AbortController for timeout handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      // Create timeout controller with configured follow-up timeout
+      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_FOLLOWUP);
+      
+      console.log(`Starting follow-up search with ${formatTimeout(timeout)} timeout`);
       
       // Use the same n8n endpoint for follow-up queries
       const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
@@ -162,10 +165,10 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
           originalQuery: currentSession.query,
           timestamp: Date.now()
         }),
-        signal: controller.signal,
+        signal,
       });
       
-      clearTimeout(timeoutId); // Clear timeout if request completes
+      cleanup(); // Clear timeout if request completes
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -200,7 +203,7 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          errorMessage = `Your follow-up question "${followUpQuery}" took too long to complete (over 2 minutes). Please try again or ask a simpler question.`;
+          errorMessage = `Your follow-up question "${followUpQuery}" took too long to complete (over ${formatTimeout(TIMEOUTS.SEARCH_FOLLOWUP)}). Please try again or ask a simpler question.`;
         } else if (error.message.includes('Failed to fetch')) {
           errorMessage = `Unable to connect to the search service for your follow-up. Please check your internet connection and try again.`;
         }
