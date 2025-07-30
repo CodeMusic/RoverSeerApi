@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Download, Plus, ArrowLeft, ExternalLink, Clock, Brain, Link, Cog, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 
 interface SearchResultsProps {
   session: {
@@ -152,9 +153,11 @@ export const SearchResults = ({
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm leading-relaxed">{result.content}</p>
+                <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                  <MarkdownRenderer content={result.content} />
+                </div>
                 {result.snippet && (
-                  <p className="text-xs text-muted-foreground mt-2 italic">
+                  <p className="text-xs text-muted-foreground mt-3 italic border-t pt-2">
                     {result.snippet}
                   </p>
                 )}
@@ -179,7 +182,9 @@ export const SearchResults = ({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm leading-relaxed">{followUp.result.content}</p>
+                  <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                    <MarkdownRenderer content={followUp.result.content} />
+                  </div>
                 </CardContent>
               </Card>
             ))}
