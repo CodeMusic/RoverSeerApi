@@ -67,11 +67,11 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       // Log the response to understand the structure from your n8n backend
       console.log("Search response from n8n:", responseData);
       
-      // Process the response from n8n - now supporting multi-intent
+      // Process the response from n8n - handle your specific format
       const results = Array.isArray(responseData) ? responseData : [responseData];
       
       // Extract intent if provided by backend
-      const intent = responseData.intent || responseData.category || 'search';
+      const intent = responseData.intent || responseData.category || 'llm';
       
       const sessionId = Date.now().toString();
       const newSession: SearchSession = {
@@ -79,8 +79,8 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
         query,
         intent, // Add intent to session
         results: results.map(result => ({
-          title: result.title || `${intent.charAt(0).toUpperCase() + intent.slice(1)} Result for: ${query}`,
-          content: result.content || result.response || result.answer || "No content available",
+          title: result.title || `AI Response for: ${query}`,
+          content: result.text || result.content || result.response || result.answer || "No content available",
           url: result.url || result.source || "",
           snippet: result.snippet || result.summary || "",
           type: intent // Add type to individual results
@@ -143,10 +143,14 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
 
       const responseData = await response.json();
       
+      // Handle the same response format for follow-ups
+      const results = Array.isArray(responseData) ? responseData : [responseData];
+      const firstResult = results[0] || {};
+      
       const followUpResult = {
         query: followUpQuery,
         result: {
-          content: responseData.content || responseData.response || responseData.answer || "No content available"
+          content: firstResult.text || firstResult.content || firstResult.response || firstResult.answer || "No content available"
         },
         timestamp: Date.now()
       };
@@ -279,6 +283,14 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
     }
   }, [searchSessions]);
 
+  const handleDeleteSession = useCallback((sessionId: string) => {
+    setSearchSessions(prev => prev.filter(session => session.id !== sessionId));
+    // If we're deleting the current session, reset to no selection
+    if (currentSessionId === sessionId) {
+      setCurrentSessionId(null);
+    }
+  }, [currentSessionId]);
+
   const handleExportSession = useCallback(() => {
     if (!currentSession) return;
 
@@ -311,6 +323,7 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
             onSessionSelect={handleSessionSelect}
             onNewSearch={handleNewSearch}
             onClose={onClose}
+            onDeleteSession={handleDeleteSession}
           />
         </div>
       )}

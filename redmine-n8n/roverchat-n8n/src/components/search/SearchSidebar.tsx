@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Clock, ArrowLeft, Brain, Link, Cog, Globe } from "lucide-react";
+import { Search, Plus, Clock, ArrowLeft, Brain, Link, Cog, Globe, Trash2, MoreHorizontal } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface SearchSession {
   id: string;
@@ -24,6 +25,7 @@ interface SearchSidebarProps {
   onSessionSelect: (sessionId: string) => void;
   onNewSearch: () => void;
   onClose: () => void;
+  onDeleteSession?: (sessionId: string) => void;
 }
 
 export const SearchSidebar = ({
@@ -33,7 +35,10 @@ export const SearchSidebar = ({
   onSessionSelect,
   onNewSearch,
   onClose,
+  onDeleteSession,
 }: SearchSidebarProps) => {
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
+
   const getIntentIcon = (intent?: string) => {
     switch (intent) {
       case 'search':
@@ -46,6 +51,13 @@ export const SearchSidebar = ({
         return Cog;
       default:
         return Search;
+    }
+  };
+
+  const handleDelete = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (onDeleteSession) {
+      onDeleteSession(sessionId);
     }
   };
   return (
@@ -85,49 +97,77 @@ export const SearchSidebar = ({
               No search history yet
             </div>
           ) : (
-            sessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => onSessionSelect(session.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
-                  "flex items-center gap-3 text-sm",
-                  session.id === currentSessionId 
-                    ? "bg-sidebar-accent border border-border/50 shadow-sm" 
-                    : "hover:bg-sidebar-accent/50 border border-transparent hover:border-border/30"
-                )}
-                tabIndex={0}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {(() => {
-                    const IconComponent = getIntentIcon(session.intent);
-                    return (
-                      <IconComponent className={cn(
-                        "w-4 h-4 flex-shrink-0 transition-colors duration-200",
-                        session.id === currentSessionId 
-                          ? "text-primary" 
-                          : "text-muted-foreground/60 group-hover:text-muted-foreground"
-                      )} />
-                    );
-                  })()}
-                  <div className="truncate flex-1">
-                    <div className="font-medium truncate">
-                      {session.query}
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {format(session.timestamp, 'MMM d, h:mm a')}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {session.results.length} result{session.results.length !== 1 ? 's' : ''}
-                      {session.followUps.length > 0 && (
-                        <span> • {session.followUps.length} follow-up{session.followUps.length !== 1 ? 's' : ''}</span>
-                      )}
+            sessions.map((session) => {
+              const isActive = session.id === currentSessionId;
+              const isHovered = hoveredSessionId === session.id;
+              const showActions = isActive || isHovered;
+
+              return (
+                <div
+                  key={session.id}
+                  onClick={() => onSessionSelect(session.id)}
+                  onMouseEnter={() => setHoveredSessionId(session.id)}
+                  onMouseLeave={() => setHoveredSessionId(null)}
+                  className={cn(
+                    "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
+                    "flex items-center gap-3 text-sm",
+                    isActive 
+                      ? "bg-sidebar-accent border border-border/50 shadow-sm" 
+                      : isHovered
+                        ? "bg-sidebar-accent/70 border border-border/40 shadow-sm"
+                        : "hover:bg-sidebar-accent/50 border border-transparent hover:border-border/30"
+                  )}
+                  tabIndex={0}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {(() => {
+                      const IconComponent = getIntentIcon(session.intent);
+                      return (
+                        <IconComponent className={cn(
+                          "w-4 h-4 flex-shrink-0 transition-colors duration-200",
+                          isActive 
+                            ? "text-primary" 
+                            : "text-muted-foreground/60 group-hover:text-muted-foreground"
+                        )} />
+                      );
+                    })()}
+                    <div className="truncate flex-1 min-w-0 pr-2">
+                      <div className="font-medium truncate">
+                        {session.query}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">
+                          {format(session.timestamp, 'MMM d, h:mm a')}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {session.results.length} result{session.results.length !== 1 ? 's' : ''}
+                        {session.followUps.length > 0 && (
+                          <span> • {session.followUps.length} follow-up{session.followUps.length !== 1 ? 's' : ''}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Action Buttons - Always reserve space */}
+                  <div className="flex gap-1 flex-shrink-0 w-8 justify-end">
+                    {showActions && onDeleteSession && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/20 focus:text-destructive transition-all duration-200"
+                        onClick={(e) => handleDelete(e, session.id)}
+                        title="Delete search"
+                        aria-label="Delete search"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </ScrollArea>

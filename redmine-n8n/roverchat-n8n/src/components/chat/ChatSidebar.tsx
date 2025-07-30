@@ -144,6 +144,11 @@ export const ChatSidebar = ({
             const isActive = session.id === currentSessionId;
             const isHovered = hoveredSessionId === session.id;
             const showActions = isActive || isHovered || isMobile;
+            
+            // Debug logging (remove in production)
+            if (isHovered && process.env.NODE_ENV === 'development') {
+              console.log(`Chat session ${session.id} is hovered, showActions: ${showActions}`);
+            }
 
             return (
               <div
@@ -156,7 +161,9 @@ export const ChatSidebar = ({
                   "flex items-center gap-3 text-sm",
                   isActive 
                     ? "bg-sidebar-accent border border-border/50 shadow-sm" 
-                    : "hover:bg-sidebar-accent/50 border border-transparent hover:border-border/30"
+                    : isHovered
+                      ? "bg-sidebar-accent/70 border border-border/40 shadow-sm"
+                      : "hover:bg-sidebar-accent/50 border border-transparent hover:border-border/30"
                 )}
                 tabIndex={0}
               >
@@ -165,7 +172,9 @@ export const ChatSidebar = ({
                     "w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-200",
                     isActive 
                       ? "bg-primary" 
-                      : "bg-muted-foreground/30 group-hover:bg-muted-foreground/50"
+                      : isHovered
+                        ? "bg-primary/60"
+                        : "bg-muted-foreground/30 group-hover:bg-muted-foreground/50"
                   )} />
                   <div className="truncate flex-1">
                     {editingSessionId === session.id ? (
@@ -198,12 +207,12 @@ export const ChatSidebar = ({
 
                 {/* Action Buttons */}
                 {editingSessionId !== session.id && showActions && (
-                  <div className="flex gap-1 opacity-100 transition-opacity duration-200">
+                  <div className="flex gap-1 opacity-100 transition-all duration-200 transform translate-x-0">
                     <Button
                       variant="ghost"
                       size="icon"
                       className={cn(
-                        "h-6 w-6 hover:bg-sidebar-accent/80",
+                        "h-6 w-6 hover:bg-sidebar-accent hover:shadow-sm",
                         session.favorite && "text-yellow-500"
                       )}
                       onClick={(e) => handleToggleFavorite(e, session.id)}
@@ -215,7 +224,7 @@ export const ChatSidebar = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 hover:bg-sidebar-accent/80"
+                      className="h-6 w-6 hover:bg-sidebar-accent hover:shadow-sm"
                       onClick={(e) => startEditing(e, session)}
                       title="Rename chat"
                       aria-label="Rename chat"
@@ -225,7 +234,7 @@ export const ChatSidebar = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive hover:shadow-sm focus:bg-destructive/20 focus:text-destructive"
                       onClick={(e) => handleDelete(e, session.id)}
                       title="Delete chat"
                       aria-label="Delete chat"
