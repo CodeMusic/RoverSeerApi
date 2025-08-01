@@ -1,6 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Code, Sparkles } from "lucide-react";
 import CodeMusaiPlayground from "@/components/code/CodeMusaiPlayground";
 
 interface CodeMusaiLayoutProps {
@@ -27,12 +25,7 @@ export const CodeMusaiLayout = ({ onClose }: CodeMusaiLayoutProps) => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onClose} className="flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-        </div>
+
       </div>
 
       {/* Code Playground Content */}

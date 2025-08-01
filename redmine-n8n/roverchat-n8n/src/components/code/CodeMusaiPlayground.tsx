@@ -11,8 +11,11 @@ import { EditorHeader } from '../playground/EditorHeader';
 import { PlaygroundOutput } from '../playground/PlaygroundOutput';
 import { usePopoutWindow } from '@/hooks/usePopoutWindow';
 import { SUPPORTED_LANGUAGES } from '../playground/constants';
-import { Send, Code, MessageSquare, Sparkles, Bot, User } from 'lucide-react';
+import { Send, Code, MessageSquare, Sparkles, Bot, User, Menu, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DevSessionSidebar } from './DevSessionSidebar';
+import { DevSession, Message } from '@/types/chat';
+import { format } from 'date-fns';
 
 interface ChatMessage {
   id: string;
@@ -32,6 +35,12 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   defaultValue = '// Write your code here\nconsole.log("Hello, World!");',
   onClose
 }) => {
+  // Development Sessions State
+  const [sessions, setSessions] = useState<DevSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // Current Session State
   const [code, setCode] = useState(defaultValue);
   const [language, setLanguage] = useState(defaultLanguage);
   const [output, setOutput] = useState<string>('');
@@ -39,7 +48,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'code' | 'chat'>('code');
+  
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLDivElement>(null);
@@ -48,6 +57,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
 
   const currentLanguage = SUPPORTED_LANGUAGES.find(lang => lang.value === language);
   const canRunInBrowser = currentLanguage?.canRunInBrowser ?? false;
+  const currentSession = sessions.find(s => s.id === currentSessionId);
 
   const { handlePopOutput } = usePopoutWindow(
     isOutputPopped,
@@ -57,18 +67,130 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     output
   );
 
-  useEffect(() => {
-    const savedCode = localStorage.getItem('playground-code');
-    const savedLanguage = localStorage.getItem('playground-language');
+  // Session Management Functions
+  const createNewSession = () => {
+    const newSession: DevSession = {
+      id: Date.now().toString(),
+      name: undefined,
+      type: 'dev',
+      language: 'javascript',
+      code: '// Write your code here\nconsole.log("Hello, World!");',
+      output: '',
+      chatMessages: [],
+      lastUpdated: Date.now(),
+      favorite: false,
+      createdAt: Date.now(),
+    };
     
-    if (savedCode) {
-      setCode(savedCode);
-      localStorage.removeItem('playground-code');
+    setSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+    loadSession(newSession);
+  };
+
+  const loadSession = (session: DevSession) => {
+    setCode(session.code);
+    setLanguage(session.language);
+    setOutput(session.output || '');
+    setChatMessages(session.chatMessages.map(msg => ({
+      id: msg.id,
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content,
+      timestamp: new Date(msg.timestamp)
+    })));
+  };
+
+  const saveCurrentSession = () => {
+    if (!currentSessionId) return;
+    
+    setSessions(prev => prev.map(session => 
+      session.id === currentSessionId 
+        ? {
+            ...session,
+            code,
+            language,
+            output,
+            chatMessages: chatMessages.map(msg => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: msg.timestamp.getTime(),
+            })),
+            lastUpdated: Date.now(),
+          }
+        : session
+    ));
+  };
+
+  const handleSessionSelect = (sessionId: string) => {
+    saveCurrentSession();
+    setCurrentSessionId(sessionId);
+    const session = sessions.find(s => s.id === sessionId);
+    if (session) {
+      loadSession(session);
     }
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (sessionId === currentSessionId) {
+      const remainingSessions = sessions.filter(s => s.id !== sessionId);
+      if (remainingSessions.length > 0) {
+        const nextSession = remainingSessions[0];
+        setCurrentSessionId(nextSession.id);
+        loadSession(nextSession);
+      } else {
+        createNewSession();
+      }
+    }
+  };
+
+  const handleRenameSession = (sessionId: string, newName: string) => {
+    setSessions(prev => prev.map(session => 
+      session.id === sessionId 
+        ? { ...session, name: newName, lastUpdated: Date.now() }
+        : session
+    ));
+  };
+
+  const handleToggleFavorite = (sessionId: string) => {
+    setSessions(prev => prev.map(session => 
+      session.id === sessionId 
+        ? { ...session, favorite: !session.favorite, lastUpdated: Date.now() }
+        : session
+    ));
+  };
+
+  useEffect(() => {
+    // Load sessions from localStorage or create default session
+    const savedSessions = localStorage.getItem('dev-sessions');
+    const savedCurrentId = localStorage.getItem('current-dev-session-id');
     
-    if (savedLanguage) {
-      setLanguage(savedLanguage);
-      localStorage.removeItem('playground-language');
+    if (savedSessions) {
+      try {
+        const parsedSessions = JSON.parse(savedSessions);
+        // Migrate old sessions to include type property
+        const migratedSessions = parsedSessions.map((session: any) => ({
+          ...session,
+          type: session.type || 'dev' // Add type if missing
+        }));
+        setSessions(migratedSessions);
+        
+        if (savedCurrentId && migratedSessions.find((s: DevSession) => s.id === savedCurrentId)) {
+          setCurrentSessionId(savedCurrentId);
+          const currentSession = migratedSessions.find((s: DevSession) => s.id === savedCurrentId);
+          if (currentSession) {
+            loadSession(currentSession);
+          }
+        } else if (migratedSessions.length > 0) {
+          setCurrentSessionId(migratedSessions[0].id);
+          loadSession(migratedSessions[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load sessions:', error);
+        createNewSession();
+      }
+    } else {
+      createNewSession();
     }
 
     return () => {
@@ -77,6 +199,28 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
       }
     };
   }, []);
+
+  // Save sessions to localStorage
+  useEffect(() => {
+    if (sessions.length > 0) {
+      localStorage.setItem('dev-sessions', JSON.stringify(sessions));
+    }
+  }, [sessions]);
+
+  useEffect(() => {
+    if (currentSessionId) {
+      localStorage.setItem('current-dev-session-id', currentSessionId);
+    }
+  }, [currentSessionId]);
+
+  // Auto-save current session
+  useEffect(() => {
+    const saveTimer = setTimeout(() => {
+      saveCurrentSession();
+    }, 1000);
+
+    return () => clearTimeout(saveTimer);
+  }, [code, language, output, chatMessages]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -224,63 +368,61 @@ What specific aspect would you like to focus on?`;
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b bg-sidebar/30">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <Code className="w-5 h-5 text-primary flex-shrink-0" />
-            <Sparkles className="w-4 h-4 text-purple-500" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
+      {/* Development Sessions Sidebar */}
+      <DevSessionSidebar
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        isSidebarOpen={isSidebarOpen}
+        onNewSession={createNewSession}
+        onSessionSelect={handleSessionSelect}
+        onDeleteSession={handleDeleteSession}
+        onRenameSession={handleRenameSession}
+        onToggleFavorite={handleToggleFavorite}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-sidebar/30">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              title={`${isSidebarOpen ? 'Hide' : 'Show'} sessions sidebar`}
+              className={cn(isSidebarOpen ? "bg-sidebar-accent" : "")}
+            >
+              <Menu className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Code className="w-5 h-5 text-primary" />
+              <Sparkles className="w-4 h-4 text-purple-500" />
+            </div>
+            <div>
               <h1 className="text-lg font-semibold">CodeMusai's Playground</h1>
-              <div className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                <MessageSquare className="w-3 h-3" />
-                AI-Assisted Development
+              <p className="text-xs text-muted-foreground">
+                {currentSession?.name || `${language} Development`} • {sessions.length} sessions • Sidebar: {isSidebarOpen ? 'Open' : 'Closed'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Side-by-Side Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Code Editor Side */}
+          <div className="flex-1 flex flex-col border-r">
+            <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
+              <div className="flex items-center gap-2">
+                <Code className="w-4 h-4 text-primary" />
+                <span className="font-medium text-sm">Code Editor</span>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Write, run, and develop code with AI assistance
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose} className="flex items-center gap-2">
-              Close
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex border-b">
-        <Button
-          variant={activeTab === 'code' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('code')}
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
-        >
-          <Code className="w-4 h-4 mr-2" />
-          Code Editor
-        </Button>
-        <Button
-          variant={activeTab === 'chat' ? 'default' : 'ghost'}
-          onClick={() => setActiveTab('chat')}
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
-        >
-          <MessageSquare className="w-4 h-4 mr-2" />
-          AI Chat
-        </Button>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === 'code' ? (
-          <Card className="w-full h-full mx-auto bg-card shadow-lg border-0 rounded-none">
-            <CardHeader className="border-b border-border/20">
-              <EditorHeader
-                language={language}
+            <div className="flex-1 overflow-hidden">
+              <Card className="w-full h-full mx-auto bg-card shadow-lg border-0 rounded-none">
+                <CardHeader className="border-b border-border/20">
+                  <EditorHeader
+                    language={language}
                 setLanguage={setLanguage}
                 code={code}
                 onRun={handleRun}
@@ -343,8 +485,18 @@ What specific aspect would you like to focus on?`;
               </ResizablePanelGroup>
             </CardContent>
           </Card>
-        ) : (
-          <div className="flex flex-col h-full">
+        </div>
+      </div>
+
+      {/* AI Chat Side */}
+      <div className="w-96 flex flex-col border-l">
+        <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-primary" />
+            <span className="font-medium text-sm">AI Chat</span>
+          </div>
+        </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {chatMessages.length === 0 ? (
@@ -435,7 +587,8 @@ What specific aspect would you like to focus on?`;
               </div>
             </div>
           </div>
-        )}
+        </div>
+      </div>
       </div>
     </div>
   );

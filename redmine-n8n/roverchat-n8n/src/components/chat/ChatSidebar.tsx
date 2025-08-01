@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ThemeToggle } from "@/components/ThemeToggle";
+
 import { ChatSession } from "@/types/chat";
 import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock } from "lucide-react";
 import { format } from "date-fns";
@@ -98,7 +98,6 @@ export const ChatSidebar = ({
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Library</h2>
-          <ThemeToggle />
         </div>
         
         <Button

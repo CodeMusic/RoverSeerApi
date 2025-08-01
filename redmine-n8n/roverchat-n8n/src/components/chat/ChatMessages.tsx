@@ -5,13 +5,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef, useState } from "react";
 import { MysticalTypingIndicator } from "./MysticalTypingIndicator";
 import { MysticalWaveEffect } from "./MysticalWaveEffect";
+import { PreMusaiPage } from "@/components/common/PreMusaiPage";
 
 interface ChatMessagesProps {
   messages: Message[];
   isTyping?: boolean;
+  onSendMessage?: (message: string) => void;
 }
 
-export const ChatMessages = ({ messages, isTyping = false }: ChatMessagesProps) => {
+export const ChatMessages = ({ messages, isTyping = false, onSendMessage }: ChatMessagesProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [waveTrigger, setWaveTrigger] = useState(false);
   const [lastAssistantMessageId, setLastAssistantMessageId] = useState<string | null>(null);
@@ -53,6 +55,20 @@ export const ChatMessages = ({ messages, isTyping = false }: ChatMessagesProps) 
 
   // Check if dark mode is enabled
   const isDarkMode = document.documentElement.classList.contains('dark');
+
+  // Show PreMusaiPage if no messages
+  if (messages.length === 0 && onSendMessage) {
+    return (
+      <div className="h-full flex flex-col">
+        <PreMusaiPage
+          type="chat"
+          onSubmit={onSendMessage}
+          isLoading={isTyping}
+          className="h-full"
+        />
+      </div>
+    );
+  }
 
   return (
     <>

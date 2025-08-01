@@ -1,46 +1,38 @@
 import { Moon, Sun } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
-export function ThemeToggle() {
-  const [isDark, setIsDark] = useState(() => {
-    // Initialize with system preference or existing class
-    if (typeof window !== 'undefined') {
-      const hasDarkClass = document.documentElement.classList.contains("dark");
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      return hasDarkClass || prefersDark;
-    }
-    return true; // Default to dark mode
-  });
+interface ThemeToggleProps {
+  isExpanded?: boolean;
+}
 
-  useEffect(() => {
-    // Set initial theme class
-    document.documentElement.classList.toggle("dark", isDark);
-  }, []);
+export function ThemeToggle({ isExpanded = true }: ThemeToggleProps) {
+  const { isDark, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    // Sync the UI with the actual theme state
-    const isDarkMode = document.documentElement.classList.contains("dark");
-    if (isDark !== isDarkMode) {
-      setIsDark(isDarkMode);
-    }
-  }, [isDark]);
+  if (!isExpanded) {
+    // Collapsed view - just the switch
+    return (
+      <div className="flex justify-center">
+        <Switch
+          checked={isDark}
+          onCheckedChange={toggleTheme}
+          aria-label="Toggle dark mode"
+          className="scale-90"
+        />
+      </div>
+    );
+  }
 
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    document.documentElement.classList.toggle("dark", newIsDark);
-  };
-
+  // Expanded view - icons + switch, centered
   return (
-    <div className="flex items-center gap-2">
-      <Sun className="h-4 w-4" />
+    <div className="flex items-center justify-center gap-2">
+      <Sun className="h-4 w-4 text-muted-foreground" />
       <Switch
         checked={isDark}
         onCheckedChange={toggleTheme}
         aria-label="Toggle dark mode"
       />
-      <Moon className="h-4 w-4" />
+      <Moon className="h-4 w-4 text-muted-foreground" />
     </div>
   );
 }

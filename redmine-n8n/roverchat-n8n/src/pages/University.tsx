@@ -10,6 +10,7 @@ import { NavigationBar } from '@/components/common/NavigationBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { Lecture, Course, StandaloneLecture } from '@/types/university';
+import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 
 const University = () => {
   const [lectures, setLectures] = useState<any[]>([]);
@@ -235,22 +236,61 @@ const University = () => {
           </Card>
         </div>
 
-        {/* Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="courses" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              Courses
-            </TabsTrigger>
-            <TabsTrigger value="lectures" className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Lectures
-            </TabsTrigger>
-            <TabsTrigger value="standalone" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Standalone
-            </TabsTrigger>
-          </TabsList>
+        {/* Show PreMusaiPage if everything is empty */}
+        {!isLoading && courses.length === 0 && lectures.length === 0 && standaloneLectures.length === 0 ? (
+          <div className="mt-8">
+            <PreMusaiPage
+              type="university"
+              onSubmit={(input) => {
+                // Navigate to course creation with the topic
+                navigate('/university/course/new', { 
+                  state: { 
+                    initialTopic: input,
+                    fromPreMusai: true 
+                  }
+                });
+              }}
+              isLoading={false}
+              quickActions={[
+                {
+                  icon: GraduationCap,
+                  title: "Create Course",
+                  description: "Build a structured learning path",
+                  action: () => navigate('/university/course/new')
+                },
+                {
+                  icon: BookOpen,
+                  title: "Create Lecture",
+                  description: "Design individual lessons",
+                  action: () => navigate('/university/lecture/new')
+                },
+                {
+                  icon: Sparkles,
+                  title: "Standalone Lecture",
+                  description: "Independent learning content",
+                  action: () => navigate('/university/standalone/new')
+                }
+              ]}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Content Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="courses" className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  Courses
+                </TabsTrigger>
+                <TabsTrigger value="lectures" className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Lectures
+                </TabsTrigger>
+                <TabsTrigger value="standalone" className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Standalone
+                </TabsTrigger>
+              </TabsList>
 
           {/* Courses Tab */}
           <TabsContent value="courses" className="space-y-6">
@@ -505,6 +545,8 @@ const University = () => {
             )}
           </TabsContent>
         </Tabs>
+          </>
+        )}
       </div>
     </div>
   );

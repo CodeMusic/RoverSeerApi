@@ -7,6 +7,7 @@ import { SettingsPanel } from "@/components/chat/SettingsPanel";
 import { ComingSoonPanel } from "@/components/chat/ComingSoonPanel";
 import { SearchLayout } from "@/components/search/SearchLayout";
 import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 import { ChatSession } from "@/types/chat";
 import { useState, useCallback } from "react";
@@ -125,12 +126,56 @@ export const ChatLayout = ({
         return <ComingSoonPanel tab={currentTab} onClose={handleCloseComingSoon} />;
       case "chat":
       default:
+        // Check if we should show PreMusaiPage - similar to SearchLayout logic
+        const hasAnyMessages = sessions.some(session => session.messages && session.messages.length > 0);
+        const hasCurrentMessages = currentSession?.messages && currentSession.messages.length > 0;
+        
+        // Show PreMusaiPage if current session has no messages (for new sessions)
+        if (!hasCurrentMessages) {
+          return (
+            <div className="flex-1 min-h-0">
+              <ChatMessages 
+                messages={[]} 
+                isTyping={isTyping}
+                onSendMessage={(message) => onSendMessage(message)}
+              />
+            </div>
+          );
+        }
+        
+        // Show normal chat interface if current session has messages
+        if (hasCurrentMessages) {
+          return (
+            <>
+              <div className="flex-1 min-h-0">
+                <ChatMessages 
+                  messages={currentSession?.messages || []} 
+                  isTyping={isTyping}
+                  onSendMessage={(message) => onSendMessage(message)}
+                />
+              </div>
+              <div className="w-full">
+                <ChatInput
+                  input={input}
+                  isLoading={isLoading}
+                  onInputChange={setInput}
+                  onSend={handleSend}
+                  onImageSelect={handleImageSelect}
+                />
+              </div>
+            </>
+          );
+        }
+        
+        // Show empty state for session without messages but other sessions exist
         return (
           <>
-
-            
             <div className="flex-1 min-h-0">
-              <ChatMessages messages={currentSession?.messages || []} isTyping={isTyping} />
+              <ChatMessages 
+                messages={currentSession?.messages || []} 
+                isTyping={isTyping}
+                onSendMessage={(message) => onSendMessage(message)}
+              />
             </div>
             <div className="w-full">
               <ChatInput
@@ -139,7 +184,6 @@ export const ChatLayout = ({
                 onInputChange={setInput}
                 onSend={handleSend}
                 onImageSelect={handleImageSelect}
-
               />
             </div>
           </>
@@ -157,70 +201,73 @@ export const ChatLayout = ({
         onToggleExpanded={handleToggleExpanded}
       />
 
-      {/* Sidebar with offset for navigation - only show for chat tab */}
-      {currentTab === "chat" && (
-        <div className={cn(
-          "transition-all duration-300",
-          isMobile 
-            ? "ml-12" // Fixed mobile offset for navigation bar
-            : isNavigationExpanded 
-              ? "ml-48" // Desktop: expanded navigation bar
-              : "ml-16"  // Desktop: collapsed navigation bar
-        )}>
-          {isMobile && (
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="fixed top-4 left-16 z-50 p-2 rounded-lg bg-background border shadow-md"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
-
-          <ChatSidebar
-            sessions={sessions}
-            currentSessionId={currentSessionId}
-            isSidebarOpen={isSidebarOpen}
-            onNewChat={handleNewChat}
-            onSessionSelect={handleSessionClick}
-            onDeleteSession={onDeleteSession}
-            onRenameSession={onRenameSession}
-            onToggleFavorite={onToggleFavorite}
-          />
-        </div>
-      )}
-
-      {/* Main Content Area */}
+      {/* Main Layout with offset for navigation */}
       <div className={cn(
-        "flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden transition-all duration-300",
-        currentTab === "chat" 
-          ? isMobile
-            ? "ml-12" // Mobile: navigation bar only
-            : isNavigationExpanded 
-              ? "ml-48" // Desktop: expanded navigation bar offset
-              : "ml-16" // Desktop: collapsed navigation bar offset
-          : currentTab === "musai-search"
-            ? isMobile
-              ? "ml-12" // Mobile: navigation bar offset
-              : isNavigationExpanded
-                ? "ml-48" // Desktop: expanded navigation bar offset  
-                : "ml-16" // Desktop: collapsed navigation bar offset
-            : isMobile
-              ? "ml-12" // Mobile: navigation bar only for other tabs
-              : isNavigationExpanded
-                ? "ml-48" // Desktop: expanded navigation bar for other tabs
-                : "ml-16" // Desktop: collapsed navigation bar for other tabs
+        "flex-1 transition-all duration-300",
+        isMobile 
+          ? "ml-16" // Fixed mobile offset for navigation bar
+          : isNavigationExpanded 
+            ? "ml-52" // Desktop: expanded navigation bar
+            : "ml-20"  // Desktop: collapsed navigation bar
       )}>
-        {renderMainContent()}
+        {currentTab === "chat" ? (
+          <ResizablePanelGroup direction="horizontal" className="h-[100dvh]">
+            {/* Mobile sidebar toggle */}
+            {isMobile && (
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="fixed top-4 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Resizable Sidebar Panel - only show for chat tab */}
+            <ResizablePanel 
+              defaultSize={25} 
+              minSize={20} 
+              maxSize={40}
+              className={cn(
+                "transition-all duration-300",
+                isMobile && !isSidebarOpen ? "hidden" : ""
+              )}
+            >
+              <ChatSidebar
+                sessions={sessions}
+                currentSessionId={currentSessionId}
+                isSidebarOpen={isSidebarOpen}
+                onNewChat={handleNewChat}
+                onSessionSelect={handleSessionClick}
+                onDeleteSession={onDeleteSession}
+                onRenameSession={onRenameSession}
+                onToggleFavorite={onToggleFavorite}
+              />
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            {/* Main Content Panel */}
+            <ResizablePanel defaultSize={75} minSize={60}>
+              <div className="flex flex-col bg-background h-full overflow-hidden">
+                {renderMainContent()}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        ) : (
+          /* Non-chat tabs don't need resizable sidebar */
+          <div className="flex flex-col bg-background h-[100dvh] overflow-hidden">
+            {renderMainContent()}
+          </div>
+        )}
       </div>
 
+      {/* Mobile sidebar overlay */}
       {isMobile && isSidebarOpen && currentTab === "chat" && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
-
-
     </div>
   );
 };

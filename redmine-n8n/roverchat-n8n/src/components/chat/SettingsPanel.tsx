@@ -13,14 +13,9 @@ interface SettingsPanelProps {
 export const SettingsPanel = ({ onClose }: SettingsPanelProps) => {
   return (
     <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">
-      <div className="flex items-center justify-between p-6 border-b">
-        <div className="flex items-center gap-3">
-          <Settings className="w-6 h-6" />
-          <h1 className="text-2xl font-semibold">Settings</h1>
-        </div>
-        <Button variant="ghost" onClick={onClose}>
-          Close
-        </Button>
+      <div className="flex items-center gap-3 p-6 border-b">
+        <Settings className="w-6 h-6" />
+        <h1 className="text-2xl font-semibold">Settings</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">

@@ -3,7 +3,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useEffect } from "react";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Playground from "./pages/Playground";
@@ -18,6 +17,12 @@ import CourseCreationPage from "./pages/CourseCreationPage";
 import CourseSyllabus from "./components/university/CourseSyllabus";
 import NotFound from "./pages/NotFound";
 import { usePageTitle } from "./hooks/usePageTitle";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { MusaiMoodProvider } from "./contexts/MusaiMoodContext";
+import { UserPreferencesProvider } from "./contexts/UserPreferencesContext";
+import { MusaiDevConsole } from "./components/developer/MusaiDevConsole";
+import { SmartRouter } from "./components/routing/SmartRouter";
+import LocalAI from "./pages/LocalAI";
 import { v4 as uuidv4 } from 'uuid';
 
 const queryClient = new QueryClient({
@@ -33,40 +38,45 @@ const queryClient = new QueryClient({
 const AppContent = () => {
   usePageTitle();
 
-  useEffect(() => {
-    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.classList.toggle("dark", isDarkMode);
-  }, []);
-
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/chat" element={<Index />} />
-      <Route path="/playground" element={<Playground />} />
-      <Route path="/code-musai" element={<CodeMusaiPlaygroundPage />} />
-      <Route path="/roverbyte" element={<RoverByte />} />
-      <Route path="/meet-musai" element={<MeetMusai />} />
-      <Route path="/neuroscience" element={<Neuroscience />} />
-      <Route path="/university" element={<University />} />
-      <Route path="/university/new" element={<UniversityNew />} />
-      <Route path="/university/lecture/:id" element={<LectureView />} />
-      <Route path="/university/course/new" element={<CourseCreationPage />} />
-      <Route path="/university/course/:courseId" element={<CourseSyllabus />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <SmartRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/chat" element={<Index />} />
+        <Route path="/playground" element={<Playground />} />
+        <Route path="/code-musai" element={<CodeMusaiPlaygroundPage />} />
+        <Route path="/roverbyte" element={<RoverByte />} />
+        <Route path="/meet-musai" element={<MeetMusai />} />
+        <Route path="/neuroscience" element={<Neuroscience />} />
+        <Route path="/local-ai" element={<LocalAI />} />
+        <Route path="/university" element={<University />} />
+        <Route path="/university/new" element={<UniversityNew />} />
+        <Route path="/university/lecture/:id" element={<LectureView />} />
+        <Route path="/university/course/new" element={<CourseCreationPage />} />
+        <Route path="/university/course/:courseId" element={<CourseSyllabus />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </SmartRouter>
   );
 };
 
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter basename="/chat">
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeProvider>
+        <MusaiMoodProvider>
+          <UserPreferencesProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter basename="/chat">
+                <AppContent />
+              </BrowserRouter>
+              <MusaiDevConsole />
+            </TooltipProvider>
+          </UserPreferencesProvider>
+        </MusaiMoodProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

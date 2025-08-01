@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown } from "lucide-react";
+import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 
 const Landing = () => {
@@ -235,6 +235,15 @@ const Landing = () => {
           >
             <Brain className="w-4 h-4 mr-2" />
             The Neuroscience
+          </Button>
+          
+          <Button
+            onClick={() => navigate("/local-ai")}
+            variant="outline"
+            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 transition-all duration-300"
+          >
+            <Cpu className="w-4 h-4 mr-2" />
+            Local AI Architecture
           </Button>
           
           <Button

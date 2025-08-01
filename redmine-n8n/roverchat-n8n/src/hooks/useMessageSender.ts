@@ -84,6 +84,7 @@ export const useMessageSender = (
           ...(fileData && { imageData: fileData })
         };
 
+        // Don't add automatic welcome message - let PreMusaiPage handle empty sessions
         const newMessages = [...currentMessages, userMessage];
         updateSession(sessionId, newMessages);
         queryClient.setQueryData(['chatSessions', sessionId], newMessages);

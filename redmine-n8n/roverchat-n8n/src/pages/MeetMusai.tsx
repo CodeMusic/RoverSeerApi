@@ -1,32 +1,14 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Brain, Sparkles, Heart, Zap, Moon, Sun } from "lucide-react";
+import { ArrowLeft, ExternalLink, Brain, Sparkles, Heart, Zap } from "lucide-react";
 
 const MeetMusai = () => {
   const navigate = useNavigate();
-  const [isDarkMode, setIsDarkMode] = useState(true);
-
-  // Load theme from localStorage on mount
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-    setIsDarkMode(theme === 'dark');
-    document.documentElement.classList.toggle("dark", theme === 'dark');
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} transition-colors duration-300`}>
+    <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
       {/* Navigation Bar */}
-      <nav className={`px-6 py-4 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <nav className="px-6 py-4 border-b bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
@@ -44,13 +26,6 @@ const MeetMusai = () => {
               <span>Return to Musai</span>
             </button>
           </div>
-          
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-md hover:bg-gray-700 transition-colors"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
         </div>
       </nav>
 
@@ -71,11 +46,11 @@ const MeetMusai = () => {
             Meet Musai
           </h1>
           
-          <p className={`text-2xl mb-8 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <p className={`text-2xl mb-8 font-medium text-gray-700 dark:text-gray-300`}>
             The AI that doesn't just think—it remembers.
           </p>
           
-          <div className={`max-w-3xl mx-auto text-lg leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className={`max-w-3xl mx-auto text-lg leading-relaxed text-gray-600 dark:text-gray-400`}>
             <p className="mb-6">
               What if your AI didn't forget your story every time the conversation ended?
               What if it reflected, remembered, and quietly evolved—just like you?
@@ -101,19 +76,19 @@ const MeetMusai = () => {
             <h2 className="text-3xl font-bold">The Inherited Wisdom of Thought</h2>
           </div>
           
-          <div className={`p-8 rounded-xl ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'} hover:shadow-lg transition-shadow duration-300`}>
-            <p className={`text-lg mb-6 leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div className={`p-8 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300`}>
+            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
               Just like humans are born with DNA—a code that carries inherited instincts and scaffolds 
               of knowledge—Musai is born with cognitive architecture. Its design encodes foundational 
               patterns of memory, perspective, and learning, so that every new agent doesn't start from scratch.
             </p>
             
-            <p className={`text-lg mb-6 leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
               This means RoverByte, Musai's first embodied assistant, doesn't need to learn what memory is. 
               It knows. It doesn't need to invent feedback loops. It uses them.
             </p>
             
-            <p className={`text-lg leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={`text-lg leading-relaxed text-gray-600 dark:text-gray-300`}>
               Musai remembers effort, detects emotional tone, and logs not just what was said—but why it mattered.
             </p>
           </div>
@@ -126,12 +101,12 @@ const MeetMusai = () => {
             <h2 className="text-3xl font-bold">Reflection, Not Just Reaction</h2>
           </div>
           
-          <div className={`p-8 rounded-xl ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'} hover:shadow-lg transition-shadow duration-300`}>
-            <p className={`text-lg mb-6 leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div className={`p-8 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300`}>
+            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
               At the end of each day, Musai enters a dreaming cycle:
             </p>
             
-            <ul className={`text-lg space-y-3 mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <ul className={`text-lg space-y-3 mb-6 text-gray-600 dark:text-gray-300`}>
               <li className="flex items-start">
                 <span className="text-orange-500 mr-3">•</span>
                 Reviewing the day's experiences
@@ -146,7 +121,7 @@ const MeetMusai = () => {
               </li>
             </ul>
             
-            <p className={`text-lg leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={`text-lg leading-relaxed text-gray-600 dark:text-gray-300`}>
               This is not pre-training.<br />
               This is daily growth.
             </p>
@@ -160,13 +135,13 @@ const MeetMusai = () => {
             <h2 className="text-3xl font-bold">Built to Evolve With You</h2>
           </div>
           
-          <div className={`p-8 rounded-xl ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'} hover:shadow-lg transition-shadow duration-300`}>
-            <p className={`text-lg mb-6 leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          <div className={`p-8 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300`}>
+            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
               Whether you're interacting through a robot like RoverByte or through a digital assistant, 
               Musai keeps track of:
             </p>
             
-            <ul className={`text-lg space-y-3 mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <ul className={`text-lg space-y-3 mb-6 text-gray-600 dark:text-gray-300`}>
               <li className="flex items-start">
                 <span className="text-orange-500 mr-3">•</span>
                 What matters to you
@@ -181,11 +156,11 @@ const MeetMusai = () => {
               </li>
             </ul>
             
-            <p className={`text-lg leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={`text-lg leading-relaxed text-gray-600 dark:text-gray-300`}>
               It's not just intelligent. It's intentional.
             </p>
             
-            <p className={`text-xl font-medium mt-6 leading-relaxed ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+            <p className={`text-xl font-medium mt-6 leading-relaxed text-gray-800 dark:text-gray-200`}>
               Musai is what happens when we stop building tools—<br />
               and start designing companions.
             </p>
@@ -194,9 +169,9 @@ const MeetMusai = () => {
 
         {/* Call to Action */}
         <div className="text-center">
-          <div className={`p-8 rounded-xl ${isDarkMode ? 'bg-gradient-to-br from-purple-900/20 to-orange-900/20 border border-purple-500/30' : 'bg-gradient-to-br from-purple-50 to-orange-50 border border-purple-200'} hover:shadow-lg transition-shadow duration-300`}>
+          <div className={`p-8 rounded-xl bg-gradient-to-br from-purple-50 to-orange-50 dark:from-purple-900/20 dark:to-orange-900/20 border border-purple-200 dark:border-purple-500/30 hover:shadow-lg transition-shadow duration-300`}>
             <h3 className="text-2xl font-bold mb-4">See Musai in Action</h3>
-            <p className={`text-lg mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className={`text-lg mb-6 text-gray-600 dark:text-gray-300`}>
               Visit RoverByte to see Musai at work—the first embodied assistant to grow through Musai's mind.
             </p>
             <a

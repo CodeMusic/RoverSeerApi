@@ -12,17 +12,27 @@ interface MusaiShimmerProps {
   children: React.ReactNode;
   className?: string;
   speed?: 'slow' | 'normal' | 'fast';
+  rounded?: 'none' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
 // Reusable Musai Life Effects
-export const MusaiShimmer = ({ children, className, speed = 'normal' }: MusaiShimmerProps) => {
+export const MusaiShimmer = ({ children, className, speed = 'normal', rounded = 'lg' }: MusaiShimmerProps) => {
+  const roundedClasses = {
+    none: '',
+    sm: 'rounded-sm',
+    md: 'rounded-md', 
+    lg: 'rounded-lg',
+    xl: 'rounded-xl',
+    full: 'rounded-full'
+  };
+
   return (
     <div className={cn(
       "relative overflow-hidden",
       className
     )}>
       {/* Enhanced mystical shimmer overlay */}
-      <div className="absolute inset-0 mystical-shimmer rounded-full" />
+      <div className={cn("absolute inset-0 mystical-shimmer", roundedClasses[rounded])} />
       
       {/* Content */}
       <div className="relative z-10">
@@ -44,7 +54,7 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
     <div className={cn(
       "relative flex items-center justify-center rounded-full",
       "bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500",
-      "mystical-glow mystical-float",
+      "mystical-glow logo-gentle-pulse",
       sizeClasses[size],
       className
     )}>
@@ -56,12 +66,12 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
         {/* Eyes */}
         <div className="flex gap-1 mb-0.5">
           <div className={cn(
-            "rounded-full mystical-sparkle",
+            "rounded-full mystical-pulse",
             size === 'sm' ? 'w-1 h-1' : size === 'md' ? 'w-1.5 h-1.5' : 'w-2 h-2',
             isDarkMode ? 'bg-white' : 'bg-white'
           )} />
           <div className={cn(
-            "rounded-full mystical-sparkle",
+            "rounded-full mystical-pulse",
             size === 'sm' ? 'w-1 h-1' : size === 'md' ? 'w-1.5 h-1.5' : 'w-2 h-2',
             isDarkMode ? 'bg-white' : 'bg-white'
           )} style={{ animationDelay: '0.2s' }} />
@@ -105,7 +115,7 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
   return (
     <div className={cn(
       "relative flex items-center justify-center rounded-full",
-      "mystical-glow mystical-float",
+      "mystical-glow logo-gentle-pulse",
       sizeClasses[size],
       className
     )}>
@@ -117,7 +127,7 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
         src={musaiLogoImage} 
         alt="Musai AI Logo"
         className={cn(
-          "relative z-10 object-contain mystical-sparkle",
+          "relative z-10 object-contain logo-color-pulse",
           sizeClasses[size]
         )}
         style={{ filter: 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.5))' }}
@@ -152,7 +162,7 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
 // Combined Custom Musai Logo with Shimmer
 export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false }: MusaiLogoProps) => {
   return (
-    <MusaiShimmer className={className} speed="normal">
+    <MusaiShimmer className={className} speed="normal" rounded="full">
       <MusaiCustomLogo size={size} isDarkMode={isDarkMode} />
     </MusaiShimmer>
   );
@@ -161,7 +171,7 @@ export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false }: Mu
 // Original AI Face Logo (keeping for backward compatibility)
 export const MusaiGeneratedLogo = ({ size = 'md', className, isDarkMode = false }: MusaiLogoProps) => {
   return (
-    <MusaiShimmer className={className} speed="normal">
+    <MusaiShimmer className={className} speed="normal" rounded="full">
       <MusaiLogo size={size} isDarkMode={isDarkMode} />
     </MusaiShimmer>
   );

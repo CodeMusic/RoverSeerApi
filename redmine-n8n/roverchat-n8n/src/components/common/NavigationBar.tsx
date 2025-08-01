@@ -4,7 +4,9 @@ import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code } fr
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
+import { MusaiLifeLogo, MusaiShimmer } from "@/components/effects/MusaiEffects";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { useMusaiMood } from "@/contexts/MusaiMoodContext";
 
 interface NavigationBarProps {
   currentTab: string;
@@ -22,6 +24,7 @@ export const NavigationBar = ({
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { toggleDevConsole } = useMusaiMood();
 
   const navigationItems = [
     {
@@ -90,11 +93,16 @@ export const NavigationBar = ({
         "flex items-center justify-center mb-6",
         isExpanded && !isMobile ? "w-full" : ""
       )}>
-        <MusaiLifeLogo 
-          size={isExpanded && !isMobile ? "lg" : "md"} 
-          isDarkMode={true}
+        <div 
+          onClick={toggleDevConsole}
           className="cursor-pointer hover:scale-110 transition-transform duration-200"
-        />
+          title="Open Musai Developer Console"
+        >
+          <MusaiLifeLogo 
+            size={isExpanded && !isMobile ? "lg" : "md"} 
+            isDarkMode={true}
+          />
+        </div>
         {isExpanded && !isMobile && (
           <div className="ml-3">
             <div className="text-sm font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
@@ -105,6 +113,11 @@ export const NavigationBar = ({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Theme Toggle */}
+      <div className="mb-4 px-2">
+        <ThemeToggle isExpanded={isExpanded && !isMobile} />
       </div>
 
       <div className={cn(
@@ -190,25 +203,27 @@ export const NavigationBar = ({
 
       {/* Expand/Collapse Toggle Button - only show on desktop */}
       {!isMobile && (
-        <Button
-          variant="ghost"
-          className={cn(
-            "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground mt-4",
-            isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl"
-          )}
-          onClick={onToggleExpanded}
-          title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
-        >
-          <div className={cn(
-            "border-2 border-current rounded transition-transform duration-200",
-            isExpanded ? "w-3 h-3 rotate-45" : "w-3 h-3 rotate-0"
-          )} />
-          {isExpanded && (
-            <span className="ml-3 text-sm font-medium">
-              {isExpanded ? "Collapse" : "Expand"}
-            </span>
-          )}
-        </Button>
+        <MusaiShimmer className="mt-4" speed="slow">
+          <Button
+            variant="ghost"
+            className={cn(
+              "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground mystical-glow",
+              isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl"
+            )}
+            onClick={onToggleExpanded}
+            title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            <div className={cn(
+              "border-2 border-current rounded transition-transform duration-200 mystical-pulse",
+              isExpanded ? "w-3 h-3 rotate-45" : "w-3 h-3 rotate-0"
+            )} />
+            {isExpanded && (
+              <span className="ml-3 text-sm font-medium">
+                {isExpanded ? "Collapse" : "Expand"}
+              </span>
+            )}
+          </Button>
+        </MusaiShimmer>
       )}
     </div>
   );

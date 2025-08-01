@@ -121,12 +121,7 @@ export const useChatSessions = () => {
     console.log('Creating new session');
     const newSession: ChatSession = {
       id: uuidv4(),
-      messages: [{
-        id: uuidv4(),
-        content: WELCOME_MESSAGE,
-        role: "assistant",
-        timestamp: Date.now(),
-      }],
+      messages: [], // Start with empty messages to show PreMusaiPage
       createdAt: Date.now(),
       lastUpdated: Date.now(),
     };
