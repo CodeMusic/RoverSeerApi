@@ -162,12 +162,8 @@ export const useChatSessions = () => {
 
       
       if (sessionId === currentSessionId) {
-        if (remainingSessions.length > 0) {
-          setCurrentSessionId(remainingSessions[0].id);
-        } else {
-          // If no sessions remain, clear current session - don't auto-create
-          setCurrentSessionId("");
-        }
+        // Don't auto-select any session - let user choose or show PreMusaiPage
+        setCurrentSessionId("");
       }
       
       return remainingSessions;

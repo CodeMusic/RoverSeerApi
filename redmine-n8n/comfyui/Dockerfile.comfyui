@@ -4,12 +4,17 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git ffmpeg libgl1 libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy app source
+# Set environment variables for CPU/MPS fallback (esp. for Mac M1/M2)
+ENV PYTORCH_ENABLE_MPS_FALLBACK=1
+ENV CUDA_VISIBLE_DEVICES=""
+ENV FORCE_CPU=1
+
+# Copy app source code
 COPY ./src /app
 
 # Install Python dependencies

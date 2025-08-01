@@ -133,11 +133,11 @@ const Landing = () => {
         <div className="mb-8 slide-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full" />
-                </div>
-              </div>
+              <img 
+                src="/src/assets/images/musai_logo.png" 
+                alt="Musai Logo" 
+                className="w-24 h-24 object-contain shadow-lg"
+              />
               <div className="absolute -inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
             </div>
           </div>

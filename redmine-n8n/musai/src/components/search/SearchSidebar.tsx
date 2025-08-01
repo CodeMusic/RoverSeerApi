@@ -22,9 +22,10 @@ interface SearchSidebarProps {
   sessions: SearchSession[];
   currentSessionId: string | null;
   isSidebarOpen: boolean;
+  isCollapsed: boolean;
   onSessionSelect: (sessionId: string) => void;
   onNewSearch: () => void;
-  onClose: () => void;
+  onToggleCollapse: () => void;
   onDeleteSession?: (sessionId: string) => void;
 }
 
@@ -32,9 +33,10 @@ export const SearchSidebar = ({
   sessions,
   currentSessionId,
   isSidebarOpen,
+  isCollapsed,
   onSessionSelect,
   onNewSearch,
-  onClose,
+  onToggleCollapse,
   onDeleteSession,
 }: SearchSidebarProps) => {
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
@@ -73,8 +75,9 @@ export const SearchSidebar = ({
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={onClose}
+            onClick={onToggleCollapse}
             className="flex items-center gap-2"
+            title="Collapse sidebar"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>

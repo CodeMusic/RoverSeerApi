@@ -65,10 +65,8 @@ const Index = () => {
       }
     } else if (location.state?.viewPastChats) {
       // User wants to view past chats
-      // Select the most recent session if available
-      if (sessions.length > 0) {
-        setCurrentSessionId(sessions[sessions.length - 1].id);
-      }
+      // Don't auto-select - let user choose from sidebar
+      // The sidebar will show available sessions for selection
     }
   }, [location.state, sessions, setCurrentSessionId, sendInitialMessage, currentSessionId]);
 

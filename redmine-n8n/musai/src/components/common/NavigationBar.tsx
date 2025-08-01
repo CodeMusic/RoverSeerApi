@@ -123,6 +123,17 @@ export const NavigationBar = ({
         <ThemeToggle isExpanded={isExpanded && !isMobile} />
       </div>
 
+      {/* Visual Separator */}
+      <div className={cn(
+        "mb-4",
+        isExpanded && !isMobile ? "w-full" : "w-8"
+      )}>
+        <div className={cn(
+          "border-t border-border/50",
+          isExpanded && !isMobile ? "mx-2" : "mx-auto"
+        )} />
+      </div>
+
       <div className={cn(
         "flex flex-col flex-1 w-full",
         isExpanded && !isMobile ? "space-y-2 items-center" : "space-y-4 items-center px-3"

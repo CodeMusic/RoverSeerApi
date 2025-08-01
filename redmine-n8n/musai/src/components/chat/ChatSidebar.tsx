@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { ChatSession } from "@/types/chat";
-import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock } from "lucide-react";
+import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -15,23 +15,26 @@ interface ChatSidebarProps {
   sessions: ChatSession[];
   currentSessionId: string;
   isSidebarOpen: boolean;
-
+  isCollapsed?: boolean;
   onNewChat: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
+  onToggleCollapse?: () => void;
 }
 
 export const ChatSidebar = ({
   sessions,
   currentSessionId,
   isSidebarOpen,
+  isCollapsed = false,
   onNewChat,
   onSessionSelect,
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
+  onToggleCollapse,
 }: ChatSidebarProps) => {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -94,6 +97,17 @@ export const ChatSidebar = ({
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Library</h2>
+          {onToggleCollapse && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onToggleCollapse}
+              className="flex items-center gap-2"
+              title="Collapse sidebar"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         
         <Button

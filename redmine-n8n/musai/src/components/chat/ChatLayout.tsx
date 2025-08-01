@@ -49,6 +49,7 @@ export const ChatLayout = ({
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [currentTab, setCurrentTab] = useState(initialTab || "chat");
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
@@ -153,18 +154,16 @@ export const ChatLayout = ({
                 onSendMessage={(message) => onSendMessage(message)}
               />
             </div>
-            {/* Only show ChatInput when we have messages (not showing PreMusaiPage) */}
-            {hasMessages && (
-              <div className="w-full">
-                <ChatInput
-                  input={input}
-                  isLoading={isLoading}
-                  onInputChange={setInput}
-                  onSend={handleSend}
-                  onImageSelect={handleImageSelect}
-                />
-              </div>
-            )}
+            {/* Always show ChatInput when we have a session, regardless of message count */}
+            <div className="w-full">
+              <ChatInput
+                input={input}
+                isLoading={isLoading}
+                onInputChange={setInput}
+                onSend={handleSend}
+                onImageSelect={handleImageSelect}
+              />
+            </div>
           </>
         );
     }
@@ -210,8 +209,19 @@ export const ChatLayout = ({
             </button>
           )}
 
+          {/* Desktop collapse toggle button for chat */}
+          {currentTab === "chat" && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
+            <button
+              onClick={() => setIsSidebarCollapsed(false)}
+              className="fixed top-4 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
+              title="Show chat library"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
+
           {/* Sidebar Panel - only show for chat tab and when sessions exist */}
-          {currentTab === "chat" && sessions.length > 0 && (
+          {currentTab === "chat" && sessions.length > 0 && !isSidebarCollapsed && (
             <>
               <div 
                 className={cn(
@@ -224,11 +234,13 @@ export const ChatLayout = ({
                     sessions={sessions}
                     currentSessionId={currentSessionId}
                     isSidebarOpen={isSidebarOpen}
+                    isCollapsed={isSidebarCollapsed}
                     onNewChat={handleNewChat}
                     onSessionSelect={handleSessionClick}
                     onDeleteSession={onDeleteSession}
                     onRenameSession={onRenameSession}
                     onToggleFavorite={onToggleFavorite}
+                    onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                   />
                 </div>
               </div>

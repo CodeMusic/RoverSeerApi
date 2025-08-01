@@ -35,6 +35,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const isMobile = useIsMobile();
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
@@ -372,10 +373,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         }
       ];
       setSearchSessions(demoSessions);
-      // Don't auto-select any session - let user choose
-      setCurrentSessionId(null);
     }
-    // When previous searches exist, don't auto-select - show selection screen
+    // Show the search sessions by setting hasSearched to true
+    setCurrentSessionId(null);
   }, [searchSessions]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
@@ -405,8 +405,19 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         </button>
       )}
 
+      {/* Desktop collapse toggle button */}
+      {hasSearched && !isMobile && (
+        <button
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
+          title={isSidebarCollapsed ? "Show search history" : "Hide search history"}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
       {/* Search Sidebar - only show when there are search sessions */}
-      {hasSearched && (
+      {hasSearched && !isSidebarCollapsed && (
         <div className={cn(
           "transition-all duration-300",
           isMobile ? "ml-12" : "ml-0"
@@ -415,9 +426,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             sessions={searchSessions}
             currentSessionId={currentSessionId}
             isSidebarOpen={isSidebarOpen}
+            isCollapsed={isSidebarCollapsed}
             onSessionSelect={handleSessionSelect}
             onNewSearch={handleNewSearch}
-            onClose={onClose}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             onDeleteSession={handleDeleteSession}
           />
         </div>
@@ -426,7 +438,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {/* Main Content Area */}
       <div className={cn(
         "flex-1 flex flex-col bg-background h-[100dvh] overflow-auto transition-all duration-300",
-        hasSearched && !isMobile ? "ml-0" : "ml-0"
+        hasSearched && !isMobile && !isSidebarCollapsed ? "ml-0" : "ml-0"
       )}>
         {!hasSearched ? (
           <PreSearchView 
