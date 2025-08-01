@@ -24,9 +24,10 @@ interface SearchSession {
 
 interface SearchLayoutProps {
   onClose: () => void;
+  initialQuery?: string;
 }
 
-export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
+export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const [currentQuery, setCurrentQuery] = useState("");
   const [searchSessions, setSearchSessions] = useState<SearchSession[]>([]);
 
@@ -38,12 +39,18 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
   const hasSearched = currentSessionId !== null;
+  
+  // Track if we've processed the initial query to prevent re-execution
+  const [hasProcessedInitialQuery, setHasProcessedInitialQuery] = useState(false);
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) return;
 
     setIsLoading(true);
     setCurrentQuery(query);
+
+    // Manual timeout check as backup - declare at function level
+    let manualTimeoutId: NodeJS.Timeout;
 
     try {
       const startTime = Date.now();
@@ -55,8 +62,6 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       console.log(`Search query: "${query}"`);
       console.log(`Request timestamp: ${new Date().toISOString()}`);
       
-      // Manual timeout check as backup
-      let manualTimeoutId: NodeJS.Timeout;
       manualTimeoutId = setTimeout(() => {
         console.log(`Manual timeout check: ${Date.now() - startTime}ms elapsed`);
       }, 60000); // Log at 1 minute
@@ -93,6 +98,8 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       console.log("Search response received from n8n:", responseData);
       console.log(`Response timestamp: ${new Date().toISOString()}`);
       console.log(`Total request time: ${Date.now() - startTime}ms`);
+      console.log(`Query sent: "${query}"`);
+      console.log(`Current query state: "${currentQuery}"`);
       
       // Process the response from n8n - handle your specific format
       const results = Array.isArray(responseData) ? responseData : [responseData];
@@ -100,18 +107,33 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       // Extract intent if provided by backend
       const intent = responseData.intent || responseData.category || 'llm';
       
+      // Log each result to debug content mismatch
+      results.forEach((result, index) => {
+        console.log(`Result ${index}:`, {
+          title: result.title,
+          text: result.text,
+          content: result.content,
+          response: result.response,
+          answer: result.answer
+        });
+      });
+      
       const sessionId = Date.now().toString();
       const newSession: SearchSession = {
         id: sessionId,
         query,
         intent, // Add intent to session
-        results: results.map(result => ({
-          title: result.title || `AI Response for: ${query}`,
-          content: result.text || result.content || result.response || result.answer || "No content available",
-          url: result.url || result.source || "",
-          snippet: result.snippet || result.summary || "",
-          type: intent // Add type to individual results
-        })),
+        results: results.map((result, index) => {
+          const content = result.text || result.content || result.response || result.answer || "No content available";
+          console.log(`Mapping result ${index} content:`, content.substring(0, 100) + "...");
+          return {
+            title: result.title || `AI Response for: ${query}`,
+            content,
+            url: result.url || result.source || "",
+            snippet: result.snippet || result.summary || "",
+            type: intent
+          };
+        }),
         followUps: [],
         timestamp: Date.now()
       };
@@ -159,6 +181,15 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
       setIsLoading(false);
     }
   }, []);
+
+  // Handle initial query from navigation - placed after handleSearch declaration
+  useEffect(() => {
+    if (initialQuery && !hasProcessedInitialQuery) {
+      console.log('Auto-executing initial search query:', initialQuery);
+      setHasProcessedInitialQuery(true);
+      handleSearch(initialQuery);
+    }
+  }, [initialQuery, hasProcessedInitialQuery, handleSearch]);
 
   const handleFollowUp = useCallback(async (followUpQuery: string) => {
     if (!currentSession || !followUpQuery.trim()) return;
@@ -257,6 +288,8 @@ export const SearchLayout = ({ onClose }: SearchLayoutProps) => {
   }, [isMobile]);
 
   const handleNewSearch = useCallback(() => {
+    // Clear current session and query to start fresh
+    console.log("Starting new search - clearing current session");
     setCurrentSessionId(null);
     setCurrentQuery("");
   }, []);

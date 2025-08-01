@@ -1,11 +1,12 @@
 
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useCallback } from "react";
 
 const Index = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const hasSentInitialMessage = useRef(false);
   const initialMessageKey = useRef<string | null>(null);
   const {
@@ -13,8 +14,6 @@ const Index = () => {
     currentSessionId,
     isLoading,
     isTyping,
-    hasReachedLimit,
-    isUnlocked,
     createNewSession,
     deleteSession,
     renameSession,
@@ -22,11 +21,8 @@ const Index = () => {
     setCurrentSessionId,
     toggleFavorite,
     getCurrentSession,
-    unlockUser,
     clearAllData,
     debugState,
-    checkLimit,
-    resetInteractionState,
   } = useChatSessions();
 
   // Create a stable callback for sending the initial message
@@ -90,15 +86,14 @@ const Index = () => {
         currentSessionId={currentSessionId}
         isLoading={isLoading}
         isTyping={isTyping}
-        hasReachedLimit={hasReachedLimit}
-        isUnlocked={isUnlocked}
         onNewChat={createNewSession}
         onSessionSelect={setCurrentSessionId}
         onDeleteSession={deleteSession}
         onRenameSession={renameSession}
         onToggleFavorite={toggleFavorite}
         onSendMessage={sendMessage}
-        onUnlock={unlockUser}
+        initialTab={location.state?.switchToTab || (searchParams.get('mode') === 'search' ? 'musai-search' : undefined)}
+        initialQuery={location.state?.initialQuery || searchParams.get('q')}
       />
     </div>
   );

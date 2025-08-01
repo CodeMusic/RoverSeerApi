@@ -14,8 +14,7 @@ interface ChatInputProps {
   onInputChange: (value: string) => void;
   onSend: (e: React.FormEvent, file?: File) => Promise<boolean>;
   onImageSelect?: (file: File) => void;
-  hasReachedLimit?: boolean;
-  isUnlocked?: boolean;
+
 }
 
 export const ChatInput = ({
@@ -24,8 +23,6 @@ export const ChatInput = ({
   onInputChange,
   onSend,
   onImageSelect,
-  hasReachedLimit = false,
-  isUnlocked = false,
 }: ChatInputProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
@@ -105,7 +102,7 @@ export const ChatInput = ({
   };
 
   const isInputEmpty = !input.trim() && !previewImage?.file;
-  const isLimited = hasReachedLimit && !isUnlocked;
+
 
   return (
     <form onSubmit={handleSubmit} className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full px-4 py-2">
@@ -139,9 +136,9 @@ export const ChatInput = ({
             rows={2}
             className={cn(
               "min-h-[24px] w-full resize-none bg-muted/50 dark:bg-muted/20 text-foreground rounded-xl pr-24 pl-12 py-4 focus-visible:ring-1 border-none overflow-y-hidden",
-              isLimited && "opacity-50 cursor-not-allowed"
+              
             )}
-            disabled={isLoading || isLimited}
+            disabled={isLoading}
             style={{
               height: input ? 'auto' : '80px',
               minHeight: '80px',
@@ -153,7 +150,7 @@ export const ChatInput = ({
             {onImageSelect && (
               <ImageUpload 
                 onImageSelect={handleImageSelection}
-                disabled={isLoading || isLimited}
+                disabled={isLoading}
               />
             )}
           </div>
@@ -164,7 +161,7 @@ export const ChatInput = ({
               variant="ghost"
               className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
               onClick={startListening}
-              disabled={isLoading || isLimited}
+              disabled={isLoading}
             >
               <Mic className="h-4 w-4" />
             </Button>
@@ -172,7 +169,7 @@ export const ChatInput = ({
               type="submit" 
               size="icon"
               className="h-8 w-8"
-              disabled={isLoading || isInputEmpty || isLimited}
+              disabled={isLoading || isInputEmpty}
             >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

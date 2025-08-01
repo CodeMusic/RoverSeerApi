@@ -59,3 +59,5 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) =
     </ReactMarkdown>
   );
 };
+
+export default MarkdownRenderer;

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Code, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import CodePlayground from "@/components/CodePlayground";
+import CodeMusaiPlayground from "@/components/code/CodeMusaiPlayground";
 
 interface CodeMusaiLayoutProps {
   onClose: () => void;
@@ -37,7 +37,7 @@ export const CodeMusaiLayout = ({ onClose }: CodeMusaiLayoutProps) => {
 
       {/* Code Playground Content */}
       <div className="flex-1 overflow-hidden">
-        <CodePlayground />
+        <CodeMusaiPlayground onClose={onClose} />
       </div>
     </div>
   );

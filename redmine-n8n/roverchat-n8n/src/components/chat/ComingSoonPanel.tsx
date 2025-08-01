@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Theater, GraduationCap, Search, Bot, ArrowLeft, Sparkles, Zap, BookOpen } from "lucide-react";
+import { Theater, GraduationCap, Search, Bot, Sparkles, Zap, BookOpen } from "lucide-react";
 
 interface ComingSoonPanelProps {
   tab: string;
@@ -87,10 +87,7 @@ export const ComingSoonPanel = ({ tab, onClose }: ComingSoonPanelProps) => {
             <p className="text-sm text-muted-foreground">{tabInfo.subtitle}</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={onClose} className="flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Chat
-        </Button>
+
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6">
@@ -136,10 +133,6 @@ export const ComingSoonPanel = ({ tab, onClose }: ComingSoonPanelProps) => {
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={onClose} className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Chat
-            </Button>
             <Button variant="outline" className="flex items-center gap-2">
               <BookOpen className="w-4 h-4" />
               Learn More

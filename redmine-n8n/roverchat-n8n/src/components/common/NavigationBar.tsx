@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 
 interface NavigationBarProps {
   currentTab: string;
@@ -19,18 +21,19 @@ export const NavigationBar = ({
 }: NavigationBarProps) => {
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const navigationItems = [
     {
       id: "chat",
       icon: MessageSquare,
-      label: "Chat",
+      label: "MusaiChat",
       available: true,
     },
     {
       id: "musai-search",
       icon: Search,
-      label: "Musai Search",
+      label: "MusaiSearch",
       available: true,
     },
     {
@@ -44,21 +47,23 @@ export const NavigationBar = ({
       icon: Bot,
       label: "TaskMusai",
       available: true,
-      comingSoon: true,
+      comingSoon: false,
     },
     {
       id: "emergent-narrative",
       icon: Theater,
-      label: "Emergent Narrative",
+      label: "Narrative",
       available: true,
-      comingSoon: true,
+      comingSoon: false,
     },
     {
       id: "musai-university",
       icon: GraduationCap,
-      label: "Musai University",
+      label: "MusaiU",
       available: true,
-      comingSoon: true,
+      comingSoon: false,
+      isRoute: true,
+      route: "/university",
     },
     {
       id: "settings",
@@ -80,6 +85,28 @@ export const NavigationBar = ({
         "backdrop-blur-sm"
       )}
     >
+      {/* Musai Logo Header */}
+      <div className={cn(
+        "flex items-center justify-center mb-6",
+        isExpanded && !isMobile ? "w-full" : ""
+      )}>
+        <MusaiLifeLogo 
+          size={isExpanded && !isMobile ? "lg" : "md"} 
+          isDarkMode={true}
+          className="cursor-pointer hover:scale-110 transition-transform duration-200"
+        />
+        {isExpanded && !isMobile && (
+          <div className="ml-3">
+            <div className="text-sm font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              MUSAI
+            </div>
+            <div className="text-xs text-muted-foreground">
+              AI Assistant
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className={cn(
         "flex flex-col flex-1 w-full",
         isExpanded && !isMobile ? "space-y-2" : "space-y-4 items-center"
@@ -110,7 +137,11 @@ export const NavigationBar = ({
                 )}
                 onClick={() => {
                   if (item.available) {
-                    onTabChange(item.id);
+                    if (item.isRoute && item.route) {
+                      navigate(item.route);
+                    } else {
+                      onTabChange(item.id);
+                    }
                   }
                 }}
                 disabled={!item.available}

@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings } from "lucide-react";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useNavigate } from "react-router-dom";
 
 interface NavigationBarProps {
   currentTab: string;
@@ -19,6 +20,7 @@ export const NavigationBar = ({
 }: NavigationBarProps) => {
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const navigationItems = [
     {
@@ -39,7 +41,9 @@ export const NavigationBar = ({
       icon: GraduationCap,
       label: "Musai University",
       available: true,
-      comingSoon: true,
+      comingSoon: false,
+      isRoute: true,
+      route: "/university",
     },
     {
       id: "musai-search",
@@ -105,7 +109,11 @@ export const NavigationBar = ({
                 )}
                 onClick={() => {
                   if (item.available) {
-                    onTabChange(item.id);
+                    if (item.isRoute && item.route) {
+                      navigate(item.route);
+                    } else {
+                      onTabChange(item.id);
+                    }
                   }
                 }}
                 disabled={!item.available}

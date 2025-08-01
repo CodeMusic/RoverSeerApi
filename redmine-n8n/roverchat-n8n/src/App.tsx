@@ -7,9 +7,15 @@ import { useEffect } from "react";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Playground from "./pages/Playground";
+import CodeMusaiPlaygroundPage from "./pages/CodeMusaiPlayground";
 import RoverByte from "./pages/RoverByte";
 import MeetMusai from "./pages/MeetMusai";
 import Neuroscience from "./pages/Neuroscience";
+import University from "./pages/University";
+import UniversityNew from "./pages/UniversityNew";
+import LectureView from "./pages/LectureView";
+import CourseCreationPage from "./pages/CourseCreationPage";
+import CourseSyllabus from "./components/university/CourseSyllabus";
 import NotFound from "./pages/NotFound";
 import { usePageTitle } from "./hooks/usePageTitle";
 import { v4 as uuidv4 } from 'uuid';
@@ -37,9 +43,15 @@ const AppContent = () => {
       <Route path="/" element={<Landing />} />
       <Route path="/chat" element={<Index />} />
       <Route path="/playground" element={<Playground />} />
+      <Route path="/code-musai" element={<CodeMusaiPlaygroundPage />} />
       <Route path="/roverbyte" element={<RoverByte />} />
       <Route path="/meet-musai" element={<MeetMusai />} />
       <Route path="/neuroscience" element={<Neuroscience />} />
+      <Route path="/university" element={<University />} />
+      <Route path="/university/new" element={<UniversityNew />} />
+      <Route path="/university/lecture/:id" element={<LectureView />} />
+      <Route path="/university/course/new" element={<CourseCreationPage />} />
+      <Route path="/university/course/:courseId" element={<CourseSyllabus />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

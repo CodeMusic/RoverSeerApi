@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, ArrowLeft, Sparkles, TrendingUp, Clock, Zap } from "lucide-react";
+import { Search, Sparkles, TrendingUp, Clock, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PreSearchViewProps {
@@ -63,10 +63,7 @@ export const PreSearchView = ({ onSearch, isLoading, onClose, onViewPreviousSear
             <p className="text-sm text-muted-foreground">Intelligent Knowledge Discovery</p>
           </div>
         </div>
-        <Button variant="ghost" onClick={onClose} className="flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Chat
-        </Button>
+
       </div>
 
       {/* Main Search Area */}

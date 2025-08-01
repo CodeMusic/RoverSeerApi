@@ -2,14 +2,27 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, History, Sparkles, ExternalLink, User, Brain, Check } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { createNewSession, sessions, hasReachedLimit, isUnlocked } = useChatSessions();
+  const { createNewSession, sessions } = useChatSessions();
   const [isAnimating, setIsAnimating] = useState(false);
   const [message, setMessage] = useState("");
+  const [selectedMode, setSelectedMode] = useState("auto");
+
+  const modeOptions = [
+    { id: "auto", icon: Sparkles, label: "Auto", description: "Let AI decide" },
+    { id: "chat", icon: MessageSquare, label: "Chat", description: "Conversation" },
+    { id: "emergent-narrative", icon: Theater, label: "Emergent Narrative", description: "Coming Soon" },
+    { id: "university", icon: GraduationCap, label: "University", description: "Learning" },
+    { id: "search", icon: Search, label: "Search", description: "Find & Research" },
+    { id: "agents", icon: Bot, label: "Agents", description: "Coming Soon" },
+  ];
+
+  const selectedModeData = modeOptions.find(mode => mode.id === selectedMode) || modeOptions[0];
 
   const handleStartNewChat = async (initialMessage?: string) => {
     setIsAnimating(true);
@@ -36,8 +49,47 @@ const Landing = () => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim()) {
-      handleStartNewChat(message.trim());
+      handleMessageWithMode(message.trim(), selectedMode);
     }
+  };
+
+  const handleMessageWithMode = (messageText: string, mode: string) => {
+    setIsAnimating(true);
+    
+    // Route based on selected mode
+    setTimeout(() => {
+      switch (mode) {
+        case "auto":
+          // For now, auto goes to search until automation is added
+          // Add URL parameter as backup for refresh handling
+          navigate(`/chat?mode=search&q=${encodeURIComponent(messageText)}`, { 
+            state: { switchToTab: "musai-search", initialQuery: messageText } 
+          });
+          break;
+        case "chat":
+          handleStartNewChat(messageText);
+          break;
+        case "university":
+          // Add URL parameter as backup for refresh handling
+          navigate(`/university?topic=${encodeURIComponent(messageText)}`, { 
+            state: { initialQuery: messageText } 
+          });
+          break;
+        case "search":
+          // Add URL parameter as backup for refresh handling
+          navigate(`/chat?mode=search&q=${encodeURIComponent(messageText)}`, { 
+            state: { switchToTab: "musai-search", initialQuery: messageText } 
+          });
+          break;
+        case "emergent-narrative":
+        case "agents":
+          // Coming soon - for now go to chat
+          handleStartNewChat(messageText);
+          break;
+        default:
+          handleStartNewChat(messageText);
+      }
+    }, 300);
   };
 
   const handleViewPastChats = () => {
@@ -94,17 +146,59 @@ const Landing = () => {
         {/* Message Input Form */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 slide-in-up" style={{ animationDelay: '0.4s' }}>
           <form onSubmit={handleSendMessage} className="flex w-full max-w-md gap-2">
+            {/* Mode Selector Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex items-center gap-2 px-3 py-3 h-auto rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 transition-all duration-300"
+                  disabled={isAnimating}
+                >
+                  {(() => {
+                    const SelectedIcon = selectedModeData.icon;
+                    return <SelectedIcon className="w-5 h-5" />;
+                  })()}
+                  <ChevronDown className="w-4 h-4 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                {modeOptions.map((mode) => {
+                  const Icon = mode.icon;
+                  const isComingSoon = mode.id === "emergent-narrative" || mode.id === "agents";
+                  return (
+                    <DropdownMenuItem
+                      key={mode.id}
+                      onClick={() => setSelectedMode(mode.id)}
+                      className={`flex items-center gap-3 p-3 cursor-pointer ${
+                        selectedMode === mode.id ? "bg-purple-500/10" : ""
+                      } ${isComingSoon ? "opacity-60" : ""}`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <div className="flex flex-col">
+                        <span className="font-medium">{mode.label}</span>
+                        <span className="text-xs text-muted-foreground">{mode.description}</span>
+                      </div>
+                      {isComingSoon && (
+                        <span className="ml-auto text-xs text-yellow-600 dark:text-yellow-400">Soon</span>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Input
               type="text"
-              placeholder={hasReachedLimit && !isUnlocked ? "Interaction limit reached" : "Start a new conversation..."}
+              placeholder="Start a new conversation..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              disabled={isAnimating || (hasReachedLimit && !isUnlocked)}
+              disabled={isAnimating}
               className="flex-1 px-4 py-3 text-lg rounded-xl border-2 border-purple-500/30 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
             />
             <Button
               type="submit"
-              disabled={isAnimating || !message.trim() || (hasReachedLimit && !isUnlocked)}
+              disabled={isAnimating || !message.trim()}
               className="group relative overflow-hidden bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
@@ -144,6 +238,15 @@ const Landing = () => {
           </Button>
           
           <Button
+            onClick={() => navigate("/university")}
+            variant="outline"
+            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
+          >
+            <User className="w-4 h-4 mr-2" />
+            🎓 Musai University
+          </Button>
+          
+          <Button
             onClick={() => navigate("/roverbyte")}
             variant="outline"
             className="px-6 py-3 text-base font-medium rounded-xl border-2 border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/10 transition-all duration-300"
@@ -153,25 +256,7 @@ const Landing = () => {
           </Button>
         </div>
 
-        {/* Interaction Limit Warning */}
-        {hasReachedLimit && !isUnlocked && (
-          <div className="mt-4 p-4 bg-muted/50 rounded-xl border border-orange-200 dark:border-orange-800">
-            <p className="text-sm text-muted-foreground">
-              You've reached the free interaction limit. Sign up coming soon to continue chatting!
-            </p>
-          </div>
-        )}
 
-        {/* Unlocked Mode Indicator */}
-        {isUnlocked && (
-          <div className="mt-4 p-4 bg-green-500/10 border border-green-500/20 rounded-xl">
-            <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400">
-              <Check className="w-4 h-4" />
-              <span className="font-medium">Unlocked Mode</span>
-              <span className="text-xs opacity-75">• Unlimited interactions available</span>
-            </div>
-          </div>
-        )}
 
         {/* Subtle Animation Elements */}
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-500/30 rounded-full animate-pulse" />
