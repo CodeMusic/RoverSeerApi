@@ -1,17 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="favicon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Clara - AI Assistant</title>
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- Monaco Editor CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co https://cdn.jsdelivr.net; worker-src blob:; object-src 'none';" />
+    <title>MusaiChat - Reflective AI for Recursive Minds</title>
+    <meta name="description" content="Your adaptive digital muse — bridging raw data and emergent insight through reflective AI for recursive minds." />
+    <meta name="author" content="Jim Martin" />
+    <meta property="og:image" content="/og-image.png" />
+    <script src="/env-config.js"></script>
+    <script>
+      // Set the page title from environment variable with fallback
+      window.addEventListener('load', function() {
+        const title = window.env && window.env.VITE_SITE_TITLE ? window.env.VITE_SITE_TITLE : 'MusaiChat - Reflective AI for Recursive Minds';
+        document.title = title;
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
