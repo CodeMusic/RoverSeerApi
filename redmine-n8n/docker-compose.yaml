@@ -68,16 +68,20 @@ services:
       - ai_net
 
   comfyui:
-    image: ghcr.io/comfyanonymous/comfyui:latest
+    build:
+      context: ./comfyui
+      dockerfile: Dockerfile.comfyui
+    platform: linux/arm64
     container_name: musai_comfyui
     restart: always
     ports:
-      - "8008:8188"  # Map to your /sandbox proxy
+      - "8008:8188"
     volumes:
-      - comfyui_models:/workspace/models
-      - comfyui_output:/workspace/output
+      - ./ai-model-cache/comfyui-models:/app/models
+      - ./ai-model-cache/comfyui-output:/app/output
+      - ./ai-model-cache/comfyui-input:/app/input
     environment:
-      - CLI_ARGS=--listen 0.0.0.0 --port 8188
+      - COMFYUI_ARGS=--listen 0.0.0.0 --port 8188
     networks:
       - ai_net
 
@@ -90,7 +94,7 @@ services:
     ports:
       - "5680:80"  # Only for internal routing; Apache will reverse-proxy
     environment:
-      - VITE_BASE_PATH=/chat
+      - VITE_BASE_PATH=/
       - VITE_N8N_WEBHOOK_URL=https://n8n.codemusic.ca/webhook/codemusai/R0V3RBY73
       - VITE_WELCOME_MESSAGE=Welcome to Musai
       - VITE_SITE_TITLE=Musai
@@ -107,7 +111,7 @@ services:
     ports:
       - "10300:10300"
     volumes:
-      - ./whisper-models:/models
+      - ./ai-model-cache/whisper-models:/models
     command: --model base.en --language en --uri tcp://0.0.0.0:10300
     networks:
       - ai_net
@@ -119,7 +123,7 @@ services:
     ports:
       - "10200:10200"
     volumes:
-      - ./piper-voices:/voices
+      - ./ai-model-cache/piper-voices:/voices
     command: --voice en_US-amy-low --uri tcp://0.0.0.0:10200
     networks:
       - ai_net
@@ -161,8 +165,6 @@ volumes:
   mysql_data:
   redmine_data:
   n8n_data:
-  comfyui_models:
-  comfyui_output:
 
 networks:
   ai_net: 
