@@ -66,9 +66,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         console.log(`Manual timeout check: ${Date.now() - startTime}ms elapsed`);
       }, 60000); // Log at 1 minute
       
-      // Use the actual musai search webhook
+      // Use the actual n8n musai_search webhook
       // Try without signal first to see if that's the issue
-      const response = await fetch('https://musai.codemusic.ca/webhook/musai_search/c0d3musai', {
+      const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,14 +94,14 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       cleanup(); // Clear timeout after response is fully processed
       clearTimeout(manualTimeoutId); // Clear manual timeout check
       
-      // Log the response to understand the structure from your n8n backend
-      console.log("Search response received from n8n:", responseData);
+              // Log the response to understand the structure from your musai backend
+        console.log("Search response received from musai n8n backend:", responseData);
       console.log(`Response timestamp: ${new Date().toISOString()}`);
       console.log(`Total request time: ${Date.now() - startTime}ms`);
       console.log(`Query sent: "${query}"`);
       console.log(`Current query state: "${currentQuery}"`);
       
-      // Process the response from n8n - handle your specific format
+              // Process the response from musai n8n backend - handle your specific format
       const results = Array.isArray(responseData) ? responseData : [responseData];
       
       // Extract intent if provided by backend
@@ -150,7 +150,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           errorTitle = "Search Timeout";
-          errorMessage = `Your search for "${query}" took too long to complete (over ${formatTimeout(TIMEOUTS.SEARCH_REQUEST)}). The n8n workflow is processing your request but it's taking longer than expected. You can try again or simplify your query.`;
+          errorMessage = `Your search for "${query}" took too long to complete (over ${formatTimeout(TIMEOUTS.SEARCH_REQUEST)}). The musai workflow is processing your request but it's taking longer than expected. You can try again or simplify your query.`;
         } else if (error.message.includes('Failed to fetch')) {
           errorTitle = "Connection Error";
           errorMessage = `Unable to connect to the search service. Please check your internet connection and try again.`;
@@ -202,8 +202,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       
       console.log(`Starting follow-up search with ${formatTimeout(timeout)} timeout`);
       
-      // Use the same musai endpoint for follow-up queries
-      const response = await fetch('https://musai.codemusic.ca/webhook/musai_search/c0d3musai', {
+      // Use the same n8n endpoint for follow-up queries
+      const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -29,7 +29,7 @@ console.log('import.meta.env:', {
   VITE_ASSISTANT_NAME: import.meta.env.VITE_ASSISTANT_NAME,
 });
 
-console.log('DEFAULT_WELCOME_MESSAGE:', "Welcome to the chat!.");
+console.log('DEFAULT_WELCOME_MESSAGE:', "Welcome to Musai!.");
 
 const WELCOME_MESSAGE = window.env?.VITE_WELCOME_MESSAGE || import.meta.env.VITE_WELCOME_MESSAGE || "Welcome to the chat!";
 

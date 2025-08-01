@@ -92,7 +92,7 @@ services:
     environment:
       - VITE_BASE_PATH=/chat
       - VITE_N8N_WEBHOOK_URL=https://n8n.codemusic.ca/webhook/codemusai/R0V3RBY73
-      - VITE_WELCOME_MESSAGE=Welcome2Musai
+      - VITE_WELCOME_MESSAGE=Welcome to Musai
       - VITE_SITE_TITLE=Musai
       - VITE_N8N_WEBHOOK_USERNAME=codemusai
       - VITE_N8N_WEBHOOK_SECRET=R0V3RBY73
