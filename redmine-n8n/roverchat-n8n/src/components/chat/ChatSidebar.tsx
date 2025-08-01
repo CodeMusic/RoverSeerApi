@@ -53,10 +53,6 @@ export const ChatSidebar = ({
       return;
     }
     
-    if (sessions.length === 1) {
-      toast.error("Cannot delete the last chat session");
-      return;
-    }
     onDeleteSession(sessionId);
     toast.success("Chat deleted successfully");
   };

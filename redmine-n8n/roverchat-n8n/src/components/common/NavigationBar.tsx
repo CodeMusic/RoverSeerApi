@@ -138,11 +138,12 @@ export const NavigationBar = ({
             >
               <Button
                 variant="ghost"
+                size={isExpanded && !isMobile ? undefined : "icon"}
                 className={cn(
                   "transition-all duration-200 hover:scale-105 relative",
                   isExpanded && !isMobile 
                     ? "w-full justify-start h-11 px-3 rounded-lg" 
-                    : "w-10 h-10 rounded-xl",
+                    : "w-10 h-10 rounded-xl p-0 gap-0",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-lg scale-105"
                     : "hover:bg-sidebar-accent text-muted-foreground hover:text-foreground",
@@ -206,9 +207,10 @@ export const NavigationBar = ({
         <MusaiShimmer className="mt-4" speed="slow">
           <Button
             variant="ghost"
+            size={isExpanded ? undefined : "icon"}
             className={cn(
               "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground mystical-glow",
-              isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl"
+              isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl p-0 gap-0"
             )}
             onClick={onToggleExpanded}
             title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}

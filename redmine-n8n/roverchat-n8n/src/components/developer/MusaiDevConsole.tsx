@@ -26,6 +26,7 @@ export function MusaiDevConsole() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const consoleRef = useRef<HTMLDivElement>(null);
 
   // Auto-focus input when console opens
   useEffect(() => {
@@ -33,6 +34,23 @@ export function MusaiDevConsole() {
       inputRef.current.focus();
     }
   }, [isDevConsoleOpen]);
+
+  // Handle escape key to close console
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDevConsoleOpen) {
+        toggleDevConsole();
+      }
+    };
+
+    if (isDevConsoleOpen) {
+      document.addEventListener('keydown', handleEscapeKey);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isDevConsoleOpen, toggleDevConsole]);
 
   // Auto-scroll to bottom when new entries are added
   useEffect(() => {
@@ -101,12 +119,22 @@ export function MusaiDevConsole() {
     }
   };
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    // Only close if clicking the overlay itself, not the console content
+    if (e.target === e.currentTarget) {
+      toggleDevConsole();
+    }
+  };
+
   if (!isDevConsoleOpen) return null;
 
   return (
     <>
       {/* Matrix-like overlay */}
-      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] transition-all duration-500">
+      <div 
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] transition-all duration-500 cursor-pointer" 
+        onClick={handleOverlayClick}
+      >
         <div className="absolute inset-0 opacity-20 pointer-events-none">
           {/* Matrix rain effect */}
           <div className="matrix-rain">
@@ -133,8 +161,10 @@ export function MusaiDevConsole() {
         {/* Console Window */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[70vh] max-w-4xl">
           <div 
-            className="bg-black/90 border-2 rounded-lg shadow-2xl h-full flex flex-col overflow-hidden"
+            ref={consoleRef}
+            className="bg-black/90 border-2 rounded-lg shadow-2xl h-full flex flex-col overflow-hidden cursor-default"
             style={{ borderColor: accentColor }}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: accentColor }}>

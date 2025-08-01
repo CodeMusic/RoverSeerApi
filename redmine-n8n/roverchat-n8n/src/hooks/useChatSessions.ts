@@ -101,19 +101,21 @@ export const useChatSessions = () => {
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSessions(parsed);
           setCurrentSessionId(parsed[0].id);
-          // Don't check limit immediately on load, only after user interactions
-          console.log('Loaded existing sessions, not checking limit yet');
+          console.log('Loaded existing sessions:', parsed.length);
         } else {
-          console.log('No valid sessions found, creating new session');
-          createNewSession();
+          console.log('No valid sessions found, starting with empty state');
+          setSessions([]);
+          setCurrentSessionId("");
         }
       } else {
-        console.log('No saved sessions, creating new session');
-        createNewSession();
+        console.log('No saved sessions, starting with empty state');
+        setSessions([]);
+        setCurrentSessionId("");
       }
     } catch (error) {
       console.error('Error loading chat sessions:', error);
-      createNewSession();
+      setSessions([]);
+      setCurrentSessionId("");
     }
   }, []); // Load sessions once on mount
 
@@ -160,8 +162,8 @@ export const useChatSessions = () => {
         if (remainingSessions.length > 0) {
           setCurrentSessionId(remainingSessions[0].id);
         } else {
-          // If no sessions remain, create a new one
-          setTimeout(createNewSession, 0);
+          // If no sessions remain, clear current session - don't auto-create
+          setCurrentSessionId("");
         }
       }
       
@@ -186,10 +188,17 @@ export const useChatSessions = () => {
   const sendMessage = async (input: string, file?: File) => {
     console.log('sendMessage called:', { input: input.substring(0, 50) });
 
-    const currentSession = getCurrentSession();
+    let currentSession = getCurrentSession();
+    
+    // If no current session exists, create one automatically when user sends message
     if (!currentSession) {
-      console.error('No current session found');
-      return;
+      console.log('No current session found, creating new one for message');
+      const newSessionId = createNewSession();
+      currentSession = sessions.find(s => s.id === newSessionId);
+      if (!currentSession) {
+        console.error('Failed to create new session');
+        return;
+      }
     }
     
     queryClient.setQueryData(['chatSessions', currentSession.id], currentSession.messages);

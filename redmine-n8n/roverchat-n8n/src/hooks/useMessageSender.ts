@@ -27,6 +27,34 @@ export const useMessageSender = (
     currentMessages: Message[],
     file?: File
   ) => {
+    let testNewFlow = false;  // TODO: remove this
+
+    if (testNewFlow) {
+      // First, immediately add the user message to trigger UI transition
+      console.log('Processing file for message:', file ? {
+        name: file.name,
+        type: file.type,
+        size: file.size
+      } : 'No file');
+
+      const fileData = file ? await prepareFileData(file) : null;
+
+      console.log('File data prepared:', fileData ? 'Successfully processed' : 'No file data');
+
+      const userMessage: Message = {
+        id: uuidv4(),
+        content: input,
+        role: "user",
+        timestamp: Date.now(),
+        ...(fileData && { imageData: fileData })
+      };
+
+      // Add user message immediately to trigger UI transition from PreMusaiPage to chat
+      const newMessages = [...currentMessages, userMessage];
+      updateSession(sessionId, newMessages);
+      queryClient.setQueryData(['chatSessions', sessionId], newMessages);
+    }
+    // Now check webhook configuration for the API call
     const effectiveWebhookUrl = window.env?.VITE_N8N_WEBHOOK_URL || import.meta.env.VITE_N8N_WEBHOOK_URL;
     const username = window.env?.VITE_N8N_WEBHOOK_USERNAME || import.meta.env.VITE_N8N_WEBHOOK_USERNAME;
     const secret = window.env?.VITE_N8N_WEBHOOK_SECRET || import.meta.env.VITE_N8N_WEBHOOK_SECRET;
@@ -65,29 +93,6 @@ export const useMessageSender = (
             duration: 20000,
           });
         }, 1500000); // Show warning after 25 minutes
-
-        console.log('Processing file for message:', file ? {
-          name: file.name,
-          type: file.type,
-          size: file.size
-        } : 'No file');
-
-        const fileData = file ? await prepareFileData(file) : null;
-
-        console.log('File data prepared:', fileData ? 'Successfully processed' : 'No file data');
-
-        const userMessage: Message = {
-          id: uuidv4(),
-          content: input,
-          role: "user",
-          timestamp: Date.now(),
-          ...(fileData && { imageData: fileData })
-        };
-
-        // Don't add automatic welcome message - let PreMusaiPage handle empty sessions
-        const newMessages = [...currentMessages, userMessage];
-        updateSession(sessionId, newMessages);
-        queryClient.setQueryData(['chatSessions', sessionId], newMessages);
 
         const headers: HeadersInit = {
           'Content-Type': 'application/json',
