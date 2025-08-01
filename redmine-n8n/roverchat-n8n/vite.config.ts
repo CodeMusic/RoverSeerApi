@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    allowedHosts: ["musai.codemusic.ca","n8n.codemusic.ca","m2cbook.local", "localhost", "127.0.0.1", "0.0.0.0"],
   },
   plugins: [
     react(),

@@ -100,7 +100,8 @@ export const useChatSessions = () => {
         console.log('Parsed sessions:', parsed);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSessions(parsed);
-          setCurrentSessionId(parsed[0].id);
+          // Don't auto-select any session - let user choose
+          setCurrentSessionId("");
           console.log('Loaded existing sessions:', parsed.length);
         } else {
           console.log('No valid sessions found, starting with empty state');
@@ -123,9 +124,11 @@ export const useChatSessions = () => {
     console.log('Creating new session');
     const newSession: ChatSession = {
       id: uuidv4(),
+      type: 'chat',
       messages: [], // Start with empty messages to show PreMusaiPage
       createdAt: Date.now(),
       lastUpdated: Date.now(),
+      favorite: false
     };
     setSessions(prev => {
       const updatedSessions = [newSession, ...prev];

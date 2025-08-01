@@ -247,12 +247,12 @@ const Landing = () => {
           </Button>
           
           <Button
-            onClick={() => navigate("/university")}
+            onClick={() => navigate("/find-your-muse")}
             variant="outline"
             className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
           >
-            <User className="w-4 h-4 mr-2" />
-            🎓 Musai University
+            <Sparkles className="w-4 h-4 mr-2" />
+            Find Your Muse
           </Button>
           
           <Button

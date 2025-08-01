@@ -10,6 +10,7 @@ import CodeMusaiPlaygroundPage from "./pages/CodeMusaiPlayground";
 import RoverByte from "./pages/RoverByte";
 import MeetMusai from "./pages/MeetMusai";
 import Neuroscience from "./pages/Neuroscience";
+import FindYourMuse from "./pages/FindYourMuse";
 import University from "./pages/University";
 import UniversityNew from "./pages/UniversityNew";
 import LectureView from "./pages/LectureView";
@@ -49,6 +50,7 @@ const AppContent = () => {
         <Route path="/meet-musai" element={<MeetMusai />} />
         <Route path="/neuroscience" element={<Neuroscience />} />
         <Route path="/local-ai" element={<LocalAI />} />
+        <Route path="/find-your-muse" element={<FindYourMuse />} />
         <Route path="/university" element={<University />} />
         <Route path="/university/new" element={<UniversityNew />} />
         <Route path="/university/lecture/:id" element={<LectureView />} />

@@ -14,14 +14,9 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
   useEffect(() => {
     // Only handle root path routing
     if (location.pathname === '/') {
-      if (shouldShowLanding) {
-        // First time visitors or returning after a long time - stay on landing
-        return;
-      } else {
-        // Returning users - redirect to their preferred tool
-        const recommendedRoute = getRecommendedRoute();
-        navigate(recommendedRoute, { replace: true });
-      }
+      // Always show landing page as the main site - don't redirect based on preferences
+      // This ensures home page is always the main entry point
+      return;
     } else {
       // Track tool usage based on current path
       const pathToTool: Record<string, string> = {
@@ -38,7 +33,7 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
         recordToolUsage(tool as any);
       }
     }
-  }, [location.pathname, shouldShowLanding, getRecommendedRoute, recordToolUsage, navigate]);
+  }, [location.pathname, recordToolUsage]);
 
   return <>{children}</>;
 };

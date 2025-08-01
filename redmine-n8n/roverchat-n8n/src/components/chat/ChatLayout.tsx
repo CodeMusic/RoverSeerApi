@@ -7,6 +7,7 @@ import { SettingsPanel } from "@/components/chat/SettingsPanel";
 import { ComingSoonPanel } from "@/components/chat/ComingSoonPanel";
 import { SearchLayout } from "@/components/search/SearchLayout";
 import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
+import { PreMusaiPage } from "@/components/common/PreMusaiPage";
 // import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 import { ChatSession } from "@/types/chat";
@@ -126,7 +127,21 @@ export const ChatLayout = ({
         return <ComingSoonPanel tab={currentTab} onClose={handleCloseComingSoon} />;
       case "chat":
       default:
-        const currentMessages = currentSession?.messages || [];
+        // If no session is selected, show PreMusai screen
+        if (!currentSession) {
+          return (
+            <div className="h-full flex flex-col">
+              <PreMusaiPage
+                type="chat"
+                onSubmit={(message) => onSendMessage(message)}
+                isLoading={isLoading}
+                className="h-full"
+              />
+            </div>
+          );
+        }
+        
+        const currentMessages = currentSession.messages || [];
         const hasMessages = currentMessages.length > 0;
         
         return (

@@ -372,11 +372,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         }
       ];
       setSearchSessions(demoSessions);
-      setCurrentSessionId(demoSessions[0].id);
-    } else {
-      // If searches exist, select the most recent one
-      setCurrentSessionId(searchSessions[0].id);
+      // Don't auto-select any session - let user choose
+      setCurrentSessionId(null);
     }
+    // When previous searches exist, don't auto-select - show selection screen
   }, [searchSessions]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
