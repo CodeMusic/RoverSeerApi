@@ -11,12 +11,13 @@ import { EditorHeader } from '../playground/EditorHeader';
 import { PlaygroundOutput } from '../playground/PlaygroundOutput';
 import { usePopoutWindow } from '@/hooks/usePopoutWindow';
 import { SUPPORTED_LANGUAGES } from '../playground/constants';
-import { Send, Code, MessageSquare, Sparkles, Bot, User, Menu, PlusCircle } from 'lucide-react';
+import { Send, Code, MessageSquare, Sparkles, Bot, User, Menu, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DevSessionSidebar } from './DevSessionSidebar';
 import { DevSession, Message } from '@/types/chat';
 import { format } from 'date-fns';
 import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
+import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 
 interface ChatMessage {
   id: string;
@@ -29,17 +30,33 @@ interface CodeMusaiPlaygroundProps {
   defaultLanguage?: string;
   defaultValue?: string;
   onClose?: () => void;
+  // Session management props
+  sessions?: DevSession[];
+  currentSessionId?: string;
+  onNewSession?: () => void;
+  onSessionSelect?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onRenameSession?: (sessionId: string, newName: string) => void;
+  onToggleFavorite?: (sessionId: string) => void;
+  onUpdateSession?: (sessionId: string, data: Partial<DevSession>) => void;
 }
 
 const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   defaultLanguage = 'javascript',
   defaultValue = '// Write your code here\nconsole.log("Hello, World!");',
-  onClose
+  onClose,
+  sessions = [],
+  currentSessionId = '',
+  onNewSession = () => {},
+  onSessionSelect = () => {},
+  onDeleteSession = () => {},
+  onRenameSession = () => {},
+  onToggleFavorite = () => {},
+  onUpdateSession = () => {}
 }) => {
-  // Development Sessions State
-  const [sessions, setSessions] = useState<DevSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>('');
+  // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(true);
   
   // Current Session State
   const [code, setCode] = useState(defaultValue);
@@ -70,22 +87,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
 
   // Session Management Functions
   const createNewSession = () => {
-    const newSession: DevSession = {
-      id: Date.now().toString(),
-      name: undefined,
-      type: 'dev',
-      language: 'javascript',
-      code: '// Write your code here\nconsole.log("Hello, World!");',
-      output: '',
-      chatMessages: [],
-      lastUpdated: Date.now(),
-      favorite: false,
-      createdAt: Date.now(),
-    };
-    
-    setSessions(prev => [newSession, ...prev]);
-    setCurrentSessionId(newSession.id);
-    loadSession(newSession);
+    onNewSession();
   };
 
   const loadSession = (session: DevSession) => {
@@ -103,28 +105,25 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   const saveCurrentSession = () => {
     if (!currentSessionId) return;
     
-    setSessions(prev => prev.map(session => 
-      session.id === currentSessionId 
-        ? {
-            ...session,
-            code,
-            language,
-            output,
-            chatMessages: chatMessages.map(msg => ({
-              id: msg.id,
-              role: msg.role,
-              content: msg.content,
-              timestamp: msg.timestamp.getTime(),
-            })),
-            lastUpdated: Date.now(),
-          }
-        : session
-    ));
+    const updatedSession: Partial<DevSession> = {
+      code,
+      language,
+      output,
+      chatMessages: chatMessages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp.getTime()
+      })),
+      lastUpdated: Date.now()
+    };
+    
+    onUpdateSession(currentSessionId, updatedSession);
   };
 
   const handleSessionSelect = (sessionId: string) => {
     saveCurrentSession();
-    setCurrentSessionId(sessionId);
+    onSessionSelect(sessionId);
     const session = sessions.find(s => s.id === sessionId);
     if (session) {
       loadSession(session);
@@ -132,141 +131,80 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-    if (sessionId === currentSessionId) {
-      const remainingSessions = sessions.filter(s => s.id !== sessionId);
-      if (remainingSessions.length > 0) {
-        const nextSession = remainingSessions[0];
-        setCurrentSessionId(nextSession.id);
-        loadSession(nextSession);
-      } else {
-        createNewSession();
-      }
-    }
+    onDeleteSession(sessionId);
   };
 
   const handleRenameSession = (sessionId: string, newName: string) => {
-    setSessions(prev => prev.map(session => 
-      session.id === sessionId 
-        ? { ...session, name: newName, lastUpdated: Date.now() }
-        : session
-    ));
+    onRenameSession(sessionId, newName);
   };
 
   const handleToggleFavorite = (sessionId: string) => {
-    setSessions(prev => prev.map(session => 
-      session.id === sessionId 
-        ? { ...session, favorite: !session.favorite, lastUpdated: Date.now() }
-        : session
-    ));
+    onToggleFavorite(sessionId);
   };
 
-  useEffect(() => {
-    // Load sessions from localStorage or create default session
-    const savedSessions = localStorage.getItem('dev-sessions');
-    const savedCurrentId = localStorage.getItem('current-dev-session-id');
-    
-    if (savedSessions) {
-      try {
-        const parsedSessions = JSON.parse(savedSessions);
-        // Migrate old sessions to include type property
-        const migratedSessions = parsedSessions.map((session: any) => ({
-          ...session,
-          type: session.type || 'dev' // Add type if missing
-        }));
-        setSessions(migratedSessions);
-        
-        if (savedCurrentId && migratedSessions.find((s: DevSession) => s.id === savedCurrentId)) {
-          setCurrentSessionId(savedCurrentId);
-          const currentSession = migratedSessions.find((s: DevSession) => s.id === savedCurrentId);
-          if (currentSession) {
-            loadSession(currentSession);
-          }
-        } else if (migratedSessions.length > 0) {
-          setCurrentSessionId(migratedSessions[0].id);
-          loadSession(migratedSessions[0]);
-        }
-      } catch (error) {
-        console.error('Failed to load sessions:', error);
-        createNewSession();
-      }
-    } else {
-      createNewSession();
-    }
-
-    return () => {
-      if (resizeTimeoutRef.current) {
-        clearTimeout(resizeTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Save sessions to localStorage
-  useEffect(() => {
-    if (sessions.length > 0) {
-      localStorage.setItem('dev-sessions', JSON.stringify(sessions));
-    }
-  }, [sessions]);
-
+  // Auto-save current session when code changes
   useEffect(() => {
     if (currentSessionId) {
-      localStorage.setItem('current-dev-session-id', currentSessionId);
+      const timeoutId = setTimeout(saveCurrentSession, 1000);
+      return () => clearTimeout(timeoutId);
     }
-  }, [currentSessionId]);
+  }, [code, language, output, chatMessages, currentSessionId]);
 
-  // Auto-save current session
-  useEffect(() => {
-    const saveTimer = setTimeout(() => {
-      saveCurrentSession();
-    }, 1000);
-
-    return () => clearTimeout(saveTimer);
-  }, [code, language, output, chatMessages]);
-
+  // Auto-scroll chat to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
   const handleRun = async () => {
     try {
-      if (language === 'html') {
+      let result = '';
+      
+      if (language === 'javascript') {
+        const executionResult = await executeJavaScript(code);
+        const outputText = [
+          ...(executionResult.logs || []),
+          ...(executionResult.result !== undefined ? [executionResult.result] : []),
+          ...(executionResult.error ? [`Error: ${executionResult.error}`] : [])
+        ].join('\n');
+        result = outputText;
+      } else if (language === 'html') {
+        const iframe = executeHTML(code);
         if (iframeRef.current) {
-          const iframe = executeHTML(code);
           iframeRef.current.innerHTML = '';
           iframeRef.current.appendChild(iframe);
         }
-        return;
+        result = 'HTML rendered in iframe';
+      } else {
+        result = `Code execution for ${language} is not yet supported in the browser.`;
       }
-
-      const { result, error, logs = [] } = await executeJavaScript(code);
-      const outputText = [
-        ...(logs.length > 0 ? logs : []),
-        ...(result !== undefined ? [result] : []),
-        ...(error ? [`Error: ${error}`] : [])
-      ].join('\n');
       
-      setOutput(outputText);
+      setOutput(result);
+      saveCurrentSession();
       
       toast({
-        description: error ? "Execution failed" : "Code executed successfully",
-        variant: error ? "destructive" : "default",
+        title: "Code executed successfully",
+        description: `Output updated for ${language} code`,
       });
-    } catch (err) {
+    } catch (error) {
+      console.error('Code execution error:', error);
+      setOutput(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
       toast({
-        description: "Failed to execute code",
+        title: "Code execution failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
     }
   };
 
   const handleChatSubmit = async () => {
-    if (!chatInput.trim()) return;
+    if (!chatInput.trim() || isChatLoading) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: chatInput,
-      timestamp: new Date()
+      content: chatInput.trim(),
+      timestamp: new Date(),
     };
 
     setChatMessages(prev => [...prev, userMessage]);
@@ -274,19 +212,27 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     setIsChatLoading(true);
 
     try {
-      // Simulate AI response - in real implementation, this would call your AI API
-      const aiResponse = await simulateAIResponse(chatInput, code, output, language);
-      
+      // Simulate API delay
+      const aiResponse = await simulateAIResponse(
+        userMessage.content,
+        code,
+        output,
+        language
+      );
+
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: aiResponse,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       setChatMessages(prev => [...prev, assistantMessage]);
+      saveCurrentSession();
     } catch (error) {
+      console.error('Chat error:', error);
       toast({
+        title: "Chat error",
         description: "Failed to get AI response",
         variant: "destructive",
       });
@@ -299,57 +245,15 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
 
-    const context = `
-Current Code (${currentLanguage}):
-\`\`\`${currentLanguage}
-${currentCode}
-\`\`\`
+    const responses = [
+      `I can help you with your ${currentLanguage} code! Looking at your current code:\n\n\`\`\`${currentLanguage}\n${currentCode}\n\`\`\`\n\n${userInput.includes('bug') || userInput.includes('error') ? 'I notice you might be having an issue. Let me analyze the code and suggest some improvements.' : 'Here are some suggestions to improve your code:'}\n\n1. **Code Structure**: Consider breaking this into smaller, more manageable functions\n2. **Error Handling**: Add try-catch blocks where appropriate\n3. **Documentation**: Add comments to explain complex logic\n\nWould you like me to help you implement any of these improvements?`,
+      
+      `Great question about your ${currentLanguage} code! Based on what I see:\n\n\`\`\`${currentLanguage}\n${currentCode.substring(0, 200)}${currentCode.length > 200 ? '...' : ''}\n\`\`\`\n\nHere's what I recommend:\n\n- **Performance**: Consider optimizing the algorithm\n- **Readability**: Use more descriptive variable names\n- **Best Practices**: Follow ${currentLanguage} conventions\n\nWould you like me to show you how to implement any of these suggestions?`,
+      
+      `I see you're working with ${currentLanguage}! Your current output shows:\n\n\`\`\`\n${currentOutput || 'No output yet'}\n\`\`\`\n\nTo help you better, could you tell me:\n1. What specific problem are you trying to solve?\n2. Are you getting any error messages?\n3. What's the expected behavior?\n\nThis will help me provide more targeted assistance.`
+    ];
 
-${currentOutput ? `Current Output:\n${currentOutput}\n` : ''}
-
-User Question: ${userInput}
-`;
-
-    // Simple response simulation - replace with actual AI API call
-    if (userInput.toLowerCase().includes('error') || userInput.toLowerCase().includes('fix')) {
-      return `I can see you're having an issue with your code. Let me help you debug this:
-
-1. **Check for syntax errors**: Make sure all brackets, parentheses, and quotes are properly closed.
-2. **Verify variable names**: Ensure all variables are declared before use.
-3. **Check the console output**: Look for any error messages in the output.
-
-Would you like me to suggest specific fixes based on your code?`;
-    } else if (userInput.toLowerCase().includes('optimize') || userInput.toLowerCase().includes('improve')) {
-      return `Here are some ways to optimize your code:
-
-1. **Use more efficient algorithms**: Consider time complexity
-2. **Reduce redundant operations**: Look for repeated calculations
-3. **Use appropriate data structures**: Choose the right structure for your use case
-4. **Add error handling**: Make your code more robust
-
-Would you like me to show you specific optimizations for your current code?`;
-    } else if (userInput.toLowerCase().includes('explain')) {
-      return `Let me explain what your code does:
-
-Your code appears to be a ${currentLanguage} program that ${currentCode.includes('console.log') ? 'outputs text to the console' : 'performs some computation'}.
-
-The main components are:
-- Code structure and logic
-- Output handling
-- Error management
-
-Is there a specific part you'd like me to explain in more detail?`;
-    } else {
-      return `I understand you're working on ${currentLanguage} code. I can help you with:
-
-- **Code review and suggestions**
-- **Debugging assistance**
-- **Performance optimization**
-- **Best practices guidance**
-- **Alternative approaches**
-
-What specific aspect would you like to focus on?`;
-    }
+    return responses[Math.floor(Math.random() * responses.length)];
   };
 
   const handleResize = () => {
@@ -357,7 +261,9 @@ What specific aspect would you like to focus on?`;
       clearTimeout(resizeTimeoutRef.current);
     }
     resizeTimeoutRef.current = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
+      if (outputRef.current) {
+        outputRef.current.scrollTop = outputRef.current.scrollHeight;
+      }
     }, 100);
   };
 
@@ -368,19 +274,64 @@ What specific aspect would you like to focus on?`;
     }
   };
 
+  // Show PreMusaiPage if no sessions exist
+  if (sessions.length === 0) {
+    return (
+      <div className="h-full flex flex-col">
+        <PreMusaiPage
+          type="code"
+          onSubmit={(input) => {
+            // Create a new dev session with the input as initial code
+            createNewSession();
+            // Set the code after a brief delay to ensure session is created
+            setTimeout(() => {
+              setCode(input);
+            }, 100);
+          }}
+          isLoading={false}
+          className="h-full"
+        />
+      </div>
+    );
+  }
+
+  // Show CodeMusai PreMusai interface if no current session
+  if (!currentSession) {
+    return (
+      <div className="h-full flex flex-col">
+        <PreMusaiPage
+          type="code"
+          onSubmit={(input) => {
+            // Create a new dev session with the input as initial code or prompt
+            createNewSession();
+            // Set the code after a brief delay to ensure session is created
+            setTimeout(() => {
+              setCode(input);
+            }, 100);
+          }}
+          isLoading={false}
+          className="h-full"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
       {/* Development Sessions Sidebar */}
-      <DevSessionSidebar
-        sessions={sessions}
-        currentSessionId={currentSessionId}
-        isSidebarOpen={isSidebarOpen}
-        onNewSession={createNewSession}
-        onSessionSelect={handleSessionSelect}
-        onDeleteSession={handleDeleteSession}
-        onRenameSession={handleRenameSession}
-        onToggleFavorite={handleToggleFavorite}
-      />
+      {isSidebarOpen && (
+        <DevSessionSidebar
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          isSidebarOpen={isSidebarOpen}
+          onNewSession={createNewSession}
+          onSessionSelect={handleSessionSelect}
+          onDeleteSession={handleDeleteSession}
+          onRenameSession={handleRenameSession}
+          onToggleFavorite={handleToggleFavorite}
+          onToggleCollapse={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -424,164 +375,198 @@ What specific aspect would you like to focus on?`;
                 <CardHeader className="border-b border-border/20">
                   <EditorHeader
                     language={language}
-                setLanguage={setLanguage}
-                code={code}
-                onRun={handleRun}
-                onPopOutput={handlePopOutput}
-                isOutputPopped={isOutputPopped}
-              />
-            </CardHeader>
-            <CardContent className="p-4 pb-8 h-[calc(100vh-12rem)]">
-              <ResizablePanelGroup 
-                direction="vertical" 
-                className="h-full rounded-md border"
-                onLayout={handleResize}
-                id="playground-panels"
-              >
-                <ResizablePanel 
-                  defaultSize={canRunInBrowser && !isOutputPopped ? 60 : 100}
-                  id="editor-panel"
-                  order={1}
-                >
-                  <div className="h-full">
-                    <Editor
-                      height="100%"
-                      language={language}
-                      value={code}
-                      onChange={(value) => setCode(value || '')}
-                      theme="vs-dark"
-                      options={{
-                        minimap: { enabled: false },
-                        fontSize: 14,
-                        lineNumbers: 'on',
-                        roundedSelection: false,
-                        scrollBeyondLastLine: false,
-                        automaticLayout: true,
-                        padding: { top: 16, bottom: 16 },
-                        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                      }}
-                    />
-                  </div>
-                </ResizablePanel>
-                {canRunInBrowser && !isOutputPopped && (
-                  <>
-                    <ResizableHandle withHandle />
+                    setLanguage={setLanguage}
+                    code={code}
+                    onRun={handleRun}
+                    onPopOutput={handlePopOutput}
+                    isOutputPopped={isOutputPopped}
+                  />
+                </CardHeader>
+                <CardContent className="p-4 pb-8 h-[calc(100vh-12rem)]">
+                  <ResizablePanelGroup 
+                    direction="vertical" 
+                    className="h-full rounded-md border"
+                    onLayout={handleResize}
+                    id="playground-panels"
+                  >
                     <ResizablePanel 
-                      defaultSize={40}
-                      id="output-panel"
-                      order={2}
+                      defaultSize={canRunInBrowser && !isOutputPopped ? 60 : 100}
+                      id="editor-panel"
+                      order={1}
                     >
-                      <div className="h-full flex flex-col">
-                        <PlaygroundOutput
+                      <div className="h-full">
+                        <Editor
+                          height="100%"
                           language={language}
-                          output={output}
-                          code={code}
-                          iframeRef={iframeRef}
-                          outputRef={outputRef}
+                          value={code}
+                          onChange={(value) => setCode(value || '')}
+                          theme="vs-dark"
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 14,
+                            lineNumbers: 'on',
+                            roundedSelection: false,
+                            scrollBeyondLastLine: false,
+                            automaticLayout: true,
+                            padding: { top: 16, bottom: 16 },
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                          }}
                         />
                       </div>
                     </ResizablePanel>
-                  </>
-                )}
-              </ResizablePanelGroup>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* AI Chat Side */}
-      <div className="w-96 flex flex-col border-l">
-        <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-primary" />
-            <span className="font-medium text-sm">AI Chat</span>
-          </div>
-        </div>
-        <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages.length === 0 ? (
-                <div className="text-center py-8">
-                  <Bot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Start a conversation with AI</h3>
-                  <p className="text-muted-foreground">
-                    Ask questions about your code, get help with debugging, or request optimizations.
-                  </p>
-                </div>
-              ) : (
-                chatMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      "flex gap-3",
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    {canRunInBrowser && !isOutputPopped && (
+                      <>
+                        <ResizableHandle withHandle />
+                        <ResizablePanel 
+                          defaultSize={40}
+                          id="output-panel"
+                          order={2}
+                        >
+                          <PlaygroundOutput
+                            output={output}
+                            language={language}
+                            code={code}
+                            iframeRef={iframeRef}
+                            outputRef={outputRef}
+                          />
+                        </ResizablePanel>
+                      </>
                     )}
-                  >
-                    <div
-                      className={cn(
-                        "flex gap-3 max-w-[80%]",
-                        message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                      )}
-                    >
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                        message.role === 'user' 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-muted-foreground'
-                      )}>
-                        {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                      </div>
-                      <div
-                        className={cn(
-                          "rounded-lg px-4 py-2 text-sm",
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-foreground'
-                        )}
-                      >
-                        <div className="whitespace-pre-wrap">{message.content}</div>
-                        <div className="text-xs opacity-70 mt-1">
-                          {message.timestamp.toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-              {isChatLoading && (
-                <div className="flex justify-start">
-                  <MysticalTypingIndicator isDarkMode={false} />
-                </div>
-              )}
-              <div ref={chatEndRef} />
+                  </ResizablePanelGroup>
+                </CardContent>
+              </Card>
             </div>
+          </div>
 
-            {/* Chat Input */}
-            <div className="border-t p-4">
-              <div className="flex gap-2">
-                <Textarea
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder="Ask about your code, request help, or get suggestions... (Cmd/Ctrl + Enter to send)"
-                  className="flex-1 min-h-[60px] resize-none"
-                  disabled={isChatLoading}
-                />
+          {/* AI Chat Side */}
+          {isChatOpen && (
+            <div className="w-96 flex flex-col border-l">
+              <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <span className="font-medium text-sm">AI Chat</span>
+                </div>
                 <Button
-                  onClick={handleChatSubmit}
-                  disabled={!chatInput.trim() || isChatLoading}
-                  className="self-end"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsChatOpen(false)}
+                  title="Hide AI Chat"
                 >
-                  <Send className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Current code and output are automatically shared with AI for context
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Chat Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Bot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Start a conversation with AI</h3>
+                      <p className="text-muted-foreground">
+                        Ask questions about your code, get help with debugging, or request optimizations.
+                      </p>
+                    </div>
+                  ) : (
+                    chatMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={cn(
+                          "flex gap-3",
+                          message.role === 'user' ? 'justify-end' : 'justify-start'
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "flex gap-3 max-w-[80%]",
+                            message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
+                          )}
+                        >
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                            message.role === 'user' 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted text-muted-foreground'
+                          )}>
+                            {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                          </div>
+                          <div
+                            className={cn(
+                              "rounded-lg px-4 py-2 text-sm",
+                              message.role === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-foreground'
+                            )}
+                          >
+                            <div className="whitespace-pre-wrap">{message.content}</div>
+                            <div className="text-xs opacity-70 mt-1">
+                              {message.timestamp.toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {isChatLoading && (
+                    <div className="flex justify-start">
+                      <MysticalTypingIndicator isDarkMode={false} />
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* Chat Input */}
+                <div className="border-t p-4">
+                  <div className="flex gap-2">
+                    <Textarea
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder="Ask about your code, request help, or get suggestions... (Cmd/Ctrl + Enter to send)"
+                      className="flex-1 min-h-[60px] resize-none"
+                      disabled={isChatLoading}
+                    />
+                    <Button
+                      onClick={handleChatSubmit}
+                      disabled={!chatInput.trim() || isChatLoading}
+                      className="self-end"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Current code and output are automatically shared with AI for context
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Chat Toggle Button when chat is closed */}
+          {!isChatOpen && (
+            <div className="absolute right-4 bottom-4">
+              <Button
+                onClick={() => setIsChatOpen(true)}
+                className="rounded-full w-12 h-12 shadow-lg"
+                title="Show AI Chat"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* Sidebar Toggle Button when sidebar is closed */}
+          {!isSidebarOpen && (
+            <div className="absolute left-4 top-4">
+              <Button
+                onClick={() => setIsSidebarOpen(true)}
+                className="rounded-full w-12 h-12 shadow-lg"
+                title="Show Sessions Sidebar"
+              >
+                <Menu className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
-      </div>
       </div>
     </div>
   );

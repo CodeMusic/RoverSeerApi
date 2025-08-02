@@ -150,18 +150,16 @@ const Landing = () => {
             </div>
           </div>
           
-          {(
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
-              {selectedMode === "auto" ? "Musai" :
-               selectedMode === "chat" ? "MusaiChat" :
-               selectedMode === "search" ? "MusaiSearch" :
-               selectedMode === "code" ? "CodeMusai" :
-               selectedMode === "university" ? "Musai University" :
-               selectedMode === "emergent-narrative" ? "Emergent Narrative" :
-               selectedMode === "task" ? "TaskMusai" :
-               "MusaiChat"}
-            </h1>
-          )}
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
+            {selectedMode === "auto" ? "Musai" :
+             selectedMode === "chat" ? "MusaiChat" :
+             selectedMode === "search" ? "MusaiSearch" :
+             selectedMode === "code" ? "CodeMusai" :
+             selectedMode === "university" ? "Musai University" :
+             selectedMode === "emergent-narrative" ? "Emergent Narrative" :
+             selectedMode === "task" ? "TaskMusai" :
+             "MusaiChat"}
+          </h1>
           
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             {selectedMode === "auto" ? "Reflective AI for Recursive Minds" :
@@ -267,16 +265,35 @@ const Landing = () => {
             </Button>
           </form>
 
-          {hasPastChats && (
+          <div className="flex gap-4 items-center">
+            {/* Always visible - Enter App button */}
             <Button
-              onClick={handleViewPastChats}
+              onClick={() => {
+                setIsAnimating(true);
+                setTimeout(() => {
+                  navigate("/chat");
+                }, 300);
+              }}
               disabled={isAnimating}
               variant="outline"
               className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300 shadow-lg"
             >
-              <History className="w-5 h-5" />
+              <ExternalLink className="w-5 h-5 mr-2" />
+              Enter App
             </Button>
-          )}
+
+            {/* Show history button only if there are past chats */}
+            {hasPastChats && (
+              <Button
+                onClick={handleViewPastChats}
+                disabled={isAnimating}
+                variant="outline"
+                className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300 shadow-lg"
+              >
+                <History className="w-5 h-5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Additional Navigation Links */}

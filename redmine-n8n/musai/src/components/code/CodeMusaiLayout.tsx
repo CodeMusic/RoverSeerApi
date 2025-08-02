@@ -1,11 +1,25 @@
 import { Code, Sparkles } from "lucide-react";
 import CodeMusaiPlayground from "@/components/code/CodeMusaiPlayground";
+import { useDevSessions } from "@/hooks/useDevSessions";
 
 interface CodeMusaiLayoutProps {
   onClose: () => void;
 }
 
 export const CodeMusaiLayout = ({ onClose }: CodeMusaiLayoutProps) => {
+  const {
+    sessions,
+    currentSessionId,
+    isLoading,
+    createNewSession,
+    deleteSession,
+    renameSession,
+    toggleFavorite,
+    updateSession,
+    setCurrentSessionId,
+    getCurrentSession
+  } = useDevSessions();
+
   return (
     <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">
       {/* Header */}
@@ -25,12 +39,21 @@ export const CodeMusaiLayout = ({ onClose }: CodeMusaiLayoutProps) => {
             </p>
           </div>
         </div>
-
       </div>
 
       {/* Code Playground Content */}
       <div className="flex-1 overflow-hidden">
-        <CodeMusaiPlayground onClose={onClose} />
+        <CodeMusaiPlayground 
+          onClose={onClose}
+          sessions={sessions}
+          currentSessionId={currentSessionId}
+          onNewSession={createNewSession}
+          onSessionSelect={setCurrentSessionId}
+          onDeleteSession={deleteSession}
+          onRenameSession={renameSession}
+          onToggleFavorite={toggleFavorite}
+          onUpdateSession={updateSession}
+        />
       </div>
     </div>
   );

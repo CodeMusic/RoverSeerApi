@@ -1,5 +1,6 @@
 
 import { useChatSessions } from "@/hooks/useChatSessions";
+import { useNarrativeSessions } from "@/hooks/useNarrativeSessions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useCallback } from "react";
@@ -24,6 +25,19 @@ const Index = () => {
     clearAllData,
     debugState,
   } = useChatSessions();
+
+  const {
+    sessions: narrativeSessions,
+    currentSessionId: narrativeCurrentSessionId,
+    isLoading: narrativeIsLoading,
+    createNewSession: createNewNarrative,
+    deleteSession: deleteNarrative,
+    renameSession: renameNarrative,
+    toggleFavorite: toggleNarrativeFavorite,
+    updateNarrative,
+    setCurrentSessionId: setNarrativeCurrentSessionId,
+    getCurrentSession: getCurrentNarrativeSession,
+  } = useNarrativeSessions();
 
   // Create a stable callback for sending the initial message
   const sendInitialMessage = useCallback((message: string) => {
@@ -92,6 +106,16 @@ const Index = () => {
         onSendMessage={sendMessage}
         initialTab={location.state?.switchToTab || (searchParams.get('mode') === 'search' ? 'musai-search' : undefined)}
         initialQuery={location.state?.initialQuery || searchParams.get('q')}
+        // Narrative props
+        narrativeSessions={narrativeSessions}
+        narrativeCurrentSessionId={narrativeCurrentSessionId}
+        onNewNarrative={createNewNarrative}
+        onUpdateNarrative={updateNarrative}
+        // Pass narrative session handlers
+        onNarrativeSessionSelect={setNarrativeCurrentSessionId}
+        onDeleteNarrativeSession={deleteNarrative}
+        onRenameNarrativeSession={renameNarrative}
+        onToggleNarrativeFavorite={toggleNarrativeFavorite}
       />
     </div>
   );

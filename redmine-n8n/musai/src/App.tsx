@@ -12,7 +12,7 @@ import MeetMusai from "./pages/MeetMusai";
 import Neuroscience from "./pages/Neuroscience";
 import FindYourMuse from "./pages/FindYourMuse";
 import University from "./pages/University";
-import UniversityNew from "./pages/UniversityNew";
+import LectureWizard from "./pages/LectureWizard";
 import LectureView from "./pages/LectureView";
 import CourseCreationPage from "./pages/CourseCreationPage";
 import CourseSyllabus from "./components/university/CourseSyllabus";
@@ -52,7 +52,7 @@ const AppContent = () => {
         <Route path="/local-ai" element={<LocalAI />} />
         <Route path="/find-your-muse" element={<FindYourMuse />} />
         <Route path="/university" element={<University />} />
-        <Route path="/university/new" element={<UniversityNew />} />
+        <Route path="/university/lecture/new" element={<LectureWizard />} />
         <Route path="/university/lecture/:id" element={<LectureView />} />
         <Route path="/university/course/new" element={<CourseCreationPage />} />
         <Route path="/university/course/:courseId" element={<CourseSyllabus />} />

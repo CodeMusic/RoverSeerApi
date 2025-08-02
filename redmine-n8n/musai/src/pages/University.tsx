@@ -3,11 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, BookOpen, Clock, CheckCircle, Download, Menu, GraduationCap, Sparkles } from 'lucide-react';
+import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
-import { NavigationBar } from '@/components/common/NavigationBar';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { UniversityLayout } from '@/components/layouts/UniversityLayout';
 import { cn } from '@/lib/utils';
 import type { Lecture, Course, StandaloneLecture } from '@/types/university';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
@@ -23,7 +22,6 @@ const University = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     loadData();
@@ -90,73 +88,33 @@ const University = () => {
     return Math.round((completedSteps / lecture.steps.length) * 100);
   };
 
-  const handleTabChange = (tab: string) => {
-    // Handle navigation to different sections
-    switch (tab) {
-      case "chat":
-        navigate("/chat");
-        break;
-      case "musai-search":
-        navigate("/chat", { state: { switchToTab: "musai-search" } });
-        break;
-      case "code-musai":
-        navigate("/chat", { state: { switchToTab: "code-musai" } });
-        break;
-      case "musai-university":
-        // Already on university page
-        break;
-      default:
-        // Handle other tabs or coming soon features
-        break;
-    }
-  };
+
 
   if (isLoading) {
     return (
-      <div className={cn(
-        "min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100",
-        "dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900"
-      )}>
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-300">Loading your lectures...</p>
-            </div>
+      <UniversityLayout
+        isSidebarExpanded={isSidebarExpanded}
+        onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-300">Loading your lectures...</p>
           </div>
         </div>
-      </div>
+      </UniversityLayout>
     );
   }
 
   return (
-    <div className={cn(
-      "min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100",
-      "dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900"
-    )}>
-      {/* Navigation Sidebar */}
-      <NavigationBar
-        currentTab="musai-university"
-        onTabChange={handleTabChange}
-        isExpanded={isSidebarExpanded}
-        onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
-      />
-
-      {/* Mobile sidebar toggle */}
-      {isMobile && (
-        <Button
-          variant="ghost"
-          className="fixed top-4 left-4 z-40 md:hidden"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          <Menu className="w-6 h-6" />
-        </Button>
-      )}
-
-      <div className={cn(
-        "container mx-auto px-4 py-8 transition-all duration-300 max-w-7xl",
-        isMobile ? "ml-0" : isSidebarExpanded ? "ml-48" : "ml-16"
-      )}>
+    <UniversityLayout
+      isSidebarExpanded={isSidebarExpanded}
+      onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+    >
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -547,8 +505,7 @@ const University = () => {
         </Tabs>
           </>
         )}
-      </div>
-    </div>
+    </UniversityLayout>
   );
 };
 

@@ -8,15 +8,18 @@ import { ComingSoonPanel } from "@/components/chat/ComingSoonPanel";
 import { SearchLayout } from "@/components/search/SearchLayout";
 import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
+import { NarrativeLayout } from "@/components/narrative/NarrativeLayout";
 // import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
-import { ChatSession } from "@/types/chat";
+import { ChatSession, NarrativeSession } from "@/types/chat";
 import { useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, Plus, BookOpen } from "lucide-react";
 
 interface ChatLayoutProps {
   sessions: ChatSession[];
@@ -31,6 +34,15 @@ interface ChatLayoutProps {
   onSendMessage: (message: string, file?: File) => void;
   initialTab?: string;
   initialQuery?: string;
+  // Narrative props
+  narrativeSessions?: NarrativeSession[];
+  narrativeCurrentSessionId?: string;
+  onNewNarrative?: () => void;
+  onUpdateNarrative?: (sessionId: string, data: any) => void;
+  onNarrativeSessionSelect?: (sessionId: string) => void;
+  onDeleteNarrativeSession?: (sessionId: string) => void;
+  onRenameNarrativeSession?: (sessionId: string, newName: string) => void;
+  onToggleNarrativeFavorite?: (sessionId: string) => void;
 }
 
 export const ChatLayout = ({
@@ -46,6 +58,14 @@ export const ChatLayout = ({
   onSendMessage,
   initialTab,
   initialQuery,
+  narrativeSessions = [],
+  narrativeCurrentSessionId = "",
+  onNewNarrative = () => {},
+  onUpdateNarrative = () => {},
+  onNarrativeSessionSelect = () => {},
+  onDeleteNarrativeSession = () => {},
+  onRenameNarrativeSession = () => {},
+  onToggleNarrativeFavorite = () => {},
 }: ChatLayoutProps) => {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -115,58 +135,173 @@ export const ChatLayout = ({
   }, []);
 
   const renderMainContent = () => {
-    switch (currentTab) {
-      case "settings":
-        return <div className="h-full p-4"><SettingsPanel onClose={handleCloseSettings} /></div>;
-      case "musai-search":
-        return <div className="h-full p-4"><SearchLayout onClose={handleCloseComingSoon} initialQuery={initialQuery} /></div>;
-      case "code-musai":
-        return <div className="h-full p-4"><CodeMusaiLayout onClose={handleCloseComingSoon} /></div>;
-      case "emergent-narrative":
-      case "musai-university":
-      case "task-musai":
-        return <div className="h-full p-4"><ComingSoonPanel tab={currentTab} onClose={handleCloseComingSoon} /></div>;
-      case "chat":
-      default:
-        // If no session is selected, show PreMusai screen
-        if (!currentSession) {
+    // Handle emergent-narrative tab
+    if (currentTab === "emergent-narrative") {
+      return (
+        <NarrativeLayout
+          sessions={narrativeSessions}
+          currentSessionId={narrativeCurrentSessionId || currentSessionId}
+          isLoading={isLoading}
+          onNewNarrative={onNewNarrative}
+          onSessionSelect={onNarrativeSessionSelect}
+          onDeleteSession={onDeleteNarrativeSession}
+          onRenameSession={onRenameNarrativeSession}
+          onToggleFavorite={onToggleNarrativeFavorite}
+          onUpdateNarrative={onUpdateNarrative}
+        />
+      );
+    }
+
+    // Handle code-musai tab
+    if (currentTab === "code-musai") {
+      return (
+        <CodeMusaiLayout
+          onClose={() => setCurrentTab("chat")}
+        />
+      );
+    }
+
+    // Handle musai-search tab
+    if (currentTab === "musai-search") {
+      return (
+        <SearchLayout 
+          onClose={() => setCurrentTab("chat")}
+        />
+      );
+    }
+
+    // Handle settings tab
+    if (currentTab === "settings") {
+      return (
+        <SettingsPanel
+          onClose={handleCloseSettings}
+        />
+      );
+    }
+
+    // Show PreMusaiPage if no sessions exist
+    if (sessions.length === 0 && narrativeSessions.length === 0) {
+      if (currentTab === "emergent-narrative") {
+        return (
+          <div className="h-full flex flex-col">
+            <PreMusaiPage
+              type="narrative"
+              onSubmit={(input) => {
+                // Create a new narrative session with the input
+                onNewNarrative();
+                // Handle narrative creation - you might want to pass this to narrative creation
+                // For now, just create the session
+              }}
+              isLoading={false}
+              className="h-full"
+            />
+          </div>
+        );
+      } else {
+        return (
+          <div className="h-full flex flex-col">
+            <PreMusaiPage
+              type="chat"
+              onSubmit={(input) => {
+                // Create a new chat session with the input
+                onNewChat();
+                // Send the message after a brief delay to ensure session is created
+                setTimeout(() => {
+                  onSendMessage(input);
+                }, 100);
+              }}
+              isLoading={isTyping}
+              className="h-full"
+            />
+          </div>
+        );
+      }
+    }
+
+    // Show session selection if no current session
+    if (!currentSession) {
+      // Handle different modes for session selection
+      if (currentTab === "emergent-narrative") {
+        const currentNarrativeSession = narrativeSessions.find(s => s.id === narrativeCurrentSessionId);
+        if (!currentNarrativeSession) {
           return (
-            <div className="h-full flex flex-col p-4">
+            <div className="h-full flex flex-col">
               <PreMusaiPage
-                type="chat"
-                onSubmit={(message) => onSendMessage(message)}
-                isLoading={isLoading}
+                type="narrative"
+                onSubmit={(input) => {
+                  // Create a new narrative session with the input
+                  onNewNarrative();
+                  // Handle narrative creation - you might want to pass this to narrative creation
+                  // For now, just create the session
+                }}
+                isLoading={false}
                 className="h-full"
               />
             </div>
           );
         }
-        
-        const currentMessages = currentSession.messages || [];
-        const hasMessages = currentMessages.length > 0;
-        
+      } else {
+        // Show appropriate PreMusai interface based on current tab
+        const getPreMusaiType = () => {
+          switch (currentTab) {
+            case "chat": return "chat";
+            case "task-musai": return "task";
+            default: return "chat";
+          }
+        };
+
+        const handleSubmit = (input: string) => {
+          if (currentTab === "task-musai") {
+            // For task, create a new chat and send the input
+            onNewChat();
+            setTimeout(() => {
+              onSendMessage(input);
+            }, 100);
+          } else {
+            // Default chat behavior
+            onNewChat();
+            setTimeout(() => {
+              onSendMessage(input);
+            }, 100);
+          }
+        };
+
         return (
-          <div className="h-full flex flex-col p-4">
-            <div className="flex-1 min-h-0">
-              <ChatMessages 
-                messages={currentMessages} 
-                isTyping={isTyping}
-                onSendMessage={(message) => onSendMessage(message)}
-              />
-            </div>
-            {/* Always show ChatInput when we have a session, regardless of message count */}
-            <div className="w-full">
-              <ChatInput
-                input={input}
-                isLoading={isLoading}
-                onInputChange={setInput}
-                onSend={handleSend}
-                onImageSelect={handleImageSelect}
-              />
-            </div>
+          <div className="h-full flex flex-col">
+            <PreMusaiPage
+              type={getPreMusaiType()}
+              onSubmit={handleSubmit}
+              isLoading={isTyping}
+              className="h-full"
+            />
           </div>
         );
+      }
     }
+
+    const currentMessages = currentSession.messages || [];
+
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0">
+          <ChatMessages 
+            messages={currentMessages} 
+            isTyping={isTyping}
+            onSendMessage={(message) => onSendMessage(message)}
+          />
+        </div>
+        {/* Always show ChatInput when we have a session, regardless of message count */}
+        <div className="w-full">
+          <ChatInput
+            input={input}
+            isLoading={isLoading}
+            onInputChange={setInput}
+            onSend={handleSend}
+            onImageSelect={handleImageSelect}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -198,28 +333,7 @@ export const ChatLayout = ({
             ? "ml-52" // Desktop: expanded navigation bar
             : "ml-20"  // Desktop: collapsed navigation bar
       )}>
-        <div className="h-[100dvh] flex flex-col">
-          {/* Mobile sidebar toggle - only show for chat tab and when sessions exist */}
-          {isMobile && currentTab === "chat" && sessions.length > 0 && (
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="fixed top-4 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
-
-          {/* Desktop collapse toggle button for chat */}
-          {currentTab === "chat" && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
-            <button
-              onClick={() => setIsSidebarCollapsed(false)}
-              className="fixed top-4 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
-              title="Show chat library"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          )}
-
+        <div className="h-[100dvh] flex">
           {/* Sidebar Panel - only show for chat tab and when sessions exist */}
           {currentTab === "chat" && sessions.length > 0 && !isSidebarCollapsed && (
             <>
@@ -256,15 +370,36 @@ export const ChatLayout = ({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Mobile sidebar overlay */}
-      {isMobile && isSidebarOpen && currentTab === "chat" && sessions.length > 0 && (
-        <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+        {/* Mobile sidebar toggle - only show for chat tab and when sessions exist */}
+        {isMobile && currentTab === "chat" && sessions.length > 0 && (
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="fixed top-4 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Desktop collapse toggle button for chat */}
+        {currentTab === "chat" && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
+          <button
+            onClick={() => setIsSidebarCollapsed(false)}
+            className="fixed top-4 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
+            title="Show chat library"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Mobile sidebar overlay */}
+        {isMobile && isSidebarOpen && currentTab === "chat" && sessions.length > 0 && (
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+      </div>
     </div>
   );
 };

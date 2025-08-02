@@ -5,17 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Sparkles, CheckCircle, Clock, Menu } from 'lucide-react';
+import { ArrowLeft, Sparkles, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
-import { NavigationBar } from '@/components/common/NavigationBar';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { UniversityLayout } from '@/components/layouts/UniversityLayout';
 import { cn } from '@/lib/utils';
 import type { LectureStep, Lecture } from '@/types/university';
 
 type PlannerState = 'input' | 'planning' | 'review' | 'generating' | 'complete';
 
-const UniversityNew = () => 
+const LectureWizard = () => 
 {
   const [state, setState] = useState<PlannerState>('input');
   const [topic, setTopic] = useState('');
@@ -27,13 +26,12 @@ const UniversityNew = () =>
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const isMobile = useIsMobile();
 
   // Handle initial topic from navigation state or URL parameters
   useEffect(() => {
     const initialTopic = location.state?.initialTopic || searchParams.get('topic');
     if (initialTopic && !topic) {
-      console.log('UniversityNew received initial topic:', initialTopic);
+      console.log('LectureWizard received initial topic:', initialTopic);
       setTopic(initialTopic);
       
       // If from landing, auto-start the planning process
@@ -46,27 +44,6 @@ const UniversityNew = () =>
       }
     }
   }, [location.state, searchParams, topic]);
-
-  const handleTabChange = (tab: string) => {
-    // Handle navigation to different sections
-    switch (tab) {
-      case "chat":
-        navigate("/chat");
-        break;
-      case "musai-search":
-        navigate("/chat", { state: { switchToTab: "musai-search" } });
-        break;
-      case "code-musai":
-        navigate("/chat", { state: { switchToTab: "code-musai" } });
-        break;
-      case "musai-university":
-        navigate("/university");
-        break;
-      default:
-        // Handle other tabs or coming soon features
-        break;
-    }
-  };
 
   const handleGeneratePlan = async () => 
   {
@@ -102,25 +79,20 @@ const UniversityNew = () =>
       const lectureContent = await universityApi.generateLectureContent(generatedPlan);
       
       // Create a new lecture object
-      const newLecture: Lecture = {
+      const newLecture = {
         id: `lecture-${Date.now()}`,
         title: lectureContent.title,
-        topic: topic,
-        status: 'in_progress',
+        status: 'in_progress' as const,
         steps: generatedPlan.map((step, index) => ({
           title: step.title,
           content: index === 0 ? lectureContent.content : '', // Only first step has content initially
           quiz: index === 0 ? lectureContent.quiz : [],
-          chat: [],
-          completed: false,
-          quizPassed: false
+          chat: []
         })),
-        currentStep: 0,
         passThreshold: 0.7,
-        overallScore: 0,
+        score: 0,
         exported: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: new Date().toISOString()
       };
 
       await universityApi.saveLecture(newLecture);
@@ -302,44 +274,25 @@ const UniversityNew = () =>
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-      {/* Navigation Sidebar */}
-      <NavigationBar
-        currentTab="musai-university"
-        onTabChange={handleTabChange}
-        isExpanded={isSidebarExpanded}
-        onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
-      />
-
-      {/* Mobile sidebar toggle */}
-      {isMobile && (
-        <Button
-          variant="ghost"
-          className="fixed top-4 left-4 z-40 md:hidden"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        >
-          <Menu className="w-6 h-6" />
-        </Button>
-      )}
-
-      <div className={cn(
-        "container mx-auto px-4 py-8 transition-all duration-300 max-w-4xl",
-        isMobile ? "ml-0" : isSidebarExpanded ? "ml-48" : "ml-16"
-      )}>
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            🎓 Musai University
-          </h1>
-          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
-            AI-powered personalized learning
-          </p>
-        </div>
-
-        {renderCurrentState()}
+    <UniversityLayout
+      isSidebarExpanded={isSidebarExpanded}
+      onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
+      isSidebarOpen={isSidebarOpen}
+      onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+    >
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          🎓 Create New Lecture
+        </h1>
+        <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
+          AI-powered personalized learning
+        </p>
       </div>
-    </div>
+
+      {renderCurrentState()}
+    </UniversityLayout>
   );
 };
 
-export default UniversityNew;
+export default LectureWizard;

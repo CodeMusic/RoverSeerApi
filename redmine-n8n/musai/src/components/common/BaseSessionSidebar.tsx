@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BaseSession } from "@/types/chat";
-import { PlusCircle, Trash2, Pencil, Check, X, Star } from "lucide-react";
+import { PlusCircle, Trash2, Pencil, Check, X, Star, ChevronLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ interface BaseSessionSidebarProps<T extends BaseSession> {
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
+  onToggleCollapse?: () => void;
 }
 
 export function BaseSessionSidebar<T extends BaseSession>({
@@ -39,6 +40,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
+  onToggleCollapse,
 }: BaseSessionSidebarProps<T>) {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -98,6 +100,17 @@ export function BaseSessionSidebar<T extends BaseSession>({
       <div className="p-4 border-b border-border/20">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold">{title}</h2>
+          {onToggleCollapse && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleCollapse}
+              className="h-6 w-6 p-0"
+              title="Collapse sidebar"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+          )}
         </div>
         <Button
           onClick={onNewSession}

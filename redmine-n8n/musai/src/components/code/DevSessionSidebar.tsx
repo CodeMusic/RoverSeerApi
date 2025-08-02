@@ -13,6 +13,7 @@ interface DevSessionSidebarProps {
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
+  onToggleCollapse?: () => void;
 }
 
 export const DevSessionSidebar = ({
@@ -24,6 +25,7 @@ export const DevSessionSidebar = ({
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
+  onToggleCollapse,
 }: DevSessionSidebarProps) => {
   const getDefaultName = (session: DevSession) => {
     if (session.name) return session.name;
@@ -70,6 +72,7 @@ export const DevSessionSidebar = ({
       onDeleteSession={onDeleteSession}
       onRenameSession={onRenameSession}
       onToggleFavorite={onToggleFavorite}
+      onToggleCollapse={onToggleCollapse}
     />
   );
 };
