@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { DevSessionSidebar } from './DevSessionSidebar';
 import { DevSession, Message } from '@/types/chat';
 import { format } from 'date-fns';
+import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
 
 interface ChatMessage {
   id: string;
@@ -548,16 +549,8 @@ What specific aspect would you like to focus on?`;
                 ))
               )}
               {isChatLoading && (
-                <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-4 h-4" />
-                  </div>
-                  <div className="bg-muted text-foreground rounded-lg px-4 py-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                      AI is thinking...
-                    </div>
-                  </div>
+                <div className="flex justify-start">
+                  <MysticalTypingIndicator isDarkMode={false} />
                 </div>
               )}
               <div ref={chatEndRef} />

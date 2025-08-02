@@ -117,21 +117,21 @@ export const ChatLayout = ({
   const renderMainContent = () => {
     switch (currentTab) {
       case "settings":
-        return <SettingsPanel onClose={handleCloseSettings} />;
+        return <div className="h-full p-4"><SettingsPanel onClose={handleCloseSettings} /></div>;
       case "musai-search":
-        return <SearchLayout onClose={handleCloseComingSoon} initialQuery={initialQuery} />;
+        return <div className="h-full p-4"><SearchLayout onClose={handleCloseComingSoon} initialQuery={initialQuery} /></div>;
       case "code-musai":
-        return <CodeMusaiLayout onClose={handleCloseComingSoon} />;
+        return <div className="h-full p-4"><CodeMusaiLayout onClose={handleCloseComingSoon} /></div>;
       case "emergent-narrative":
       case "musai-university":
       case "task-musai":
-        return <ComingSoonPanel tab={currentTab} onClose={handleCloseComingSoon} />;
+        return <div className="h-full p-4"><ComingSoonPanel tab={currentTab} onClose={handleCloseComingSoon} /></div>;
       case "chat":
       default:
         // If no session is selected, show PreMusai screen
         if (!currentSession) {
           return (
-            <div className="h-full flex flex-col">
+            <div className="h-full flex flex-col p-4">
               <PreMusaiPage
                 type="chat"
                 onSubmit={(message) => onSendMessage(message)}
@@ -146,7 +146,7 @@ export const ChatLayout = ({
         const hasMessages = currentMessages.length > 0;
         
         return (
-          <>
+          <div className="h-full flex flex-col p-4">
             <div className="flex-1 min-h-0">
               <ChatMessages 
                 messages={currentMessages} 
@@ -164,7 +164,7 @@ export const ChatLayout = ({
                 onImageSelect={handleImageSelect}
               />
             </div>
-          </>
+          </div>
         );
     }
   };
@@ -198,7 +198,7 @@ export const ChatLayout = ({
             ? "ml-52" // Desktop: expanded navigation bar
             : "ml-20"  // Desktop: collapsed navigation bar
       )}>
-        <div className="h-[100dvh] p-4 flex">
+        <div className="h-[100dvh] flex flex-col">
           {/* Mobile sidebar toggle - only show for chat tab and when sessions exist */}
           {isMobile && currentTab === "chat" && sessions.length > 0 && (
             <button

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
+import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -23,7 +24,16 @@ const Landing = () => {
     { id: "task", icon: Bot, label: "Task", description: "Orchestrated Achievement" },
   ];
 
+  // Get the current mode data
   const selectedModeData = modeOptions.find(mode => mode.id === selectedMode) || modeOptions[0];
+
+  // Always show the type selector, but with different options based on mode
+  const shouldShowTypeSelector = true;
+
+  // Always show the same options in the same order
+  const getModeOptions = () => {
+    return modeOptions; // Always return all options in the same order
+  };
 
   const handleStartNewChat = async (initialMessage?: string) => {
     setIsAnimating(true);
@@ -133,51 +143,77 @@ const Landing = () => {
         <div className="mb-8 slide-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <img 
-                src="/src/assets/images/musai_logo.png" 
-                alt="Musai Logo" 
-                className="w-24 h-24 object-contain shadow-lg"
-              />
-              <div className="absolute -inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
+              <div className="w-64 h-64 flex items-center justify-center">
+                <MusaiLifeLogo size="4xl" isDarkMode={false} noShimmer={true} />
+              </div>
+              <div className="absolute -inset-4 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
             </div>
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
-            MusaiChat
+            {selectedMode === "auto" ? "MusaiChat" :
+             selectedMode === "chat" ? "MusaiChat" :
+             selectedMode === "search" ? "MusaiSearch" :
+             selectedMode === "code" ? "CodeMusai" :
+             selectedMode === "university" ? "Musai University" :
+             selectedMode === "emergent-narrative" ? "Emergent Narrative" :
+             selectedMode === "task" ? "TaskMusai" :
+             "MusaiChat"}
           </h1>
           
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Reflective AI for Recursive Minds
+            {selectedMode === "auto" ? "Reflective AI for Recursive Minds" :
+             selectedMode === "chat" ? "Start a natural conversation with your AI assistant" :
+             selectedMode === "search" ? "Intelligent discovery and exploration" :
+             selectedMode === "code" ? "Paired AI programming and development" :
+             selectedMode === "university" ? "Generative learning and knowledge creation" :
+             selectedMode === "emergent-narrative" ? "Story emergence and perspective thinking" :
+             selectedMode === "task" ? "Orchestrated achievement and task management" :
+             "Reflective AI for Recursive Minds"}
           </p>
           
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Experience the world's first agentic AI mind that grows over time through memory, 
-            feedback, and self-refinement. Musai doesn't just answer questions—it develops 
-            a sense of who you are, and a working model of who it is becoming.
+            {selectedMode === "auto" ? 
+              "Experience the world's first agentic AI mind that grows over time through memory, feedback, and self-refinement. Musai doesn't just answer questions—it develops a sense of who you are, and a working model of who it is becoming." :
+             selectedMode === "chat" ? 
+              "Start a natural conversation with your AI assistant. Ask questions, brainstorm ideas, or just chat. Musai learns from every interaction to better understand your needs." :
+             selectedMode === "search" ? 
+              "Discover intelligent insights through advanced search capabilities. Find answers, explore topics, and uncover connections you might have missed." :
+             selectedMode === "code" ? 
+              "Get paired programming assistance with AI that understands your codebase. Debug, optimize, and build better software together." :
+             selectedMode === "university" ? 
+              "Learn and grow with AI-powered education. Create courses, explore topics, and develop knowledge through interactive learning experiences." :
+             selectedMode === "emergent-narrative" ? 
+              "Explore story emergence and perspective thinking. Let AI help you craft narratives and discover new ways of seeing the world." :
+             selectedMode === "task" ? 
+              "Achieve your goals with orchestrated task management. Break down complex projects and track progress with AI assistance." :
+              "Experience the world's first agentic AI mind that grows over time through memory, feedback, and self-refinement. Musai doesn't just answer questions—it develops a sense of who you are, and a working model of who it is becoming."
+            }
           </p>
         </div>
 
         {/* Message Input Form */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 slide-in-up" style={{ animationDelay: '0.4s' }}>
           <form onSubmit={handleSendMessage} className="flex w-full max-w-md gap-2">
-            {/* Mode Selector Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex items-center gap-2 px-3 py-3 h-auto rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 transition-all duration-300"
-                  disabled={isAnimating}
-                >
-                  {(() => {
-                    const SelectedIcon = selectedModeData.icon;
-                    return <SelectedIcon className="w-5 h-5" />;
-                  })()}
-                  <ChevronDown className="w-4 h-4 opacity-60" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                {modeOptions.map((mode) => {
+            {/* Mode Selector Dropdown - only show for auto mode */}
+            {shouldShowTypeSelector && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex items-center gap-2 px-3 py-3 h-auto rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 transition-all duration-300"
+                    disabled={isAnimating}
+                  >
+                    {(() => {
+                      const SelectedIcon = selectedModeData.icon;
+                      return <SelectedIcon className="w-5 h-5" />;
+                    })()}
+                    <ChevronDown className="w-4 h-4 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-48">
+                {getModeOptions().map((mode) => {
                   const Icon = mode.icon;
                   const isComingSoon = mode.id === "emergent-narrative" || mode.id === "agents";
                   return (
@@ -200,11 +236,21 @@ const Landing = () => {
                   );
                 })}
               </DropdownMenuContent>
-            </DropdownMenu>
+              </DropdownMenu>
+            )}
 
             <Input
               type="text"
-              placeholder="Start a new conversation..."
+              placeholder={
+                selectedMode === "auto" ? "Start a new conversation..." :
+                selectedMode === "chat" ? "What's on your mind?" :
+                selectedMode === "search" ? "Search for anything..." :
+                selectedMode === "code" ? "Ask about your code..." :
+                selectedMode === "university" ? "What would you like to learn?" :
+                selectedMode === "emergent-narrative" ? "Tell me a story..." :
+                selectedMode === "task" ? "What task can I help with?" :
+                "Start a new conversation..."
+              }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               disabled={isAnimating}

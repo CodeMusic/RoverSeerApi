@@ -3,9 +3,10 @@ import { cn } from '@/lib/utils';
 import musaiLogoImage from '@/assets/images/musai_logo.png';
 
 interface MusaiLogoProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
   className?: string;
   isDarkMode?: boolean;
+  noShimmer?: boolean;
 }
 
 interface MusaiShimmerProps {
@@ -47,7 +48,11 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12', 
-    lg: 'w-16 h-16'
+    lg: 'w-16 h-16',
+    xl: 'w-24 h-24',
+    '2xl': 'w-32 h-32',
+    '3xl': 'w-48 h-48',
+    '4xl': 'w-64 h-64'
   };
 
   return (
@@ -64,15 +69,18 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
       {/* AI Face elements */}
       <div className="relative z-10 flex flex-col items-center justify-center">
         {/* Eyes */}
-        <div className="flex gap-1 mb-0.5">
+        <div className={cn(
+          "flex mb-0.5",
+          size === 'sm' ? 'gap-1' : size === 'md' ? 'gap-1' : size === 'lg' ? 'gap-1' : size === 'xl' ? 'gap-1.5' : size === '2xl' ? 'gap-2' : size === '3xl' ? 'gap-3' : 'gap-4'
+        )}>
           <div className={cn(
             "rounded-full mystical-pulse",
-            size === 'sm' ? 'w-1 h-1' : size === 'md' ? 'w-1.5 h-1.5' : 'w-2 h-2',
+            size === 'sm' ? 'w-1 h-1' : size === 'md' ? 'w-1.5 h-1.5' : size === 'lg' ? 'w-2 h-2' : size === 'xl' ? 'w-3 h-3' : size === '2xl' ? 'w-4 h-4' : size === '3xl' ? 'w-6 h-6' : 'w-8 h-8',
             isDarkMode ? 'bg-white' : 'bg-white'
           )} />
           <div className={cn(
             "rounded-full mystical-pulse",
-            size === 'sm' ? 'w-1 h-1' : size === 'md' ? 'w-1.5 h-1.5' : 'w-2 h-2',
+            size === 'sm' ? 'w-1 h-1' : size === 'md' ? 'w-1.5 h-1.5' : size === 'lg' ? 'w-2 h-2' : size === 'xl' ? 'w-3 h-3' : size === '2xl' ? 'w-4 h-4' : size === '3xl' ? 'w-6 h-6' : 'w-8 h-8',
             isDarkMode ? 'bg-white' : 'bg-white'
           )} style={{ animationDelay: '0.2s' }} />
         </div>
@@ -80,7 +88,7 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
         {/* Neural network pattern / brain-like structure */}
         <div className={cn(
           "rounded mystical-pulse",
-          size === 'sm' ? 'w-2 h-0.5' : size === 'md' ? 'w-3 h-0.5' : 'w-4 h-1',
+          size === 'sm' ? 'w-2 h-0.5' : size === 'md' ? 'w-3 h-0.5' : size === 'lg' ? 'w-4 h-1' : size === 'xl' ? 'w-6 h-1' : size === '2xl' ? 'w-8 h-1.5' : size === '3xl' ? 'w-12 h-2' : 'w-16 h-2.5',
           isDarkMode ? 'bg-white/80' : 'bg-white/90'
         )} />
       </div>
@@ -89,14 +97,14 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
       <div className="absolute top-0 right-0">
         <div className={cn(
           "rounded-full mystical-pulse",
-          size === 'sm' ? 'w-0.5 h-0.5' : 'w-1 h-1',
+          size === 'sm' ? 'w-0.5 h-0.5' : size === 'md' ? 'w-1 h-1' : size === 'lg' ? 'w-1 h-1' : size === 'xl' ? 'w-1.5 h-1.5' : size === '2xl' ? 'w-2 h-2' : size === '3xl' ? 'w-3 h-3' : 'w-4 h-4',
           isDarkMode ? 'bg-purple-300' : 'bg-purple-200'
         )} style={{ animationDelay: '0ms' }} />
       </div>
       <div className="absolute bottom-0 left-0">
         <div className={cn(
           "rounded-full mystical-pulse", 
-          size === 'sm' ? 'w-0.5 h-0.5' : 'w-1 h-1',
+          size === 'sm' ? 'w-0.5 h-0.5' : size === 'md' ? 'w-1 h-1' : size === 'lg' ? 'w-1 h-1' : size === 'xl' ? 'w-1.5 h-1.5' : size === '2xl' ? 'w-2 h-2' : size === '3xl' ? 'w-3 h-3' : 'w-4 h-4',
           isDarkMode ? 'bg-cyan-300' : 'bg-cyan-200'
         )} style={{ animationDelay: '500ms' }} />
       </div>
@@ -109,7 +117,11 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12', 
-    lg: 'w-16 h-16'
+    lg: 'w-16 h-16',
+    xl: 'w-24 h-24',
+    '2xl': 'w-32 h-32',
+    '3xl': 'w-48 h-48',
+    '4xl': 'w-64 h-64'
   };
 
   return (
@@ -160,7 +172,11 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
 };
 
 // Combined Custom Musai Logo with Shimmer
-export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false }: MusaiLogoProps) => {
+export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false, noShimmer = false }: MusaiLogoProps) => {
+  if (noShimmer) {
+    return <MusaiCustomLogo size={size} isDarkMode={isDarkMode} className={className} />;
+  }
+  
   return (
     <MusaiShimmer className={className} speed="normal" rounded="none">
       <MusaiCustomLogo size={size} isDarkMode={isDarkMode} />
