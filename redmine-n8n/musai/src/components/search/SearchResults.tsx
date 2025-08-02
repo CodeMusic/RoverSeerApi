@@ -94,7 +94,7 @@ export const SearchResults = ({
   return (
     <div className="flex-1 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b bg-sidebar/30">
+      <div className="flex items-center justify-between p-6 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {(() => {
             const IconComponent = getIntentIcon(session.intent);

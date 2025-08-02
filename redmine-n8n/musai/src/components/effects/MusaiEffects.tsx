@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import musaiLogoImage from '@/assets/images/musai_logo.png';
+import musaiCoreImage from '@/assets/images/musai_core.png';
 
 interface MusaiLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
@@ -113,7 +114,7 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
 };
 
 // Custom Musai Logo Image with Effects
-export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: MusaiLogoProps) => {
+export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, logoWithText = false }: MusaiLogoProps) => {
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12', 
@@ -136,7 +137,7 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
       
       {/* Custom logo image */}
       <img 
-        src={musaiLogoImage} 
+        src={logoWithText ? musaiLogoImage : musaiCoreImage} 
         alt="Musai AI Logo"
         className={cn(
           "relative z-10 object-contain logo-color-pulse",
@@ -174,12 +175,12 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false }: 
 // Combined Custom Musai Logo with Shimmer
 export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false, noShimmer = false }: MusaiLogoProps) => {
   if (noShimmer) {
-    return <MusaiCustomLogo size={size} isDarkMode={isDarkMode} className={className} />;
+    return <MusaiCustomLogo size={size} isDarkMode={isDarkMode} className={className} logoWithText={false} />;
   }
   
   return (
     <MusaiShimmer className={className} speed="normal" rounded="none">
-      <MusaiCustomLogo size={size} isDarkMode={isDarkMode} />
+      <MusaiCustomLogo size={size} isDarkMode={isDarkMode} logoWithText={true} />
     </MusaiShimmer>
   );
 };

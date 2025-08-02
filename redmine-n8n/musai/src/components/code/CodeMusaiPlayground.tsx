@@ -385,7 +385,7 @@ What specific aspect would you like to focus on?`;
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-sidebar/30">
+        <div className="flex items-center justify-between p-4 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"

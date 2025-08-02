@@ -152,6 +152,83 @@ class UniversityApiService
     }
   }
 
+  // New method: Generate course from topic using n8n
+  async generateCourseFromTopic(topic: string): Promise<{
+    title: string;
+    description: string;
+    instructor: string;
+    syllabus: Array<{
+      title: string;
+      summary: string;
+      duration: string;
+    }>;
+    estimatedDuration: string;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    tags: string[];
+  }> 
+  {
+    try 
+    {
+      const response = await this.axiosInstance.post('/course/generate-from-topic', {
+        topic,
+        includeSyllabus: true,
+        includeMetadata: true
+      });
+      return response.data;
+    } 
+    catch (error) 
+    {
+      console.error('Error generating course from topic:', error);
+      // Return mock data for development
+      const mockInstructors = [
+        'Dr. Quantum Mind',
+        'Professor Neural Flow',
+        'Dr. Cognitive Architect',
+        'Professor Synaptic Bridge',
+        'Dr. Emergent Intelligence'
+      ];
+      
+      const mockDifficulties = ['beginner', 'intermediate', 'advanced'] as const;
+      const mockTags = ['AI', 'Technology', 'Science', 'Philosophy', 'Psychology'];
+      
+      return {
+        title: `Introduction to ${topic}`,
+        description: `A comprehensive course exploring the fundamentals and advanced concepts of ${topic}. This course combines theoretical foundations with practical applications, designed to take you from basic understanding to mastery of the subject matter.`,
+        instructor: mockInstructors[Math.floor(Math.random() * mockInstructors.length)],
+        syllabus: [
+          {
+            title: `Introduction to ${topic}`,
+            summary: `Overview of key concepts and foundational principles`,
+            duration: '45 min'
+          },
+          {
+            title: 'Core Principles and Theories',
+            summary: `Deep dive into the fundamental theories and frameworks`,
+            duration: '60 min'
+          },
+          {
+            title: 'Practical Applications',
+            summary: `Real-world examples and hands-on implementation`,
+            duration: '75 min'
+          },
+          {
+            title: 'Advanced Concepts',
+            summary: `Complex topics and cutting-edge developments`,
+            duration: '90 min'
+          },
+          {
+            title: 'Integration and Synthesis',
+            summary: `Bringing everything together and next steps`,
+            duration: '60 min'
+          }
+        ],
+        estimatedDuration: '5 hours',
+        difficulty: mockDifficulties[Math.floor(Math.random() * mockDifficulties.length)],
+        tags: mockTags.slice(0, 3)
+      };
+    }
+  }
+
   // Automation B: Lecture Generation
   async generateLecture(request: LectureGenerationRequest): Promise<CourseLecture> 
   {

@@ -150,16 +150,18 @@ const Landing = () => {
             </div>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
-            {selectedMode === "auto" ? "MusaiChat" :
-             selectedMode === "chat" ? "MusaiChat" :
-             selectedMode === "search" ? "MusaiSearch" :
-             selectedMode === "code" ? "CodeMusai" :
-             selectedMode === "university" ? "Musai University" :
-             selectedMode === "emergent-narrative" ? "Emergent Narrative" :
-             selectedMode === "task" ? "TaskMusai" :
-             "MusaiChat"}
-          </h1>
+          {(
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
+              {selectedMode === "auto" ? "Musai" :
+               selectedMode === "chat" ? "MusaiChat" :
+               selectedMode === "search" ? "MusaiSearch" :
+               selectedMode === "code" ? "CodeMusai" :
+               selectedMode === "university" ? "Musai University" :
+               selectedMode === "emergent-narrative" ? "Emergent Narrative" :
+               selectedMode === "task" ? "TaskMusai" :
+               "MusaiChat"}
+            </h1>
+          )}
           
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             {selectedMode === "auto" ? "Reflective AI for Recursive Minds" :

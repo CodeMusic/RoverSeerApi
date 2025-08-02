@@ -101,6 +101,7 @@ export const NavigationBar = ({
           <MusaiLifeLogo 
             size={isExpanded && !isMobile ? "lg" : "md"} 
             isDarkMode={true}
+            noShimmer={true}
           />
         </div>
         {isExpanded && !isMobile && (
@@ -218,28 +219,26 @@ export const NavigationBar = ({
 
       {/* Expand/Collapse Toggle Button - only show on desktop */}
       {!isMobile && (
-        <MusaiShimmer className="mt-4" speed="slow">
-          <Button
-            variant="ghost"
-            size={isExpanded ? undefined : "icon"}
-            className={cn(
-              "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground mystical-glow border border-gray-300/30",
-              isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl p-0 gap-0"
-            )}
-            onClick={onToggleExpanded}
-            title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
-          >
-            <div className={cn(
-              "border-2 border-current rounded transition-transform duration-200 mystical-pulse",
-              isExpanded ? "w-3 h-3 rotate-45" : "w-3 h-3 rotate-0"
-            )} />
-            {isExpanded && (
-              <span className="ml-3 text-sm font-medium">
-                {isExpanded ? "Collapse" : "Expand"}
-              </span>
-            )}
-          </Button>
-        </MusaiShimmer>
+        <Button
+          variant="ghost"
+          size={isExpanded ? undefined : "icon"}
+          className={cn(
+            "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground mystical-glow border border-gray-300/30 mt-4",
+            isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl p-0 gap-0"
+          )}
+          onClick={onToggleExpanded}
+          title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          <div className={cn(
+            "border-2 border-current rounded transition-transform duration-200 mystical-pulse",
+            isExpanded ? "w-3 h-3 rotate-45" : "w-3 h-3 rotate-0"
+          )} />
+          {isExpanded && (
+            <span className="ml-3 text-sm font-medium">
+              {isExpanded ? "Collapse" : "Expand"}
+            </span>
+          )}
+        </Button>
       )}
     </div>
   );
