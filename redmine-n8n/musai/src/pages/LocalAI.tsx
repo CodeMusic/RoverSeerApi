@@ -328,7 +328,7 @@ const LocalAI = () => {
               variant="outline"
               size="lg"
             >
-              Explore Musai University
+              Explore Musai U
             </Button>
           </div>
         </div>

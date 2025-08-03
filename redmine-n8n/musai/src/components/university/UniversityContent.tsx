@@ -3,12 +3,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles, ArrowLeft, Trash2, MoreVertical } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
 import { cn } from '@/lib/utils';
 import type { Lecture, Course, StandaloneLecture } from '@/types/university';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import CourseCreation from '@/components/university/CourseCreation';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 
 export const UniversityContent = () => {
   const [lectures, setLectures] = useState<any[]>([]);
@@ -16,9 +20,32 @@ export const UniversityContent = () => {
   const [standaloneLectures, setStandaloneLectures] = useState<StandaloneLecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('courses');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'create-course' | 'create-lecture'>('dashboard');
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { preferences, recordLastSession, getLastSession } = useUserPreferences();
+
+  // Smart auto-navigation: use last session first, fallback to first course
+  useEffect(() => {
+    if (preferences.autoSelectFirstItem && courses.length > 0 && currentView === 'dashboard') {
+      const lastSession = getLastSession('university');
+      
+      // Priority 1: Navigate to last used course if it exists
+      if (lastSession?.courseId) {
+        const lastCourse = courses.find(course => course.metadata.id === lastSession.courseId);
+        if (lastCourse) {
+          console.log('🎓 Navigating to last used course:', lastCourse.metadata.title);
+          navigate(`/university/course/${lastSession.courseId}`);
+          return;
+        }
+      }
+      
+      // Priority 2: Fallback to first course if auto-select is enabled
+      console.log('🎓 No last session found, navigating to first course:', courses[0].metadata.title);
+      navigate(`/university/course/${courses[0].metadata.id}`);
+    }
+  }, [preferences.autoSelectFirstItem, courses, currentView, navigate, getLastSession]);
 
   useEffect(() => {
     loadData();
@@ -60,6 +87,34 @@ export const UniversityContent = () => {
     }
   };
 
+  const handleDeleteCourse = async (courseId: string) => {
+    try {
+      await universityApi.deleteCourse(courseId);
+      await loadData(); // Refresh the data
+    } catch (error) {
+      console.error('Failed to delete course:', error);
+    }
+  };
+
+  const handleDeleteLecture = async (lectureId: string) => {
+    try {
+      await universityApi.deleteLecture(lectureId);
+      await loadData(); // Refresh the data
+    } catch (error) {
+      console.error('Failed to delete lecture:', error);
+    }
+  };
+
+  const handleDeleteStandaloneLecture = async (lectureId: string) => {
+    try {
+      // Using the same delete function for standalone lectures
+      await universityApi.deleteLecture(lectureId);
+      await loadData(); // Refresh the data
+    } catch (error) {
+      console.error('Failed to delete standalone lecture:', error);
+    }
+  };
+
   const getStatusBadge = (status: Lecture['status']) => {
     const statusColors = {
       draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
@@ -82,6 +137,59 @@ export const UniversityContent = () => {
     );
   }
 
+  // Handle different views
+  if (currentView === 'create-course') {
+    return (
+      <div className="p-6 h-full overflow-auto">
+        <div className="mb-6">
+          <Button 
+            onClick={() => setCurrentView('dashboard')}
+            variant="ghost"
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to University
+          </Button>
+          <h1 className="text-2xl font-bold">Create New Course</h1>
+          <p className="text-muted-foreground">Design a structured learning experience</p>
+        </div>
+        <CourseCreation 
+          initialTopic={searchParams.get('topic') || undefined}
+          onComplete={() => {
+            setCurrentView('dashboard');
+            loadData(); // Refresh the data
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (currentView === 'create-lecture') {
+    return (
+      <div className="p-6 h-full overflow-auto">
+        <div className="mb-6">
+          <Button 
+            onClick={() => setCurrentView('dashboard')}
+            variant="ghost"
+            className="mb-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to University
+          </Button>
+          <h1 className="text-2xl font-bold">Create New Lecture</h1>
+          <p className="text-muted-foreground">Design an individual lesson</p>
+        </div>
+        {/* TODO: Add LectureCreation component here */}
+        <div className="text-center py-8">
+          <p>Lecture creation coming soon...</p>
+          <Button onClick={() => setCurrentView('dashboard')} className="mt-4">
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 h-full overflow-auto">
       {/* Header */}
@@ -89,7 +197,7 @@ export const UniversityContent = () => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 border-b-2 border-purple-200 dark:border-purple-800 pb-2">
-              🎓 Musai University
+              🎓 Musai U
             </h1>
             <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
               AI-powered personalized learning experiences
@@ -97,7 +205,7 @@ export const UniversityContent = () => {
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={() => navigate('/university/course/new')}
+              onClick={() => setCurrentView('create-course')}
               className="bg-purple-600 hover:bg-purple-700 text-white"
               size="lg"
             >
@@ -105,7 +213,7 @@ export const UniversityContent = () => {
               Create Course
             </Button>
             <Button 
-              onClick={() => navigate('/university/lecture/new')}
+              onClick={() => setCurrentView('create-lecture')}
               variant="outline"
               size="lg"
             >
@@ -183,39 +291,49 @@ export const UniversityContent = () => {
       {/* Show PreMusaiPage if everything is empty */}
       {!isLoading && courses.length === 0 && lectures.length === 0 && standaloneLectures.length === 0 ? (
         <div className="mt-8">
-          <PreMusaiPage
-            type="university"
-            onSubmit={(input) => {
-              // Navigate to course creation with the topic
-              navigate('/university/course/new', { 
-                state: { 
-                  initialTopic: input,
-                  fromPreMusai: true 
+                      <PreMusaiPage
+              type="university"
+              onSubmit={(input) => {
+                // Navigate to course creation with the topic
+                setCurrentView('create-course');
+              }}
+              onQuickAction={(actionId, actionType, actionData) => {
+                switch (actionId) {
+                  case 'uni-browse':
+                    // Stay on dashboard to browse courses
+                    break;
+                  case 'uni-create':
+                    setCurrentView('create-course');
+                    break;
+                  case 'uni-continue':
+                    // Smart continue: last session first, then first course
+                    const lastSession = getLastSession('university');
+                    if (lastSession?.courseId) {
+                      const lastCourse = courses.find(course => course.metadata.id === lastSession.courseId);
+                      if (lastCourse) {
+                        recordLastSession('university', {
+                          courseId: lastSession.courseId,
+                          view: 'course'
+                        });
+                        navigate(`/university/course/${lastSession.courseId}`);
+                        break;
+                      }
+                    }
+                    // Fallback to first course
+                    if (courses.length > 0) {
+                      recordLastSession('university', {
+                        courseId: courses[0].metadata.id,
+                        view: 'course'
+                      });
+                      navigate(`/university/course/${courses[0].metadata.id}`);
+                    }
+                    break;
+                  default:
+                    console.log('University quick action:', actionId, actionType, actionData);
                 }
-              });
-            }}
-            isLoading={false}
-            quickActions={[
-              {
-                icon: GraduationCap,
-                title: "Create Course",
-                description: "Build a structured learning path",
-                action: () => navigate('/university/course/new')
-              },
-              {
-                icon: BookOpen,
-                title: "Create Lecture",
-                description: "Design individual lessons",
-                action: () => navigate('/university/lecture/new')
-              },
-              {
-                icon: Sparkles,
-                title: "Standalone Lecture",
-                description: "Independent learning content",
-                action: () => navigate('/university/standalone/new')
-              }
-            ]}
-          />
+              }}
+              isLoading={false}
+            />
         </div>
       ) : (
         <>
@@ -244,7 +362,7 @@ export const UniversityContent = () => {
                     <GraduationCap className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No courses yet</h3>
                     <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first course</p>
-                    <Button onClick={() => navigate('/university/course/new')}>
+                    <Button onClick={() => setCurrentView('create-course')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Course
                     </Button>
@@ -253,13 +371,59 @@ export const UniversityContent = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {courses.map((course) => (
-                    <Card key={course.metadata.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <Card key={course.metadata.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
                         <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg">{course.title}</CardTitle>
-                          <Badge variant="secondary">{course.lectures.length} lectures</Badge>
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">{course.metadata?.title || 'Untitled Course'}</CardTitle>
+                            <Badge variant="secondary" className="mt-1">{course.lectures?.length || 0} lectures</Badge>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                recordLastSession('university', {
+                                  courseId: course.metadata.id,
+                                  view: 'course'
+                                });
+                                navigate(`/university/course/${course.metadata.id}`);
+                              }}>
+                                <BookOpen className="mr-2 h-4 w-4" />
+                                View Course
+                              </DropdownMenuItem>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Course
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Course</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{course.metadata?.title}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteCourse(course.metadata.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        <CardDescription>{course.description}</CardDescription>
+                        <CardDescription>{course.metadata?.description || 'No description available'}</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
@@ -276,7 +440,13 @@ export const UniversityContent = () => {
                         </div>
                         <div className="flex gap-2 mt-4">
                           <Button 
-                            onClick={() => navigate(`/university/course/${course.metadata.id}`)}
+                            onClick={() => {
+                              recordLastSession('university', {
+                                courseId: course.metadata.id,
+                                view: 'course'
+                              });
+                              navigate(`/university/course/${course.metadata.id}`);
+                            }}
                             className="flex-1"
                           >
                             View Course
@@ -297,7 +467,7 @@ export const UniversityContent = () => {
                     <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No lectures yet</h3>
                     <p className="text-gray-500 dark:text-gray-400 mb-4">Create your first lecture to get started</p>
-                    <Button onClick={() => navigate('/university/lecture/new')}>
+                    <Button onClick={() => setCurrentView('create-lecture')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Lecture
                     </Button>
@@ -306,11 +476,51 @@ export const UniversityContent = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {lectures.map((lecture) => (
-                    <Card key={lecture.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <Card key={lecture.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
                         <div className="flex justify-between items-start">
-                          <CardTitle className="text-lg">{lecture.title}</CardTitle>
-                          {getStatusBadge(lecture.status)}
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">{lecture.title}</CardTitle>
+                            {getStatusBadge(lecture.status)}
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => navigate(`/university/lecture/${lecture.id}`)}>
+                                <BookOpen className="mr-2 h-4 w-4" />
+                                View Lecture
+                              </DropdownMenuItem>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Lecture
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Lecture</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{lecture.title}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteLecture(lecture.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                         <CardDescription>{lecture.description}</CardDescription>
                       </CardHeader>
@@ -320,7 +530,13 @@ export const UniversityContent = () => {
                           {lecture.estimatedDuration || '30'} minutes
                         </div>
                         <Button 
-                          onClick={() => navigate(`/university/lecture/${lecture.id}`)}
+                          onClick={() => {
+                            recordLastSession('university', {
+                              lectureId: lecture.id,
+                              view: 'lecture'
+                            });
+                            navigate(`/university/lecture/${lecture.id}`);
+                          }}
                           className="w-full"
                         >
                           View Lecture
@@ -340,7 +556,7 @@ export const UniversityContent = () => {
                     <Sparkles className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No standalone content yet</h3>
                     <p className="text-gray-500 dark:text-gray-400 mb-4">Create independent learning content</p>
-                    <Button onClick={() => navigate('/university/standalone/new')}>
+                    <Button onClick={() => setCurrentView('create-lecture')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Content
                     </Button>
@@ -349,18 +565,72 @@ export const UniversityContent = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {standaloneLectures.map((lecture) => (
-                    <Card key={lecture.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                    <Card key={lecture.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
-                        <CardTitle className="text-lg">{lecture.title}</CardTitle>
-                        <CardDescription>{lecture.description}</CardDescription>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">{lecture.title || 'Untitled Lecture'}</CardTitle>
+                            <CardDescription>Standalone learning content</CardDescription>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                recordLastSession('university', {
+                                  lectureId: lecture.id,
+                                  view: 'standalone'
+                                });
+                                navigate(`/university/standalone/${lecture.id}`);
+                              }}>
+                                <BookOpen className="mr-2 h-4 w-4" />
+                                View Content
+                              </DropdownMenuItem>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Content
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Content</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{lecture.title}"? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteStandaloneLecture(lecture.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
                           <Clock className="mr-2 h-4 w-4" />
-                          {lecture.estimatedDuration || '30'} minutes
+                          30 minutes
                         </div>
                         <Button 
-                          onClick={() => navigate(`/university/standalone/${lecture.id}`)}
+                          onClick={() => {
+                            recordLastSession('university', {
+                              lectureId: lecture.id,
+                              view: 'standalone'
+                            });
+                            navigate(`/university/standalone/${lecture.id}`);
+                          }}
                           className="w-full"
                         >
                           View Content

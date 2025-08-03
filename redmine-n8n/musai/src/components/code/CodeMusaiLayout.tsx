@@ -2,6 +2,7 @@ import { Code, Sparkles } from "lucide-react";
 import CodeMusaiPlayground from "@/components/code/CodeMusaiPlayground";
 import { useDevSessions } from "@/hooks/useDevSessions";
 import { ToolHeader } from "@/components/common/ToolHeader";
+import { APP_TERMS } from "@/config/constants";
 
 interface CodeMusaiLayoutProps {
   onClose: () => void;
@@ -26,10 +27,10 @@ export const CodeMusaiLayout = ({ onClose }: CodeMusaiLayoutProps) => {
       {/* Header */}
       <ToolHeader
         icon={Code}
-        title="CodeMusai"
-        badge="Interactive Playground"
+        title={APP_TERMS.CODE}
+        badge={APP_TERMS.CODE_BADGE}
         badgeIcon={Sparkles}
-        description="Write, run, and experiment with code in multiple programming languages"
+        description={APP_TERMS.CODE_DESCRIPTION}
       />
 
       {/* Code Playground Content */}

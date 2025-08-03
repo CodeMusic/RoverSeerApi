@@ -75,7 +75,7 @@ const FindYourMuse = () => {
     {
       id: "university",
       icon: GraduationCap,
-      title: "Musai University",
+              title: "Musai U",
       subtitle: "Generative Emergent Learning",
       description: "Just say what you want to learn and watch as Musai creates a complete learning experience. It generates a syllabus, creates lectures with Q&A, and builds interactive quizzes - all tailored to your learning style.",
       features: [
@@ -137,7 +137,7 @@ const FindYourMuse = () => {
     {
       step: 3,
       title: "Build & Create",
-      description: "Collaborate with CodeMusai to turn ideas into reality, or use Musai University to learn new skills and knowledge.",
+              description: "Collaborate with CodeMusai to turn ideas into reality, or use Musai U to learn new skills and knowledge.",
       icon: Code,
       color: "bg-orange-500"
     },

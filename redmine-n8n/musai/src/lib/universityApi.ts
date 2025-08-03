@@ -572,6 +572,20 @@ class UniversityApiService
       console.error('Error deleting lecture:', error);
     }
   }
+
+  async deleteCourse(courseId: string): Promise<void> 
+  {
+    try 
+    {
+      const courses = await this.getCourses();
+      const filtered = courses.filter(c => c.metadata.id !== courseId);
+      localStorage.setItem('musai-university-courses', JSON.stringify(filtered));
+    } 
+    catch (error) 
+    {
+      console.error('Error deleting course:', error);
+    }
+  }
 }
 
 export const universityApi = new UniversityApiService();

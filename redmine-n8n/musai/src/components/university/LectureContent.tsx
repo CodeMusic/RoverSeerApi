@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { CheckCircle, ArrowRight, ArrowLeft, Loader2, Edit, Save, X } from 'lucide-react';
 import { universityApi } from '@/lib/universityApi';
 import MarkdownRenderer from '@/components/chat/MarkdownRenderer';
 import type { Lecture } from '@/types/university';
@@ -16,6 +17,8 @@ interface LectureContentProps
 const LectureContent = ({ lecture, onLectureUpdate }: LectureContentProps) => 
 {
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
   const currentStep = lecture.steps[lecture.currentStep];
 
   useEffect(() => 
@@ -145,6 +148,41 @@ This step covers the essential concepts needed to progress in your understanding
     return lecture.currentStep > 0;
   };
 
+  const handleEditClick = () => {
+    setEditContent(currentStep?.content || '');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!currentStep) return;
+
+    try {
+      const updatedSteps = [...lecture.steps];
+      updatedSteps[lecture.currentStep] = {
+        ...currentStep,
+        content: editContent
+      };
+
+      const updatedLecture = {
+        ...lecture,
+        steps: updatedSteps,
+        updatedAt: new Date().toISOString()
+      };
+
+      await universityApi.saveLecture(updatedLecture);
+      onLectureUpdate(updatedLecture);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save lecture content:', error);
+      alert('Failed to save changes. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent('');
+  };
+
   if (!currentStep) 
   {
     return (
@@ -179,9 +217,43 @@ This step covers the essential concepts needed to progress in your understanding
     <div className="h-full flex flex-col">
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto pr-2">
-        {currentStep.content ? (
-          <div className="prose dark:prose-invert max-w-none">
-            <MarkdownRenderer content={currentStep.content} />
+        {isEditing ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Edit Lecture Content</h3>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveEdit} size="sm" className="bg-green-600 hover:bg-green-700">
+                  <Save className="mr-2 h-4 w-4" />
+                  Save
+                </Button>
+                <Button onClick={handleCancelEdit} size="sm" variant="outline">
+                  <X className="mr-2 h-4 w-4" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              placeholder="Enter lecture content in Markdown format..."
+              className="min-h-[400px] font-mono text-sm"
+            />
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              <strong>Tip:</strong> You can use Markdown formatting (# headers, **bold**, *italic*, code blocks with ```, etc.)
+            </div>
+          </div>
+        ) : currentStep.content ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">{currentStep.title}</h2>
+              <Button onClick={handleEditClick} size="sm" variant="outline">
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Content
+              </Button>
+            </div>
+            <div className="prose dark:prose-invert max-w-none">
+              <MarkdownRenderer content={currentStep.content} />
+            </div>
           </div>
         ) : (
           <div className="text-center py-12">
@@ -201,14 +273,14 @@ This step covers the essential concepts needed to progress in your understanding
           <Button
             variant="outline"
             onClick={() => navigateToStep('previous')}
-            disabled={!canNavigatePrevious()}
+            disabled={!canNavigatePrevious() || isEditing}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Previous
           </Button>
 
           <div className="flex items-center gap-4">
-            {!currentStep.completed && currentStep.content && (
+            {!currentStep.completed && currentStep.content && !isEditing && (
               <Button
                 onClick={markStepAsCompleted}
                 className="bg-green-600 hover:bg-green-700"
@@ -228,7 +300,7 @@ This step covers the essential concepts needed to progress in your understanding
 
           <Button
             onClick={() => navigateToStep('next')}
-            disabled={!canNavigateNext()}
+            disabled={!canNavigateNext() || isEditing}
             className="bg-purple-600 hover:bg-purple-700"
           >
             Next

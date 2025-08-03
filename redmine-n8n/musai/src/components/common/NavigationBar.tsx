@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code } from "lucide-react";
+import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/config/routes";
+import { APP_TERMS } from "@/config/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MusaiLifeLogo, MusaiShimmer } from "@/components/effects/MusaiEffects";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useCurationsAvailability } from "@/hooks/useCurationsAvailability";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";
 
 interface NavigationBarProps {
@@ -23,55 +26,71 @@ export const NavigationBar = ({
 }: NavigationBarProps) => {
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
   const { toggleDevConsole } = useMusaiMood();
+  const { isAvailable: curationsAvailable } = useCurationsAvailability();
 
-  const navigationItems = [
+  // Base navigation items - always available
+  const baseNavigationItems = [
     {
-      id: "chat",
+      id: APP_TERMS.TAB_CHAT,
       icon: MessageSquare,
-      label: "MusaiChat",
+      label: APP_TERMS.NAV_CHAT,
       available: true,
     },
     {
-      id: "musai-search",
+      id: APP_TERMS.TAB_SEARCH,
       icon: Search,
-      label: "MusaiSearch",
+      label: APP_TERMS.NAV_SEARCH,
       available: true,
     },
     {
-      id: "code-musai",
+      id: APP_TERMS.TAB_CODE,
       icon: Code,
-      label: "CodeMusai",
+      label: APP_TERMS.NAV_CODE,
       available: true,
     },
     {
-      id: "musai-university",
+      id: APP_TERMS.TAB_UNIVERSITY,
       icon: GraduationCap,
-      label: "Musai University",
+      label: APP_TERMS.NAV_UNIVERSITY,
       available: true,
       comingSoon: false,
     },
     {
-      id: "emergent-narrative",
+      id: APP_TERMS.TAB_NARRATIVE,
       icon: Theater,
-      label: "MusaiTale",
+      label: APP_TERMS.NAV_NARRATIVE,
       available: true,
       comingSoon: false,
     },
     {
-      id: "task-musai",
+      id: APP_TERMS.TAB_TASK,
       icon: Bot,
-      label: "TaskMusai",
+      label: APP_TERMS.NAV_TASK,
       available: true,
       comingSoon: false,
     },
     {
-      id: "settings",
+      id: APP_TERMS.TAB_SETTINGS,
       icon: Settings,
-      label: "Settings",
+      label: APP_TERMS.NAV_SETTINGS,
       available: true,
     },
+  ];
+
+  // Conditionally add curations if content is available
+  const navigationItems = [
+    ...baseNavigationItems.slice(0, -1), // All items except settings
+    ...(curationsAvailable ? [{
+      id: "curations",
+      icon: Sparkles,
+      label: "AI Curations",
+      available: true,
+      comingSoon: false,
+      isExternal: true,
+    }] : []),
+    baseNavigationItems[baseNavigationItems.length - 1] // Settings at the end
   ];
 
   return (
@@ -164,8 +183,8 @@ export const NavigationBar = ({
                 )}
                 onClick={() => {
                   if (item.available) {
-                    if (item.isRoute && item.route) {
-                      navigate(item.route);
+                    if (item.id === "curations") {
+                      navigate(ROUTES.CURATIONS);
                     } else {
                       onTabChange(item.id);
                     }

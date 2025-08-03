@@ -39,7 +39,7 @@ export const NavigationBar = ({
     {
       id: "musai-university",
       icon: GraduationCap,
-      label: "Musai University",
+      label: "Musai U",
       available: true,
       comingSoon: false,
     },

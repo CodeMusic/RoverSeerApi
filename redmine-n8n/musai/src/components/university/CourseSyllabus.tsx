@@ -22,6 +22,7 @@ import { NavigationBar } from '@/components/common/NavigationBar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { Course, CourseLecture, QuizStatus } from '@/types/university';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 
 const CourseSyllabus = () => 
 {
@@ -32,6 +33,7 @@ const CourseSyllabus = () =>
   const navigate = useNavigate();
   const { courseId } = useParams<{ courseId: string }>();
   const isMobile = useIsMobile();
+  const { recordLastSession } = useUserPreferences();
 
   useEffect(() => 
   {
@@ -164,7 +166,12 @@ const CourseSyllabus = () =>
     } 
     else 
     {
-      // Navigate to lecture view
+      // Navigate to lecture view and record session
+      recordLastSession('university', {
+        courseId: courseId!,
+        lectureId: lecture.id,
+        view: 'lecture'
+      });
       navigate(`/university/course/${courseId}/lecture/${lecture.id}`);
     }
   };

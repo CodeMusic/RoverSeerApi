@@ -2,12 +2,31 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export type MusaiTool = 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative';
 
+interface LastSession {
+  timestamp: number;
+  sessionId?: string;
+  // University-specific fields
+  courseId?: string;
+  lectureId?: string;
+  view?: string; // 'dashboard', 'course', 'lecture', etc.
+  // Narrative-specific fields
+  narrativeId?: string;
+  // Chat-specific fields
+  chatId?: string;
+  // Search-specific fields
+  searchId?: string;
+  // Code-specific fields
+  projectId?: string;
+}
+
 interface UserPreferences {
   hasVisited: boolean;
   preferredTool?: MusaiTool;
   lastUsedTool?: MusaiTool;
   lastVisit?: number;
   toolUsageCount: Record<MusaiTool, number>;
+  autoSelectFirstItem: boolean;
+  lastSessions: Partial<Record<MusaiTool, LastSession>>;
 }
 
 interface UserPreferencesContextType {
@@ -18,6 +37,11 @@ interface UserPreferencesContextType {
   recordToolUsage: (tool: MusaiTool) => void;
   getMostUsedTool: () => MusaiTool | null;
   getRecommendedRoute: () => string;
+  setAutoSelectFirstItem: (enabled: boolean) => void;
+  // Session tracking methods
+  recordLastSession: (tool: MusaiTool, session: Partial<LastSession>) => void;
+  getLastSession: (tool: MusaiTool) => LastSession | null;
+  clearLastSession: (tool: MusaiTool) => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -34,7 +58,9 @@ const defaultPreferences: UserPreferences = {
     university: 0,
     task: 0,
     narrative: 0
-  }
+  },
+  autoSelectFirstItem: false,
+  lastSessions: {}
 };
 
 export function UserPreferencesProvider({ children }: { children: React.ReactNode }) {
@@ -53,6 +79,10 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
           toolUsageCount: {
             ...defaultPreferences.toolUsageCount,
             ...(parsed.toolUsageCount || {})
+          },
+          lastSessions: {
+            ...defaultPreferences.lastSessions,
+            ...(parsed.lastSessions || {})
           }
         });
       } catch (error) {
@@ -91,6 +121,40 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     }));
   };
 
+  const setAutoSelectFirstItem = (enabled: boolean) => {
+    setPreferences(prev => ({
+      ...prev,
+      autoSelectFirstItem: enabled
+    }));
+  };
+
+  const recordLastSession = (tool: MusaiTool, session: Partial<LastSession>) => {
+    setPreferences(prev => ({
+      ...prev,
+      lastSessions: {
+        ...prev.lastSessions,
+        [tool]: {
+          timestamp: Date.now(),
+          ...session
+        }
+      }
+    }));
+  };
+
+  const getLastSession = (tool: MusaiTool): LastSession | null => {
+    return preferences.lastSessions[tool] || null;
+  };
+
+  const clearLastSession = (tool: MusaiTool) => {
+    setPreferences(prev => ({
+      ...prev,
+      lastSessions: {
+        ...prev.lastSessions,
+        [tool]: undefined
+      }
+    }));
+  };
+
   const getMostUsedTool = (): MusaiTool | null => {
     const counts = preferences.toolUsageCount;
     const maxCount = Math.max(...Object.values(counts));
@@ -123,7 +187,11 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     setPreferredTool,
     recordToolUsage,
     getMostUsedTool,
-    getRecommendedRoute
+    getRecommendedRoute,
+    setAutoSelectFirstItem,
+    recordLastSession,
+    getLastSession,
+    clearLastSession
   };
 
   return (

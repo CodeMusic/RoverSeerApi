@@ -4,8 +4,14 @@ interface MusaiMoodContextType {
   currentMood: string;
   accentColor: string;
   isDevConsoleOpen: boolean;
+  isMatrixActive: boolean;
+  isRainbowActive: boolean;
+  isPartyActive: boolean;
   setMood: (mood: string) => void;
   toggleDevConsole: () => void;
+  toggleMatrix: () => void;
+  toggleRainbow: () => void;
+  toggleParty: () => void;
   executeCommand: (command: string) => string;
 }
 
@@ -81,6 +87,9 @@ const monthToColor = {
 export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   const [currentMood, setCurrentMood] = useState('default');
   const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
+  const [isMatrixActive, setIsMatrixActive] = useState(false);
+  const [isRainbowActive, setIsRainbowActive] = useState(false);
+  const [isPartyActive, setIsPartyActive] = useState(false);
 
   const accentColor = musicalMoodColors[currentMood as keyof typeof musicalMoodColors] || musicalMoodColors.default;
 
@@ -101,6 +110,27 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
     setIsDevConsoleOpen(prev => !prev);
   };
 
+  const toggleMatrix = () => {
+    // Ensure only one effect at a time
+    setIsRainbowActive(false);
+    setIsPartyActive(false);
+    setIsMatrixActive(prev => !prev);
+  };
+
+  const toggleRainbow = () => {
+    // Ensure only one effect at a time
+    setIsMatrixActive(false);
+    setIsPartyActive(false);
+    setIsRainbowActive(prev => !prev);
+  };
+
+  const toggleParty = () => {
+    // Ensure only one effect at a time
+    setIsMatrixActive(false);
+    setIsRainbowActive(false);
+    setIsPartyActive(prev => !prev);
+  };
+
   const executeCommand = (command: string): string => {
     const cmd = command.toLowerCase().trim();
     
@@ -111,6 +141,10 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
 • status - Show current system status
 • clear - Clear console
 • matrix - Toggle matrix effect
+• rainbow - Cycle through all moods
+• party - Activate party mode
+• zen - Enter zen mode
+• test-emotion - Test AI emotion effects
 • colors - Show all available mood colors`;
       
       case 'status':
@@ -118,6 +152,7 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
 • Mood: ${currentMood}
 • Accent Color: ${accentColor}
 • Console: Active
+• Matrix: ${isMatrixActive ? 'Active' : 'Inactive'}
 • Theme: ${document.documentElement.classList.contains('dark') ? 'Dark' : 'Light'}`;
       
       case 'colors':
@@ -128,7 +163,23 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
         return 'CLEAR_CONSOLE';
       
       case 'matrix':
-        return 'Matrix effect activated... Welcome to the Musai reality.';
+        toggleMatrix();
+        return isMatrixActive ? 'Matrix effect deactivated.' : 'Matrix effect activated... Welcome to the Musai reality.';
+      
+      case 'rainbow':
+        toggleRainbow();
+        return isRainbowActive ? 'Rainbow mode deactivated.' : '🌈 Rainbow mode activated! Cycling through all moods...';
+      
+      case 'party':
+        toggleParty();
+        return isPartyActive ? 'Party mode deactivated.' : '🎉 Party mode activated! Musai is now energetic!';
+      
+      case 'zen':
+        setMood('zen');
+        return '🧘 Zen mode activated. Musai is now serene and focused.';
+      
+      case 'test-emotion':
+        return 'Testing emotion effects... Try saying: "🎉 Congratulations! This is amazing!" or "🔮 This is mysterious and intriguing..." or "🎨 This is so creative and artistic!"';
       
       default:
         if (cmd.startsWith('mood ')) {
@@ -170,8 +221,14 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       currentMood,
       accentColor,
       isDevConsoleOpen,
+      isMatrixActive,
+      isRainbowActive,
+      isPartyActive,
       setMood,
       toggleDevConsole,
+      toggleMatrix,
+      toggleRainbow,
+      toggleParty,
       executeCommand
     }}>
       {children}

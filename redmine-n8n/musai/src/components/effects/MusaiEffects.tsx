@@ -2,12 +2,17 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import musaiLogoImage from '@/assets/images/musai_logo.png';
 import musaiCoreImage from '@/assets/images/musai_core.png';
+import musaiCurationsImage from '@/assets/images/musai_curations.png';
+import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
 
 interface MusaiLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
   className?: string;
   isDarkMode?: boolean;
   noShimmer?: boolean;
+  useCurationsLogo?: boolean; // Override to manually set curations logo
+  logoWithText?: boolean; // For backwards compatibility
+  onClick?: () => void; // Click handler for curations navigation
 }
 
 interface MusaiShimmerProps {
@@ -114,7 +119,7 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
 };
 
 // Custom Musai Logo Image with Effects
-export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, logoWithText = false }: MusaiLogoProps) => {
+export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, logoWithText = false, useCurationsLogo = false }: MusaiLogoProps) => {
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12', 
@@ -125,6 +130,13 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, lo
     '4xl': 'w-64 h-64'
   };
 
+  // Choose logo image based on curations availability
+  const logoImage = useCurationsLogo 
+    ? musaiCurationsImage 
+    : logoWithText 
+      ? musaiLogoImage 
+      : musaiCoreImage;
+
   return (
     <div className={cn(
       "relative flex items-center justify-center rounded-full overflow-hidden",
@@ -133,17 +145,26 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, lo
       className
     )}>
       {/* Background glow effect - contained within border */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-600/30 via-blue-600/30 to-cyan-600/30 mystical-pulse blur-sm" />
+      <div className={cn(
+        "absolute inset-0 mystical-pulse blur-sm",
+        useCurationsLogo 
+          ? "bg-gradient-to-br from-emerald-600/30 via-teal-600/30 to-cyan-600/30"
+          : "bg-gradient-to-br from-purple-600/30 via-blue-600/30 to-cyan-600/30"
+      )} />
       
       {/* Custom logo image */}
       <img 
-        src={logoWithText ? musaiLogoImage : musaiCoreImage} 
-        alt="Musai AI Logo"
+        src={logoImage} 
+        alt={useCurationsLogo ? "Musai AI Curations" : "Musai AI Logo"}
         className={cn(
           "relative z-10 object-contain logo-color-pulse",
           sizeClasses[size]
         )}
-        style={{ filter: 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.5))' }}
+        style={{ 
+          filter: useCurationsLogo 
+            ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))' 
+            : 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.5))' 
+        }}
       />
       
       {/* Floating particles around the logo */}
@@ -173,16 +194,45 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, lo
 };
 
 // Combined Custom Musai Logo with Shimmer
-export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false, noShimmer = false }: MusaiLogoProps) => {
-  if (noShimmer) {
-    return <MusaiCustomLogo size={size} isDarkMode={isDarkMode} className={className} logoWithText={false} />;
-  }
+export const MusaiLifeLogo = ({ size = 'md', className, isDarkMode = false, noShimmer = false, useCurationsLogo, onClick }: MusaiLogoProps) => {
+  const { isAvailable: curationsAvailable } = useCurationsAvailability();
   
-  return (
+  // Determine if we should show curations logo
+  const shouldUseCurationsLogo = useCurationsLogo !== undefined ? useCurationsLogo : curationsAvailable;
+  
+  const logoContent = noShimmer ? (
+    <MusaiCustomLogo 
+      size={size} 
+      isDarkMode={isDarkMode} 
+      className={className} 
+      logoWithText={false} 
+      useCurationsLogo={shouldUseCurationsLogo}
+    />
+  ) : (
     <MusaiShimmer className={className} speed="normal" rounded="none">
-      <MusaiCustomLogo size={size} isDarkMode={isDarkMode} logoWithText={true} />
+      <MusaiCustomLogo 
+        size={size} 
+        isDarkMode={isDarkMode} 
+        logoWithText={true} 
+        useCurationsLogo={shouldUseCurationsLogo}
+      />
     </MusaiShimmer>
   );
+
+  // If curations logo and clickable, wrap in button
+  if (shouldUseCurationsLogo && onClick) {
+    return (
+      <button 
+        onClick={onClick}
+        className="transition-transform hover:scale-105 cursor-pointer"
+        title="View AI Curations"
+      >
+        {logoContent}
+      </button>
+    );
+  }
+
+  return logoContent;
 };
 
 // Original AI Face Logo (keeping for backward compatibility)

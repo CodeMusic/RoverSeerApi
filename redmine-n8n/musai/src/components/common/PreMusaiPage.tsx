@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Search, MessageSquare, Code, GraduationCap, Bot, Theater, TrendingUp, Clock, Zap, Sparkles, FileText, Play, Plus } from 'lucide-react';
+import { ChevronDown, Search, MessageSquare, Code, GraduationCap, Bot, Theater, TrendingUp, Clock, Zap, Sparkles, FileText, Play, Plus, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { APP_TERMS } from '@/config/constants';
 import { MusaiShimmer } from '@/components/effects/MusaiEffects';
+import { preMusaiApi, PreMusaiContent, PreMusaiQuickAction } from '@/lib/preMusaiApi';
 
 export type PreMusaiPageType = 'home' | 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative';
 
@@ -27,43 +29,45 @@ interface PreMusaiPageProps {
     description: string;
     action?: () => void;
   }>;
+  // For custom action handlers
+  onQuickAction?: (actionId: string, actionType: string, actionData?: any) => void;
 }
 
 const defaultModeOptions = [
   {
-    id: "chat",
+    id: APP_TERMS.PREMUSAI_CHAT,
     icon: MessageSquare,
-    label: "MusaiChat",
+    label: APP_TERMS.NAV_CHAT,
     description: "Conversational reflection"
   },
   {
-    id: "search", 
+    id: APP_TERMS.PREMUSAI_SEARCH, 
     icon: Search,
-    label: "MusaiSearch",
+    label: APP_TERMS.NAV_SEARCH,
     description: "Intelligent discovery"
   },
   {
-    id: "code",
+    id: APP_TERMS.PREMUSAI_CODE,
     icon: Code,
-    label: "CodeMusai",
+    label: APP_TERMS.NAV_CODE,
     description: "Paired AI programming"
   },
   {
-    id: "university",
+    id: APP_TERMS.PREMUSAI_UNIVERSITY,
     icon: GraduationCap,
-    label: "Musai University",
+    label: APP_TERMS.NAV_UNIVERSITY,
     description: "Generative emergent learning"
   },
   {
-    id: "emergent-narrative",
+    id: APP_TERMS.PREMUSAI_NARRATIVE,
     icon: Theater,
-    label: "MusaiTale",
+    label: APP_TERMS.NAV_NARRATIVE,
     description: "Where thoughts become stories"
   },
   {
-    id: "task",
+    id: APP_TERMS.PREMUSAI_TASK,
     icon: Bot,
-    label: "TaskMusai",
+    label: APP_TERMS.NAV_TASK,
     description: "Orchestrated achievement"
   }
 ];
@@ -92,7 +96,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
     
     case 'chat':
       return {
-        title: "MusaiChat",
+        title: APP_TERMS.CHAT,
         subtitle: "Start a natural conversation with your AI assistant. Ask questions, brainstorm ideas, or just chat.",
         placeholder: "What's on your mind?",
         showModeSelector: false,
@@ -112,7 +116,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
     
     case 'search':
       return {
-        title: "MusaiSearch",
+        title: APP_TERMS.SEARCH,
         subtitle: "Intelligent search powered by AI. Get comprehensive answers and insights on any topic.",
         placeholder: "Ask anything... What's on your mind?",
         showModeSelector: false,
@@ -152,7 +156,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
     
     case 'university':
       return {
-        title: "MusaiU",
+        title: APP_TERMS.UNIVERSITY,
         subtitle: "Learn anything with AI-powered courses and personalized education paths.",
         placeholder: "What would you like to learn today?",
         showModeSelector: false,
@@ -172,8 +176,8 @@ const getPageConfig = (type: PreMusaiPageType) => {
     
     case 'task':
       return {
-        title: "TaskMusai",
-        subtitle: "Automate your workflow with intelligent task management and AI assistance.",
+        title: APP_TERMS.TASK,
+        subtitle: APP_TERMS.TASK_DESCRIPTION,
         placeholder: "What task would you like to automate or manage?",
         showModeSelector: false,
         suggestions: [
@@ -184,15 +188,15 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Build a task template"
         ],
         quickActions: [
-          { icon: Bot, title: "New Automation", description: "Create smart workflows" },
-          { icon: Clock, title: "My Tasks", description: "View current tasks" },
-          { icon: TrendingUp, title: "Templates", description: "Use task templates" }
+          { icon: Bot, title: "New Automation", description: "Create smart workflows", id: "task-auto", actionType: "submit", actionData: "Create a new automation workflow" },
+          { icon: Clock, title: "My Tasks", description: "View current tasks", id: "task-view", actionType: "function" },
+          { icon: TrendingUp, title: "Templates", description: "Use task templates", id: "task-templates", actionType: "submit", actionData: "Show me available task templates" }
         ]
       };
     
     case 'narrative':
       return {
-        title: "MusaiTale",
+        title: APP_TERMS.NARRATIVE,
         subtitle: "Where your thoughts become stories. Your emergent narrative engine—shaped by your interactions, perspectives, and decisions. Stories unfold not from a script, but from you.",
         placeholder: "What narrative emerges from your thoughts today?",
         showModeSelector: false,
@@ -226,17 +230,50 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   subtitle: customSubtitle,
   placeholder: customPlaceholder,
   suggestions: customSuggestions,
-  quickActions: customQuickActions
+  quickActions: customQuickActions,
+  onQuickAction
 }) => {
   const [input, setInput] = useState('');
+  const [dynamicContent, setDynamicContent] = useState<PreMusaiContent | null>(null);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  // Load dynamic content from n8n API
+  useEffect(() => {
+    const loadContent = async () => {
+      if (type === 'home') return; // Skip for home page
+      
+      setIsLoadingContent(true);
+      try {
+        const content = await preMusaiApi.getPreMusaiContent(type);
+        setDynamicContent(content);
+      } catch (error) {
+        console.error('Failed to load PreMusai content:', error);
+        setDynamicContent(preMusaiApi.getDefaultContent(type));
+      } finally {
+        setIsLoadingContent(false);
+      }
+    };
+
+    loadContent();
+  }, [type]);
+
   const config = getPageConfig(type);
+  const useContent = dynamicContent || config;
   
-  const title = customTitle || config.title;
-  const subtitle = customSubtitle || config.subtitle;
-  const placeholder = customPlaceholder || config.placeholder;
-  const suggestions = customSuggestions || config.suggestions;
-  const quickActions = customQuickActions || config.quickActions;
+  const title = customTitle || useContent.title;
+  const subtitle = customSubtitle || useContent.subtitle;
+  const placeholder = customPlaceholder || useContent.placeholder;
+  const suggestions = customSuggestions || (dynamicContent ? dynamicContent.examples.map(ex => ex.text) : config.suggestions);
   const showModeSelector = config.showModeSelector && type === 'home';
+
+  // Map icon names to actual icon components
+  const getIconComponent = (iconName: string) => {
+    const iconMap: Record<string, React.ComponentType<any>> = {
+      MessageSquare, Search, Code, GraduationCap, Bot, Theater, 
+      TrendingUp, Clock, Zap, Sparkles, FileText, Play, Plus, HelpCircle
+    };
+    return iconMap[iconName] || HelpCircle;
+  };
 
   const selectedModeData = defaultModeOptions.find(m => m.id === selectedMode) || defaultModeOptions[0];
 
@@ -250,6 +287,27 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   const handleSuggestionClick = (suggestion: string) => {
     setInput(suggestion);
     onSubmit(suggestion, showModeSelector ? selectedMode : undefined);
+  };
+
+  const handleQuickActionClick = (action: PreMusaiQuickAction) => {
+    if (onQuickAction) {
+      onQuickAction(action.id, action.actionType, action.actionData);
+    } else {
+      // Default behavior based on action type
+      switch (action.actionType) {
+        case 'submit':
+          if (action.actionData) {
+            onSubmit(action.actionData, showModeSelector ? selectedMode : undefined);
+          }
+          break;
+        case 'function':
+          // Could trigger specific app functions
+          console.log(`Quick action: ${action.id}`, action);
+          break;
+        default:
+          console.log('Unknown action type:', action.actionType);
+      }
+    }
   };
 
   return (
@@ -364,26 +422,49 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
         </div>
 
         {/* Quick Actions */}
-        {quickActions && quickActions.length > 0 && (
+        {((customQuickActions && customQuickActions.length > 0) || (dynamicContent && dynamicContent.quickActions.length > 0)) && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
-            {quickActions.map((action, index) => {
-              const Icon = action.icon;
-              return (
-                <Button
-                  key={index}
-                  variant="outline"
-                  className="h-auto p-4 flex flex-col items-center gap-3 hover:bg-sidebar-accent/50 transition-all duration-200"
-                  onClick={action.action}
-                  disabled={isLoading}
-                >
-                  <Icon className="w-6 h-6 text-primary" />
-                  <div className="text-center">
-                    <div className="font-medium">{action.title}</div>
-                    <div className="text-xs text-muted-foreground">{action.description}</div>
-                  </div>
-                </Button>
-              );
-            })}
+            {customQuickActions ? (
+              // Use custom quick actions (legacy support)
+              customQuickActions.map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-center gap-3 hover:bg-sidebar-accent/50 transition-all duration-200"
+                    onClick={action.action}
+                    disabled={isLoading || isLoadingContent}
+                  >
+                    <Icon className="w-6 h-6 text-primary" />
+                    <div className="text-center">
+                      <div className="font-medium">{action.title}</div>
+                      <div className="text-xs text-muted-foreground">{action.description}</div>
+                    </div>
+                  </Button>
+                );
+              })
+            ) : (
+              // Use static or dynamic quick actions
+              (dynamicContent?.quickActions || config.quickActions || []).map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <Button
+                    key={action.id || index}
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-center gap-3 hover:bg-sidebar-accent/50 transition-all duration-200"
+                    onClick={() => handleQuickActionClick(action)}
+                    disabled={isLoading || isLoadingContent}
+                  >
+                    <Icon className="w-6 h-6 text-primary" />
+                    <div className="text-center">
+                      <div className="font-medium">{action.title}</div>
+                      <div className="text-xs text-muted-foreground">{action.description}</div>
+                    </div>
+                  </Button>
+                );
+              })
+            )}
           </div>
         )}
       </div>

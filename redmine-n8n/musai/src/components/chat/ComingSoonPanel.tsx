@@ -26,7 +26,7 @@ export const ComingSoonPanel = ({ tab, onClose }: ComingSoonPanelProps) => {
       case "musai-university":
         return {
           icon: GraduationCap,
-          title: "Musai University",
+          title: "Musai U",
           subtitle: "Personalized Learning Platform",
           description: "Ask what you want to learn, and our AI will create a personalized curriculum with interactive lessons that adapt to your learning style.",
           features: [

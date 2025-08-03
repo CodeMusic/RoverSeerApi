@@ -11,16 +11,18 @@ import { PreMusaiPage } from "@/components/common/PreMusaiPage";
 import { NarrativeLayout } from "@/components/narrative/NarrativeLayout";
 import { UniversityContent } from "@/components/university/UniversityContent";
 import { ToolHeader } from "@/components/common/ToolHeader";
+import { APP_TERMS } from "@/config/constants";
 // import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 import { ChatSession, NarrativeSession } from "@/types/chat";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Menu, MessageSquare, Sparkles, GraduationCap } from "lucide-react";
+import { Menu, MessageSquare, Sparkles, GraduationCap, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useUserPreferences } from "@/contexts/UserPreferencesContext";
 
 interface ChatLayoutProps {
   sessions: ChatSession[];
@@ -72,12 +74,23 @@ export const ChatLayout = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const [currentTab, setCurrentTab] = useState(initialTab || "chat");
+  const [currentTab, setCurrentTab] = useState(initialTab || APP_TERMS.TAB_CHAT);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const { preferences } = useUserPreferences();
   
   const currentSession = sessions.find(s => s.id === currentSessionId);
+
+  // Set initial sidebar state based on user preferences
+  useEffect(() => {
+    if (currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0) {
+      // If auto-select is disabled, start with sidebar collapsed
+      if (!preferences.autoSelectFirstItem) {
+        setIsSidebarCollapsed(true);
+      }
+    }
+  }, [currentTab, sessions.length, preferences.autoSelectFirstItem]);
 
   const handleNewChat = useCallback(() => {
     onNewChat();
@@ -128,16 +141,16 @@ export const ChatLayout = ({
   }, [isNavigationExpanded]);
 
   const handleCloseSettings = useCallback(() => {
-    setCurrentTab("chat");
+    setCurrentTab(APP_TERMS.TAB_CHAT);
   }, []);
 
   const handleCloseComingSoon = useCallback(() => {
-    setCurrentTab("chat");
+    setCurrentTab(APP_TERMS.TAB_CHAT);
   }, []);
 
   const renderMainContent = () => {
     // Handle emergent-narrative tab
-    if (currentTab === "emergent-narrative") {
+    if (currentTab === APP_TERMS.TAB_NARRATIVE) {
       return (
         <NarrativeLayout
           sessions={narrativeSessions}
@@ -154,30 +167,30 @@ export const ChatLayout = ({
     }
 
     // Handle code-musai tab
-    if (currentTab === "code-musai") {
+    if (currentTab === APP_TERMS.TAB_CODE) {
       return (
         <CodeMusaiLayout
-          onClose={() => setCurrentTab("chat")}
+          onClose={() => setCurrentTab(APP_TERMS.TAB_CHAT)}
         />
       );
     }
 
     // Handle musai-search tab
-    if (currentTab === "musai-search") {
+    if (currentTab === APP_TERMS.TAB_SEARCH) {
       return (
         <SearchLayout 
-          onClose={() => setCurrentTab("chat")}
+          onClose={() => setCurrentTab(APP_TERMS.TAB_CHAT)}
         />
       );
     }
 
     // Handle musai-university tab
-    if (currentTab === "musai-university") {
+    if (currentTab === APP_TERMS.TAB_UNIVERSITY) {
       return (
         <div className="h-full flex flex-col">
           <ToolHeader
             icon={GraduationCap}
-            title="MusaiUniversity"
+            title={APP_TERMS.UNIVERSITY}
             badge="Generative Learning"
             badgeIcon={Sparkles}
             description="Create and explore AI-powered courses and educational content"
@@ -189,8 +202,56 @@ export const ChatLayout = ({
       );
     }
 
+    // Handle task-musai tab
+    if (currentTab === APP_TERMS.TAB_TASK) {
+      return (
+        <div className="h-full flex flex-col">
+          <ToolHeader
+            icon={Bot}
+            title={APP_TERMS.TASK}
+            badge="Intelligent Automation"
+            badgeIcon={Sparkles}
+            description="Automate your workflow with intelligent task management and AI assistance"
+          />
+          <div className="flex-1 overflow-hidden">
+            <PreMusaiPage
+              type="task"
+              onSubmit={(input) => {
+                // Create a new chat session for task management
+                onNewChat();
+                setTimeout(() => {
+                  onSendMessage(input);
+                }, 100);
+              }}
+              onQuickAction={(actionId, actionType, actionData) => {
+                switch (actionId) {
+                  case 'task-auto':
+                  case 'task-templates':
+                    if (actionData) {
+                      onNewChat();
+                      setTimeout(() => {
+                        onSendMessage(actionData);
+                      }, 100);
+                    }
+                    break;
+                  case 'task-view':
+                    // Could show task management UI in future
+                    console.log('Task view requested');
+                    break;
+                  default:
+                    console.log('Task quick action:', actionId, actionType, actionData);
+                }
+              }}
+              isLoading={isTyping}
+              className="h-full"
+            />
+          </div>
+        </div>
+      );
+    }
+
     // Handle settings tab
-    if (currentTab === "settings") {
+    if (currentTab === APP_TERMS.TAB_SETTINGS) {
       return (
         <SettingsPanel
           onClose={handleCloseSettings}
@@ -198,9 +259,9 @@ export const ChatLayout = ({
       );
     }
 
-    // Show PreMusaiPage if no sessions exist
-    if (sessions.length === 0 && narrativeSessions.length === 0) {
-      if (currentTab === "emergent-narrative") {
+    // Show PreMusaiPage if no sessions exist or no current session selected
+    if ((sessions.length === 0 && narrativeSessions.length === 0) || !currentSession) {
+      if (currentTab === APP_TERMS.TAB_NARRATIVE) {
         return (
           <div className="h-full flex flex-col">
             <PreMusaiPage
@@ -210,6 +271,56 @@ export const ChatLayout = ({
                 onNewNarrative();
                 // Handle narrative creation - you might want to pass this to narrative creation
                 // For now, just create the session
+              }}
+              onQuickAction={(actionId, actionType, actionData) => {
+                switch (actionId) {
+                  case 'narr-begin':
+                    onNewNarrative();
+                    break;
+                  case 'narr-story':
+                  case 'narr-evolution':
+                    // Create new narrative with specific starting content
+                    onNewNarrative();
+                    break;
+                  default:
+                    console.log('Narrative quick action:', actionId, actionType, actionData);
+                }
+              }}
+              isLoading={false}
+              className="h-full"
+            />
+          </div>
+        );
+      } else if (currentTab === APP_TERMS.TAB_UNIVERSITY) {
+        return (
+          <div className="h-full flex flex-col">
+            <PreMusaiPage
+              type="university"
+              onSubmit={(input) => {
+                // Create a new university session with the input
+                // For now, just create a chat session
+                onNewChat();
+                setTimeout(() => {
+                  onSendMessage(input);
+                }, 100);
+              }}
+              onQuickAction={(actionId, actionType, actionData) => {
+                switch (actionId) {
+                  case 'univ-courses':
+                    // Navigate to course creation
+                    console.log('Course creation requested');
+                    break;
+                  case 'univ-learn':
+                    if (actionData) {
+                      onNewChat();
+                      setTimeout(() => {
+                        onSendMessage(actionData);
+                      }, 100);
+                    }
+                    break;
+                  default:
+                    console.log('University quick action:', actionId, actionType, actionData);
+                }
               }}
               isLoading={false}
               className="h-full"
@@ -221,10 +332,10 @@ export const ChatLayout = ({
           <div className="h-full flex flex-col">
             <ToolHeader
               icon={MessageSquare}
-              title="MusaiChat"
-              badge="Conversational AI"
+              title={APP_TERMS.CHAT}
+              badge={APP_TERMS.CHAT_BADGE}
               badgeIcon={Sparkles}
-              description="Natural dialogue with your AI companion for any topic"
+              description={APP_TERMS.CHAT_DESCRIPTION}
             />
             <div className="flex-1 overflow-hidden">
               <PreMusaiPage
@@ -236,6 +347,24 @@ export const ChatLayout = ({
                   setTimeout(() => {
                     onSendMessage(input);
                   }, 100);
+                }}
+                onQuickAction={(actionId, actionType, actionData) => {
+                  switch (actionId) {
+                    case 'chat-new':
+                      onNewChat();
+                      break;
+                    case 'chat-templates':
+                    case 'chat-popular':
+                      if (actionData) {
+                        onNewChat();
+                        setTimeout(() => {
+                          onSendMessage(actionData);
+                        }, 100);
+                      }
+                      break;
+                    default:
+                      console.log('Chat quick action:', actionId, actionType, actionData);
+                  }
                 }}
                 isLoading={isTyping}
                 className="h-full"
@@ -272,14 +401,14 @@ export const ChatLayout = ({
         // Show appropriate PreMusai interface based on current tab
         const getPreMusaiType = () => {
           switch (currentTab) {
-            case "chat": return "chat";
-            case "task-musai": return "task";
-            default: return "chat";
+            case APP_TERMS.TAB_CHAT: return APP_TERMS.PREMUSAI_CHAT;
+            case APP_TERMS.TAB_TASK: return APP_TERMS.PREMUSAI_TASK;
+            default: return APP_TERMS.PREMUSAI_CHAT;
           }
         };
 
         const handleSubmit = (input: string) => {
-          if (currentTab === "task-musai") {
+          if (currentTab === APP_TERMS.TAB_TASK) {
             // For task, create a new chat and send the input
             onNewChat();
             setTimeout(() => {
@@ -307,6 +436,31 @@ export const ChatLayout = ({
               <PreMusaiPage
                 type={getPreMusaiType()}
                 onSubmit={handleSubmit}
+                onQuickAction={(actionId, actionType, actionData) => {
+                  switch (actionId) {
+                    case 'chat-new':
+                      onNewChat();
+                      break;
+                    case 'chat-templates':
+                    case 'chat-popular':
+                      if (actionData) {
+                        handleSubmit(actionData);
+                      }
+                      break;
+                    case 'task-auto':
+                    case 'task-templates':
+                      if (actionData) {
+                        handleSubmit(actionData);
+                      }
+                      break;
+                    case 'task-view':
+                      // Could show task management UI in future
+                      console.log('Task view requested');
+                      break;
+                    default:
+                      console.log('Chat quick action:', actionId, actionType, actionData);
+                  }
+                }}
                 isLoading={isTyping}
                 className="h-full"
               />
@@ -380,7 +534,7 @@ export const ChatLayout = ({
       )}>
         <div className="h-[100dvh] flex">
           {/* Sidebar Panel - only show for chat tab and when sessions exist */}
-          {currentTab === "chat" && sessions.length > 0 && !isSidebarCollapsed && (
+          {currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && !isSidebarCollapsed && (
             <>
               <div 
                 className={cn(
@@ -404,7 +558,7 @@ export const ChatLayout = ({
                 </div>
               </div>
 
-              <div className="w-4 flex-shrink-0" />
+
             </>
           )}
 
@@ -417,7 +571,7 @@ export const ChatLayout = ({
         </div>
 
         {/* Mobile sidebar toggle - only show for chat tab and when sessions exist */}
-        {isMobile && currentTab === "chat" && sessions.length > 0 && (
+        {isMobile && currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && (
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="fixed top-4 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
@@ -427,7 +581,7 @@ export const ChatLayout = ({
         )}
 
         {/* Desktop collapse toggle button for chat */}
-        {currentTab === "chat" && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
+        {currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
           <button
             onClick={() => setIsSidebarCollapsed(false)}
             className="fixed top-4 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
@@ -438,7 +592,7 @@ export const ChatLayout = ({
         )}
 
         {/* Mobile sidebar overlay */}
-        {isMobile && isSidebarOpen && currentTab === "chat" && sessions.length > 0 && (
+        {isMobile && isSidebarOpen && currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && (
           <div
             className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
             onClick={() => setIsSidebarOpen(false)}

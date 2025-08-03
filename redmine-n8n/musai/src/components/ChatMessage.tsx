@@ -7,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { MarkdownRenderer } from './chat/MarkdownRenderer';
 import { ThinkPanel } from './chat/ThinkPanel';
+import { useEmotionEffects } from '@/hooks/useEmotionEffects';
+import { useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,11 +22,22 @@ interface ChatMessageProps {
 export const ChatMessage = ({ message }: ChatMessageProps) => {
   const isAssistant = message.role === 'assistant';
   const { toast } = useToast();
+  const { processAIResponse } = useEmotionEffects();
   const formattedTime = format(new Date(message.timestamp), 'MMM d, yyyy h:mm a');
   const assistantName = window.env?.VITE_ASSISTANT_NAME || import.meta.env.VITE_ASSISTANT_NAME || "Musai";
 
   // Check if dark mode is enabled
   const isDarkMode = document.documentElement.classList.contains('dark');
+
+  // Process AI response for emotion effects
+  useEffect(() => {
+    if (isAssistant && message.content) {
+      const result = processAIResponse(message.content);
+      if (result.triggered) {
+        console.log('Emotion effect triggered:', result.emotion?.intensity, result.effects);
+      }
+    }
+  }, [isAssistant, message.content, processAIResponse]);
 
   const handleCopy = async () => {
     try {

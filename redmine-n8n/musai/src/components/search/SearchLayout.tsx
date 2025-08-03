@@ -8,6 +8,7 @@ import { ToolHeader } from "@/components/common/ToolHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu, Search, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_TERMS } from "@/config/constants";
 import { TIMEOUTS, createTimeoutController, formatTimeout } from "@/config/timeouts";
 
 interface SearchSession {
@@ -296,6 +297,20 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     setCurrentQuery("");
   }, []);
 
+  // Handler for trending topics quick action
+  const handleShowTrendingTopics = useCallback(() => {
+    console.log('🔥 Showing trending topics');
+    const trendingQuery = "Show me trending topics in technology, AI, and programming today";
+    handleSearch(trendingQuery);
+  }, [handleSearch]);
+
+  // Handler for quick answers action
+  const handleQuickAnswers = useCallback(() => {
+    console.log('⚡ Getting quick answers');
+    const quickQuery = "Give me quick insights on current tech trends, AI developments, and programming news";
+    handleSearch(quickQuery);
+  }, [handleSearch]);
+
   const handleViewPreviousSearches = useCallback(() => {
     // If no searches exist, add demo data first
     if (searchSessions.length === 0) {
@@ -444,10 +459,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         {/* Always show header */}
         <ToolHeader
           icon={Search}
-          title="MusaiSearch"
-          badge="Intelligent Discovery"
+          title={APP_TERMS.SEARCH}
+          badge={APP_TERMS.SEARCH_BADGE}
           badgeIcon={Zap}
-          description="AI-powered search with comprehensive insights and analysis"
+          description={APP_TERMS.SEARCH_DESCRIPTION}
         />
         
         {!hasSearched ? (
@@ -456,6 +471,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             isLoading={isLoading}
             onClose={onClose}
             onViewPreviousSearches={handleViewPreviousSearches}
+            onShowTrendingTopics={handleShowTrendingTopics}
+            onQuickAnswers={handleQuickAnswers}
           />
         ) : currentSession ? (
           <div className="flex-1 overflow-hidden">

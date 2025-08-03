@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { NarrativeSidebar } from "./NarrativeSidebar";
 import { ConceptSeedingPanel } from "./ConceptSeedingPanel";
 import { CharacterCreationPanel } from "./CharacterCreationPanel";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
 import { ToolHeader } from "@/components/common/ToolHeader";
+import { APP_TERMS } from "@/config/constants";
+import { useUserPreferences } from "@/contexts/UserPreferencesContext";
 
 interface NarrativeLayoutProps {
   sessions: NarrativeSession[];
@@ -40,13 +42,40 @@ export const NarrativeLayout = ({
   const [currentStep, setCurrentStep] = useState<'concept' | 'characters' | 'arc' | 'scenes'>('concept');
   
   const isMobile = useIsMobile();
+  const { preferences, recordLastSession, getLastSession } = useUserPreferences();
   const currentSession = sessions.find(s => s.id === currentSessionId);
+
+  // Smart auto-navigation: use last session first, fallback to first session
+  useEffect(() => {
+    if (preferences.autoSelectFirstItem && sessions.length > 0 && !currentSessionId) {
+      const lastSession = getLastSession('narrative');
+      
+      // Priority 1: Navigate to last used narrative if it exists
+      if (lastSession?.narrativeId) {
+        const lastNarrative = sessions.find(session => session.id === lastSession.narrativeId);
+        if (lastNarrative) {
+          console.log('🎭 Navigating to last used narrative:', lastNarrative.name || lastNarrative.id);
+          onSessionSelect(lastSession.narrativeId);
+          return;
+        }
+      }
+      
+      // Priority 2: Fallback to first session if auto-select is enabled
+      console.log('🎭 No last session found, navigating to first narrative:', sessions[0].name || sessions[0].id);
+      onSessionSelect(sessions[0].id);
+    }
+  }, [preferences.autoSelectFirstItem, sessions, currentSessionId, onSessionSelect, getLastSession]);
 
   const handleNewNarrative = useCallback(() => {
     onNewNarrative();
   }, [onNewNarrative]);
 
   const handleSessionClick = useCallback((sessionId: string) => {
+    // Record this as the last used narrative session
+    recordLastSession('narrative', {
+      narrativeId: sessionId,
+      view: 'narrative'
+    });
     onSessionSelect(sessionId);
     if (isMobile) {
       setIsSidebarOpen(false);
@@ -69,6 +98,20 @@ export const NarrativeLayout = ({
               handleNewNarrative();
               // Handle narrative creation - you might want to pass this to narrative creation
               // For now, just create the session
+            }}
+            onQuickAction={(actionId, actionType, actionData) => {
+              switch (actionId) {
+                case 'narr-begin':
+                  handleNewNarrative();
+                  break;
+                case 'narr-story':
+                case 'narr-evolution':
+                  // Create new narrative with specific starting content
+                  handleNewNarrative();
+                  break;
+                default:
+                  console.log('Narrative quick action:', actionId, actionType, actionData);
+              }
             }}
             isLoading={false}
             className="h-full"
@@ -160,7 +203,7 @@ export const NarrativeLayout = ({
                 </div>
               </div>
 
-              <div className="w-4 flex-shrink-0" />
+
             </>
           )}
 
@@ -170,10 +213,10 @@ export const NarrativeLayout = ({
               {/* Always show header */}
               <ToolHeader
                 icon={Theater}
-                title="MusaiTale"
-                badge="Story Emergence"
+                title={APP_TERMS.NARRATIVE}
+                badge={APP_TERMS.NARRATIVE_BADGE}
                 badgeIcon={Sparkles}
-                description="Where thoughts become stories through emergent narrative"
+                description={APP_TERMS.NARRATIVE_DESCRIPTION}
               />
               <div className="flex-1 overflow-hidden">
                 {renderMainContent()}

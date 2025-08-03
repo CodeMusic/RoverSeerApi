@@ -24,6 +24,9 @@ export const ROUTES = {
   UNIVERSITY_COURSE_NEW: '/university/course/new',
   UNIVERSITY_COURSE_VIEW: '/university/course/:courseId',
   
+  // AI-generated content
+  CURATIONS: '/curations',
+  
   // Utility
   NOT_FOUND: '*'
 } as const;

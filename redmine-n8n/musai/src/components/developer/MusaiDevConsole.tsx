@@ -55,9 +55,29 @@ export function MusaiDevConsole() {
   // Auto-scroll to bottom when new entries are added
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollElement = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      } else {
+        // Fallback to direct scrolling
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
     }
   }, [entries]);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (scrollRef.current) {
+        const scrollElement = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollElement) {
+          scrollElement.scrollTop = scrollElement.scrollHeight;
+        } else {
+          // Fallback to direct scrolling
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }
+    }, 100); // Small delay to ensure DOM is updated
+  };
 
   const handleCommandSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +114,9 @@ export function MusaiDevConsole() {
     setCommandHistory(prev => [...prev, currentCommand]);
     setCurrentCommand('');
     setHistoryIndex(-1);
+    
+    // Scroll to bottom after command execution
+    scrollToBottom();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

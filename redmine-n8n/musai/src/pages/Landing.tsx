@@ -7,6 +7,7 @@ import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquar
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
+import { APP_TERMS } from "@/config/constants";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Landing = () => {
     { id: "search", icon: Search, label: "Search", description: "Intelligent Discovery" },
     { id: "code", icon: Code, label: "Code", description: "Paired AI Programming" },
     { id: "university", icon: GraduationCap, label: "University", description: "Generative Learning" },
-    { id: "emergent-narrative", icon: Theater, label: "MusaiTale", description: "Where thoughts become stories" },
+    { id: "emergent-narrative", icon: Theater, label: APP_TERMS.NAV_NARRATIVE, description: "Where thoughts become stories" },
     { id: "task", icon: Bot, label: "Task", description: "Orchestrated Achievement" },
   ];
 
@@ -75,7 +76,7 @@ const Landing = () => {
           // For now, auto goes to search until automation is added
           // Add URL parameter as backup for refresh handling
           navigate(`/chat?mode=search&q=${encodeURIComponent(messageText)}`, { 
-            state: { switchToTab: "musai-search", initialQuery: messageText } 
+            state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: messageText } 
           });
           break;
         case "chat":
@@ -84,7 +85,7 @@ const Landing = () => {
         case "search":
           // Add URL parameter as backup for refresh handling
           navigate(RouteUtils.mainAppWithMode("search", messageText), { 
-            state: { switchToTab: "musai-search", initialQuery: messageText } 
+            state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: messageText } 
           });
           break;
         case "code":
@@ -96,7 +97,7 @@ const Landing = () => {
         case "university":
           // Add URL parameter as backup for refresh handling
           navigate(RouteUtils.mainAppWithMode("university", messageText), { 
-            state: { switchToTab: "musai-university", initialQuery: messageText } 
+            state: { switchToTab: APP_TERMS.TAB_UNIVERSITY, initialQuery: messageText } 
           });
           break;
         case "emergent-narrative":
@@ -145,7 +146,12 @@ const Landing = () => {
           <div className="flex justify-center mb-8">
             <div className="relative">
               <div className="w-64 h-64 flex items-center justify-center">
-                <MusaiLifeLogo size="4xl" isDarkMode={false} noShimmer={true} />
+                <MusaiLifeLogo 
+                size="4xl" 
+                isDarkMode={false} 
+                noShimmer={true} 
+                onClick={() => navigate(ROUTES.CURATIONS)}
+              />
               </div>
               <div className="absolute -inset-4 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
             </div>
@@ -156,7 +162,7 @@ const Landing = () => {
              selectedMode === "chat" ? "MusaiChat" :
              selectedMode === "search" ? "MusaiSearch" :
              selectedMode === "code" ? "CodeMusai" :
-             selectedMode === "university" ? "Musai University" :
+             selectedMode === "university" ? "Musai U" :
              selectedMode === "emergent-narrative" ? "MusaiTale" :
              selectedMode === "task" ? "TaskMusai" :
              "MusaiChat"}

@@ -288,6 +288,27 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
               setCode(input);
             }, 100);
           }}
+          onQuickAction={(actionId, actionType, actionData) => {
+            switch (actionId) {
+              case 'code-new':
+                createNewSession();
+                break;
+              case 'code-playground':
+                // Quick playground mode
+                createNewSession();
+                break;
+              case 'code-templates':
+                if (actionData) {
+                  createNewSession();
+                  setTimeout(() => {
+                    setCode(actionData);
+                  }, 100);
+                }
+                break;
+              default:
+                console.log('Code quick action:', actionId, actionType, actionData);
+            }
+          }}
           isLoading={false}
           className="h-full"
         />
@@ -308,6 +329,27 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
             setTimeout(() => {
               setCode(input);
             }, 100);
+          }}
+          onQuickAction={(actionId, actionType, actionData) => {
+            switch (actionId) {
+              case 'code-new':
+                createNewSession();
+                break;
+              case 'code-playground':
+                // Quick playground mode
+                createNewSession();
+                break;
+              case 'code-templates':
+                if (actionData) {
+                  createNewSession();
+                  setTimeout(() => {
+                    setCode(actionData);
+                  }, 100);
+                }
+                break;
+              default:
+                console.log('Code quick action:', actionId, actionType, actionData);
+            }
           }}
           isLoading={false}
           className="h-full"

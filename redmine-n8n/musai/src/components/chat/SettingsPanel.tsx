@@ -4,13 +4,16 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Settings, Palette, Bell, Shield, HelpCircle, Info } from "lucide-react";
+import { Settings, Palette, Bell, Shield, HelpCircle, Info, Navigation } from "lucide-react";
+import { useUserPreferences } from "@/contexts/UserPreferencesContext";
 
 interface SettingsPanelProps {
   onClose: () => void;
 }
 
 export const SettingsPanel = ({ onClose }: SettingsPanelProps) => {
+  const { preferences, setAutoSelectFirstItem } = useUserPreferences();
+
   return (
     <div className="flex-1 flex flex-col bg-background h-[100dvh] overflow-hidden">
       <div className="flex items-center gap-3 p-6 border-b">
@@ -40,6 +43,33 @@ export const SettingsPanel = ({ onClose }: SettingsPanelProps) => {
                   </p>
                 </div>
                 <ThemeToggle />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Navigation */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Navigation className="w-5 h-5" />
+                Navigation
+              </CardTitle>
+              <CardDescription>
+                Control how the app behaves when opening tools
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Auto-select First Item</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically select the first course/narrative instead of showing the intro screen
+                  </p>
+                </div>
+                <Switch
+                  checked={preferences.autoSelectFirstItem}
+                  onCheckedChange={setAutoSelectFirstItem}
+                />
               </div>
             </CardContent>
           </Card>

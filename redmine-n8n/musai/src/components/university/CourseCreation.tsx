@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 interface CourseCreationProps 
 {
   initialTopic?: string;
+  onComplete?: () => void;
 }
 
 interface GeneratedCourseData 
@@ -30,7 +31,7 @@ interface GeneratedCourseData
   tags: string[];
 }
 
-const CourseCreation = ({ initialTopic }: CourseCreationProps) => 
+const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) => 
 {
   const [topic, setTopic] = useState(initialTopic || '');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -102,14 +103,19 @@ const CourseCreation = ({ initialTopic }: CourseCreationProps) =>
 
       const course = await universityApi.createCourse(request);
       
-      // Navigate to the course syllabus view
-      navigate(`/university/course/${course.metadata.id}`, {
-        state: { 
-          course,
-          fromCreation: true,
-          generatedSyllabus: generatedData.syllabus
-        }
-      });
+      // Call completion callback to return to university dashboard
+      if (onComplete) {
+        onComplete();
+      } else {
+        // Fallback: Navigate to the course syllabus view
+        navigate(`/university/course/${course.metadata.id}`, {
+          state: { 
+            course,
+            fromCreation: true,
+            generatedSyllabus: generatedData.syllabus
+          }
+        });
+      }
     } 
     catch (error) 
     {
