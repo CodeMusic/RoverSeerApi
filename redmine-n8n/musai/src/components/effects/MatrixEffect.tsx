@@ -122,32 +122,20 @@ export const MatrixEffect: React.FC<MatrixEffectProps> = ({ isActive, onClose })
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[9999] pointer-events-none">
       <canvas
         ref={canvasRef}
-        className="w-full h-full"
+        className="w-full h-full pointer-events-none"
       />
       
-      {/* Overlay with close button */}
-      <div className="absolute inset-0 pointer-events-auto">
-        <div className="absolute top-4 right-4 z-10">
-          <button
-            onClick={onClose}
-            className="bg-black/50 text-white px-4 py-2 rounded-lg hover:bg-black/70 transition-colors"
-          >
-            Exit Matrix
-          </button>
-        </div>
-        
-        {/* Matrix welcome message */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center z-10">
-          <div className="text-green-400 text-2xl font-mono mb-4">
-            Welcome to the Musai Matrix
-          </div>
-          <div className="text-green-300 text-sm">
-            Mood: {currentMood} | Color: {getMoodColor()}
-          </div>
-        </div>
+      {/* Close button - only this is clickable */}
+      <div className="absolute top-4 right-4 pointer-events-auto z-[10000]">
+        <button
+          onClick={onClose}
+          className="bg-black/50 text-white px-4 py-2 rounded-lg hover:bg-black/70 transition-colors"
+        >
+          Exit Matrix
+        </button>
       </div>
     </div>
   );

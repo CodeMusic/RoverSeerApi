@@ -96,7 +96,7 @@ export const NavigationBar = ({
   return (
     <div
       className={cn(
-        "fixed left-0 top-0 h-full bg-sidebar border-r border-border flex flex-col py-4 z-50 transition-all duration-300",
+        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-50 transition-all duration-300",
         isMobile 
           ? "w-12 items-center" // Always compact on mobile
           : isExpanded 
@@ -107,7 +107,7 @@ export const NavigationBar = ({
     >
       {/* Musai Logo Header */}
       <div className={cn(
-        "flex items-center mb-6",
+        "flex items-center mb-3",
         isExpanded && !isMobile ? "w-full justify-center" : "justify-center"
       )}>
         <div 
@@ -135,7 +135,7 @@ export const NavigationBar = ({
 
       {/* Theme Toggle */}
       <div className={cn(
-        "mb-4 w-full",
+        "mb-2 w-full",
         isExpanded && !isMobile ? "flex justify-center" : "flex justify-center"
       )}>
         <ThemeToggle isExpanded={isExpanded && !isMobile} />
@@ -143,7 +143,7 @@ export const NavigationBar = ({
 
       {/* Visual Separator */}
       <div className={cn(
-        "mb-4",
+        "mb-3",
         isExpanded && !isMobile ? "w-full" : "w-8"
       )}>
         <div className={cn(

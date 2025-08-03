@@ -598,7 +598,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
 
           {/* Sidebar Toggle Button when sidebar is closed */}
           {!isSidebarOpen && (
-            <div className="absolute left-4 top-4">
+            <div className="absolute left-4 top-8">
               <Button
                 onClick={() => setIsSidebarOpen(true)}
                 className="rounded-full w-12 h-12 shadow-lg"

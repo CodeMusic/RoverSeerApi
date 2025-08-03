@@ -314,7 +314,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
     <div className={cn("flex-1 flex flex-col", className)}>
       {/* Hero Section */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 max-w-4xl mx-auto w-full">
-        <MusaiShimmer className="text-center space-y-4">
+        <MusaiShimmer className="text-center space-y-4 mystical-glow p-6 rounded-lg">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
             {title}
           </h1>

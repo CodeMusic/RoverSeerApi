@@ -415,7 +415,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {isMobile && hasSearched && (
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="fixed top-4 left-16 z-50 p-2 rounded-lg bg-background border shadow-md"
+          className="fixed top-8 left-16 z-50 p-2 rounded-lg bg-background border shadow-md"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -425,7 +425,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {hasSearched && !isMobile && (
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
+          className="fixed top-8 left-4 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
           title={isSidebarCollapsed ? "Show search history" : "Hide search history"}
         >
           <Menu className="w-5 h-5" />

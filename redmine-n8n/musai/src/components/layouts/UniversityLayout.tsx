@@ -76,7 +76,7 @@ export const UniversityLayout = ({
       {isMobile && onToggleSidebar && (
         <Button
           variant="ghost"
-          className="fixed top-4 left-4 z-40 md:hidden"
+          className="fixed top-8 left-4 z-40 md:hidden"
           onClick={onToggleSidebar}
         >
           <Menu className="w-6 h-6" />

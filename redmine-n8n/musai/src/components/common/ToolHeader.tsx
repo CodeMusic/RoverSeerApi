@@ -21,10 +21,10 @@ export const ToolHeader: React.FC<ToolHeaderProps> = ({
 }) => {
   return (
     <div className={cn(
-      "flex items-center justify-between p-6 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30",
+      "flex items-center justify-between p-6 bg-sidebar/30",
       className
     )}>
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0 p-2 rounded-lg">
         <Icon className="w-5 h-5 text-primary flex-shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">

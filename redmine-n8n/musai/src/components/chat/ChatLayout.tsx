@@ -1,27 +1,24 @@
 
-import { ChatMessages } from "@/components/chat/ChatMessages";
-import { ChatInput } from "@/components/chat/ChatInput";
-import { ChatSidebar } from "@/components/chat/ChatSidebar";
-import { NavigationBar } from "@/components/common/NavigationBar";
+import React, { useState, useCallback, useEffect } from 'react';
+import { MessageSquare, Sparkles, Menu, Bot, Theater } from 'lucide-react';
+import { ChatMessages } from '@/components/chat/ChatMessages';
+import { ChatInput } from '@/components/chat/ChatInput';
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import { ToolHeader } from '@/components/common/ToolHeader';
+import { NavigationBar } from '@/components/common/NavigationBar';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
+import { APP_TERMS } from '@/config/constants';
+import { ChatSession, NarrativeSession } from '@/types/chat';
 import { SettingsPanel } from "@/components/chat/SettingsPanel";
 import { ComingSoonPanel } from "@/components/chat/ComingSoonPanel";
 import { SearchLayout } from "@/components/search/SearchLayout";
 import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
-import { PreMusaiPage } from "@/components/common/PreMusaiPage";
 import { NarrativeLayout } from "@/components/narrative/NarrativeLayout";
 import { UniversityContent } from "@/components/university/UniversityContent";
-import { ToolHeader } from "@/components/common/ToolHeader";
-import { APP_TERMS } from "@/config/constants";
-// import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-
-import { ChatSession, NarrativeSession } from "@/types/chat";
-import { useState, useCallback, useEffect } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { Menu, MessageSquare, Sparkles, GraduationCap, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, BookOpen } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useUserPreferences } from "@/contexts/UserPreferencesContext";
 
 interface ChatLayoutProps {
@@ -152,17 +149,42 @@ export const ChatLayout = ({
     // Handle emergent-narrative tab
     if (currentTab === APP_TERMS.TAB_NARRATIVE) {
       return (
-        <NarrativeLayout
-          sessions={narrativeSessions}
-          currentSessionId={narrativeCurrentSessionId || currentSessionId}
-          isLoading={isLoading}
-          onNewNarrative={onNewNarrative}
-          onSessionSelect={onNarrativeSessionSelect}
-          onDeleteSession={onDeleteNarrativeSession}
-          onRenameSession={onRenameNarrativeSession}
-          onToggleFavorite={onToggleNarrativeFavorite}
-          onUpdateNarrative={onUpdateNarrative}
-        />
+        <div className="h-full flex flex-col">
+          <ToolHeader
+            icon={Theater}
+            title={APP_TERMS.NARRATIVE}
+            badge={APP_TERMS.NARRATIVE_BADGE}
+            badgeIcon={Sparkles}
+            description={APP_TERMS.NARRATIVE_DESCRIPTION}
+          />
+          <div className="flex-1 overflow-hidden">
+            <PreMusaiPage
+              type="narrative"
+              onSubmit={(input) => {
+                // Create a new narrative session with the input
+                onNewNarrative();
+                // Handle narrative creation - you might want to pass this to narrative creation
+                // For now, just create the session
+              }}
+              onQuickAction={(actionId, actionType, actionData) => {
+                switch (actionId) {
+                  case 'narr-begin':
+                    onNewNarrative();
+                    break;
+                  case 'narr-story':
+                  case 'narr-evolution':
+                    // Create new narrative with specific starting content
+                    onNewNarrative();
+                    break;
+                  default:
+                    console.log('Narrative quick action:', actionId, actionType, actionData);
+                }
+              }}
+              isLoading={false}
+              className="h-full"
+            />
+          </div>
+        </div>
       );
     }
 
@@ -189,14 +211,41 @@ export const ChatLayout = ({
       return (
         <div className="h-full flex flex-col">
           <ToolHeader
-            icon={GraduationCap}
+            icon={Bot}
             title={APP_TERMS.UNIVERSITY}
             badge="Generative Learning"
             badgeIcon={Sparkles}
             description="Create and explore AI-powered courses and educational content"
           />
           <div className="flex-1 overflow-hidden">
-            <UniversityContent />
+            <PreMusaiPage
+              type="university"
+              onSubmit={(input) => {
+                // Create a new chat session for university content
+                onNewChat();
+                setTimeout(() => {
+                  onSendMessage(input);
+                }, 100);
+              }}
+              onQuickAction={(actionId, actionType, actionData) => {
+                switch (actionId) {
+                  case 'university-courses':
+                  case 'university-create':
+                  case 'university-continue':
+                    if (actionData) {
+                      onNewChat();
+                      setTimeout(() => {
+                        onSendMessage(actionData);
+                      }, 100);
+                    }
+                    break;
+                  default:
+                    console.log('University quick action:', actionId, actionType, actionData);
+                }
+              }}
+              isLoading={isTyping}
+              className="h-full"
+            />
           </div>
         </div>
       );
@@ -542,7 +591,7 @@ export const ChatLayout = ({
                   isMobile && !isSidebarOpen ? "hidden" : ""
                 )}
               >
-                <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg border border-border/20 shadow-lg">
+                <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg shadow-lg">
                   <ChatSidebar
                     sessions={sessions}
                     currentSessionId={currentSessionId}
@@ -564,7 +613,7 @@ export const ChatLayout = ({
 
           {/* Main Content Panel */}
           <div className="flex-1">
-            <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg border border-border/20 shadow-lg overflow-hidden">
+            <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden">
               {renderMainContent()}
             </div>
           </div>
@@ -574,7 +623,7 @@ export const ChatLayout = ({
         {isMobile && currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && (
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="fixed top-4 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
+            className="fixed top-8 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -584,7 +633,7 @@ export const ChatLayout = ({
         {currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
           <button
             onClick={() => setIsSidebarCollapsed(false)}
-            className="fixed top-4 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
+            className="fixed top-8 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
             title="Show chat library"
           >
             <Menu className="w-5 h-5" />

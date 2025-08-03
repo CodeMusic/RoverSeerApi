@@ -18,6 +18,7 @@ interface Confetti {
 
 export const PartyEffect: React.FC<PartyEffectProps> = ({ isActive, onComplete }) => {
   const [confetti, setConfetti] = useState<Confetti[]>([]);
+  const [showMessage, setShowMessage] = useState(true);
   const { setMood } = useMusaiMood();
 
   const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'];
@@ -25,6 +26,7 @@ export const PartyEffect: React.FC<PartyEffectProps> = ({ isActive, onComplete }
   useEffect(() => {
     if (!isActive) {
       setConfetti([]);
+      setShowMessage(true);
       return;
     }
 
@@ -44,6 +46,11 @@ export const PartyEffect: React.FC<PartyEffectProps> = ({ isActive, onComplete }
 
     setConfetti(newConfetti);
 
+    // Hide message after 2 seconds
+    const messageTimeout = setTimeout(() => {
+      setShowMessage(false);
+    }, 2000);
+
     // Auto-complete after 5 seconds
     const timeout = setTimeout(() => {
       onComplete();
@@ -51,6 +58,7 @@ export const PartyEffect: React.FC<PartyEffectProps> = ({ isActive, onComplete }
 
     return () => {
       clearTimeout(timeout);
+      clearTimeout(messageTimeout);
     };
   }, [isActive, onComplete, setMood]);
 
@@ -95,14 +103,16 @@ export const PartyEffect: React.FC<PartyEffectProps> = ({ isActive, onComplete }
       ))}
       
       {/* Party message */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-        <div className="text-4xl font-bold text-white drop-shadow-lg animate-bounce">
-          🎉 Party Mode! 🎉
+      {showMessage && (
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+          <div className="text-4xl font-bold text-white drop-shadow-lg animate-bounce">
+            🎉 Party Mode! 🎉
+          </div>
+          <div className="text-xl text-white mt-2">
+            Musai is now energetic!
+          </div>
         </div>
-        <div className="text-xl text-white mt-2">
-          Musai is now energetic!
-        </div>
-      </div>
+      )}
     </div>
   );
 }; 

@@ -185,7 +185,7 @@ export const NarrativeLayout = ({
                   isMobile && !isSidebarOpen ? "hidden" : ""
                 )}
               >
-                <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg border border-border/20 shadow-lg">
+                <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg shadow-lg">
                   <NarrativeSidebar
                     sessions={sessions}
                     currentSessionId={currentSessionId}
@@ -209,7 +209,7 @@ export const NarrativeLayout = ({
 
           {/* Main Content Panel */}
           <div className="flex-1">
-            <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg border border-border/20 shadow-lg overflow-hidden flex flex-col">
+            <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden flex flex-col">
               {/* Always show header */}
               <ToolHeader
                 icon={Theater}
@@ -229,7 +229,7 @@ export const NarrativeLayout = ({
         {isMobile && sessions.length > 0 && (
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-background border shadow-md"
+            className="fixed top-8 left-4 z-50 p-2 rounded-lg bg-background border shadow-md"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -239,7 +239,7 @@ export const NarrativeLayout = ({
         {sessions.length > 0 && !isMobile && isSidebarCollapsed && (
           <button
             onClick={() => setIsSidebarCollapsed(false)}
-            className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
+            className="fixed top-8 left-4 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
             title="Show narrative library"
           >
             <Menu className="w-5 h-5" />
