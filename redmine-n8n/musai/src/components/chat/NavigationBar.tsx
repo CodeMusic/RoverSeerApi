@@ -32,9 +32,9 @@ export const NavigationBar = ({
     {
       id: "emergent-narrative",
       icon: Theater,
-      label: "Emergent Narrative",
+      label: "MusaiTale",
       available: true,
-      comingSoon: true,
+      comingSoon: false,
     },
     {
       id: "musai-university",
@@ -42,8 +42,6 @@ export const NavigationBar = ({
       label: "Musai University",
       available: true,
       comingSoon: false,
-      isRoute: true,
-      route: "/university",
     },
     {
       id: "musai-search",

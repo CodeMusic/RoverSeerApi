@@ -1,8 +1,12 @@
-# 🎭 Emergent Narrative Feature
+# 🎭 MusaiTale - Emergent Narrative Feature
 
 ## Overview
 
-The Emergent Narrative feature allows users to create character-driven stories that unfold organically through AI-powered character interactions. The system follows a character-first design where characters drive the narrative through their unique personalities and interactions.
+MusaiTale allows users to create character-driven stories that unfold organically through AI-powered character interactions. Where your thoughts become stories. Your emergent narrative engine—shaped by your interactions, perspectives, and decisions. Stories unfold not from a script, but from you.
+
+Each engagement steers the plot. Each insight rewrites the arc. What begins as fiction evolves into reflection.
+
+This isn't just storytelling. It's story becoming.
 
 ## Architecture
 
@@ -152,9 +156,11 @@ src/hooks/
 
 ## Getting Started
 
-1. Navigate to the Emergent Narrative tab in Musai
-2. Click "New Narrative" to start
+1. Navigate to the MusaiTale tab in Musai
+2. Click "Begin Emergence" to start
 3. Follow the 4-step process: Concept → Characters → Arc → Scenes
 4. Use the influence and narrator controls during scene execution
+5. Watch how your interactions shape the emerging narrative
+6. Experience how each decision influences the story's direction
 
-The feature is designed to be intuitive and follows the established Musai patterns while introducing innovative narrative creation capabilities. 
+The feature is designed to be intuitive and follows the established Musai patterns while introducing innovative emergent narrative creation capabilities where stories become through your engagement. 

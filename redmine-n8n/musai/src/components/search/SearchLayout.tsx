@@ -4,8 +4,9 @@ import { SearchInput } from "@/components/search/SearchInput";
 import { SearchResults } from "@/components/search/SearchResults";
 import { SearchSidebar } from "@/components/search/SearchSidebar";
 import { PreSearchView } from "@/components/search/PreSearchView";
+import { ToolHeader } from "@/components/common/ToolHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Menu, Search, Plus } from "lucide-react";
+import { Menu, Search, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TIMEOUTS, createTimeoutController, formatTimeout } from "@/config/timeouts";
 
@@ -440,6 +441,15 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         "flex-1 flex flex-col bg-background h-[100dvh] overflow-auto transition-all duration-300",
         hasSearched && !isMobile && !isSidebarCollapsed ? "ml-0" : "ml-0"
       )}>
+        {/* Always show header */}
+        <ToolHeader
+          icon={Search}
+          title="MusaiSearch"
+          badge="Intelligent Discovery"
+          badgeIcon={Zap}
+          description="AI-powered search with comprehensive insights and analysis"
+        />
+        
         {!hasSearched ? (
           <PreSearchView 
             onSearch={handleSearch}
@@ -448,14 +458,16 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             onViewPreviousSearches={handleViewPreviousSearches}
           />
         ) : currentSession ? (
-          <SearchResults
-            session={currentSession}
-            onFollowUp={handleFollowUp}
-            onNewSearch={handleNewSearch}
-            onExport={handleExportSession}
-            isLoading={isLoading}
-            onClose={onClose}
-          />
+          <div className="flex-1 overflow-hidden">
+            <SearchResults
+              session={currentSession}
+              onFollowUp={handleFollowUp}
+              onNewSearch={handleNewSearch}
+              onExport={handleExportSession}
+              isLoading={isLoading}
+              onClose={onClose}
+            />
+          </div>
         ) : (
           <div className="flex-1 flex items-center justify-center p-6">
             <div className="text-center space-y-4">

@@ -258,6 +258,31 @@ export const ConceptSeedingPanel = ({
                   <li>• Think about the tension between opposing worldviews</li>
                 </ul>
               </div>
+
+              <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="w-5 h-5 text-purple-600" />
+                  <h3 className="font-semibold text-sm text-purple-800 dark:text-purple-200">Emergent Narrative</h3>
+                </div>
+                <p className="text-xs text-purple-700 dark:text-purple-300 mb-3">
+                  Your story doesn't follow a script—it <em>emerges</em> from interactions between characters and your choices. 
+                  Each engagement steers the plot. Each insight rewrites the arc.
+                </p>
+                <div className="space-y-2">
+                  <div className="text-xs">
+                    <span className="font-medium text-purple-800 dark:text-purple-200">• Feedback Loops:</span>
+                    <span className="text-purple-700 dark:text-purple-300 ml-1">Your influences shape character behavior, which affects story direction</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-medium text-purple-800 dark:text-purple-200">• Story Becoming:</span>
+                    <span className="text-purple-700 dark:text-purple-300 ml-1">What begins as fiction evolves into reflection of your perspectives</span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-medium text-purple-800 dark:text-purple-200">• Dynamic Evolution:</span>
+                    <span className="text-purple-700 dark:text-purple-300 ml-1">Stories unfold organically based on character interactions and your input</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

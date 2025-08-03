@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
+import ROUTES from '@/config/routes';
 
 interface UniversityLayoutProps
 {
@@ -28,29 +29,29 @@ export const UniversityLayout = ({
 
   const handleTabChange = (tab: string) => 
   {
-    // Handle navigation to different sections
+    // Handle navigation to different sections - all go to chat with tab switching for consistency
     switch (tab) 
     {
       case "chat":
-        navigate("/chat");
+        navigate(ROUTES.MAIN_APP);
         break;
       case "musai-search":
-        navigate("/chat", { state: { switchToTab: "musai-search" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "musai-search" } });
         break;
       case "code-musai":
-        navigate("/chat", { state: { switchToTab: "code-musai" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "code-musai" } });
         break;
       case "emergent-narrative":
-        navigate("/chat", { state: { switchToTab: "emergent-narrative" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "emergent-narrative" } });
         break;
       case "musai-university":
-        navigate("/university");
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "musai-university" } });
         break;
       case "task-musai":
-        navigate("/chat", { state: { switchToTab: "task-musai" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "task-musai" } });
         break;
       case "settings":
-        navigate("/chat", { state: { switchToTab: "settings" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "settings" } });
         break;
       default:
         // Handle other tabs or coming soon features

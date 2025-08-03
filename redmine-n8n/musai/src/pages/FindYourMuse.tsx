@@ -40,7 +40,7 @@ const FindYourMuse = () => {
         "Reflective questioning"
       ],
       color: "from-blue-500 to-purple-500",
-      action: () => navigate("/chat")
+      action: () => navigate(ROUTES.MAIN_APP)
     },
     {
       id: "search",
@@ -55,7 +55,7 @@ const FindYourMuse = () => {
         "Cross-reference insights"
       ],
       color: "from-green-500 to-teal-500",
-      action: () => navigate("/chat", { state: { switchToTab: "musai-search" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "musai-search" } })
     },
     {
       id: "code",
@@ -70,7 +70,7 @@ const FindYourMuse = () => {
         "Creative problem solving"
       ],
       color: "from-orange-500 to-red-500",
-      action: () => navigate("/chat", { state: { switchToTab: "code-musai" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "code-musai" } })
     },
     {
       id: "university",
@@ -90,7 +90,7 @@ const FindYourMuse = () => {
     {
       id: "narrative",
       icon: Theater,
-      title: "Emergent Narrative",
+      title: "MusaiTale",
       subtitle: "Perspective Thinking",
       description: "Put your abstract ideas into story frameworks where AI characters inhabit and concretize them. This allows you to see your own ideas from new perspectives, facilitating deeper understanding through multiple viewpoints.",
       features: [
@@ -100,7 +100,7 @@ const FindYourMuse = () => {
         "Perspective-driven insights"
       ],
       color: "from-indigo-500 to-purple-500",
-      action: () => navigate("/chat", { state: { switchToTab: "emergent-narrative" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "emergent-narrative" } })
     },
     {
       id: "task",
@@ -115,7 +115,7 @@ const FindYourMuse = () => {
         "Adaptive planning"
       ],
       color: "from-pink-500 to-rose-500",
-      action: () => navigate("/chat", { state: { switchToTab: "task-musai" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "task-musai" } })
     }
   ];
 
@@ -144,7 +144,7 @@ const FindYourMuse = () => {
     {
       step: 4,
       title: "Perspective Thinking",
-      description: "Use Emergent Narrative to put your abstract ideas into story frameworks where AI characters inhabit and concretize them, helping you see your own ideas from new perspectives.",
+      description: "Use MusaiTale to put your abstract ideas into story frameworks where AI characters inhabit and concretize them, helping you see your own ideas from new perspectives. Each engagement steers the plot, each insight rewrites the arc.",
       icon: Theater,
       color: "bg-indigo-500"
     },
@@ -188,7 +188,7 @@ const FindYourMuse = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button
-                onClick={() => navigate("/chat")}
+                onClick={() => navigate(ROUTES.MAIN_APP)}
                 className="group bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
               >
                 Start Your Journey
@@ -377,7 +377,7 @@ const FindYourMuse = () => {
 
         <div className="text-center mt-12">
           <Button
-            onClick={() => navigate("/chat")}
+            onClick={() => navigate(ROUTES.MAIN_APP)}
             className="group bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
             Begin Your Journey

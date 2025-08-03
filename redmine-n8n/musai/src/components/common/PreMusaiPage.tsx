@@ -57,8 +57,8 @@ const defaultModeOptions = [
   {
     id: "emergent-narrative",
     icon: Theater,
-    label: "Emergent Narrative",
-    description: "Perspective thinking"
+    label: "MusaiTale",
+    description: "Where thoughts become stories"
   },
   {
     id: "task",
@@ -192,21 +192,21 @@ const getPageConfig = (type: PreMusaiPageType) => {
     
     case 'narrative':
       return {
-        title: "Narrative",
-        subtitle: "Create compelling stories and narratives with AI-powered creative assistance.",
-        placeholder: "What story would you like to create or explore?",
+        title: "MusaiTale",
+        subtitle: "Where your thoughts become stories. Your emergent narrative engine—shaped by your interactions, perspectives, and decisions. Stories unfold not from a script, but from you.",
+        placeholder: "What narrative emerges from your thoughts today?",
         showModeSelector: false,
         suggestions: [
-          "Write a sci-fi short story",
-          "Create character backstories", 
-          "Develop plot outlines",
-          "Generate story ideas",
-          "Craft dialogue scenes"
+          "Begin an emergent story exploration",
+          "Create characters that think and evolve", 
+          "Let narrative emerge from dialogue",
+          "Explore perspectives and consciousness",
+          "Watch stories become through interaction"
         ],
         quickActions: [
-          { icon: Theater, title: "New Story", description: "Start creative writing" },
-          { icon: FileText, title: "Story Templates", description: "Use narrative structures" },
-          { icon: Sparkles, title: "Character Generator", description: "Create unique characters" }
+          { icon: Theater, title: "Begin Emergence", description: "Each engagement steers the plot" },
+                      { icon: FileText, title: "Story Becoming", description: "Each insight rewrites the arc" },
+          { icon: Sparkles, title: "Narrative Evolution", description: "Fiction evolves into reflection" }
         ]
       };
     

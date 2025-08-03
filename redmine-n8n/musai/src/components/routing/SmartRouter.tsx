@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import ROUTES from '@/config/routes';
 
 interface SmartRouterProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
     } else {
       // Track tool usage based on current path
       const pathToTool: Record<string, string> = {
-        '/chat': 'chat',
+        [ROUTES.MAIN_APP]: 'chat',
         '/search': 'search', 
         '/code': 'code',
         '/university': 'university',
@@ -33,7 +34,7 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
         recordToolUsage(tool as any);
       }
     }
-  }, [location.pathname, recordToolUsage]);
+  }, [location.pathname]); // Removed recordToolUsage from dependency array to prevent infinite loop
 
   return <>{children}</>;
 };

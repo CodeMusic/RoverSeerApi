@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import ROUTES from '@/config/routes';
 import { 
   BookOpen, 
   Lock, 
@@ -173,13 +174,13 @@ const CourseSyllabus = () =>
     switch (tab) 
     {
       case "chat":
-        navigate("/chat");
+        navigate(ROUTES.MAIN_APP);
         break;
       case "musai-search":
-        navigate("/chat", { state: { switchToTab: "musai-search" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "musai-search" } });
         break;
       case "code-musai":
-        navigate("/chat", { state: { switchToTab: "code-musai" } });
+        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "code-musai" } });
         break;
       case "musai-university":
         navigate("/university");

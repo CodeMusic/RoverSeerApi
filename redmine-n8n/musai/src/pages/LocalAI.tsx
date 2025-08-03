@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { MusaiShimmer } from '@/components/effects/MusaiEffects';
+import ROUTES from '@/config/routes';
 
 const LocalAI = () => {
   const navigate = useNavigate();
@@ -316,7 +317,7 @@ const LocalAI = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
-              onClick={() => navigate('/chat')}
+              onClick={() => navigate(ROUTES.MAIN_APP)}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
               size="lg"
             >

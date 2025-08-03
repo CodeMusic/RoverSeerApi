@@ -433,7 +433,7 @@ const Neuroscience = () => {
             <p className={`text-lg mb-6 leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               At the heart of Musai's cognitive architecture lies a fundamental principle: when we see something 
               from more than one perspective, we understand it better. This multi-viewpoint approach is embedded 
-              throughout the system, from the dual-agent processing to the emergent narrative capabilities.
+              throughout the system, from the dual-agent processing to the MusaiTale capabilities.
             </p>
             
             <div className="grid md:grid-cols-2 gap-8 mb-8">
@@ -455,9 +455,9 @@ const Neuroscience = () => {
               </div>
               
               <div>
-                <h3 className="text-xl font-bold mb-4 text-indigo-500">Emergent Narrative</h3>
+                <h3 className="text-xl font-bold mb-4 text-indigo-500">MusaiTale</h3>
                 <p className={`text-lg leading-relaxed mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  The emergent narrative system takes perspective thinking to a new level. By placing abstract 
+                  The MusaiTale system takes perspective thinking to a new level. By placing abstract 
                   ideas into story frameworks where AI characters inhabit and concretize them, users can see 
                   their own concepts from entirely new viewpoints.
                 </p>
@@ -483,7 +483,7 @@ const Neuroscience = () => {
             <div className={`p-6 rounded-lg ${isDarkMode ? 'bg-indigo-900/20 border border-indigo-500/30' : 'bg-indigo-50 border border-indigo-200'}`}>
               <h3 className="text-xl font-bold mb-4 text-indigo-500">The Power of Perspective</h3>
               <p className={`text-lg leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Whether through the dual-agent system's logical/creative balance or the emergent narrative's 
+                Whether through the dual-agent system's logical/creative balance or MusaiTale's 
                 character-driven exploration, Musai's perspective thinking capabilities enable deeper understanding 
                 by viewing problems, ideas, and solutions from multiple cognitive angles simultaneously.
               </p>

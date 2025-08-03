@@ -6,11 +6,11 @@ import { ArcGenerationPanel } from "./ArcGenerationPanel";
 import { SceneRunner } from "./SceneRunner";
 import { NarrativeSession } from "@/types/chat";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Menu } from "lucide-react";
+import { Menu, Theater, Sparkles, Plus, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Plus, BookOpen } from "lucide-react";
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
+import { ToolHeader } from "@/components/common/ToolHeader";
 
 interface NarrativeLayoutProps {
   sessions: NarrativeSession[];
@@ -166,8 +166,18 @@ export const NarrativeLayout = ({
 
           {/* Main Content Panel */}
           <div className="flex-1">
-            <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg border border-border/20 shadow-lg overflow-hidden">
-              {renderMainContent()}
+            <div className="h-full bg-background/95 backdrop-blur-sm rounded-lg border border-border/20 shadow-lg overflow-hidden flex flex-col">
+              {/* Always show header */}
+              <ToolHeader
+                icon={Theater}
+                title="MusaiTale"
+                badge="Story Emergence"
+                badgeIcon={Sparkles}
+                description="Where thoughts become stories through emergent narrative"
+              />
+              <div className="flex-1 overflow-hidden">
+                {renderMainContent()}
+              </div>
             </div>
           </div>
         </div>

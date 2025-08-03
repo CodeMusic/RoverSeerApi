@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
+import ROUTES, { RouteUtils } from "@/config/routes";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const Landing = () => {
     { id: "search", icon: Search, label: "Search", description: "Intelligent Discovery" },
     { id: "code", icon: Code, label: "Code", description: "Paired AI Programming" },
     { id: "university", icon: GraduationCap, label: "University", description: "Generative Learning" },
-    { id: "emergent-narrative", icon: Theater, label: "Emergent Narrative", description: "Story Emergence" },
+    { id: "emergent-narrative", icon: Theater, label: "MusaiTale", description: "Where thoughts become stories" },
     { id: "task", icon: Bot, label: "Task", description: "Orchestrated Achievement" },
   ];
 
@@ -48,7 +49,7 @@ const Landing = () => {
     
     // Add a small delay for the animation effect
     setTimeout(() => {
-      navigate("/chat", { 
+              navigate(ROUTES.MAIN_APP, { 
         state: { 
           newSession: true,
           initialMessage: initialMessage 
@@ -82,31 +83,31 @@ const Landing = () => {
           break;
         case "search":
           // Add URL parameter as backup for refresh handling
-          navigate(`/chat?mode=search&q=${encodeURIComponent(messageText)}`, { 
+          navigate(RouteUtils.mainAppWithMode("search", messageText), { 
             state: { switchToTab: "musai-search", initialQuery: messageText } 
           });
           break;
         case "code":
           // Add URL parameter as backup for refresh handling
-          navigate(`/chat?mode=code&q=${encodeURIComponent(messageText)}`, { 
+          navigate(RouteUtils.mainAppWithMode("code", messageText), { 
             state: { switchToTab: "code-musai", initialQuery: messageText } 
           });
           break;
         case "university":
           // Add URL parameter as backup for refresh handling
-          navigate(`/university?topic=${encodeURIComponent(messageText)}`, { 
-            state: { initialQuery: messageText } 
+          navigate(RouteUtils.mainAppWithMode("university", messageText), { 
+            state: { switchToTab: "musai-university", initialQuery: messageText } 
           });
           break;
         case "emergent-narrative":
           // Add URL parameter as backup for refresh handling
-          navigate(`/chat?mode=narrative&q=${encodeURIComponent(messageText)}`, { 
+          navigate(RouteUtils.mainAppWithMode("narrative", messageText), { 
             state: { switchToTab: "emergent-narrative", initialQuery: messageText } 
           });
           break;
         case "task":
           // Add URL parameter as backup for refresh handling
-          navigate(`/chat?mode=task&q=${encodeURIComponent(messageText)}`, { 
+          navigate(RouteUtils.mainAppWithMode("task", messageText), { 
             state: { switchToTab: "task-musai", initialQuery: messageText } 
           });
           break;
@@ -119,7 +120,7 @@ const Landing = () => {
   const handleViewPastChats = () => {
     setIsAnimating(true);
     setTimeout(() => {
-      navigate("/chat", { state: { viewPastChats: true } });
+      navigate(ROUTES.MAIN_APP, { state: { viewPastChats: true } });
     }, 300);
   };
 
@@ -156,7 +157,7 @@ const Landing = () => {
              selectedMode === "search" ? "MusaiSearch" :
              selectedMode === "code" ? "CodeMusai" :
              selectedMode === "university" ? "Musai University" :
-             selectedMode === "emergent-narrative" ? "Emergent Narrative" :
+             selectedMode === "emergent-narrative" ? "MusaiTale" :
              selectedMode === "task" ? "TaskMusai" :
              "MusaiChat"}
           </h1>
@@ -271,7 +272,7 @@ const Landing = () => {
               onClick={() => {
                 setIsAnimating(true);
                 setTimeout(() => {
-                  navigate("/chat");
+                  navigate(ROUTES.MAIN_APP);
                 }, 300);
               }}
               disabled={isAnimating}

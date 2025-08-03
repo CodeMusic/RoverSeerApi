@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ROUTES from "./config/routes";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import Playground from "./pages/Playground";
@@ -42,21 +43,21 @@ const AppContent = () => {
   return (
     <SmartRouter>
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/chat" element={<Index />} />
-        <Route path="/playground" element={<Playground />} />
-        <Route path="/code-musai" element={<CodeMusaiPlaygroundPage />} />
-        <Route path="/roverbyte" element={<RoverByte />} />
-        <Route path="/meet-musai" element={<MeetMusai />} />
-        <Route path="/neuroscience" element={<Neuroscience />} />
-        <Route path="/local-ai" element={<LocalAI />} />
-        <Route path="/find-your-muse" element={<FindYourMuse />} />
-        <Route path="/university" element={<University />} />
-        <Route path="/university/lecture/new" element={<LectureWizard />} />
-        <Route path="/university/lecture/:id" element={<LectureView />} />
-        <Route path="/university/course/new" element={<CourseCreationPage />} />
-        <Route path="/university/course/:courseId" element={<CourseSyllabus />} />
-        <Route path="*" element={<NotFound />} />
+        <Route path={ROUTES.HOME} element={<Landing />} />
+        <Route path={ROUTES.MAIN_APP} element={<Index />} />
+        <Route path={ROUTES.PLAYGROUND} element={<Playground />} />
+        <Route path={ROUTES.CODE_PLAYGROUND} element={<CodeMusaiPlaygroundPage />} />
+        <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
+        <Route path={ROUTES.MEET_MUSAI} element={<MeetMusai />} />
+        <Route path={ROUTES.NEUROSCIENCE} element={<Neuroscience />} />
+        <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
+        <Route path={ROUTES.FIND_YOUR_MUSE} element={<FindYourMuse />} />
+        <Route path={ROUTES.UNIVERSITY} element={<University />} />
+        <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<LectureWizard />} />
+        <Route path={ROUTES.UNIVERSITY_LECTURE_VIEW} element={<LectureView />} />
+        <Route path={ROUTES.UNIVERSITY_COURSE_NEW} element={<CourseCreationPage />} />
+        <Route path={ROUTES.UNIVERSITY_COURSE_VIEW} element={<CourseSyllabus />} />
+        <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
       </Routes>
     </SmartRouter>
   );

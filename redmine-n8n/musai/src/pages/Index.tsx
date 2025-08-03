@@ -104,7 +104,13 @@ const Index = () => {
         onRenameSession={renameSession}
         onToggleFavorite={toggleFavorite}
         onSendMessage={sendMessage}
-        initialTab={location.state?.switchToTab || (searchParams.get('mode') === 'search' ? 'musai-search' : undefined)}
+        initialTab={location.state?.switchToTab || (
+          searchParams.get('mode') === 'search' ? 'musai-search' :
+          searchParams.get('mode') === 'code' ? 'code-musai' :
+          searchParams.get('mode') === 'narrative' ? 'emergent-narrative' :
+          searchParams.get('mode') === 'university' ? 'musai-university' :
+          undefined
+        )}
         initialQuery={location.state?.initialQuery || searchParams.get('q')}
         // Narrative props
         narrativeSessions={narrativeSessions}

@@ -13,7 +13,7 @@ export const ComingSoonPanel = ({ tab, onClose }: ComingSoonPanelProps) => {
       case "emergent-narrative":
         return {
           icon: Theater,
-          title: "Emergent Narrative",
+          title: "MusaiTale",
           subtitle: "Interactive Storytelling Experience",
           description: "Experience dynamic, AI-generated narratives that adapt to your choices and create unique storylines tailored to your preferences.",
           features: [

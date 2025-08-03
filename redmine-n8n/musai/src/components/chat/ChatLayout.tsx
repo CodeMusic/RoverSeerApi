@@ -9,17 +9,18 @@ import { SearchLayout } from "@/components/search/SearchLayout";
 import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
 import { NarrativeLayout } from "@/components/narrative/NarrativeLayout";
+import { UniversityContent } from "@/components/university/UniversityContent";
+import { ToolHeader } from "@/components/common/ToolHeader";
 // import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
 import { ChatSession, NarrativeSession } from "@/types/chat";
 import { useState, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Menu } from "lucide-react";
+import { Menu, MessageSquare, Sparkles, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Check } from "lucide-react";
+import { Check, Plus, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Plus, BookOpen } from "lucide-react";
 
 interface ChatLayoutProps {
   sessions: ChatSession[];
@@ -170,6 +171,24 @@ export const ChatLayout = ({
       );
     }
 
+    // Handle musai-university tab
+    if (currentTab === "musai-university") {
+      return (
+        <div className="h-full flex flex-col">
+          <ToolHeader
+            icon={GraduationCap}
+            title="MusaiUniversity"
+            badge="Generative Learning"
+            badgeIcon={Sparkles}
+            description="Create and explore AI-powered courses and educational content"
+          />
+          <div className="flex-1 overflow-hidden">
+            <UniversityContent />
+          </div>
+        </div>
+      );
+    }
+
     // Handle settings tab
     if (currentTab === "settings") {
       return (
@@ -200,19 +219,28 @@ export const ChatLayout = ({
       } else {
         return (
           <div className="h-full flex flex-col">
-            <PreMusaiPage
-              type="chat"
-              onSubmit={(input) => {
-                // Create a new chat session with the input
-                onNewChat();
-                // Send the message after a brief delay to ensure session is created
-                setTimeout(() => {
-                  onSendMessage(input);
-                }, 100);
-              }}
-              isLoading={isTyping}
-              className="h-full"
+            <ToolHeader
+              icon={MessageSquare}
+              title="MusaiChat"
+              badge="Conversational AI"
+              badgeIcon={Sparkles}
+              description="Natural dialogue with your AI companion for any topic"
             />
+            <div className="flex-1 overflow-hidden">
+              <PreMusaiPage
+                type="chat"
+                onSubmit={(input) => {
+                  // Create a new chat session with the input
+                  onNewChat();
+                  // Send the message after a brief delay to ensure session is created
+                  setTimeout(() => {
+                    onSendMessage(input);
+                  }, 100);
+                }}
+                isLoading={isTyping}
+                className="h-full"
+              />
+            </div>
           </div>
         );
       }
@@ -268,12 +296,21 @@ export const ChatLayout = ({
 
         return (
           <div className="h-full flex flex-col">
-            <PreMusaiPage
-              type={getPreMusaiType()}
-              onSubmit={handleSubmit}
-              isLoading={isTyping}
-              className="h-full"
+            <ToolHeader
+              icon={MessageSquare}
+              title="MusaiChat"
+              badge="Conversational AI"
+              badgeIcon={Sparkles}
+              description="Natural dialogue with your AI companion for any topic"
             />
+            <div className="flex-1 overflow-hidden">
+              <PreMusaiPage
+                type={getPreMusaiType()}
+                onSubmit={handleSubmit}
+                isLoading={isTyping}
+                className="h-full"
+              />
+            </div>
           </div>
         );
       }
@@ -283,6 +320,14 @@ export const ChatLayout = ({
 
     return (
       <div className="h-full flex flex-col">
+        {/* Always show header for regular chat */}
+        <ToolHeader
+          icon={MessageSquare}
+          title="MusaiChat"
+          badge="Conversational AI"
+          badgeIcon={Sparkles}
+          description="Natural dialogue with your AI companion for any topic"
+        />
         <div className="flex-1 min-h-0">
           <ChatMessages 
             messages={currentMessages} 
