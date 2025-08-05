@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { ChatSession } from "@/types/chat";
+import { ChatSession, CareerSession } from "@/types/chat";
 import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatSidebarProps {
-  sessions: ChatSession[];
+  sessions: (ChatSession | CareerSession)[];
   currentSessionId: string;
   isSidebarOpen: boolean;
   isCollapsed?: boolean;
@@ -42,7 +42,7 @@ export const ChatSidebar = ({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const getFirstMessage = (messages: ChatSession["messages"]) => {
+  const getFirstMessage = (messages: (ChatSession | CareerSession)["messages"]) => {
     const userMessage = messages.find(m => m.role === "user");
     return userMessage ? userMessage.content : "New Chat";
   };

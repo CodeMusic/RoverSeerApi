@@ -20,6 +20,10 @@ export const PreSearchView = ({
   
   const handleQuickAction = (actionId: string, actionType: string, actionData?: any) => {
     switch (actionId) {
+      case 'search-chat':
+        // Start a new chat session
+        console.log('Starting new search chat session');
+        break;
       case 'search-trending':
         if (onShowTrendingTopics) {
           onShowTrendingTopics();

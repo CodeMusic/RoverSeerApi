@@ -261,7 +261,16 @@ const Landing = () => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               disabled={isAnimating}
-              className="flex-1 px-4 py-3 text-lg rounded-xl border-2 border-purple-500/30 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+              className={`flex-1 px-4 py-3 text-lg rounded-xl border-2 focus:ring-2 transition-all duration-300 ${
+                selectedMode === "auto" ? "border-purple-500/30 focus:border-purple-500/50 focus:ring-purple-500/20 mystical-glow" :
+                selectedMode === "chat" ? "border-red-500/30 focus:border-red-500/50 focus:ring-red-500/20 mystical-glow" :
+                selectedMode === "search" ? "border-orange-500/30 focus:border-orange-500/50 focus:ring-orange-500/20 mystical-glow" :
+                selectedMode === "code" ? "border-yellow-500/30 focus:border-yellow-500/50 focus:ring-yellow-500/20 mystical-glow" :
+                selectedMode === "university" ? "border-green-500/30 focus:border-green-500/50 focus:ring-green-500/20 mystical-glow" :
+                selectedMode === "emergent-narrative" ? "border-blue-500/30 focus:border-blue-500/50 focus:ring-blue-500/20 mystical-glow" :
+                selectedMode === "task" ? "border-violet-500/30 focus:border-violet-500/50 focus:ring-violet-500/20 mystical-glow" :
+                "border-purple-500/30 focus:border-purple-500/50 focus:ring-purple-500/20 mystical-glow"
+              }`}
             />
             <Button
               type="submit"

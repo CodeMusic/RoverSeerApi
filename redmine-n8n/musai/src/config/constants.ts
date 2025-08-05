@@ -8,6 +8,7 @@ export const APP_TERMS = {
   UNIVERSITY: "Musai U",
   NARRATIVE: "MusaiTale",
   TASK: "TaskMusai",
+  CAREER: "CareerMusai",
   SETTINGS: "Settings",
   
   // Badges
@@ -17,6 +18,7 @@ export const APP_TERMS = {
   UNIVERSITY_BADGE: "Generative Learning",
   NARRATIVE_BADGE: "Story Emergence",
   TASK_BADGE: "Intelligent Automation",
+  CAREER_BADGE: "Career Development",
   
   // Descriptions
   CHAT_DESCRIPTION: "Natural dialogue with your AI companion for any topic",
@@ -25,6 +27,7 @@ export const APP_TERMS = {
   UNIVERSITY_DESCRIPTION: "Generative emergent learning",
   NARRATIVE_DESCRIPTION: "Where thoughts become stories through emergent narrative",
   TASK_DESCRIPTION: "Automate your workflow with intelligent task management and AI assistance",
+  CAREER_DESCRIPTION: "AI-powered career development and job search assistance",
   
   // Tab IDs
   TAB_CHAT: "chat",
@@ -33,6 +36,7 @@ export const APP_TERMS = {
   TAB_UNIVERSITY: "musai-university",
   TAB_NARRATIVE: "emergent-narrative",
   TAB_TASK: "task-musai",
+  TAB_CAREER: "career-musai",
   TAB_SETTINGS: "settings",
   
   // PreMusai Types
@@ -42,6 +46,7 @@ export const APP_TERMS = {
   PREMUSAI_UNIVERSITY: "university",
   PREMUSAI_NARRATIVE: "narrative",
   PREMUSAI_TASK: "task",
+  PREMUSAI_CAREER: "career",
   
   // Session Types
   SESSION_CHAT: "chat",
@@ -49,6 +54,7 @@ export const APP_TERMS = {
   SESSION_CODE: "code",
   SESSION_SEARCH: "search",
   SESSION_UNIVERSITY: "university",
+  SESSION_CAREER: "career",
   
   // Navigation Labels
   NAV_CHAT: "MusaiChat",
@@ -57,6 +63,7 @@ export const APP_TERMS = {
   NAV_UNIVERSITY: "Musai U",
   NAV_NARRATIVE: "MusaiTale",
   NAV_TASK: "TaskMusai",
+  NAV_CAREER: "CareerMusai",
   NAV_SETTINGS: "Settings",
   
   // Page Titles
@@ -66,6 +73,7 @@ export const APP_TERMS = {
   PAGE_UNIVERSITY: "Musai U",
   PAGE_NARRATIVE: "MusaiTale",
   PAGE_TASK: "TaskMusai",
+  PAGE_CAREER: "CareerMusai",
   
   // Common Actions
   ACTION_NEW: "New",
@@ -88,6 +96,7 @@ export const APP_TERMS = {
   PLACEHOLDER_CODE: "Enter your code...",
   PLACEHOLDER_NARRATIVE: "Start your story...",
   PLACEHOLDER_TASK: "Describe your task...",
+  PLACEHOLDER_CAREER: "What job are you looking for?",
   
   // Error Messages
   ERROR_GENERIC: "Something went wrong",

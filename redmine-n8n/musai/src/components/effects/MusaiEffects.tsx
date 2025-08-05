@@ -270,3 +270,136 @@ export const MusaiText = ({ children, className, isDarkMode = false }: MusaiText
     </div>
   );
 };
+
+// Dynamic Profile Logo Component
+interface DynamicProfileLogoProps {
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
+  className?: string;
+  isDarkMode?: boolean;
+  noShimmer?: boolean;
+  useCurationsLogo?: boolean;
+  onClick?: () => void;
+  userPhotoUrl?: string;
+  showUserPhoto?: boolean;
+}
+
+export const DynamicProfileLogo = ({ 
+  size = 'md', 
+  className, 
+  isDarkMode = false, 
+  noShimmer = false, 
+  useCurationsLogo, 
+  onClick,
+  userPhotoUrl,
+  showUserPhoto = false
+}: DynamicProfileLogoProps) => {
+  const { isAvailable: curationsAvailable } = useCurationsAvailability();
+  
+  // Determine if we should show curations logo
+  const shouldUseCurationsLogo = useCurationsLogo !== undefined ? useCurationsLogo : curationsAvailable;
+  
+  // Choose logo image based on curations availability
+  const logoImage = shouldUseCurationsLogo 
+    ? musaiCurationsImage 
+    : musaiCoreImage;
+
+  const sizeClasses = {
+    sm: 'w-8 h-8',
+    md: 'w-12 h-12', 
+    lg: 'w-16 h-16',
+    xl: 'w-24 h-24',
+    '2xl': 'w-32 h-32',
+    '3xl': 'w-48 h-48',
+    '4xl': 'w-64 h-64'
+  };
+
+  const logoContent = (
+    <div className={cn(
+      "relative flex items-center justify-center rounded-full overflow-hidden",
+      "mystical-glow logo-gentle-pulse border border-gray-300/30",
+      sizeClasses[size],
+      className
+    )}>
+      {/* Background glow effect */}
+      <div className={cn(
+        "absolute inset-0 mystical-pulse blur-sm",
+        shouldUseCurationsLogo 
+          ? "bg-gradient-to-br from-emerald-600/30 via-teal-600/30 to-cyan-600/30"
+          : "bg-gradient-to-br from-purple-600/30 via-blue-600/30 to-cyan-600/30"
+      )} />
+      
+      {/* Musai Logo - always present but can be faded */}
+      <img 
+        src={logoImage} 
+        alt={shouldUseCurationsLogo ? "Musai AI Curations" : "Musai AI Logo"}
+        className={cn(
+          "absolute inset-0 object-contain logo-color-pulse transition-opacity duration-500",
+          sizeClasses[size],
+          showUserPhoto && userPhotoUrl ? "opacity-0" : "opacity-100"
+        )}
+        style={{ 
+          filter: shouldUseCurationsLogo 
+            ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))' 
+            : 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.5))' 
+        }}
+      />
+      
+      {/* User Photo - overlays when available and enabled */}
+      {userPhotoUrl && (
+        <img 
+          src={userPhotoUrl} 
+          alt="User Profile"
+          className={cn(
+            "absolute inset-0 object-cover transition-opacity duration-500",
+            sizeClasses[size],
+            showUserPhoto ? "opacity-100" : "opacity-0"
+          )}
+        />
+      )}
+      
+      {/* Floating particles around the logo */}
+      <div className="absolute top-0 right-0">
+        <div className={cn(
+          "rounded-full mystical-pulse",
+          size === 'sm' ? 'w-0.5 h-0.5' : 'w-1 h-1',
+          isDarkMode ? 'bg-purple-300' : 'bg-purple-400'
+        )} style={{ animationDelay: '0ms' }} />
+      </div>
+      <div className="absolute bottom-0 left-0">
+        <div className={cn(
+          "rounded-full mystical-pulse", 
+          size === 'sm' ? 'w-0.5 h-0.5' : 'w-1 h-1',
+          isDarkMode ? 'bg-cyan-300' : 'bg-cyan-400'
+        )} style={{ animationDelay: '500ms' }} />
+      </div>
+      <div className="absolute top-1/4 left-0">
+        <div className={cn(
+          "rounded-full mystical-pulse", 
+          size === 'sm' ? 'w-0.5 h-0.5' : 'w-0.5 h-0.5',
+          isDarkMode ? 'bg-blue-300' : 'bg-blue-400'
+        )} style={{ animationDelay: '1000ms' }} />
+      </div>
+    </div>
+  );
+
+  const finalContent = noShimmer ? logoContent : (
+    <MusaiShimmer className={className} speed="normal" rounded="none">
+      {logoContent}
+    </MusaiShimmer>
+  );
+
+  // If curations logo and clickable, wrap in button
+  if (shouldUseCurationsLogo && onClick) {
+    return (
+      <button 
+        onClick={onClick}
+        className="transition-transform hover:scale-105 cursor-pointer"
+        title="View AI Curations"
+      >
+        {finalContent}
+      </button>
+    );
+  }
+
+  return finalContent;
+};

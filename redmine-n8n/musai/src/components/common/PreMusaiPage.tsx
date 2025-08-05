@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Search, MessageSquare, Code, GraduationCap, Bot, Theater, TrendingUp, Clock, Zap, Sparkles, FileText, Play, Plus, HelpCircle } from 'lucide-react';
+import { ChevronDown, Search, MessageSquare, Code, GraduationCap, Bot, Theater, TrendingUp, Clock, Zap, Sparkles, FileText, Play, Plus, HelpCircle, MessageCircle, MessageSquare as MessageSquareIcon, Search as SearchIcon, Zap as ZapIcon, Sparkles as SparklesIcon, BookOpen, Target, Star, Sparkle, ArrowRight, ArrowLeft, Circle, Square, Diamond, Hexagon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { APP_TERMS } from '@/config/constants';
 import { MusaiShimmer } from '@/components/effects/MusaiEffects';
 import { preMusaiApi, PreMusaiContent, PreMusaiQuickAction } from '@/lib/preMusaiApi';
 
-export type PreMusaiPageType = 'home' | 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative';
+export type PreMusaiPageType = 'home' | 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative' | 'career';
 
 interface PreMusaiPageProps {
   type: PreMusaiPageType;
@@ -108,9 +108,9 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Provide advice on..."
         ],
         quickActions: [
-          { icon: MessageSquare, title: "New Conversation", description: "Start fresh discussion" },
-          { icon: FileText, title: "Templates", description: "Use conversation templates" },
-          { icon: TrendingUp, title: "Popular Questions", description: "See common topics" }
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "chat-new", actionType: "function" },
+          { icon: FileText, title: "Templates", description: "Use conversation templates", id: "chat-templates", actionType: "submit", actionData: "Show me conversation templates" },
+          { icon: TrendingUp, title: "Popular Questions", description: "See common topics", id: "chat-popular", actionType: "submit", actionData: "What are popular conversation topics?" }
         ]
       };
     
@@ -128,6 +128,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Machine learning applications"
         ],
         quickActions: [
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "search-chat", actionType: "function" },
           { icon: TrendingUp, title: "Trending Topics", description: "Explore what's popular today" },
           { icon: Clock, title: "Recent Searches", description: "Your search history" },
           { icon: Zap, title: "Quick Answers", description: "Get instant insights" }
@@ -148,6 +149,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Best practices for..."
         ],
         quickActions: [
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "code-chat", actionType: "function" },
           { icon: Code, title: "New Project", description: "Start coding session" },
           { icon: Play, title: "Quick Playground", description: "Test code snippets" },
           { icon: FileText, title: "Code Templates", description: "Common patterns" }
@@ -168,6 +170,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Web development bootcamp"
         ],
         quickActions: [
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "university-chat", actionType: "function" },
           { icon: GraduationCap, title: "Browse Courses", description: "Explore available courses" },
           { icon: Plus, title: "Create Course", description: "Design custom learning" },
           { icon: Clock, title: "Continue Learning", description: "Resume your progress" }
@@ -188,6 +191,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Build a task template"
         ],
         quickActions: [
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "task-chat", actionType: "function" },
           { icon: Bot, title: "New Automation", description: "Create smart workflows", id: "task-auto", actionType: "submit", actionData: "Create a new automation workflow" },
           { icon: Clock, title: "My Tasks", description: "View current tasks", id: "task-view", actionType: "function" },
           { icon: TrendingUp, title: "Templates", description: "Use task templates", id: "task-templates", actionType: "submit", actionData: "Show me available task templates" }
@@ -208,9 +212,31 @@ const getPageConfig = (type: PreMusaiPageType) => {
           "Watch stories become through interaction"
         ],
         quickActions: [
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "narrative-chat", actionType: "function" },
           { icon: Theater, title: "Begin Emergence", description: "Each engagement steers the plot" },
-                      { icon: FileText, title: "Story Becoming", description: "Each insight rewrites the arc" },
+          { icon: FileText, title: "Story Becoming", description: "Each insight rewrites the arc" },
           { icon: Sparkles, title: "Narrative Evolution", description: "Fiction evolves into reflection" }
+        ]
+      };
+    
+    case 'career':
+      return {
+        title: "Career Musai",
+        subtitle: "Your AI-powered career companion. Get insights, plan, and navigate your professional journey.",
+        placeholder: "What's on your career mind?",
+        showModeSelector: false,
+        suggestions: [
+          "What are the top skills for 2024?",
+          "How to prepare for a job interview?",
+          "What are the best companies to work for?",
+          "How to negotiate a salary?",
+          "What are the latest trends in tech?"
+        ],
+        quickActions: [
+          { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "career-chat", actionType: "function" },
+          { icon: TrendingUp, title: "Career Insights", description: "Stay updated on trends" },
+          { icon: Clock, title: "Recent Activity", description: "Your career history" },
+          { icon: Zap, title: "Quick Answers", description: "Get instant insights" }
         ]
       };
     
@@ -314,10 +340,168 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
     <div className={cn("flex-1 flex flex-col", className)}>
       {/* Hero Section */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 max-w-4xl mx-auto w-full">
-        <MusaiShimmer className="text-center space-y-4 mystical-glow p-6 rounded-lg">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
-            {title}
-          </h1>
+        <MusaiShimmer className="text-center space-y-4 p-6 rounded-lg">
+          <div className="relative">
+            {/* Dynamic glyphs based on Musai type */}
+            {type === 'chat' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-red-400/40 text-sm glyph-pulse">
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-red-400/40 text-sm glyph-float delay-100">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-red-400/40 text-sm glyph-pulse delay-200">
+                  <MessageCircle className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-red-400/40 text-sm glyph-float delay-300">
+                  <MessageSquare className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-red-400/30 text-xs glyph-spin">
+                  <Circle className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-red-400/30 text-xs glyph-spin delay-500">
+                  <Circle className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            {type === 'search' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-orange-400/40 text-sm glyph-pulse">
+                  <SearchIcon className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-orange-400/40 text-sm glyph-float delay-100">
+                  <SearchIcon className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-orange-400/40 text-sm glyph-pulse delay-200">
+                  <TrendingUp className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-orange-400/40 text-sm glyph-float delay-300">
+                  <TrendingUp className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-orange-400/30 text-xs glyph-spin">
+                  <Diamond className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-orange-400/30 text-xs glyph-spin delay-500">
+                  <Diamond className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            {type === 'code' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-yellow-400/40 text-sm glyph-pulse">
+                  <ZapIcon className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-yellow-400/40 text-sm glyph-float delay-100">
+                  <Code className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-yellow-400/40 text-sm glyph-pulse delay-200">
+                  <Code className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-yellow-400/40 text-sm glyph-float delay-300">
+                  <ZapIcon className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-yellow-400/30 text-xs glyph-spin">
+                  <Square className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-yellow-400/30 text-xs glyph-spin delay-500">
+                  <Square className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            {type === 'university' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-green-400/40 text-sm glyph-pulse">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-green-400/40 text-sm glyph-float delay-100">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-green-400/40 text-sm glyph-pulse delay-200">
+                  <Target className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-green-400/40 text-sm glyph-float delay-300">
+                  <BookOpen className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-green-400/30 text-xs glyph-spin">
+                  <Circle className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-green-400/30 text-xs glyph-spin delay-500">
+                  <Circle className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            {type === 'narrative' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-blue-400/40 text-sm glyph-pulse">
+                  <Theater className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-blue-400/40 text-sm glyph-float delay-100">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-blue-400/40 text-sm glyph-pulse delay-200">
+                  <SparklesIcon className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-blue-400/40 text-sm glyph-float delay-300">
+                  <Star className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-blue-400/30 text-xs glyph-spin">
+                  <Hexagon className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-blue-400/30 text-xs glyph-spin delay-500">
+                  <Hexagon className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            {type === 'task' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-violet-400/40 text-sm glyph-pulse">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-violet-400/40 text-sm glyph-float delay-100">
+                  <ZapIcon className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-violet-400/40 text-sm glyph-pulse delay-200">
+                  <Target className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-violet-400/40 text-sm glyph-float delay-300">
+                  <Code className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-violet-400/30 text-xs glyph-spin">
+                  <Square className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-violet-400/30 text-xs glyph-spin delay-500">
+                  <Square className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            {type === 'career' && (
+              <>
+                <div className="absolute -top-2 -left-2 text-indigo-400/40 text-sm glyph-pulse">
+                  <Target className="w-4 h-4" />
+                </div>
+                <div className="absolute -top-2 -right-2 text-indigo-400/40 text-sm glyph-float delay-100">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div className="absolute -bottom-2 -left-2 text-indigo-400/40 text-sm glyph-pulse delay-200">
+                  <BookOpen className="w-3 h-3" />
+                </div>
+                <div className="absolute -bottom-2 -right-2 text-indigo-400/40 text-sm glyph-float delay-300">
+                  <ZapIcon className="w-3 h-3" />
+                </div>
+                <div className="absolute top-1/2 -left-4 text-indigo-400/30 text-xs glyph-spin">
+                  <Diamond className="w-2 h-2" />
+                </div>
+                <div className="absolute top-1/2 -right-4 text-indigo-400/30 text-xs glyph-spin delay-500">
+                  <Diamond className="w-2 h-2" />
+                </div>
+              </>
+            )}
+            
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
+              {title}
+            </h1>
+          </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             {subtitle}
           </p>
@@ -380,7 +564,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={isLoading}
-                className="px-4 py-3 text-lg rounded-xl border-2 border-purple-500/30 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+                className="px-4 py-3 text-lg rounded-xl border-2 border-purple-500/30 focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300 mystical-glow"
                 autoFocus
               />
               {input && (
@@ -447,7 +631,8 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
             ) : (
               // Use static or dynamic quick actions
               (dynamicContent?.quickActions || config.quickActions || []).map((action, index) => {
-                const Icon = action.icon;
+                // Handle both string icon names (from dynamic content) and React components (from static config)
+                const Icon = typeof action.icon === 'string' ? getIconComponent(action.icon) : action.icon;
                 return (
                   <Button
                     key={action.id || index}

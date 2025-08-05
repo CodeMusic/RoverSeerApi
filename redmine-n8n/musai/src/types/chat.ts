@@ -27,7 +27,7 @@ export interface BaseSession {
   lastUpdated: number;
   favorite: boolean;
   createdAt: number;
-  type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative';
+  type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative' | 'career';
 }
 
 export interface ChatSession extends BaseSession {
@@ -66,6 +66,20 @@ export interface NarrativeSession extends BaseSession {
   type: 'narrative';
   storyData: any[];
   currentChapter?: number;
+}
+
+export interface CareerSession extends BaseSession {
+  type: 'career';
+  messages: Message[];
+  careerContext?: {
+    currentRole?: string;
+    targetRole?: string;
+    skills?: string[];
+    experience?: string;
+    location?: string;
+    salaryRange?: string;
+    preferences?: string[];
+  };
 }
 
 // Legacy interface - update to extend BaseSession

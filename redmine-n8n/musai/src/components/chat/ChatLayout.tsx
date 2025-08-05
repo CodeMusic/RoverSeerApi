@@ -1,16 +1,19 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { MessageSquare, Sparkles, Menu, Bot, Theater } from 'lucide-react';
+import { MessageSquare, Sparkles, Menu, Bot, Theater, TrendingUp } from 'lucide-react';
 import { ChatMessages } from '@/components/chat/ChatMessages';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
-import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 import { ToolHeader } from '@/components/common/ToolHeader';
+import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 import { NavigationBar } from '@/components/common/NavigationBar';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
 import { APP_TERMS } from '@/config/constants';
-import { ChatSession, NarrativeSession } from '@/types/chat';
+import { useMusaiMood } from '@/contexts/MusaiMoodContext';
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { useChatSessions } from '@/hooks/useChatSessions';
+import { useMessageSender } from '@/hooks/useMessageSender';
+import { cn } from '@/lib/utils';
+import { ChatSession, NarrativeSession, CareerSession } from '@/types/chat';
 import { SettingsPanel } from "@/components/chat/SettingsPanel";
 import { ComingSoonPanel } from "@/components/chat/ComingSoonPanel";
 import { SearchLayout } from "@/components/search/SearchLayout";
@@ -19,14 +22,15 @@ import { NarrativeLayout } from "@/components/narrative/NarrativeLayout";
 import { UniversityContent } from "@/components/university/UniversityContent";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, BookOpen } from "lucide-react";
-import { useUserPreferences } from "@/contexts/UserPreferencesContext";
+import { CareerChat } from '@/components/career/CareerChat';
 
 interface ChatLayoutProps {
-  sessions: ChatSession[];
+  sessions: (ChatSession | CareerSession)[];
   currentSessionId: string;
   isLoading: boolean;
   isTyping: boolean;
   onNewChat: () => void;
+  onNewCareerSession?: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
   onRenameSession: (sessionId: string, newName: string) => void;
@@ -51,6 +55,7 @@ export const ChatLayout = ({
   isLoading,
   isTyping,
   onNewChat,
+  onNewCareerSession = () => {},
   onSessionSelect,
   onDeleteSession,
   onRenameSession,
@@ -73,7 +78,7 @@ export const ChatLayout = ({
 
   const [currentTab, setCurrentTab] = useState(initialTab || APP_TERMS.TAB_CHAT);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
-  const isMobile = useIsMobile();
+  const isMobile = false; // Simplified for now
   const { toast } = useToast();
   const { preferences } = useUserPreferences();
   
@@ -85,7 +90,13 @@ export const ChatLayout = ({
       // If auto-select is disabled, start with sidebar collapsed
       if (!preferences.autoSelectFirstItem) {
         setIsSidebarCollapsed(true);
+      } else {
+        // If auto-select is enabled, show sidebar if there are sessions
+        setIsSidebarCollapsed(false);
       }
+    } else if (currentTab === APP_TERMS.TAB_CHAT && sessions.length === 0) {
+      // If no sessions, keep sidebar collapsed
+      setIsSidebarCollapsed(true);
     }
   }, [currentTab, sessions.length, preferences.autoSelectFirstItem]);
 
@@ -168,6 +179,9 @@ export const ChatLayout = ({
               }}
               onQuickAction={(actionId, actionType, actionData) => {
                 switch (actionId) {
+                  case 'narrative-chat':
+                    onNewNarrative();
+                    break;
                   case 'narr-begin':
                     onNewNarrative();
                     break;
@@ -229,6 +243,9 @@ export const ChatLayout = ({
               }}
               onQuickAction={(actionId, actionType, actionData) => {
                 switch (actionId) {
+                  case 'university-chat':
+                    onNewChat();
+                    break;
                   case 'university-courses':
                   case 'university-create':
                   case 'university-continue':
@@ -274,6 +291,9 @@ export const ChatLayout = ({
               }}
               onQuickAction={(actionId, actionType, actionData) => {
                 switch (actionId) {
+                  case 'task-chat':
+                    onNewChat();
+                    break;
                   case 'task-auto':
                   case 'task-templates':
                     if (actionData) {
@@ -293,6 +313,86 @@ export const ChatLayout = ({
               }}
               isLoading={isTyping}
               className="h-full"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Handle career-musai tab
+    if (currentTab === APP_TERMS.TAB_CAREER) {
+      // Show PreMusai screen if no current session
+      if (!currentSession) {
+        return (
+          <div className="h-full flex flex-col">
+            <ToolHeader
+              icon={TrendingUp}
+              title={APP_TERMS.CAREER}
+              badge="Career Development"
+              badgeIcon={Sparkles}
+              description="AI-powered career development and job search assistance"
+            />
+            <div className="flex-1 overflow-hidden">
+              <PreMusaiPage
+                type="career"
+                onSubmit={(input) => {
+                  // Create a new career session instead of chat session
+                  onNewCareerSession();
+                  setTimeout(() => {
+                    onSendMessage(input);
+                  }, 100);
+                }}
+                onQuickAction={(actionId, actionType, actionData) => {
+                  switch (actionId) {
+                    case 'career-chat':
+                      onNewChat();
+                      break;
+                    case 'career-insights':
+                      onNewChat();
+                      setTimeout(() => {
+                        onSendMessage('Show me the latest career insights and trends');
+                      }, 100);
+                      break;
+                    case 'career-recent':
+                      onNewChat();
+                      setTimeout(() => {
+                        onSendMessage('What are my recent career activities and progress?');
+                      }, 100);
+                      break;
+                    case 'career-answers':
+                      onNewChat();
+                      setTimeout(() => {
+                        onSendMessage('Give me quick career advice and answers');
+                      }, 100);
+                      break;
+                    default:
+                      console.log('Career quick action:', actionId, actionType, actionData);
+                  }
+                }}
+                isLoading={isTyping}
+                className="h-full"
+              />
+            </div>
+          </div>
+        );
+      }
+
+      // Show CareerChat when session exists
+      return (
+        <div className="h-full flex flex-col">
+          <ToolHeader
+            icon={TrendingUp}
+            title={APP_TERMS.CAREER}
+            badge="Career Development"
+            badgeIcon={Sparkles}
+            description="AI-powered career development and job search assistance"
+          />
+          <div className="flex-1 overflow-hidden">
+            <CareerChat
+              currentSession={currentSession}
+              onSendMessage={onSendMessage}
+              isTyping={isTyping}
+              onNewChat={onNewChat}
             />
           </div>
         </div>
@@ -323,6 +423,9 @@ export const ChatLayout = ({
               }}
               onQuickAction={(actionId, actionType, actionData) => {
                 switch (actionId) {
+                  case 'narrative-chat':
+                    onNewNarrative();
+                    break;
                   case 'narr-begin':
                     onNewNarrative();
                     break;
@@ -582,7 +685,7 @@ export const ChatLayout = ({
             : "ml-20"  // Desktop: collapsed navigation bar
       )}>
         <div className="h-[100dvh] flex">
-          {/* Sidebar Panel - only show for chat tab and when sessions exist */}
+          {/* Sidebar Panel - show for chat tab when sessions exist and auto-select is enabled or sidebar is manually opened */}
           {currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && !isSidebarCollapsed && (
             <>
               <div 
@@ -606,8 +709,6 @@ export const ChatLayout = ({
                   />
                 </div>
               </div>
-
-
             </>
           )}
 
@@ -619,22 +720,36 @@ export const ChatLayout = ({
           </div>
         </div>
 
-        {/* Mobile sidebar toggle - only show for chat tab and when sessions exist */}
-        {isMobile && currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && (
+        {/* Mobile sidebar toggle - always visible but conditionally enabled */}
+        {isMobile && currentTab === APP_TERMS.TAB_CHAT && (
           <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="fixed top-8 left-20 z-50 p-2 rounded-lg bg-background border shadow-md"
+            onClick={() => sessions.length > 0 && setIsSidebarOpen(!isSidebarOpen)}
+            disabled={sessions.length === 0}
+            className={cn(
+              "fixed top-8 left-20 z-50 p-2 rounded-lg bg-background border shadow-md transition-all",
+              sessions.length === 0 
+                ? "opacity-50 cursor-not-allowed" 
+                : "hover:bg-accent"
+            )}
+            title={sessions.length === 0 ? "No chat sessions available" : "Toggle chat sessions"}
           >
             <Menu className="w-5 h-5" />
           </button>
         )}
 
-        {/* Desktop collapse toggle button for chat */}
-        {currentTab === APP_TERMS.TAB_CHAT && sessions.length > 0 && !isMobile && isSidebarCollapsed && (
+        {/* Desktop collapse toggle button for chat - always visible but conditionally enabled */}
+        {currentTab === APP_TERMS.TAB_CHAT && !isMobile && (
           <button
-            onClick={() => setIsSidebarCollapsed(false)}
-            className="fixed top-8 left-24 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
-            title="Show chat library"
+            onClick={() => sessions.length > 0 && setIsSidebarCollapsed(!isSidebarCollapsed)}
+            disabled={sessions.length === 0}
+            className={cn(
+              "fixed top-8 left-24 z-50 p-2 rounded-lg bg-background border shadow-md transition-all",
+              sessions.length === 0 
+                ? "opacity-50 cursor-not-allowed" 
+                : "hover:bg-accent",
+              !isSidebarCollapsed && "hidden"
+            )}
+            title={sessions.length === 0 ? "No chat sessions available" : "Show chat library"}
           >
             <Menu className="w-5 h-5" />
           </button>

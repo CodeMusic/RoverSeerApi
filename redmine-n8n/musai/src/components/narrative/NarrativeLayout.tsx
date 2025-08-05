@@ -101,6 +101,9 @@ export const NarrativeLayout = ({
             }}
             onQuickAction={(actionId, actionType, actionData) => {
               switch (actionId) {
+                case 'narrative-chat':
+                  handleNewNarrative();
+                  break;
                 case 'narr-begin':
                   handleNewNarrative();
                   break;

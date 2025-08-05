@@ -299,6 +299,10 @@ export const UniversityContent = () => {
               }}
               onQuickAction={(actionId, actionType, actionData) => {
                 switch (actionId) {
+                  case 'university-chat':
+                    // Start a new university chat session
+                    console.log('Starting new university chat session');
+                    break;
                   case 'uni-browse':
                     // Stay on dashboard to browse courses
                     break;

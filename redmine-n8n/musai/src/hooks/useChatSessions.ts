@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Message, ChatSession } from "@/types/chat";
+import { Message, ChatSession, CareerSession } from "@/types/chat";
 import { v4 as uuidv4 } from 'uuid';
 import { useMessageSender } from "./useMessageSender";
 import { useQueryClient } from "@tanstack/react-query";
@@ -39,7 +39,7 @@ console.log('- import.meta.env.VITE_WELCOME_MESSAGE:', import.meta.env.VITE_WELC
 console.log('Selected WELCOME_MESSAGE:', WELCOME_MESSAGE);
 
 export const useChatSessions = () => {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [sessions, setSessions] = useState<(ChatSession | CareerSession)[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const queryClient = useQueryClient();
 
@@ -120,24 +120,57 @@ export const useChatSessions = () => {
     }
   }, []); // Load sessions once on mount
 
-  const createNewSession = () => {
-    console.log('Creating new session');
-    const newSession: ChatSession = {
-      id: uuidv4(),
-      type: 'chat',
-      messages: [], // Start with empty messages to show PreMusaiPage
-      createdAt: Date.now(),
-      lastUpdated: Date.now(),
-      favorite: false
-    };
-    setSessions(prev => {
-      const updatedSessions = [newSession, ...prev];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
-      console.log('Sessions after creating new:', updatedSessions.length);
-      return updatedSessions;
-    });
-    setCurrentSessionId(newSession.id);
-    return newSession.id;
+  const createNewSession = (sessionType: 'chat' | 'career' = 'chat') => {
+    console.log('Creating new session of type:', sessionType);
+    
+    if (sessionType === 'career') {
+      const newSession: CareerSession = {
+        id: uuidv4(),
+        type: 'career',
+        messages: [], // Start with empty messages to show PreMusaiPage
+        createdAt: Date.now(),
+        lastUpdated: Date.now(),
+        favorite: false,
+        careerContext: {
+          currentRole: '',
+          targetRole: '',
+          skills: [],
+          experience: '',
+          location: '',
+          salaryRange: '',
+          preferences: []
+        }
+      };
+      setSessions(prev => {
+        const updatedSessions = [newSession, ...prev];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+        console.log('Career sessions after creating new:', updatedSessions.length);
+        return updatedSessions;
+      });
+      setCurrentSessionId(newSession.id);
+      return newSession.id;
+    } else {
+      const newSession: ChatSession = {
+        id: uuidv4(),
+        type: 'chat',
+        messages: [], // Start with empty messages to show PreMusaiPage
+        createdAt: Date.now(),
+        lastUpdated: Date.now(),
+        favorite: false
+      };
+      setSessions(prev => {
+        const updatedSessions = [newSession, ...prev];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+        console.log('Sessions after creating new:', updatedSessions.length);
+        return updatedSessions;
+      });
+      setCurrentSessionId(newSession.id);
+      return newSession.id;
+    }
+  };
+
+  const createNewCareerSession = () => {
+    return createNewSession('career');
   };
 
   const getCurrentSession = () => {
@@ -231,6 +264,7 @@ export const useChatSessions = () => {
     isTyping,
     getCurrentSession,
     createNewSession,
+    createNewCareerSession,
     deleteSession,
     renameSession,
     sendMessage,

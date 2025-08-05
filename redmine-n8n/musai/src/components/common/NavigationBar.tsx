@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles } from "lucide-react";
+import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
@@ -10,6 +10,8 @@ import { MusaiLifeLogo, MusaiShimmer } from "@/components/effects/MusaiEffects";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useCurationsAvailability } from "@/hooks/useCurationsAvailability";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
 
 interface NavigationBarProps {
   currentTab: string;
@@ -25,30 +27,45 @@ export const NavigationBar = ({
   onToggleExpanded,
 }: NavigationBarProps) => {
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
-  const isMobile = useIsMobile();
-  const navigate = useNavigate(); 
-  const { toggleDevConsole } = useMusaiMood();
+  const navigate = useNavigate();
+  const isMobile = false; // Simplified for now
+  const { toggleDevConsole, setToolColor, isCareerMusaiActive } = useMusaiMood();
   const { isAvailable: curationsAvailable } = useCurationsAvailability();
+  const { preferences } = useUserPreferences();
 
-  // Base navigation items - always available
+  // ROYGBIV color coding for tools
+  const toolColors = {
+    [APP_TERMS.TAB_CHAT]: '#FF0000',      // Red
+    [APP_TERMS.TAB_SEARCH]: '#FF7F00',    // Orange
+    [APP_TERMS.TAB_CODE]: '#FFFF00',      // Yellow
+    [APP_TERMS.TAB_UNIVERSITY]: '#00FF00', // Green
+    [APP_TERMS.TAB_NARRATIVE]: '#0000FF',  // Blue
+    [APP_TERMS.TAB_CAREER]: '#4B0082',     // Indigo
+    [APP_TERMS.TAB_TASK]: '#9400D3',       // Violet
+  };
+
+  // Base navigation items - always available (ROYGBIV order)
   const baseNavigationItems = [
     {
       id: APP_TERMS.TAB_CHAT,
       icon: MessageSquare,
       label: APP_TERMS.NAV_CHAT,
       available: true,
+      color: toolColors[APP_TERMS.TAB_CHAT],
     },
     {
       id: APP_TERMS.TAB_SEARCH,
       icon: Search,
       label: APP_TERMS.NAV_SEARCH,
       available: true,
+      color: toolColors[APP_TERMS.TAB_SEARCH],
     },
     {
       id: APP_TERMS.TAB_CODE,
       icon: Code,
       label: APP_TERMS.NAV_CODE,
       available: true,
+      color: toolColors[APP_TERMS.TAB_CODE],
     },
     {
       id: APP_TERMS.TAB_UNIVERSITY,
@@ -56,6 +73,7 @@ export const NavigationBar = ({
       label: APP_TERMS.NAV_UNIVERSITY,
       available: true,
       comingSoon: false,
+      color: toolColors[APP_TERMS.TAB_UNIVERSITY],
     },
     {
       id: APP_TERMS.TAB_NARRATIVE,
@@ -63,25 +81,35 @@ export const NavigationBar = ({
       label: APP_TERMS.NAV_NARRATIVE,
       available: true,
       comingSoon: false,
-    },
-    {
-      id: APP_TERMS.TAB_TASK,
-      icon: Bot,
-      label: APP_TERMS.NAV_TASK,
-      available: true,
-      comingSoon: false,
-    },
-    {
-      id: APP_TERMS.TAB_SETTINGS,
-      icon: Settings,
-      label: APP_TERMS.NAV_SETTINGS,
-      available: true,
+      color: toolColors[APP_TERMS.TAB_NARRATIVE],
     },
   ];
 
-  // Conditionally add curations if content is available
+  // Add career mode as 6th tool (Indigo) only if activated
+  const careerItem = isCareerMusaiActive ? {
+    id: APP_TERMS.TAB_CAREER,
+    icon: TrendingUp,
+    label: APP_TERMS.NAV_CAREER,
+    available: true,
+    comingSoon: false,
+    color: toolColors[APP_TERMS.TAB_CAREER],
+  } : null;
+
+  // Task item (Violet - 7th position)
+  const taskItem = {
+    id: APP_TERMS.TAB_TASK,
+    icon: Bot,
+    label: APP_TERMS.NAV_TASK,
+    available: true,
+    comingSoon: false,
+    color: toolColors[APP_TERMS.TAB_TASK],
+  };
+
+  // Build navigation items in correct ROYGBIV order
   const navigationItems = [
-    ...baseNavigationItems.slice(0, -1), // All items except settings
+    ...baseNavigationItems, // Red, Orange, Yellow, Green, Blue
+    ...(careerItem ? [careerItem] : []), // Indigo (6th) - only if active
+    taskItem, // Violet (7th)
     ...(curationsAvailable ? [{
       id: "curations",
       icon: Sparkles,
@@ -89,8 +117,15 @@ export const NavigationBar = ({
       available: true,
       comingSoon: false,
       isExternal: true,
+      color: '#FF69B4', // Pink for curations
     }] : []),
-    baseNavigationItems[baseNavigationItems.length - 1] // Settings at the end
+    {
+      id: APP_TERMS.TAB_SETTINGS,
+      icon: Settings,
+      label: APP_TERMS.NAV_SETTINGS,
+      available: true,
+      color: '#808080', // Gray for settings
+    },
   ];
 
   return (
@@ -115,10 +150,12 @@ export const NavigationBar = ({
           className="cursor-pointer hover:scale-110 transition-transform duration-200"
           title="Open Musai Developer Console"
         >
-          <MusaiLifeLogo 
+          <DynamicProfileLogo 
             size={isExpanded && !isMobile ? "lg" : "md"} 
             isDarkMode={true}
             noShimmer={true}
+            userPhotoUrl={preferences.userPhotoUrl}
+            showUserPhoto={preferences.showUserPhoto || false}
           />
         </div>
         {isExpanded && !isMobile && (
@@ -152,83 +189,126 @@ export const NavigationBar = ({
         )} />
       </div>
 
+      {/* Spacing after theme toggle */}
+      <div className={cn(
+        "mb-4",
+        isExpanded && !isMobile ? "w-full" : "w-8"
+      )}>
+        <div className={cn(
+          "h-4",
+          isExpanded && !isMobile ? "mx-2" : "mx-auto"
+        )} />
+      </div>
+
       <div className={cn(
         "flex flex-col flex-1 w-full",
         isExpanded && !isMobile ? "space-y-2 items-center" : "space-y-4 items-center px-3"
       )}>
-        {navigationItems.map((item) => {
+        {navigationItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
           const isComingSoon = item.comingSoon;
 
-          return (
-            <div
-              key={item.id}
-              className="relative group w-full"
-              onMouseEnter={() => !isMobile && !isExpanded && setShowTooltip(item.id)}
-              onMouseLeave={() => setShowTooltip(null)}
-            >
-              <Button
-                variant="ghost"
-                size={isExpanded && !isMobile ? undefined : "icon"}
-                className={cn(
-                  "transition-all duration-200 hover:scale-105 relative",
-                  isExpanded && !isMobile 
-                    ? "w-full justify-start h-11 px-3 rounded-lg" 
-                    : "w-10 h-10 rounded-xl p-0 gap-0",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-lg scale-105"
-                    : "hover:bg-sidebar-accent text-muted-foreground hover:text-foreground",
-                  isComingSoon && !isActive && "opacity-70"
-                )}
-                onClick={() => {
-                  if (item.available) {
-                    if (item.id === "curations") {
-                      navigate(ROUTES.CURATIONS);
-                    } else {
-                      onTabChange(item.id);
-                    }
-                  }
-                }}
-                disabled={!item.available}
-                title={isMobile || isExpanded ? undefined : item.label}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {isExpanded && !isMobile && (
-                  <span className="ml-3 text-sm font-medium truncate">
-                    {item.label}
-                    {isComingSoon && (
-                      <span className="ml-2 text-xs opacity-60">(Soon)</span>
-                    )}
-                  </span>
-                )}
-              </Button>
+          // Add spacing before settings (last item)
+          const isLastItem = index === navigationItems.length - 1;
+          const showSpacingBeforeSettings = isLastItem && item.id === APP_TERMS.TAB_SETTINGS;
 
-              {/* Tooltip - only show on desktop when collapsed */}
-              {!isMobile && !isExpanded && showTooltip === item.id && (
-                <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-popover text-popover-foreground px-3 py-2 rounded-lg shadow-lg border text-sm whitespace-nowrap z-50 animate-in slide-in-from-left-2">
-                  {item.label}
-                  {isComingSoon && (
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      (Coming Soon)
+          return (
+            <div key={item.id}>
+              {/* Spacing before settings */}
+              {showSpacingBeforeSettings && (
+                <div className={cn(
+                  "mb-6",
+                  isExpanded && !isMobile ? "w-full" : "w-8"
+                )}>
+                  <div className={cn(
+                    "h-8",
+                    isExpanded && !isMobile ? "mx-2" : "mx-auto"
+                  )} />
+                </div>
+              )}
+
+              <div
+                className="relative group w-full"
+                onMouseEnter={() => !isMobile && !isExpanded && setShowTooltip(item.id)}
+                onMouseLeave={() => setShowTooltip(null)}
+              >
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  size={isExpanded ? undefined : "icon"}
+                  className={cn(
+                    "relative transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground",
+                    isExpanded 
+                      ? "w-full justify-start h-11 px-3 rounded-lg" 
+                      : "w-10 h-10 rounded-xl p-0 gap-0",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-lg scale-105 mystical-glow"
+                      : "hover:bg-sidebar-accent text-muted-foreground hover:text-foreground",
+                    isComingSoon && !isActive && "opacity-70"
+                  )}
+                  style={isActive && item.color ? {
+                    '--tool-glow-color': item.color,
+                    '--tool-glow-opacity': '0.6',
+                  } as React.CSSProperties : undefined}
+                  onClick={() => {
+                    if (item.available) {
+                      if (item.id === "curations") {
+                        navigate(ROUTES.CURATIONS);
+                      } else {
+                        // Set the tool color as accent color when tool is selected
+                        if (item.color) {
+                          setToolColor(item.color);
+                        }
+                        onTabChange(item.id);
+                      }
+                    }
+                  }}
+                  disabled={!item.available}
+                  title={isMobile || isExpanded ? undefined : item.label}
+                >
+                  <Icon 
+                    className={cn(
+                      "w-5 h-5 flex-shrink-0",
+                      isActive && item.color && "tool-glow"
+                    )} 
+                  />
+                  {isExpanded && !isMobile && (
+                    <span className="ml-3 text-sm font-medium truncate">
+                      {item.label}
+                      {isComingSoon && (
+                        <span className="ml-2 text-xs opacity-60">(Soon)</span>
+                      )}
                     </span>
                   )}
-                </div>
-              )}
+                </Button>
 
-              {/* Coming Soon Badge */}
-              {isComingSoon && (
-                <div className={cn(
-                  "absolute bg-yellow-500 rounded-full flex items-center justify-center",
-                  isExpanded && !isMobile 
-                    ? "top-3 right-4 w-2 h-2" 
-                    : "top-1 right-1 w-3 h-3"
-                )}>
-                  {!isExpanded || isMobile ? (
-                    <span className="text-[8px] text-white font-bold">!</span>
-                  ) : null}
-                </div>
-              )}
+                {/* Tooltip - only show on desktop when collapsed */}
+                {!isMobile && !isExpanded && showTooltip === item.id && (
+                  <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-popover text-popover-foreground px-3 py-2 rounded-lg shadow-lg border text-sm whitespace-nowrap z-50 animate-in slide-in-from-left-2">
+                    {item.label}
+                    {isComingSoon && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (Coming Soon)
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Coming Soon Badge */}
+                {isComingSoon && (
+                  <div className={cn(
+                    "absolute bg-yellow-500 rounded-full flex items-center justify-center",
+                    isExpanded && !isMobile 
+                      ? "top-3 right-4 w-2 h-2" 
+                      : "top-1 right-1 w-3 h-3"
+                  )}>
+                    {!isExpanded || isMobile ? (
+                      <span className="text-[8px] text-white font-bold">!</span>
+                    ) : null}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -240,7 +320,7 @@ export const NavigationBar = ({
           variant="ghost"
           size={isExpanded ? undefined : "icon"}
           className={cn(
-            "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground mystical-glow border border-gray-300/30 mt-4",
+            "transition-all duration-200 hover:bg-sidebar-accent text-muted-foreground hover:text-foreground subtle-glow border border-gray-300/30 mt-4",
             isExpanded ? "w-full justify-start h-11 px-3 rounded-lg" : "w-10 h-10 rounded-xl p-0 gap-0"
           )}
           onClick={onToggleExpanded}

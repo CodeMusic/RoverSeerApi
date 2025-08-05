@@ -290,6 +290,9 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           }}
           onQuickAction={(actionId, actionType, actionData) => {
             switch (actionId) {
+              case 'code-chat':
+                createNewSession();
+                break;
               case 'code-new':
                 createNewSession();
                 break;
@@ -332,6 +335,9 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           }}
           onQuickAction={(actionId, actionType, actionData) => {
             switch (actionId) {
+              case 'code-chat':
+                createNewSession();
+                break;
               case 'code-new':
                 createNewSession();
                 break;

@@ -258,6 +258,53 @@ const defaultContent: Record<string, PreMusaiContent> = {
         actionData: 'Show me task management templates'
       }
     ]
+  },
+  
+  career: {
+    type: 'career',
+    title: 'Career Musai',
+    subtitle: 'Your AI-powered career companion. Get insights, plan, and navigate your professional journey.',
+    placeholder: "What's on your career mind?",
+    examples: [
+      { id: 'career-1', text: 'What are the top skills for 2025?', category: 'skills' },
+      { id: 'career-2', text: 'How to prepare for a job interview?', category: 'interview' },
+      { id: 'career-3', text: 'What are the best companies to work for?', category: 'companies' },
+      { id: 'career-4', text: 'How to negotiate a salary?', category: 'negotiation' },
+      { id: 'career-5', text: 'What are the latest trends in tech?', category: 'trends' }
+    ],
+    quickActions: [
+      {
+        id: 'career-chat',
+        icon: 'MessageSquare',
+        title: 'Start Chat',
+        description: 'Begin a new conversation',
+        actionType: 'function'
+      },
+      {
+        id: 'career-insights',
+        icon: 'TrendingUp',
+        title: 'Career Insights',
+        description: 'Stay updated on trends',
+        actionType: 'submit',
+        actionData: 'Show me the latest career insights and trends'
+      },
+      {
+        id: 'career-recent',
+        icon: 'Clock',
+        title: 'Recent Activity',
+        description: 'Your career history',
+        actionType: 'submit',
+        actionData: 'What are my recent career activities and progress?'
+      },
+      {
+        id: 'career-answers',
+        icon: 'Zap',
+        title: 'Quick Answers',
+        description: 'Get instant insights',
+        actionType: 'submit',
+        actionData: 'Give me quick career advice and answers'
+      }
+    ]
   }
 };
 

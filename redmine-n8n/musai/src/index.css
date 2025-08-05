@@ -189,17 +189,29 @@
   }
 }
 
+/* Reduced PreMusai Shimmer Effect */
 @keyframes mysticalShimmer {
-  0% {
-    background-position: -200% 0;
+  0%, 100% {
     opacity: 0.999;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(var(--musai-accent-rgb), 0.0005) 25%,
+      rgba(var(--musai-accent-rgb), 0.001) 50%,
+      rgba(var(--musai-accent-rgb), 0.0005) 75%,
+      transparent 100%
+    );
   }
   50% {
     opacity: 0.9995;
-  }
-  100% {
-    background-position: 200% 0;
-    opacity: 0.999;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(var(--musai-accent-rgb), 0.001) 25%,
+      rgba(var(--musai-accent-rgb), 0.002) 50%,
+      rgba(var(--musai-accent-rgb), 0.001) 75%,
+      transparent 100%
+    );
   }
 }
 
@@ -207,22 +219,43 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    var(--musai-accent, rgba(147, 51, 234, 0.001)) 25%,
-    var(--musai-accent, rgba(59, 130, 246, 0.002)) 50%,
-    var(--musai-accent, rgba(6, 182, 212, 0.001)) 75%,
+    rgba(var(--musai-accent-rgb), 0.0005) 25%,
+    rgba(var(--musai-accent-rgb), 0.001) 50%,
+    rgba(var(--musai-accent-rgb), 0.0005) 75%,
     transparent 100%
   );
   background-size: 200% 100%;
-  animation: mysticalShimmer 20s ease-in-out infinite;
+  animation: mysticalShimmer 25s ease-in-out infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* Mystical Typing Animations */
 @keyframes mysticalGlow {
   0%, 100% {
-    box-shadow: 0 0 15px var(--musai-accent, rgba(147, 51, 234, 0.15)), 0 0 30px var(--musai-accent, rgba(59, 130, 246, 0.1)), 0 0 45px var(--musai-accent, rgba(147, 51, 234, 0.05));
+    box-shadow: 0 0 20px rgba(var(--musai-accent-rgb, 139, 92, 246), 0.3);
   }
   50% {
-    box-shadow: 0 0 25px var(--musai-accent, rgba(147, 51, 234, 0.25)), 0 0 50px var(--musai-accent, rgba(59, 130, 246, 0.15)), 0 0 75px var(--musai-accent, rgba(147, 51, 234, 0.08));
+    box-shadow: 0 0 30px rgba(var(--musai-accent-rgb, 139, 92, 246), 0.5);
+  }
+}
+
+@keyframes subtleGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(var(--musai-accent-rgb, 139, 92, 246), 0.15);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(var(--musai-accent-rgb, 139, 92, 246), 0.25);
+  }
+}
+
+@keyframes dynamicGlow {
+  0%, 100% {
+    box-shadow: 0 0 calc(var(--glow-spread, 20px) * 0.5) rgba(var(--musai-accent-rgb, 139, 92, 246), calc(var(--glow-intensity, 0.3) * 0.5));
+  }
+  50% {
+    box-shadow: 0 0 var(--glow-spread, 20px) rgba(var(--musai-accent-rgb, 139, 92, 246), var(--glow-intensity, 0.3));
   }
 }
 
@@ -319,6 +352,18 @@
 .mystical-glow {
   animation: mysticalGlow 2s ease-in-out infinite;
   transition: box-shadow var(--transition-duration, 0.5s) ease-in-out;
+}
+
+.subtle-glow {
+  animation: subtleGlow 3s ease-in-out infinite;
+  transition: box-shadow var(--transition-duration, 0.5s) ease-in-out;
+}
+
+.dynamic-glow {
+  animation: dynamicGlow 2s ease-in-out infinite;
+  transition: box-shadow var(--transition-duration, 0.5s) ease-in-out;
+  --glow-intensity: 0.3;
+  --glow-spread: 20px;
 }
 
 .mystical-pulse {
@@ -559,4 +604,63 @@
 .matrix-char {
   opacity: 0.8;
   text-shadow: 0 0 5px currentColor;
+}
+
+/* Tool Glow Effect for Active Navigation Items */
+.tool-glow {
+  filter: drop-shadow(0 0 8px var(--tool-glow-color, currentColor));
+  animation: toolGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes toolGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px var(--tool-glow-color, currentColor));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px var(--tool-glow-color, currentColor));
+  }
+}
+
+/* Glyph animations for PreMusai titles */
+@keyframes glyphFloat {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-3px) rotate(5deg);
+    opacity: 0.7;
+  }
+}
+
+@keyframes glyphPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.6;
+  }
+}
+
+@keyframes glyphSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.glyph-float {
+  animation: glyphFloat 3s ease-in-out infinite;
+}
+
+.glyph-pulse {
+  animation: glyphPulse 2s ease-in-out infinite;
+}
+
+.glyph-spin {
+  animation: glyphSpin 4s linear infinite;
 }

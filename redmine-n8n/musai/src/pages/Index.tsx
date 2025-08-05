@@ -4,6 +4,7 @@ import { useNarrativeSessions } from "@/hooks/useNarrativeSessions";
 import { ChatLayout } from "@/components/chat/ChatLayout";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { useEffect, useRef, useCallback } from "react";
+import { ChatSession, CareerSession } from "@/types/chat";
 
 const Index = () => {
   const location = useLocation();
@@ -16,11 +17,12 @@ const Index = () => {
     isLoading,
     isTyping,
     createNewSession,
+    createNewCareerSession,
     deleteSession,
     renameSession,
+    toggleFavorite,
     sendMessage,
     setCurrentSessionId,
-    toggleFavorite,
     getCurrentSession,
     clearAllData,
     debugState,
@@ -99,6 +101,7 @@ const Index = () => {
         isLoading={isLoading}
         isTyping={isTyping}
         onNewChat={createNewSession}
+        onNewCareerSession={createNewCareerSession}
         onSessionSelect={setCurrentSessionId}
         onDeleteSession={deleteSession}
         onRenameSession={renameSession}

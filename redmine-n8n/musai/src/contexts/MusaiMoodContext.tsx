@@ -2,12 +2,19 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface MusaiMoodContextType {
   currentMood: string;
+  moodPhrase: string;
   accentColor: string;
   isDevConsoleOpen: boolean;
   isMatrixActive: boolean;
   isRainbowActive: boolean;
   isPartyActive: boolean;
+  isCareerMusaiActive: boolean;
   setMood: (mood: string) => void;
+  setMoodPhrase: (phrase: string) => void;
+  setToolColor: (color: string) => void;
+  applyDynamicGlow: (element: HTMLElement, intensity?: number, spread?: number) => void;
+  removeDynamicGlow: (element: HTMLElement) => void;
+  toggleCareerMusai: () => void;
   toggleDevConsole: () => void;
   toggleMatrix: () => void;
   toggleRainbow: () => void;
@@ -86,10 +93,12 @@ const monthToColor = {
 
 export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   const [currentMood, setCurrentMood] = useState('default');
+  const [moodPhrase, setMoodPhrase] = useState('');
   const [isDevConsoleOpen, setIsDevConsoleOpen] = useState(false);
   const [isMatrixActive, setIsMatrixActive] = useState(false);
   const [isRainbowActive, setIsRainbowActive] = useState(false);
   const [isPartyActive, setIsPartyActive] = useState(false);
+  const [isCareerMusaiActive, setIsCareerMusaiActive] = useState(false);
 
   const accentColor = musicalMoodColors[currentMood as keyof typeof musicalMoodColors] || musicalMoodColors.default;
 
@@ -100,10 +109,29 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   }, [accentColor]);
 
   const setMood = (mood: string) => {
-    if (musicalMoodColors[mood as keyof typeof musicalMoodColors]) {
-      setCurrentMood(mood);
-      localStorage.setItem('musai-mood', mood);
-    }
+    setCurrentMood(mood);
+    localStorage.setItem('musai-mood', mood);
+  };
+
+  const updateMoodPhrase = (phrase: string) => {
+    setMoodPhrase(phrase);
+    localStorage.setItem('musai-mood-phrase', phrase);
+  };
+
+  const setToolColor = (color: string) => {
+    const rgb = hexToRgb(color);
+    document.documentElement.style.setProperty('--musai-accent', color);
+    document.documentElement.style.setProperty('--musai-accent-rgb', rgb);
+  };
+
+  const applyDynamicGlow = (element: HTMLElement, intensity: number = 0.3, spread: number = 20) => {
+    element.style.setProperty('--glow-intensity', intensity.toString());
+    element.style.setProperty('--glow-spread', `${spread}px`);
+    element.classList.add('dynamic-glow');
+  };
+
+  const removeDynamicGlow = (element: HTMLElement) => {
+    element.classList.remove('dynamic-glow');
   };
 
   const toggleDevConsole = () => {
@@ -111,24 +139,29 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleMatrix = () => {
-    // Ensure only one effect at a time
+    setIsMatrixActive(false);
     setIsRainbowActive(false);
     setIsPartyActive(false);
     setIsMatrixActive(prev => !prev);
   };
 
   const toggleRainbow = () => {
-    // Ensure only one effect at a time
     setIsMatrixActive(false);
+    setIsRainbowActive(false);
     setIsPartyActive(false);
     setIsRainbowActive(prev => !prev);
   };
 
   const toggleParty = () => {
-    // Ensure only one effect at a time
     setIsMatrixActive(false);
     setIsRainbowActive(false);
     setIsPartyActive(prev => !prev);
+  };
+
+  const toggleCareerMusai = () => {
+    const newState = !isCareerMusaiActive;
+    setIsCareerMusaiActive(newState);
+    localStorage.setItem('musai-career-mode', String(newState));
   };
 
   const executeCommand = (command: string): string => {
@@ -138,6 +171,7 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
       case 'help':
         return `Available commands:
 • mood <name> - Change Musai's mood (${Object.keys(musicalMoodColors).join(', ')})
+• moodphrase <phrase> - Set mood phrase for n8n processing
 • status - Show current system status
 • clear - Clear console
 • matrix - Toggle matrix effect
@@ -145,14 +179,19 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
 • party - Activate party mode
 • zen - Enter zen mode
 • test-emotion - Test AI emotion effects
+• careermusai - Toggle hidden career development tool
 • colors - Show all available mood colors`;
       
       case 'status':
         return `Musai Status:
 • Mood: ${currentMood}
+• Mood Phrase: ${moodPhrase || 'Not set'}
 • Accent Color: ${accentColor}
 • Console: Active
 • Matrix: ${isMatrixActive ? 'Active' : 'Inactive'}
+• Rainbow: ${isRainbowActive ? 'Active' : 'Inactive'}
+• Party: ${isPartyActive ? 'Active' : 'Inactive'}
+• CareerMusai: ${isCareerMusaiActive ? 'Active' : 'Inactive'}
 • Theme: ${document.documentElement.classList.contains('dark') ? 'Dark' : 'Light'}`;
       
       case 'colors':
@@ -181,6 +220,12 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       case 'test-emotion':
         return 'Testing emotion effects... Try saying: "🎉 Congratulations! This is amazing!" or "🔮 This is mysterious and intriguing..." or "🎨 This is so creative and artistic!"';
       
+      case 'careermusai':
+        const newCareerState = !isCareerMusaiActive;
+        setIsCareerMusaiActive(newCareerState);
+        localStorage.setItem('musai-career-mode', String(newCareerState));
+        return newCareerState ? '🎯 CareerMusai mode activated! Career development tool is now available in the navigation menu.' : '🎯 CareerMusai mode deactivated.';
+      
       default:
         if (cmd.startsWith('mood ')) {
           const newMood = cmd.substring(5);
@@ -190,6 +235,11 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
           } else {
             return `Unknown mood: ${newMood}. Available: ${Object.keys(musicalMoodColors).join(', ')}`;
           }
+        }
+        if (cmd.startsWith('moodphrase ')) {
+          const phrase = cmd.substring(11);
+          updateMoodPhrase(phrase);
+          return `Mood phrase set to: "${phrase}". This will be processed by n8n to determine the actual mood.`;
         }
         return `Unknown command: ${command}. Type 'help' for available commands.`;
     }
@@ -214,17 +264,36 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       setCurrentMood(monthMood);
       localStorage.setItem('musai-mood', monthMood);
     }
+
+    // Load saved mood phrase
+    const savedMoodPhrase = localStorage.getItem('musai-mood-phrase');
+    if (savedMoodPhrase) {
+      setMoodPhrase(savedMoodPhrase);
+    }
+
+    // Load CareerMusai state
+    const savedCareerState = localStorage.getItem('musai-career-mode');
+    if (savedCareerState === 'true') {
+      setIsCareerMusaiActive(true);
+    }
   }, []);
 
   return (
     <MusaiMoodContext.Provider value={{
       currentMood,
+      moodPhrase,
       accentColor,
       isDevConsoleOpen,
       isMatrixActive,
       isRainbowActive,
       isPartyActive,
+      isCareerMusaiActive,
       setMood,
+      setMoodPhrase: updateMoodPhrase,
+      setToolColor,
+      applyDynamicGlow,
+      removeDynamicGlow,
+      toggleCareerMusai,
       toggleDevConsole,
       toggleMatrix,
       toggleRainbow,

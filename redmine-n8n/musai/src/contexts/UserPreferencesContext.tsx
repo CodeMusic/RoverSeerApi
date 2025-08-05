@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-export type MusaiTool = 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative';
+export type MusaiTool = 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative' | 'career';
 
 interface LastSession {
   timestamp: number;
@@ -17,6 +17,8 @@ interface LastSession {
   searchId?: string;
   // Code-specific fields
   projectId?: string;
+  // Career-specific fields
+  careerId?: string;
 }
 
 interface UserPreferences {
@@ -27,6 +29,8 @@ interface UserPreferences {
   toolUsageCount: Record<MusaiTool, number>;
   autoSelectFirstItem: boolean;
   lastSessions: Partial<Record<MusaiTool, LastSession>>;
+  userPhotoUrl?: string;
+  showUserPhoto?: boolean;
 }
 
 interface UserPreferencesContextType {
@@ -42,6 +46,10 @@ interface UserPreferencesContextType {
   recordLastSession: (tool: MusaiTool, session: Partial<LastSession>) => void;
   getLastSession: (tool: MusaiTool) => LastSession | null;
   clearLastSession: (tool: MusaiTool) => void;
+  // User photo methods
+  setUserPhoto: (photoUrl: string) => void;
+  clearUserPhoto: () => void;
+  setShowUserPhoto: (show: boolean) => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -57,7 +65,8 @@ const defaultPreferences: UserPreferences = {
     code: 0,
     university: 0,
     task: 0,
-    narrative: 0
+    narrative: 0,
+    career: 0,
   },
   autoSelectFirstItem: false,
   lastSessions: {}
@@ -155,6 +164,29 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     }));
   };
 
+  const setUserPhoto = (photoUrl: string) => {
+    setPreferences(prev => ({
+      ...prev,
+      userPhotoUrl: photoUrl,
+      showUserPhoto: true
+    }));
+  };
+
+  const clearUserPhoto = () => {
+    setPreferences(prev => ({
+      ...prev,
+      userPhotoUrl: undefined,
+      showUserPhoto: false
+    }));
+  };
+
+  const setShowUserPhoto = (show: boolean) => {
+    setPreferences(prev => ({
+      ...prev,
+      showUserPhoto: show
+    }));
+  };
+
   const getMostUsedTool = (): MusaiTool | null => {
     const counts = preferences.toolUsageCount;
     const maxCount = Math.max(...Object.values(counts));
@@ -191,7 +223,10 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     setAutoSelectFirstItem,
     recordLastSession,
     getLastSession,
-    clearLastSession
+    clearLastSession,
+    setUserPhoto,
+    clearUserPhoto,
+    setShowUserPhoto
   };
 
   return (
