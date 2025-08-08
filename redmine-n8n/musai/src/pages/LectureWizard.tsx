@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Sparkles, CheckCircle, Clock } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
-import { UniversityLayout } from '@/components/layouts/UniversityLayout';
+import { BaseLayout } from '@/components/common/BaseLayout';
 import { cn } from '@/lib/utils';
+import { APP_TERMS } from '@/config/constants';
 import type { LectureStep, Lecture } from '@/types/university';
 
 type PlannerState = 'input' | 'planning' | 'review' | 'generating' | 'complete';
@@ -21,8 +22,7 @@ const LectureWizard = () =>
   const [description, setDescription] = useState('');
   const [generatedPlan, setGeneratedPlan] = useState<LectureStep[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -273,25 +273,42 @@ const LectureWizard = () =>
     }
   };
 
-  return (
-    <UniversityLayout
-      isSidebarExpanded={isSidebarExpanded}
-      onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
-      isSidebarOpen={isSidebarOpen}
-      onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-    >
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          🎓 Create New Lecture
-        </h1>
-        <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
-          AI-powered personalized learning
-        </p>
-      </div>
+  const renderMainContent = () => {
+    return (
+      <div className="p-6">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            🎓 Create New Lecture
+          </h1>
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
+            AI-powered personalized learning
+          </p>
+        </div>
 
-      {renderCurrentState()}
-    </UniversityLayout>
+        {renderCurrentState()}
+      </div>
+    );
+  };
+
+  return (
+    <BaseLayout
+      currentTab={APP_TERMS.TAB_UNIVERSITY}
+      sessions={[]} // LectureWizard doesn't use traditional sessions
+      currentSessionId=""
+      onNewSession={() => {}} // No-op for lecture wizard
+      onSessionSelect={() => {}} // No-op for lecture wizard
+      onDeleteSession={() => {}} // No-op for lecture wizard
+      onRenameSession={() => {}} // No-op for lecture wizard
+      onToggleFavorite={() => {}} // No-op for lecture wizard
+      renderMainContent={renderMainContent}
+      onTabChange={(tab) => {
+        // Handle tab navigation if needed
+        console.log('LectureWizard tab change:', tab);
+      }}
+      isNavigationExpanded={isNavigationExpanded}
+      onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}
+    />
   );
 };
 

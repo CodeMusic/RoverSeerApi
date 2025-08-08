@@ -1,9 +1,34 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import musaiLogoImage from '@/assets/images/musai_logo.png';
 import musaiCoreImage from '@/assets/images/musai_core.png';
 import musaiCurationsImage from '@/assets/images/musai_curations.png';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
+import { MUSAI_CHROMATIC_12, MUSAI_CHROMATIC_7 } from '@/config/constants';
+
+// Map months (0-11) to MUSAI_CHROMATIC_12 indices
+const monthToChromaticIndex = (month: number) => month % 12;
+// Map days (0-6, Sunday=0) to MUSAI_CHROMATIC_7 indices
+const dayToChromaticIndex = (day: number) => day % 7;
+
+export function getTemporalChromaticColors(date = new Date()) {
+  const monthIndex = monthToChromaticIndex(date.getMonth());
+  const dayIndex = dayToChromaticIndex(date.getDay());
+  const yearTone = MUSAI_CHROMATIC_12[monthIndex];
+  const weekTone = MUSAI_CHROMATIC_7[dayIndex];
+  return { yearTone, weekTone };
+}
+
+// Chakra mapping (root->violet) aligned to 7-tone
+export const CHAKRA_TONES = [
+  MUSAI_CHROMATIC_7[0], // Root - Red
+  MUSAI_CHROMATIC_7[1], // Sacral - Orange
+  MUSAI_CHROMATIC_7[2], // Solar Plexus - Yellow
+  MUSAI_CHROMATIC_7[3], // Heart - Yellow-Green
+  MUSAI_CHROMATIC_7[5], // Throat - Indigo (stylized)
+  MUSAI_CHROMATIC_7[4], // Third Eye - Teal/Cyan
+  MUSAI_CHROMATIC_7[6], // Crown - Violet
+];
 
 interface MusaiLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';

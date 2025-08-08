@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-export type MusaiTool = 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative' | 'career';
+export type MusaiTool = 'chat' | 'search' | 'eye' | 'code' | 'university' | 'task' | 'narrative' | 'career' | 'therapy';
 
 interface LastSession {
   timestamp: number;
@@ -31,6 +31,8 @@ interface UserPreferences {
   lastSessions: Partial<Record<MusaiTool, LastSession>>;
   userPhotoUrl?: string;
   showUserPhoto?: boolean;
+  // Tool visibility settings
+  visibleTools: Record<MusaiTool, boolean>;
 }
 
 interface UserPreferencesContextType {
@@ -50,6 +52,10 @@ interface UserPreferencesContextType {
   setUserPhoto: (photoUrl: string) => void;
   clearUserPhoto: () => void;
   setShowUserPhoto: (show: boolean) => void;
+  // Tool visibility methods
+  setToolVisibility: (tool: MusaiTool, visible: boolean) => void;
+  getVisibleTools: () => MusaiTool[];
+  isToolVisible: (tool: MusaiTool) => boolean;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -62,14 +68,27 @@ const defaultPreferences: UserPreferences = {
   toolUsageCount: {
     chat: 0,
     search: 0,
+    eye: 0,
     code: 0,
     university: 0,
     task: 0,
     narrative: 0,
     career: 0,
+    therapy: 0,
   },
   autoSelectFirstItem: false,
-  lastSessions: {}
+  lastSessions: {},
+  visibleTools: {
+    chat: true,
+    search: true,
+    eye: true,
+    code: true,
+    university: true,
+    task: true,
+    narrative: true,
+    career: true,
+    therapy: true,
+  }
 };
 
 export function UserPreferencesProvider({ children }: { children: React.ReactNode }) {
@@ -212,6 +231,27 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
   const shouldShowLanding = !preferences.hasVisited || 
     (preferences.lastVisit && Date.now() - preferences.lastVisit > 7 * 24 * 60 * 60 * 1000); // 7 days
 
+  // Tool visibility methods
+  const setToolVisibility = (tool: MusaiTool, visible: boolean) => {
+    setPreferences(prev => ({
+      ...prev,
+      visibleTools: {
+        ...prev.visibleTools,
+        [tool]: visible
+      }
+    }));
+  };
+
+  const getVisibleTools = (): MusaiTool[] => {
+    return Object.entries(preferences.visibleTools)
+      .filter(([_, visible]) => visible)
+      .map(([tool, _]) => tool as MusaiTool);
+  };
+
+  const isToolVisible = (tool: MusaiTool): boolean => {
+    return preferences.visibleTools[tool] ?? true; // Default to visible if not set
+  };
+
   const contextValue: UserPreferencesContextType = {
     preferences,
     hasVisited: preferences.hasVisited,
@@ -226,7 +266,10 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     clearLastSession,
     setUserPhoto,
     clearUserPhoto,
-    setShowUserPhoto
+    setShowUserPhoto,
+    setToolVisibility,
+    getVisibleTools,
+    isToolVisible
   };
 
   return (

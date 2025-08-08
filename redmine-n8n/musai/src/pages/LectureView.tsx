@@ -33,7 +33,11 @@ const LectureView = () =>
   {
     try 
     {
-      setIsLoading(true);
+      setIsLoading(true);    
+
+
+
+      
       const lectures = await universityApi.getLectures();
       const foundLecture = lectures.find(l => l.id === lectureId);
       

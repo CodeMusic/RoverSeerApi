@@ -1,185 +1,180 @@
-
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
-import { Loader2, Send, Mic, X } from "lucide-react";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { ImageUpload } from "./ImageUpload";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import React, { useState, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Send, Paperclip, Smile, Heart, Brain } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
-  input: string;
-  isLoading: boolean;
-  onInputChange: (value: string) => void;
-  onSend: (e: React.FormEvent, file?: File) => Promise<boolean>;
-  onImageSelect?: (file: File) => void;
-
+  module: string;
+  onMessageSend: (text: string, file?: File) => Promise<void>;
+  isLoading?: boolean;
+  placeholder?: string;
+  theme: {
+    container: string;
+    accent: string;
+    border: string;
+  };
 }
 
-export const ChatInput = ({
-  input,
-  isLoading,
-  onInputChange,
-  onSend,
-  onImageSelect,
-}: ChatInputProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { toast } = useToast();
-  const [previewImage, setPreviewImage] = useState<{ file: File; url: string } | null>(null);
-  const { isListening, startListening } = useSpeechRecognition({
-    onTranscript: (transcript) => onInputChange(input + transcript)
-  });
+export const ChatInput: React.FC<ChatInputProps> = ({
+  module,
+  onMessageSend,
+  isLoading = false,
+  placeholder,
+  theme
+}) => {
+  const [input, setInput] = useState('');
+  const [selectedMood, setSelectedMood] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
+  const getPlaceholder = () => {
+    if (placeholder) return placeholder;
+    
+    switch (module) {
+      case 'therapy':
+        return 'Share what\'s on your mind...';
+      case 'code':
+        return 'Ask about code, request help, or describe what you want to build...';
+      case 'career':
+        return 'Ask about your career, job search, or professional development...';
+      case 'university':
+        return 'Ask questions about your studies or request help with topics...';
+      default:
+        return 'Type your message...';
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (isLoading) return;
+    if (!input.trim() || isLoading) return;
 
-    try {
-      const result = await onSend(e, previewImage?.file);
-      
-      if (result !== false) {
-        if (previewImage) {
-          URL.revokeObjectURL(previewImage.url);
-          setPreviewImage(null);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to send message:', err);
-      toast({
-        description: "Failed to send message",
-        variant: "destructive",
-      });
-    }
+    const messageText = selectedMood && module === 'therapy' 
+      ? `[Mood: ${selectedMood}] ${input.trim()}`
+      : input.trim();
+
+    setInput('');
+    setSelectedMood('');
+    await onMessageSend(messageText);
   };
 
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    if (!onImageSelect) return;
-
-    const items = e.clipboardData?.items;
-    const imageItem = Array.from(items).find(item => item.type.indexOf('image') !== -1);
-
-    if (imageItem) {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      const file = imageItem.getAsFile();
-      
-      if (!file) return;
+      handleSubmit(e);
+    }
+  };
 
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          description: "Image must be less than 5MB",
-          variant: "destructive",
-        });
-        return;
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await onMessageSend('', file);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
-
-      handleImageSelection(file);
     }
   };
 
-  const handleImageSelection = (file: File) => {
-    const imageUrl = URL.createObjectURL(file);
-    setPreviewImage({ file, url: imageUrl });
-    
-    if (onImageSelect) {
-      onImageSelect(file);
-    }
-  };
-
-  const clearPreviewImage = () => {
-    if (previewImage) {
-      URL.revokeObjectURL(previewImage.url);
-      setPreviewImage(null);
-    }
-  };
-
-  const isInputEmpty = !input.trim() && !previewImage?.file;
-
+  // Therapy-specific mood tags
+  const therapyMoods = [
+    { emoji: '😊', label: 'Happy' },
+    { emoji: '😔', label: 'Sad' },
+    { emoji: '😰', label: 'Anxious' },
+    { emoji: '😤', label: 'Frustrated' },
+    { emoji: '😌', label: 'Calm' },
+    { emoji: '🤔', label: 'Thoughtful' }
+  ];
 
   return (
-    <form onSubmit={handleSubmit} className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 w-full px-4 py-2">
-      <div className="max-w-[900px] mx-auto">
-        {previewImage && (
-          <div className="relative inline-block mb-2">
-            <div className="relative w-16 h-16 rounded-lg overflow-hidden">
-              <img
-                src={previewImage.url}
-                alt="Preview"
-                className="object-cover w-full h-full"
-              />
-              <button
-                type="button"
-                onClick={clearPreviewImage}
-                className="absolute top-0 right-0 p-1 bg-black/50 rounded-bl hover:bg-black/70"
-              >
-                <X className="h-4 w-4 text-white" />
-              </button>
-            </div>
-          </div>
-        )}
-        <div className="relative">
+    <div className="p-4 space-y-3">
+      {/* Therapy Mood Selector */}
+      {module === 'therapy' && (
+        <div className="flex gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground">Current mood:</span>
+          {therapyMoods.map((mood) => (
+            <button
+              key={mood.label}
+              onClick={() => setSelectedMood(selectedMood === mood.label ? '' : mood.label)}
+              className={cn(
+                "px-2 py-1 rounded-full text-xs flex items-center gap-1 transition-colors",
+                selectedMood === mood.label
+                  ? "bg-purple-200 text-purple-800 dark:bg-purple-700 dark:text-purple-200"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300"
+              )}
+            >
+              <span>{mood.emoji}</span>
+              <span>{mood.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input Form */}
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <div className="flex-1 relative">
           <Textarea
-            placeholder="Type a message or paste an image..."
             value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            ref={textareaRef}
-            rows={2}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={getPlaceholder()}
             className={cn(
-              "min-h-[24px] w-full resize-none bg-muted/50 dark:bg-muted/20 text-foreground rounded-xl pr-24 pl-12 py-4 focus-visible:ring-1 border-none overflow-y-hidden",
-              
+              "min-h-[44px] max-h-32 resize-none pr-12",
+              theme.border
             )}
             disabled={isLoading}
-            style={{
-              height: input ? 'auto' : '80px',
-              minHeight: '80px',
-              maxHeight: '200px',
-              overflowY: input ? 'auto' : 'hidden'
-            }}
           />
-          <div className="absolute left-3 bottom-4">
-            {onImageSelect && (
-              <ImageUpload 
-                onImageSelect={handleImageSelection}
-                disabled={isLoading}
-              />
-            )}
-          </div>
-          <div className="absolute right-3 bottom-4 flex items-center gap-2">
-            <Button 
-              type="button" 
-              size="icon" 
-              variant="ghost"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              onClick={startListening}
-              disabled={isLoading}
-            >
-              <Mic className="h-4 w-4" />
-            </Button>
-            <Button 
-              type="submit" 
-              size="icon"
-              className="h-8 w-8"
-              disabled={isLoading || isInputEmpty}
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+          
+          {/* File Upload Button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
         </div>
-      </div>
-    </form>
+
+        {/* Send Button */}
+        <Button
+          type="submit"
+          disabled={!input.trim() || isLoading}
+          className={cn(
+            "h-11 px-4",
+            theme.accent
+          )}
+        >
+          {isLoading ? (
+            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
+      </form>
+
+      {/* Module-specific plugin zones */}
+      {module === 'therapy' && (
+        <div className="flex gap-2 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" className="h-6 px-2">
+            <Brain className="h-3 w-3 mr-1" />
+            Reflection Mode
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 px-2">
+            <Heart className="h-3 w-3 mr-1" />
+            Wellness Check
+          </Button>
+        </div>
+      )}
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        onChange={handleFileSelect}
+        className="hidden"
+        accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.txt"
+      />
+    </div>
   );
 };

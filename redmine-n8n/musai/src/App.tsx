@@ -9,6 +9,13 @@ import { MatrixEffect } from "@/components/effects/MatrixEffect";
 import { RainbowEffect } from "@/components/effects/RainbowEffect";
 import { PartyEffect } from "@/components/effects/PartyEffect";
 import { MusaiDevConsole } from "@/components/developer/MusaiDevConsole";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import EyeOfMusai from "@/pages/EyeOfMusai";
+import CareerMusaiInfo from "@/pages/CareerMusaiInfo";
+import TherapyMusaiInfo from "@/pages/TherapyMusaiInfo";
+import EmergentNarrativeInfo from "@/pages/EmergentNarrativeInfo";
+import AccessGate from "@/components/common/AccessGate";
+import RiddleGate from "@/components/common/RiddleGate";
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -19,7 +26,7 @@ const queryClient = new QueryClient({
     },
   },
 });
-
+  
 // Pages
 import Landing from "@/pages/Landing";
 import Index from "@/pages/Index";
@@ -36,6 +43,7 @@ import CourseCreationPage from "@/pages/CourseCreationPage";
 import RoverByte from "@/pages/RoverByte";
 import { Curations } from "@/pages/Curations";
 import { CurationsLocked } from "@/pages/CurationsLocked";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
 // Routes
@@ -49,43 +57,44 @@ function App() {
           <UserPreferencesProvider>
             <MusaiAlertsProvider>
               <Router>
-              <div className="min-h-screen">
-                <Routes>
-                  <Route path={ROUTES.HOME} element={<Landing />} />
-                  <Route path={ROUTES.MAIN_APP} element={<Index />} />
-                  <Route path={ROUTES.PLAYGROUND} element={<Playground />} />
-                  <Route path={ROUTES.CODE_PLAYGROUND} element={<CodeMusaiPlayground />} />
-                  <Route path={ROUTES.NEUROSCIENCE} element={<Neuroscience />} />
-                  <Route path={ROUTES.MEET_MUSAI} element={<MeetMusai />} />
-                  <Route path={ROUTES.FIND_YOUR_MUSE} element={<FindYourMuse />} />
-                  <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
-                  <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
-                  
-                  {/* University routes */}
-                  <Route path={ROUTES.UNIVERSITY} element={<University />} />
-                  <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<LectureWizard />} />
-                  <Route path={ROUTES.UNIVERSITY_LECTURE_VIEW} element={<LectureView />} />
-                  <Route path={ROUTES.UNIVERSITY_COURSE_NEW} element={<CourseCreationPage />} />
-                  <Route path={ROUTES.UNIVERSITY_COURSE_VIEW} element={<University />} />
-                  
-                  {/* AI Curations */}
-                  <Route path={ROUTES.CURATIONS} element={<Curations />} />
-                  <Route path="/curations/locked" element={<CurationsLocked />} />
-                  
-                  {/* Catch all */}
-                  <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
-                </Routes>
-              </div>
-              <Toaster />
-              <MusaiDevConsole />
-              <MatrixEffectWrapper />
-              <RainbowEffectWrapper />
-              <PartyEffectWrapper />
-            </Router>
-          </MusaiAlertsProvider>
-        </UserPreferencesProvider>
-      </MusaiMoodProvider>
-    </ThemeProvider>
+                <ErrorBoundary>
+                  <div className="min-h-screen">
+                    <Routes>
+                      <Route path={ROUTES.HOME} element={<Landing />} />
+                      <Route path={ROUTES.MAIN_APP} element={<RiddleGate><Index /></RiddleGate>} />
+                      <Route path={ROUTES.PLAYGROUND} element={<Playground />} />
+                      <Route path={ROUTES.CODE_PLAYGROUND} element={<CodeMusaiPlayground />} />
+                      <Route path={ROUTES.NEUROSCIENCE} element={<Neuroscience />} />
+                      <Route path={ROUTES.MEET_MUSAI} element={<MeetMusai />} />
+                      <Route path={ROUTES.FIND_YOUR_MUSE} element={<FindYourMuse />} />
+                      <Route path={ROUTES.EYE_OF_MUSAI} element={<EyeOfMusai />} />
+                      <Route path={ROUTES.CAREER_MUSAI} element={<CareerMusaiInfo />} />
+                      <Route path={ROUTES.THERAPY_MUSAI} element={<TherapyMusaiInfo />} />
+                      <Route path={ROUTES.EMERGENT_NARRATIVE} element={<EmergentNarrativeInfo />} />
+                      <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
+                      <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
+                      <Route path={ROUTES.UNIVERSITY} element={<University />} />
+                      <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<LectureWizard />} />
+                      <Route path={ROUTES.UNIVERSITY_LECTURE_VIEW} element={<LectureView />} />
+                      <Route path={ROUTES.UNIVERSITY_COURSE_NEW} element={<CourseCreationPage />} />
+                      <Route path={ROUTES.UNIVERSITY_COURSE_VIEW} element={<University />} />
+                      <Route path={ROUTES.CURATIONS} element={<Curations />} />
+                      <Route path="/curations/locked" element={<CurationsLocked />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
+                    </Routes>
+                  </div>
+                </ErrorBoundary>
+                <Toaster />
+                <MusaiDevConsole />
+                <MatrixEffectWrapper />
+                <RainbowEffectWrapper />
+                <PartyEffectWrapper />
+              </Router>
+            </MusaiAlertsProvider>
+          </UserPreferencesProvider>
+        </MusaiMoodProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

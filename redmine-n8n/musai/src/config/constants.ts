@@ -9,6 +9,8 @@ export const APP_TERMS = {
   NARRATIVE: "MusaiTale",
   TASK: "TaskMusai",
   CAREER: "CareerMusai",
+  THERAPY: "TherapyMusai",
+  EYE: "The Eye of Musai",
   SETTINGS: "Settings",
   
   // Badges
@@ -19,6 +21,8 @@ export const APP_TERMS = {
   NARRATIVE_BADGE: "Story Emergence",
   TASK_BADGE: "Intelligent Automation",
   CAREER_BADGE: "Career Development",
+  THERAPY_BADGE: "Mental Wellness",
+  EYE_BADGE: "Contextual Vision",
   
   // Descriptions
   CHAT_DESCRIPTION: "Natural dialogue with your AI companion for any topic",
@@ -28,6 +32,8 @@ export const APP_TERMS = {
   NARRATIVE_DESCRIPTION: "Where thoughts become stories through emergent narrative",
   TASK_DESCRIPTION: "Automate your workflow with intelligent task management and AI assistance",
   CAREER_DESCRIPTION: "AI-powered career development and job search assistance",
+  THERAPY_DESCRIPTION: "AI-powered mental wellness support and therapeutic conversations",
+  EYE_DESCRIPTION: "A contextual vision engine with MusaiDex—index anything, blend YOLO-style vision with language to understand form and meaning.",
   
   // Tab IDs
   TAB_CHAT: "chat",
@@ -37,6 +43,8 @@ export const APP_TERMS = {
   TAB_NARRATIVE: "emergent-narrative",
   TAB_TASK: "task-musai",
   TAB_CAREER: "career-musai",
+  TAB_THERAPY: "therapy-musai",
+  TAB_EYE: "musai-eye",
   TAB_SETTINGS: "settings",
   
   // PreMusai Types
@@ -47,6 +55,8 @@ export const APP_TERMS = {
   PREMUSAI_NARRATIVE: "narrative",
   PREMUSAI_TASK: "task",
   PREMUSAI_CAREER: "career",
+  PREMUSAI_THERAPY: "therapy",
+  PREMUSAI_EYE: "eye",
   
   // Session Types
   SESSION_CHAT: "chat",
@@ -55,6 +65,8 @@ export const APP_TERMS = {
   SESSION_SEARCH: "search",
   SESSION_UNIVERSITY: "university",
   SESSION_CAREER: "career",
+  SESSION_THERAPY: "therapy",
+  // Eye will initially reuse chat sessions
   
   // Navigation Labels
   NAV_CHAT: "MusaiChat",
@@ -64,6 +76,8 @@ export const APP_TERMS = {
   NAV_NARRATIVE: "MusaiTale",
   NAV_TASK: "TaskMusai",
   NAV_CAREER: "CareerMusai",
+  NAV_THERAPY: "TherapyMusai",
+  NAV_EYE: "The Eye of Musai",
   NAV_SETTINGS: "Settings",
   
   // Page Titles
@@ -119,3 +133,63 @@ export type AppTermValue = typeof APP_TERMS[AppTerm];
 export const getAppTerm = (key: AppTerm, fallback?: string): string => {
   return APP_TERMS[key] || fallback || key;
 }; 
+
+// Chromatic systems for tool theming
+export type MusaiTone = {
+  note: 'C'|'C#'|'Db'|'D'|'D#'|'Eb'|'E'|'F'|'F#'|'Gb'|'G'|'G#'|'Ab'|'A'|'A#'|'Bb'|'B';
+  label: string;
+  meaning: string;
+  hex: string;
+};
+
+// Primary 7-tone (ROYGBIV-like) sequence
+export const MUSAI_CHROMATIC_7: MusaiTone[] = [
+  { note: 'C', label: 'Red', meaning: 'Root note, pure energy', hex: '#FF0000' },
+  { note: 'D', label: 'Orange', meaning: 'Vibrant, creative, forward-moving', hex: '#FF7F00' },
+  { note: 'E', label: 'Yellow', meaning: 'Illuminating, expressive clarity', hex: '#FFD400' },
+  { note: 'F', label: 'Yellow-Green', meaning: 'Fresh beginnings, natural growth', hex: '#9ACD32' },
+  { note: 'G', label: 'Teal/Cyan', meaning: 'Expansive, flowing, open', hex: '#06B6D4' },
+  { note: 'A', label: 'Indigo', meaning: 'Passionate, emotional depth', hex: '#4B0082' },
+  { note: 'B', label: 'Violet', meaning: 'Resolution, completion, transcendent', hex: '#9400D3' },
+];
+
+// Extended 12-tone sequence (includes the sharps/flats between the primaries)
+export const MUSAI_CHROMATIC_12: MusaiTone[] = [
+  { note: 'C', label: 'Red', meaning: 'Root note, pure energy', hex: '#FF0000' },
+  { note: 'C#', label: 'Red-Orange', meaning: 'Transitional, energized shift', hex: '#FF4D00' },
+  { note: 'D', label: 'Orange', meaning: 'Vibrant, creative, forward-moving', hex: '#FF7F00' },
+  { note: 'D#', label: 'Orange-Yellow', meaning: 'Bright anticipation, playful edge', hex: '#FFC000' },
+  { note: 'E', label: 'Yellow', meaning: 'Illuminating, expressive clarity', hex: '#FFD400' },
+  { note: 'F', label: 'Yellow-Green', meaning: 'Fresh beginnings, natural growth', hex: '#9ACD32' },
+  { note: 'F#', label: 'Green', meaning: 'Balanced, centered, heartful', hex: '#16A34A' },
+  { note: 'G', label: 'Teal/Cyan', meaning: 'Expansive, flowing, open', hex: '#06B6D4' },
+  { note: 'G#', label: 'Blue', meaning: 'Deep, introspective, wise', hex: '#2563EB' },
+  { note: 'A', label: 'Indigo', meaning: 'Passionate, emotional depth', hex: '#4B0082' },
+  { note: 'A#', label: 'Violet-Indigo', meaning: 'Shadow play, tension before resolution', hex: '#7C3AED' },
+  { note: 'B', label: 'Violet', meaning: 'Resolution, completion, transcendent', hex: '#9400D3' },
+];
+
+// Assign colors to a list of tool tab IDs using 7-tone if <=7 tools, otherwise 12-tone
+export function assignToolColors(toolTabIds: string[]): Record<string, string> {
+  const palette = toolTabIds.length <= 7 ? MUSAI_CHROMATIC_7 : MUSAI_CHROMATIC_12;
+  const colors: Record<string, string> = {};
+  toolTabIds.forEach((id, index) => {
+    const tone = palette[index % palette.length];
+    colors[id] = tone.hex;
+  });
+  return colors;
+}
+
+// Legacy fixed mapping kept as fallback
+export const MUSAI_COLORS: Record<string, string> = {
+  [APP_TERMS.TAB_CHAT]: '#FF0000',
+  [APP_TERMS.TAB_SEARCH]: '#FF7F00',
+  [APP_TERMS.TAB_CODE]: '#FFD400',
+  [APP_TERMS.TAB_UNIVERSITY]: '#9ACD32',
+  [APP_TERMS.TAB_NARRATIVE]: '#2563EB',
+  [APP_TERMS.TAB_CAREER]: '#4B0082',
+  [APP_TERMS.TAB_TASK]: '#9400D3',
+  [APP_TERMS.TAB_THERAPY]: '#FF69B4',
+  [APP_TERMS.TAB_EYE]: '#06B6D4',
+  [APP_TERMS.TAB_SETTINGS]: '#808080',
+};

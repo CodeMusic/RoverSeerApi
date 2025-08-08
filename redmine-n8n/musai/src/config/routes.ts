@@ -16,6 +16,10 @@ export const ROUTES = {
   FIND_YOUR_MUSE: '/find-your-muse',
   LOCAL_AI: '/local-ai',
   ROVERBYTE: '/roverbyte',
+  EYE_OF_MUSAI: '/eye-of-musai',
+  CAREER_MUSAI: '/career-musai',
+  THERAPY_MUSAI: '/therapy-musai',
+  EMERGENT_NARRATIVE: '/emergent-narrative',
   
   // University routes
   UNIVERSITY: '/university',

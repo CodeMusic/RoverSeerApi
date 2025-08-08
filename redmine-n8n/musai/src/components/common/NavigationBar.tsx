@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp } from "lucide-react";
+import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp, Heart, Eye } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
-import { APP_TERMS } from "@/config/constants";
+import { APP_TERMS, MUSAI_COLORS } from "@/config/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MusaiLifeLogo, MusaiShimmer } from "@/components/effects/MusaiEffects";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -31,20 +31,42 @@ export const NavigationBar = ({
   const isMobile = false; // Simplified for now
   const { toggleDevConsole, setToolColor, isCareerMusaiActive } = useMusaiMood();
   const { isAvailable: curationsAvailable } = useCurationsAvailability();
-  const { preferences } = useUserPreferences();
+  const { preferences, isToolVisible } = useUserPreferences();
 
   // ROYGBIV color coding for tools
-  const toolColors = {
-    [APP_TERMS.TAB_CHAT]: '#FF0000',      // Red
-    [APP_TERMS.TAB_SEARCH]: '#FF7F00',    // Orange
-    [APP_TERMS.TAB_CODE]: '#FFFF00',      // Yellow
-    [APP_TERMS.TAB_UNIVERSITY]: '#00FF00', // Green
-    [APP_TERMS.TAB_NARRATIVE]: '#0000FF',  // Blue
-    [APP_TERMS.TAB_CAREER]: '#4B0082',     // Indigo
-    [APP_TERMS.TAB_TASK]: '#9400D3',       // Violet
+  const toolColors = MUSAI_COLORS;
+
+  // Map tab id constants to tool visibility keys used in preferences.visibleTools
+  const tabIdToToolKey = (tabId: string): 'chat' | 'search' | 'code' | 'university' | 'narrative' | 'career' | 'therapy' | 'task' | 'eye' | 'settings' =>
+  {
+    switch (tabId)
+    {
+      case APP_TERMS.TAB_CHAT:
+        return 'chat';
+      case APP_TERMS.TAB_SEARCH:
+        return 'search';
+      case APP_TERMS.TAB_CODE:
+        return 'code';
+      case APP_TERMS.TAB_UNIVERSITY:
+        return 'university';
+      case APP_TERMS.TAB_NARRATIVE:
+        return 'narrative';
+      case APP_TERMS.TAB_CAREER:
+        return 'career';
+      case APP_TERMS.TAB_THERAPY:
+        return 'therapy';
+      case APP_TERMS.TAB_TASK:
+        return 'task';
+      case APP_TERMS.TAB_EYE:
+        return 'eye';
+      case APP_TERMS.TAB_SETTINGS:
+        return 'settings';
+      default:
+        return 'chat';
+    }
   };
 
-  // Base navigation items - always available (ROYGBIV order)
+  // Base navigation items - always available (ROYGBIV order with Eye placed after Search)
   const baseNavigationItems = [
     {
       id: APP_TERMS.TAB_CHAT,
@@ -59,6 +81,13 @@ export const NavigationBar = ({
       label: APP_TERMS.NAV_SEARCH,
       available: true,
       color: toolColors[APP_TERMS.TAB_SEARCH],
+    },
+    {
+      id: APP_TERMS.TAB_EYE,
+      icon: Eye,
+      label: APP_TERMS.NAV_EYE,
+      available: true,
+      color: toolColors[APP_TERMS.TAB_EYE],
     },
     {
       id: APP_TERMS.TAB_CODE,
@@ -83,6 +112,14 @@ export const NavigationBar = ({
       comingSoon: false,
       color: toolColors[APP_TERMS.TAB_NARRATIVE],
     },
+    {
+      id: APP_TERMS.TAB_THERAPY,
+      icon: Heart,
+      label: APP_TERMS.NAV_THERAPY,
+      available: true,
+      comingSoon: false,
+      color: toolColors[APP_TERMS.TAB_THERAPY],
+    },
   ];
 
   // Add career mode as 6th tool (Indigo) only if activated
@@ -105,11 +142,11 @@ export const NavigationBar = ({
     color: toolColors[APP_TERMS.TAB_TASK],
   };
 
-  // Build navigation items in correct ROYGBIV order
+  // Build navigation items in correct order
   const navigationItems = [
-    ...baseNavigationItems, // Red, Orange, Yellow, Green, Blue
-    ...(careerItem ? [careerItem] : []), // Indigo (6th) - only if active
-    taskItem, // Violet (7th)
+    ...baseNavigationItems.filter(item => isToolVisible(tabIdToToolKey(item.id))),
+    ...(careerItem && isToolVisible('career') ? [careerItem] : []),
+    ...(isToolVisible('task') ? [taskItem] : []),
     ...(curationsAvailable ? [{
       id: "curations",
       icon: Sparkles,
@@ -117,14 +154,14 @@ export const NavigationBar = ({
       available: true,
       comingSoon: false,
       isExternal: true,
-      color: '#FF69B4', // Pink for curations
+      color: '#FF69B4',
     }] : []),
     {
       id: APP_TERMS.TAB_SETTINGS,
       icon: Settings,
       label: APP_TERMS.NAV_SETTINGS,
       available: true,
-      color: '#808080', // Gray for settings
+      color: '#808080',
     },
   ];
 
@@ -255,6 +292,8 @@ export const NavigationBar = ({
                     if (item.available) {
                       if (item.id === "curations") {
                         navigate(ROUTES.CURATIONS);
+                      } else if (item.id === APP_TERMS.TAB_SETTINGS) {
+                        navigate("/settings");
                       } else {
                         // Set the tool color as accent color when tool is selected
                         if (item.color) {

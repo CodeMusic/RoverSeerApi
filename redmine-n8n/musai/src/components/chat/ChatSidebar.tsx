@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import { ChatSession, CareerSession } from "@/types/chat";
+import { ChatSession, CareerSession, TherapySession } from "@/types/chat";
 import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ChatSidebarProps {
-  sessions: (ChatSession | CareerSession)[];
+  sessions: (ChatSession | CareerSession | TherapySession)[];
   currentSessionId: string;
   isSidebarOpen: boolean;
   isCollapsed?: boolean;
@@ -42,7 +42,7 @@ export const ChatSidebar = ({
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  const getFirstMessage = (messages: (ChatSession | CareerSession)["messages"]) => {
+  const getFirstMessage = (messages: (ChatSession | CareerSession | TherapySession)["messages"]) => {
     const userMessage = messages.find(m => m.role === "user");
     return userMessage ? userMessage.content : "New Chat";
   };
@@ -67,7 +67,7 @@ export const ChatSidebar = ({
     toast.success(session?.favorite ? "Chat removed from favorites" : "Chat added to favorites");
   };
 
-  const startEditing = (e: React.MouseEvent, session: ChatSession) => {
+  const startEditing = (e: React.MouseEvent, session: ChatSession | CareerSession | TherapySession) => {
     e.stopPropagation();
     setEditingSessionId(session.id);
     setEditingName(session.name || getFirstMessage(session.messages));

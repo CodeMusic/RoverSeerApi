@@ -11,15 +11,6 @@ export interface Message {
   };
 }
 
-export interface ChatSession {
-  id: string;
-  name?: string;
-  messages: Message[];
-  createdAt: number;
-  lastUpdated: number;
-  favorite?: boolean;
-}
-
 // Base interface for all session types
 export interface BaseSession {
   id: string;
@@ -27,7 +18,7 @@ export interface BaseSession {
   lastUpdated: number;
   favorite: boolean;
   createdAt: number;
-  type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative' | 'career';
+  type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative' | 'career' | 'therapy';
 }
 
 export interface ChatSession extends BaseSession {
@@ -82,12 +73,18 @@ export interface CareerSession extends BaseSession {
   };
 }
 
-// Legacy interface - update to extend BaseSession
-export interface ChatSessionLegacy {
-  id: string;
-  name?: string;
+export interface TherapySession extends BaseSession {
+  type: 'therapy';
   messages: Message[];
-  createdAt: number;
-  lastUpdated: number;
-  favorite?: boolean;
+  therapyContext?: {
+    sessionGoals?: string[];
+    moodTags?: string[];
+    currentMood?: string;
+    sessionType?: 'reflection' | 'problem-solving' | 'general' | 'crisis';
+    privacyLevel?: 'private' | 'exportable';
+    narrativeExports?: string[]; // IDs of exported tales
+  };
 }
+
+// Union type for all session types
+export type AllSessions = ChatSession | CareerSession | NarrativeSession | DevSession | SearchSession | UniversitySession | TaskSession | TherapySession;

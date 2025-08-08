@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code } from "lucide-react";
+import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
 import { APP_TERMS } from "@/config/constants";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -15,6 +16,44 @@ const Landing = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedMode, setSelectedMode] = useState("auto");
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const autoplayRef = useRef<number | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Minimal links to cycle through
+  const infoLinks = [
+    { label: "Meet Musai", icon: User, to: ROUTES.MEET_MUSAI, border: "border-purple-500/30" },
+    { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE, border: "border-purple-500/30" },
+    { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI, border: "border-blue-500/30" },
+    { label: "Find Your Muse", icon: Sparkles, to: ROUTES.FIND_YOUR_MUSE, border: "border-purple-500/30" },
+    { label: "Eye of Musai", icon: Eye, to: ROUTES.EYE_OF_MUSAI, border: "border-cyan-500/30" },
+    { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI, border: "border-indigo-500/30" },
+    { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI, border: "border-pink-500/30" },
+    { label: "Emergent Narrative", icon: Theater, to: ROUTES.EMERGENT_NARRATIVE, border: "border-blue-500/30" },
+    { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE, border: "border-orange-500/30" },
+  ];
+
+  // Autoplay that pauses on hover/focus
+  useEffect(() => {
+    if (!carouselApi) return;
+    if (isHovered) {
+      if (autoplayRef.current) cancelAnimationFrame(autoplayRef.current);
+      return;
+    }
+    let last = performance.now();
+    const tick = (now: number) => {
+      if (now - last > 3500) {
+        carouselApi.scrollNext();
+        last = now;
+      }
+      autoplayRef.current = requestAnimationFrame(tick);
+    };
+    autoplayRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (autoplayRef.current) cancelAnimationFrame(autoplayRef.current);
+      autoplayRef.current = null;
+    };
+  }, [carouselApi, isHovered]);
 
   const modeOptions = [
     { id: "auto", icon: Sparkles, label: "Auto", description: "Let AI decide" },
@@ -312,55 +351,33 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* Additional Navigation Links */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
-          <Button
-            onClick={() => navigate("/meet-musai")}
-            variant="outline"
-            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
+        {/* Minimalist Info Carousel */}
+        <div className="pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="relative mx-auto max-w-5xl"
           >
-            <User className="w-4 h-4 mr-2" />
-            Meet Musai
-          </Button>
-          
-          <Button
-            onClick={() => navigate("/neuroscience")}
-            variant="outline"
-            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
-          >
-            <Brain className="w-4 h-4 mr-2" />
-            The Neuroscience
-          </Button>
-          
-          <Button
-            onClick={() => navigate("/local-ai")}
-            variant="outline"
-            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 transition-all duration-300"
-          >
-            <Cpu className="w-4 h-4 mr-2" />
-            Local AI Architecture
-          </Button>
-          
-          <Button
-            onClick={() => navigate("/find-your-muse")}
-            variant="outline"
-            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Find Your Muse
-          </Button>
-          
-          <Button
-            onClick={() => navigate("/roverbyte")}
-            variant="outline"
-            className="px-6 py-3 text-base font-medium rounded-xl border-2 border-orange-500/30 hover:border-orange-500/50 hover:bg-orange-500/10 transition-all duration-300"
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Musai x RoverByte Integration
-          </Button>
+            <Carousel setApi={setCarouselApi} opts={{ align: 'start', loop: true }}>
+              <CarouselContent>
+                {infoLinks.map((link) => (
+                  <CarouselItem key={link.label} className="basis-3/4 sm:basis-1/3 lg:basis-1/4">
+                    <Button
+                      onClick={() => navigate(link.to)}
+                      variant="outline"
+                      className={`w-full px-6 py-3 text-base font-medium rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
+                    >
+                      {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2" /> })()}
+                      {link.label}
+                    </Button>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
+              <CarouselNext className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
+            </Carousel>
+          </div>
         </div>
-
-
 
         {/* Subtle Animation Elements */}
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-purple-500/30 rounded-full animate-pulse" />

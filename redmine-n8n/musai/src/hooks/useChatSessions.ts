@@ -148,7 +148,7 @@ export const useChatSessions = () => {
         return updatedSessions;
       });
       setCurrentSessionId(newSession.id);
-      return newSession.id;
+      return newSession;
     } else {
       const newSession: ChatSession = {
         id: uuidv4(),
@@ -165,12 +165,12 @@ export const useChatSessions = () => {
         return updatedSessions;
       });
       setCurrentSessionId(newSession.id);
-      return newSession.id;
+      return newSession;
     }
   };
 
   const createNewCareerSession = () => {
-    return createNewSession('career');
+    return createNewSession('career') as CareerSession;
   };
 
   const getCurrentSession = () => {
@@ -217,6 +217,27 @@ export const useChatSessions = () => {
     toast.success("Chat renamed successfully");
   };
 
+  const updateCareerContext = (sessionId: string, context: Partial<CareerSession['careerContext']>) => {
+    setSessions(prev => {
+      const updatedSessions = prev.map(session => {
+        if (session.id !== sessionId || session.type !== 'career')
+        {
+          return session;
+        }
+        return {
+          ...session,
+          careerContext: {
+            ...session.careerContext,
+            ...context,
+          },
+          lastUpdated: Date.now(),
+        } as CareerSession;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+      return updatedSessions;
+    });
+  };
+
   const sendMessage = async (input: string, file?: File) => {
     console.log('sendMessage called:', { input: input.substring(0, 50) });
 
@@ -225,12 +246,17 @@ export const useChatSessions = () => {
     // If no current session exists, create one automatically when user sends message
     if (!currentSession) {
       console.log('No current session found, creating new one for message');
-      const newSessionId = createNewSession();
-      currentSession = sessions.find(s => s.id === newSessionId);
-      if (!currentSession) {
-        console.error('Failed to create new session');
-        return;
-      }
+      const newSession = createNewSession();
+      
+      queryClient.setQueryData(['chatSessions', newSession.id], newSession.messages);
+      
+      await sendMessageToWebhook(
+        input,
+        newSession.id,
+        newSession.messages,
+        file
+      );
+      return;
     }
     
     queryClient.setQueryData(['chatSessions', currentSession.id], currentSession.messages);
@@ -270,6 +296,7 @@ export const useChatSessions = () => {
     sendMessage,
     setCurrentSessionId,
     toggleFavorite,
+    updateCareerContext,
     clearAllData,
     debugState,
   };

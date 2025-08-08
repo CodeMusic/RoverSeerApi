@@ -27,41 +27,49 @@ export const useMessageSender = (
     currentMessages: Message[],
     file?: File
   ) => {
-    let testNewFlow = false;  // TODO: remove this
+    // First, immediately add the user message to trigger UI transition
+    console.log('Processing file for message:', file ? {
+      name: file.name,
+      type: file.type,
+      size: file.size
+    } : 'No file');
 
-    if (testNewFlow) {
-      // First, immediately add the user message to trigger UI transition
-      console.log('Processing file for message:', file ? {
-        name: file.name,
-        type: file.type,
-        size: file.size
-      } : 'No file');
+    const fileData = file ? await prepareFileData(file) : null;
 
-      const fileData = file ? await prepareFileData(file) : null;
+    console.log('File data prepared:', fileData ? 'Successfully processed' : 'No file data');
 
-      console.log('File data prepared:', fileData ? 'Successfully processed' : 'No file data');
+    const userMessage: Message = {
+      id: uuidv4(),
+      content: input,
+      role: "user",
+      timestamp: Date.now(),
+      ...(fileData && { imageData: fileData })
+    };
 
-      const userMessage: Message = {
-        id: uuidv4(),
-        content: input,
-        role: "user",
-        timestamp: Date.now(),
-        ...(fileData && { imageData: fileData })
-      };
-
-      // Add user message immediately to trigger UI transition from PreMusaiPage to chat
-      const newMessages = [...currentMessages, userMessage];
-      updateSession(sessionId, newMessages);
-      queryClient.setQueryData(['chatSessions', sessionId], newMessages);
-    }
+    // Add user message immediately to trigger UI transition from PreMusaiPage to chat
+    const newMessages = [...currentMessages, userMessage];
+    updateSession(sessionId, newMessages);
+    queryClient.setQueryData(['chatSessions', sessionId], newMessages);
     // Now check webhook configuration for the API call
     const effectiveWebhookUrl = window.env?.VITE_N8N_WEBHOOK_URL || import.meta.env.VITE_N8N_WEBHOOK_URL;
     const username = window.env?.VITE_N8N_WEBHOOK_USERNAME || import.meta.env.VITE_N8N_WEBHOOK_USERNAME;
     const secret = window.env?.VITE_N8N_WEBHOOK_SECRET || import.meta.env.VITE_N8N_WEBHOOK_SECRET;
 
     if (!effectiveWebhookUrl) {
-      toast.error("Configuration error: No webhook URL available");
-      return false;
+      // If no webhook URL is configured, add a helpful assistant message for development
+      const fallbackMessage: Message = {
+        id: uuidv4(),
+        content: "Hello! I'm Musai, your AI companion. It looks like I'm running in development mode without a webhook URL configured. In production, I would connect to an n8n workflow to provide intelligent responses.\n\nFor now, I can help you explore the interface and see how the chat system works. Try sending me a message and I'll show you how the conversation flow works!",
+        role: "assistant",
+        timestamp: Date.now()
+      };
+      
+      const finalMessages = [...newMessages, fallbackMessage];
+      updateSession(sessionId, finalMessages);
+      queryClient.setQueryData(['chatSessions', sessionId], finalMessages);
+      
+      console.log('Running in development mode without webhook URL');
+      return true;
     }
 
     let retryCount = 0;

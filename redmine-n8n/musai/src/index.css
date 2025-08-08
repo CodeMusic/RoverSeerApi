@@ -1,6 +1,33 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Musai Portal Animations */
+@keyframes musai-portal-enter {
+  0% { transform: translate(-50%, -50%) scale(0.05); filter: blur(20px); opacity: 0.0; }
+  60% { transform: translate(-50%, -50%) scale(1.2); filter: blur(6px); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(3.5); filter: blur(24px); opacity: 0; }
+}
+
+@keyframes musai-portal-leave {
+  0% { transform: translate(-50%, -50%) scale(3.5); filter: blur(24px); opacity: 0; }
+  40% { transform: translate(-50%, -50%) scale(1.1); filter: blur(6px); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0.05); filter: blur(20px); opacity: 0; }
+}
+
+.animate-musai-portal-enter { animation: musai-portal-enter 650ms ease-out forwards; }
+.animate-musai-portal-leave { animation: musai-portal-leave 500ms ease-in forwards; }
+
+@keyframes musai-portal-dim-enter {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes musai-portal-dim-leave {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.animate-musai-portal-dim-enter { animation: musai-portal-dim-enter 250ms ease-in forwards; }
+.animate-musai-portal-dim-leave { animation: musai-portal-dim-leave 400ms ease-out forwards; }
+
 
 @layer base {
   :root {

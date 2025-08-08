@@ -6,8 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
-import { UniversityLayout } from '@/components/layouts/UniversityLayout';
+import { BaseLayout } from '@/components/common/BaseLayout';
 import { cn } from '@/lib/utils';
+import { APP_TERMS } from '@/config/constants';
 import type { Lecture, Course, StandaloneLecture } from '@/types/university';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 
@@ -16,9 +17,8 @@ const University = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [standaloneLectures, setStandaloneLectures] = useState<StandaloneLecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('courses');
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -90,31 +90,20 @@ const University = () => {
 
 
 
-  if (isLoading) {
-    return (
-      <UniversityLayout
-        isSidebarExpanded={isSidebarExpanded}
-        onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-      >
+  const renderMainContent = () => {
+    if (isLoading) {
+      return (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-300">Loading your lectures...</p>
           </div>
         </div>
-      </UniversityLayout>
-    );
-  }
+      );
+    }
 
-  return (
-    <UniversityLayout
-      isSidebarExpanded={isSidebarExpanded}
-      onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
-      isSidebarOpen={isSidebarOpen}
-      onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-    >
+    return (
+      <div className="p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -505,7 +494,28 @@ const University = () => {
         </Tabs>
           </>
         )}
-    </UniversityLayout>
+      </div>
+    );
+  };
+
+  return (
+    <BaseLayout
+      currentTab={APP_TERMS.TAB_UNIVERSITY}
+      sessions={[]} // University doesn't use traditional sessions
+      currentSessionId=""
+      onNewSession={() => {}} // No-op for university
+      onSessionSelect={() => {}} // No-op for university  
+      onDeleteSession={() => {}} // No-op for university
+      onRenameSession={() => {}} // No-op for university
+      onToggleFavorite={() => {}} // No-op for university
+      renderMainContent={renderMainContent}
+      onTabChange={(tab) => {
+        // Handle tab navigation if needed
+        console.log('University tab change:', tab);
+      }}
+      isNavigationExpanded={isNavigationExpanded}
+      onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}
+    />
   );
 };
 

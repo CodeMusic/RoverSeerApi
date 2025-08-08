@@ -19,8 +19,12 @@ import {
   Zap,
   Users,
   Brain,
-  Theater
+  Theater,
+  TrendingUp,
+  Eye
 } from "lucide-react";
+import { ROUTES } from "@/config/routes";
+import { APP_TERMS } from "@/config/constants";
 
 const FindYourMuse = () => {
   const navigate = useNavigate();
@@ -55,7 +59,7 @@ const FindYourMuse = () => {
         "Cross-reference insights"
       ],
       color: "from-green-500 to-teal-500",
-      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "musai-search" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_SEARCH } })
     },
     {
       id: "code",
@@ -70,12 +74,12 @@ const FindYourMuse = () => {
         "Creative problem solving"
       ],
       color: "from-orange-500 to-red-500",
-      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "code-musai" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_CODE } })
     },
     {
       id: "university",
       icon: GraduationCap,
-              title: "Musai U",
+      title: "Musai U",
       subtitle: "Generative Emergent Learning",
       description: "Just say what you want to learn and watch as Musai creates a complete learning experience. It generates a syllabus, creates lectures with Q&A, and builds interactive quizzes - all tailored to your learning style.",
       features: [
@@ -92,7 +96,7 @@ const FindYourMuse = () => {
       icon: Theater,
       title: "MusaiTale",
       subtitle: "Perspective Thinking",
-      description: "Put your abstract ideas into story frameworks where AI characters inhabit and concretize them. This allows you to see your own ideas from new perspectives, facilitating deeper understanding through multiple viewpoints.",
+      description: "Put your abstract ideas into story frameworks where AI characters inhabit and concretize them. This allows you to see your ideas from new perspectives—and even relive experiences to rehearse therapeutic techniques within safe narrative simulations.",
       features: [
         "Making ideas tangible through emergence",
         "Multi-perspective exploration",
@@ -100,7 +104,37 @@ const FindYourMuse = () => {
         "Perspective-driven insights"
       ],
       color: "from-indigo-500 to-purple-500",
-      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "emergent-narrative" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_NARRATIVE } })
+    },
+    {
+      id: "career",
+      icon: TrendingUp,
+      title: APP_TERMS.NAV_CAREER,
+      subtitle: "Career Development",
+      description: "Your AI-powered career companion. Track roles, practice interviews, craft applications, and orchestrate scheduled job searches via n8n—with alerts when results arrive.",
+      features: [
+        "Role targeting and skills mapping",
+        "Resume and outreach generation",
+        "Interview rehearsal",
+        "Scheduled searches + MusaiAlerts"
+      ],
+      color: "from-indigo-500 to-indigo-700",
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_CAREER } })
+    },
+    {
+      id: "therapy",
+      icon: Heart,
+      title: APP_TERMS.NAV_THERAPY,
+      subtitle: "Mental Wellness",
+      description: "Reflective dialogue focused on wellness and growth. Combine calm guidance with MusaiTale’s emergent scenes to safely relive experiences and practice CBT/DBT techniques.",
+      features: [
+        "Supportive reflective chat",
+        "Mood tagging and goals",
+        "Technique rehearsal via narrative",
+        "Privacy-aware exports"
+      ],
+      color: "from-pink-500 to-fuchsia-500",
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_THERAPY } })
     },
     {
       id: "task",
@@ -115,7 +149,22 @@ const FindYourMuse = () => {
         "Adaptive planning"
       ],
       color: "from-pink-500 to-rose-500",
-      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: "task-musai" } })
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_TASK } })
+    },
+    {
+      id: "eye",
+      icon: Eye,
+      title: APP_TERMS.NAV_EYE,
+      subtitle: "Contextual Vision",
+      description: APP_TERMS.EYE_DESCRIPTION,
+      features: [
+        "MusaiDex customizable indexing",
+        "Vision + language fusion",
+        "Fast on-device learning",
+        "Context-aware classification"
+      ],
+      color: "from-cyan-500 to-sky-500",
+      action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_EYE } })
     }
   ];
 
@@ -137,14 +186,14 @@ const FindYourMuse = () => {
     {
       step: 3,
       title: "Build & Create",
-              description: "Collaborate with CodeMusai to turn ideas into reality, or use Musai U to learn new skills and knowledge.",
+      description: "Collaborate with CodeMusai to turn ideas into reality, or use Musai U to learn new skills and knowledge.",
       icon: Code,
       color: "bg-orange-500"
     },
     {
       step: 4,
       title: "Perspective Thinking",
-      description: "Use MusaiTale to put your abstract ideas into story frameworks where AI characters inhabit and concretize them, helping you see your own ideas from new perspectives. Each engagement steers the plot, each insight rewrites the arc.",
+      description: "Use MusaiTale to put your abstract ideas into story frameworks where AI characters inhabit and concretize them, helping you see your own ideas from new perspectives. Each engagement steers the plot, each insight rewrites the arc—so you can also safely rehearse therapeutic techniques by reliving experiences in narrative.",
       icon: Theater,
       color: "bg-indigo-500"
     },
