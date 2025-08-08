@@ -35,7 +35,7 @@ const getChatTheme = (module: string) => {
         container: 'bg-slate-50 dark:bg-slate-900',
         accent: 'text-green-600 dark:text-green-400',
         border: 'border-slate-200 dark:border-slate-700'
-      };
+      };  
     case 'university': 
       return {
         container: 'bg-yellow-50 dark:bg-yellow-950/20',

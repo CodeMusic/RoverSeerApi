@@ -4,7 +4,7 @@ import { useNarrativeSessions } from "@/hooks/useNarrativeSessions";
 import { useTherapySessions } from "@/hooks/useTherapySessions";
 import { BaseLayout } from "@/components/common/BaseLayout";
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
-import { ChatPane } from "@/components/Chat/ChatPane";
+import { ChatPane } from "@/components/chat/ChatPane";
 import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { AllSessions } from "@/types/chat";

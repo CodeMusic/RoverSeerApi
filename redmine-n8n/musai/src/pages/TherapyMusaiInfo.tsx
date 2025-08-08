@@ -15,7 +15,7 @@ const TherapyMusaiInfo: React.FC = () => {
           <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-pink-600 to-fuchsia-600 bg-clip-text text-transparent">TherapyMusai</h1>
           <p className="text-muted-foreground text-lg">A contextual mirror, an emotional debugger, and a compassionate co-navigator.</p>
           <div className="mt-6">
-            <Button onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_THERAPY } })}>Open TherapyMusai</Button>
+            <Button onClick={() => navigate(ROUTES.MAIN_APP, { s    tate: { switchToTab: APP_TERMS.TAB_THERAPY } })}>Open TherapyMusai</Button>
           </div>
         </div>
 
