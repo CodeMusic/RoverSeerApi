@@ -14,8 +14,8 @@ import EyeOfMusai from "@/pages/EyeOfMusai";
 import CareerMusaiInfo from "@/pages/CareerMusaiInfo";
 import TherapyMusaiInfo from "@/pages/TherapyMusaiInfo";
 import EmergentNarrativeInfo from "@/pages/EmergentNarrativeInfo";
-import AccessGate from "@/components/common/AccessGate";
 import RiddleGate from "@/components/common/RiddleGate";
+import TaskMusaiInfo from "@/pages/TaskMusaiInfo";
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -72,6 +72,7 @@ function App() {
                       <Route path={ROUTES.THERAPY_MUSAI} element={<TherapyMusaiInfo />} />
                       <Route path={ROUTES.EMERGENT_NARRATIVE} element={<EmergentNarrativeInfo />} />
                       <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
+                      <Route path={ROUTES.TASK_MUSAI} element={<TaskMusaiInfo />} />
                       <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
                       <Route path={ROUTES.UNIVERSITY} element={<University />} />
                       <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<LectureWizard />} />

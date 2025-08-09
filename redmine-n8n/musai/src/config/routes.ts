@@ -20,6 +20,7 @@ export const ROUTES = {
   CAREER_MUSAI: '/career-musai',
   THERAPY_MUSAI: '/therapy-musai',
   EMERGENT_NARRATIVE: '/emergent-narrative',
+  TASK_MUSAI: '/task-musai',
   
   // University routes
   UNIVERSITY: '/university',

@@ -57,6 +57,7 @@ interface Scene {
   emotionalTension: string;
   characterPair: [string, string];
   description?: string;
+  turns?: number;
 }
 
 interface Act {
@@ -105,7 +106,8 @@ export const ArcGenerationPanel = ({
               location: "A crowded coffee shop",
               emotionalTension: "Two characters with opposing worldviews must work together",
               characterPair: [characters[0].id, characters[1].id],
-              description: "The initial encounter that sets up the central conflict"
+              description: "The initial encounter that sets up the central conflict",
+              turns: 8,
             }
           ]
         },
@@ -119,7 +121,8 @@ export const ArcGenerationPanel = ({
               location: "A dimly lit alley",
               emotionalTension: "Secrets are revealed, trust is broken",
               characterPair: [characters[0].id, characters[1].id],
-              description: "The moment where everything changes"
+              description: "The moment where everything changes",
+              turns: 10,
             },
             {
               id: `scene_${Date.now()}_3`,
@@ -127,7 +130,8 @@ export const ArcGenerationPanel = ({
               location: "A crossroads",
               emotionalTension: "Each character must decide what they truly value",
               characterPair: [characters[0].id, characters[1].id],
-              description: "The pivotal decision that drives the story forward"
+              description: "The pivotal decision that drives the story forward",
+              turns: 10,
             }
           ]
         },
@@ -141,7 +145,8 @@ export const ArcGenerationPanel = ({
               location: "A quiet park bench",
               emotionalTension: "Understanding and acceptance emerge from chaos",
               characterPair: [characters[0].id, characters[1].id],
-              description: "The final scene where characters find common ground"
+              description: "The final scene where characters find common ground",
+              turns: 8,
             }
           ]
         }
@@ -439,6 +444,20 @@ export const ArcGenerationPanel = ({
                   })}
                   placeholder="Additional scene details or notes"
                   rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="sceneTurns">Turns (Optional)</Label>
+                <Input
+                  id="sceneTurns"
+                  type="number"
+                  value={editingScene.turns ?? 8}
+                  onChange={(e) => setEditingScene({
+                    ...editingScene,
+                    turns: Math.max(1, parseInt(e.target.value || '1', 10))
+                  })}
+                  placeholder="Number of turns for this scene"
                 />
               </div>
               

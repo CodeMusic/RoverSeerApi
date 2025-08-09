@@ -1,33 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Brain, Sparkles, Heart, Zap } from "lucide-react";
+import { ExternalLink, Brain, Sparkles, Heart, Zap } from "lucide-react";
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
+import { APP_TERMS } from '@/config/constants';
 
 const MeetMusai = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
-      {/* Navigation Bar */}
-      <nav className="px-6 py-4 border-b bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full"></div>
-              <span className="font-semibold text-lg">Musai</span>
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-1 text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Return to Musai</span>
-            </button>
-          </div>
-        </div>
-      </nav>
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_CHAT} />
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-16">

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Brain, Cpu, Database, Zap, Moon, Sun, ChevronDown, ChevronUp } from "lucide-react";
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
+import { APP_TERMS } from '@/config/constants';
 import musaiArchDiagram from "@/assets/images/musai_archdiag.png";
 import redmineMemoryStructure from "@/assets/images/redmine_memory_structure.png";
 import dnaFlow from "@/assets/images/dna_flow.png";
@@ -41,34 +43,7 @@ const Neuroscience = () => {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} transition-colors duration-300`}>
-      {/* Navigation Bar */}
-      <nav className={`px-6 py-4 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full"></div>
-              <span className="font-semibold text-lg">Musai</span>
-            </button>
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center space-x-1 text-sm text-gray-400 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Return to Musai</span>
-            </button>
-          </div>
-          
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-md hover:bg-gray-700 transition-colors"
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-        </div>
-      </nav>
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_UNIVERSITY} />
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-16">

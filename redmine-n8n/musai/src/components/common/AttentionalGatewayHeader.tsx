@@ -1,11 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
-import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Sparkles } from 'lucide-react';
+import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye } from 'lucide-react';
 import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
 
 type TabId = typeof APP_TERMS[keyof typeof APP_TERMS];
@@ -18,20 +18,21 @@ interface SymbolOption
 }
 
 const SYMBOL_OPTIONS: SymbolOption[] = [
-  { id: 'auto', label: 'Auto (Stars)', icon: Sparkles },
   { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater },
   { id: APP_TERMS.TAB_THERAPY, label: 'TherapyMusai', icon: Heart },
   { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare },
   { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search },
   { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code },
   { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap },
+  { id: APP_TERMS.TAB_EYE, label: 'Eye of Musai', icon: Eye },
   { id: APP_TERMS.TAB_TASK, label: 'TaskMusai', icon: Bot },
 ];
 
 export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ defaultTabId }) =>
 {
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState<string>(defaultTabId || 'auto');
+  const location = useLocation();
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTabId || APP_TERMS.TAB_CHAT);
   const [prompt, setPrompt] = useState('');
 
   const selectedOption = useMemo(() => SYMBOL_OPTIONS.find(o => o.id === selectedTab) || SYMBOL_OPTIONS[0], [selectedTab]);
@@ -39,7 +40,7 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
   const handleEnterApp = useCallback(() =>
   {
     const hasPrompt = prompt.trim().length > 0;
-    if (selectedTab === 'auto' || selectedTab === APP_TERMS.TAB_SEARCH)
+    if (selectedTab === APP_TERMS.TAB_SEARCH)
     {
       if (hasPrompt)
       {
@@ -71,6 +72,58 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
     navigate(ROUTES.HOME);
   }, [navigate]);
 
+  // Keep select in sync with current page and default tab
+  useEffect(() =>
+  {
+    const path = location.pathname;
+    const pathToTab: Record<string, string> = {
+      [ROUTES.MEET_MUSAI]: APP_TERMS.TAB_CHAT,
+      [ROUTES.EMERGENT_NARRATIVE]: APP_TERMS.TAB_NARRATIVE,
+      [ROUTES.THERAPY_MUSAI]: APP_TERMS.TAB_THERAPY,
+      [ROUTES.CAREER_MUSAI]: APP_TERMS.TAB_CAREER,
+      [ROUTES.EYE_OF_MUSAI]: APP_TERMS.TAB_EYE,
+      [ROUTES.LOCAL_AI]: APP_TERMS.TAB_CODE,
+      [ROUTES.UNIVERSITY]: APP_TERMS.TAB_UNIVERSITY,
+      [ROUTES.FIND_YOUR_MUSE]: APP_TERMS.TAB_SEARCH,
+      [ROUTES.TASK_MUSAI]: APP_TERMS.TAB_TASK,
+    };
+    const mapped = pathToTab[path];
+    if (mapped && mapped !== selectedTab)
+    {
+      setSelectedTab(mapped);
+      return;
+    }
+    if (defaultTabId && defaultTabId !== selectedTab)
+    {
+      setSelectedTab(defaultTabId);
+    }
+  }, [location.pathname, defaultTabId]);
+
+  const navigateToToolPage = useCallback((tabId: string) =>
+  {
+    switch (tabId)
+    {
+      case APP_TERMS.TAB_CHAT:
+        navigate(ROUTES.MEET_MUSAI); break;
+      case APP_TERMS.TAB_NARRATIVE:
+        navigate(ROUTES.EMERGENT_NARRATIVE); break;
+      case APP_TERMS.TAB_THERAPY:
+        navigate(ROUTES.THERAPY_MUSAI); break;
+      case APP_TERMS.TAB_CAREER:
+        navigate(ROUTES.CAREER_MUSAI); break;
+      case APP_TERMS.TAB_EYE:
+        navigate(ROUTES.EYE_OF_MUSAI); break;
+      case APP_TERMS.TAB_CODE:
+        navigate(ROUTES.LOCAL_AI); break;
+      case APP_TERMS.TAB_UNIVERSITY:
+        navigate(ROUTES.UNIVERSITY); break;
+      case APP_TERMS.TAB_TASK:
+        navigate(ROUTES.TASK_MUSAI); break;
+      default:
+        break;
+    }
+  }, [navigate]);
+
   return (
     <div className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
@@ -82,7 +135,7 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
 
         {/* Symbol Dropdown */}
         <div className="w-[220px]">
-          <Select value={selectedTab} onValueChange={(v) => setSelectedTab(v)}>
+          <Select value={selectedTab} onValueChange={(v) => { setSelectedTab(v); navigateToToolPage(v); }}>
             <SelectTrigger>
               <SelectValue placeholder="Select mode" />
             </SelectTrigger>

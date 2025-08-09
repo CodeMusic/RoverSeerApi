@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { ROUTES } from "@/config/routes";
 import { APP_TERMS } from "@/config/constants";
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
 const FindYourMuse = () => {
   const navigate = useNavigate();
@@ -208,6 +209,7 @@ const FindYourMuse = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_SEARCH} />
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="absolute inset-0">

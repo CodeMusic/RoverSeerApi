@@ -120,6 +120,12 @@ export const N8N_ENDPOINTS = {
     // Integration helpers
     GET_TOOL_INTEGRATIONS: '/task/integrations',
     SETUP_WEBHOOKS: '/task/webhooks/setup',
+
+    // TaskMusai sprint orchestration (webhook workflows in n8n)
+    START_SPRINT: '/task/sprint/start',
+    GET_SPRINT_STATUS: '/task/sprint/status', // expects { sprintId }
+    SUBMIT_SPRINT_FEEDBACK: '/task/sprint/feedback',
+    STREAM_SPRINT_EVENTS: '/task/sprint/events', // optional: SSE or long-poll via n8n
   },
 
   // 🌟 MUSAI'S CURATIONS - The Emergent AI Content System

@@ -1,36 +1,26 @@
 import React from 'react';
-import { ArrowLeft, Cpu, Cloud, Zap, Shield, Database, GitBranch, Brain, Network, Workflow, ArrowUpDown } from 'lucide-react';
+import { Cpu, Cloud, Zap, Shield, Database, GitBranch, Brain, Network, Workflow, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { MusaiShimmer } from '@/components/effects/MusaiEffects';
 import ROUTES from '@/config/routes';
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
+import { APP_TERMS } from '@/config/constants';
 
 const LocalAI = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
-      {/* Header */}
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_CODE} />
       <div className="border-b border-gray-200 dark:border-gray-800">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              className="hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Local AI Architecture</h1>
-              <p className="text-gray-600 dark:text-gray-300 mt-1">
-                Privacy-First, Performance-Optimized, Intelligently Hybrid
-              </p>
-            </div>
-          </div>
+          <h1 className="text-3xl font-bold">Local AI Architecture</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
+            Privacy-First, Performance-Optimized, Intelligently Hybrid
+          </p>
         </div>
       </div>
 

@@ -21,7 +21,9 @@ import {
   Heart,
   Settings,
   Volume2,
-  VolumeX
+  VolumeX,
+  Theater,
+  Sliders
 } from "lucide-react";
 import {
   Select,
@@ -82,7 +84,8 @@ interface Influence {
   type: 'global' | 'character-specific' | 'scene-level';
   target?: string; // characterId for character-specific
   message: string;
-  duration: 'scene' | 'persistent';
+  duration: 'scene' | 'persistent' | 'turns';
+  turns?: number;
 }
 
 interface NarratorPerspective {
@@ -115,6 +118,16 @@ export const SceneRunner = ({
   const [newNarrator, setNewNarrator] = useState<Partial<NarratorPerspective>>({});
   const veilRef = useRef(new VeilOfMemoryManager({ store: localFileMemoryStore }));
 
+  // Narrate (reality edit) controls - limited per scene
+  const NARRATE_LIMIT = 3;
+  const [showNarrateDialog, setShowNarrateDialog] = useState(false);
+  const [narrateInput, setNarrateInput] = useState("");
+  const [narrations, setNarrations] = useState<Array<{ id: string; text: string; timestamp: number }>>([]);
+
+  // Ephemeral trait overrides (do not persist)
+  const [showTraitsDialog, setShowTraitsDialog] = useState(false);
+  const [ephemeralTraits, setEphemeralTraits] = useState<Record<string, { courage: number; empathy: number; logic: number; impulsiveness: number }>>({});
+
   const acts = (session.storyData as any)?.acts || [];
   const characters = (session.storyData as any)?.characters || [];
   
@@ -129,10 +142,14 @@ export const SceneRunner = ({
     if (currentSceneIndex < currentAct.scenes.length - 1) {
       setCurrentSceneIndex(currentSceneIndex + 1);
       setDialogue([]);
+      setNarrations([]);
+      setNarrateInput("");
     } else if (currentActIndex < acts.length - 1) {
       setCurrentActIndex(currentActIndex + 1);
       setCurrentSceneIndex(0);
       setDialogue([]);
+      setNarrations([]);
+      setNarrateInput("");
     }
   }, [currentActIndex, currentAct, currentSceneIndex, acts.length]);
 
@@ -140,11 +157,15 @@ export const SceneRunner = ({
     if (currentSceneIndex > 0) {
       setCurrentSceneIndex(currentSceneIndex - 1);
       setDialogue([]);
+      setNarrations([]);
+      setNarrateInput("");
     } else if (currentActIndex > 0) {
       setCurrentActIndex(currentActIndex - 1);
       const previousAct = acts[currentActIndex - 1];
       setCurrentSceneIndex(previousAct.scenes.length - 1);
       setDialogue([]);
+      setNarrations([]);
+      setNarrateInput("");
     }
   }, [currentActIndex, currentAct, currentSceneIndex, acts]);
 
@@ -180,6 +201,11 @@ export const SceneRunner = ({
       };
       
       setDialogue(prev => [...prev, newTurn]);
+      // Decrement turn-limited influences
+      setInfluences(prev => prev
+        .map(inf => inf.duration === 'turns' && inf.turns ? { ...inf, turns: inf.turns - 1 } : inf)
+        .filter(inf => inf.duration !== 'turns' || !inf.turns || inf.turns > 0)
+      );
       // Record public utterance into episodic memory
       if (currentScene) {
         void veilRef.current.recordPublic(character.id, currentScene.id, randomResponse);
@@ -215,7 +241,8 @@ export const SceneRunner = ({
         type: newInfluence.type as any,
         target: newInfluence.target,
         message: newInfluence.message,
-        duration: newInfluence.duration as any || 'scene'
+        duration: (newInfluence.duration as any) || 'scene',
+        turns: newInfluence.turns && newInfluence.turns > 0 ? newInfluence.turns : undefined,
       };
       
       setInfluences(prev => [...prev, influence]);
@@ -351,6 +378,26 @@ export const SceneRunner = ({
               <Eye className="w-4 h-4 mr-2" />
               Set Narrator
             </Button>
+
+            <Button
+              onClick={() => setShowTraitsDialog(true)}
+              variant="outline"
+              size="sm"
+            >
+              <Sliders className="w-4 h-4 mr-2" />
+              Adjust Traits
+            </Button>
+
+            <Button
+              onClick={() => setShowNarrateDialog(true)}
+              variant="outline"
+              size="sm"
+              disabled={narrations.length >= NARRATE_LIMIT}
+              title={narrations.length >= NARRATE_LIMIT ? 'Narrate limit reached for this scene' : ''}
+            >
+              <Theater className="w-4 h-4 mr-2" />
+              Narrate ({narrations.length}/{NARRATE_LIMIT})
+            </Button>
           </div>
         </div>
 
@@ -381,7 +428,7 @@ export const SceneRunner = ({
       </div>
 
       {/* Active Influences & Narrator */}
-      {(influences.length > 0 || narrator) && (
+      {(influences.length > 0 || narrator || narrations.length > 0) && (
         <div className="p-4 border-b border-border/20 bg-muted/20">
           <div className="flex items-center gap-4">
             {influences.length > 0 && (
@@ -403,6 +450,18 @@ export const SceneRunner = ({
                 <Badge variant="secondary" className="text-xs">
                   {getNarratorDescription(narrator)}
                 </Badge>
+              </div>
+            )}
+
+            {narrations.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Theater className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium">Narrations:</span>
+                {narrations.map(n => (
+                  <Badge key={n.id} variant="outline" className="text-xs">
+                    {n.text.substring(0, 28)}...
+                  </Badge>
+                ))}
               </div>
             )}
           </div>
@@ -540,9 +599,22 @@ export const SceneRunner = ({
                 <SelectContent>
                   <SelectItem value="scene">Scene - Temporary for this scene</SelectItem>
                   <SelectItem value="persistent">Persistent - Carries to future scenes</SelectItem>
+                  <SelectItem value="turns">For N turns</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {newInfluence.duration === 'turns' && (
+              <div>
+                <Label htmlFor="influenceTurns">Turns</Label>
+                <Input
+                  id="influenceTurns"
+                  type="number"
+                  value={newInfluence.turns ?? 3}
+                  onChange={(e) => setNewInfluence({ ...newInfluence, turns: Math.max(1, parseInt(e.target.value || '1', 10)) })}
+                />
+              </div>
+            )}
             
             <div className="flex items-center justify-end gap-2">
               <Button
@@ -632,6 +704,89 @@ export const SceneRunner = ({
               <Button onClick={handleSetNarrator}>
                 Set Narrator
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Traits Dialog (Ephemeral) */}
+      <Dialog open={showTraitsDialog} onOpenChange={setShowTraitsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adjust Traits (Ephemeral)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {currentCharacters.map((character) => {
+              const baseline = character?.personality || { courage: 50, empathy: 50, logic: 50, impulsiveness: 50 };
+              const overrides = ephemeralTraits[character!.id] || baseline;
+              return (
+                <Card key={character!.id}>
+                  <CardHeader>
+                    <CardTitle className="text-sm">{character!.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <Label>Courage: {overrides.courage}</Label>
+                      <Input type="range" min={0} max={100} value={overrides.courage} onChange={(e) => {
+                        const value = parseInt(e.target.value, 10);
+                        setEphemeralTraits(prev => ({ ...prev, [character!.id]: { ...overrides, courage: value } }));
+                      }} />
+                    </div>
+                    <div>
+                      <Label>Empathy: {overrides.empathy}</Label>
+                      <Input type="range" min={0} max={100} value={overrides.empathy} onChange={(e) => {
+                        const value = parseInt(e.target.value, 10);
+                        setEphemeralTraits(prev => ({ ...prev, [character!.id]: { ...overrides, empathy: value } }));
+                      }} />
+                    </div>
+                    <div>
+                      <Label>Logic: {overrides.logic}</Label>
+                      <Input type="range" min={0} max={100} value={overrides.logic} onChange={(e) => {
+                        const value = parseInt(e.target.value, 10);
+                        setEphemeralTraits(prev => ({ ...prev, [character!.id]: { ...overrides, logic: value } }));
+                      }} />
+                    </div>
+                    <div>
+                      <Label>Impulsiveness: {overrides.impulsiveness}</Label>
+                      <Input type="range" min={0} max={100} value={overrides.impulsiveness} onChange={(e) => {
+                        const value = parseInt(e.target.value, 10);
+                        setEphemeralTraits(prev => ({ ...prev, [character!.id]: { ...overrides, impulsiveness: value } }));
+                      }} />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowTraitsDialog(false)}>Close</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Narrate Dialog */}
+      <Dialog open={showNarrateDialog} onOpenChange={setShowNarrateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle> Narrate (Reality Edit)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              placeholder="State a narrative fact or direction that just happened..."
+              value={narrateInput}
+              onChange={(e) => setNarrateInput(e.target.value)}
+              rows={3}
+            />
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowNarrateDialog(false)}>Cancel</Button>
+              <Button onClick={() => {
+                if (!narrateInput.trim()) return;
+                if (narrations.length >= NARRATE_LIMIT) return;
+                setNarrations(prev => [...prev, { id: `nar_${Date.now()}`, text: narrateInput.trim(), timestamp: Date.now() }]);
+                setNarrateInput("");
+                setShowNarrateDialog(false);
+              }}>Apply</Button>
             </div>
           </div>
         </DialogContent>
