@@ -112,9 +112,8 @@ const Landing = () => {
     setTimeout(() => {
       switch (mode) {
         case "auto":
-          // For now, auto goes to search until automation is added
-          // Add URL parameter as backup for refresh handling
-          navigate(`/chat?mode=search&q=${encodeURIComponent(messageText)}`, { 
+          // Auto defaults to Search within the main app (passes through RiddleGate)
+          navigate(RouteUtils.mainAppWithMode("search", messageText), { 
             state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: messageText } 
           });
           break;

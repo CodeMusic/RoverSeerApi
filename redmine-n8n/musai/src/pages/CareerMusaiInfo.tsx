@@ -6,18 +6,19 @@ import { Target, Brain, BookOpen, Mic, Cpu, Sparkles, ArrowRight } from 'lucide-
 import { useNavigate } from 'react-router-dom';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
 const CareerMusaiInfo: React.FC = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_CAREER} />
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">CareerMusai</h1>
           <p className="text-muted-foreground text-lg">Building more than AI—shaping systems that reflect the soul of work.</p>
           <div className="mt-6 flex gap-3 justify-center">
-            <Button onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_CAREER } })}>Open CareerMusai</Button>
             <Button variant="outline" onClick={() => navigate(ROUTES.EYE_OF_MUSAI)}>Eye of Musai</Button>
           </div>
         </div>
@@ -125,11 +126,7 @@ const CareerMusaiInfo: React.FC = () => {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-8">
-          <Button onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_CAREER } })}>
-            Open CareerMusai <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+        
       </div>
     </div>
   );

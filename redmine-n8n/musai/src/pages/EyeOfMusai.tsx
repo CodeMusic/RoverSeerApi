@@ -6,6 +6,7 @@ import { Eye, Sparkles, Box, Target, Brain, Shield, Upload, Image as ImageIcon, 
 import { useNavigate } from 'react-router-dom';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
 const EyeOfMusai: React.FC = () =>
 {
@@ -13,6 +14,7 @@ const EyeOfMusai: React.FC = () =>
 
   return (
     <div className="min-h-screen bg-background">
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_EYE} />
       {/* Hero */}
       <div className="relative overflow-hidden bg-gradient-to-br from-cyan-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16">
         <div className="container mx-auto px-4">
@@ -27,12 +29,6 @@ const EyeOfMusai: React.FC = () =>
               A compact, context-aware visual parser that sees not just what things look like—but what they mean. Lightweight enough for edge devices, smart enough to adapt in real-time.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_EYE } })}
-                className="rounded-xl"
-              >
-                Open Eye in App
-              </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate(ROUTES.FIND_YOUR_MUSE)}
@@ -130,9 +126,7 @@ const EyeOfMusai: React.FC = () =>
           <Badge className="mb-4" variant="secondary">Get Started</Badge>
           <h2 className="text-2xl md:text-3xl font-semibold mb-3">Open Eye and start a MusaiDex</h2>
           <p className="text-muted-foreground mb-6">Upload an image or craft a prompt to teach your first class. Iterate quickly—Eye will adapt in minutes.</p>
-          <Button onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_EYE } })} className="rounded-xl">
-            Launch Eye of Musai
-          </Button>
+          
         </div>
       </div>
     </div>

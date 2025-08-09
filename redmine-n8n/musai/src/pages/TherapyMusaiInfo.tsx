@@ -5,18 +5,18 @@ import { Heart, Sparkles, BookOpen, Compass, Brain, Quote, Puzzle, GitBranch, Ma
 import { useNavigate } from 'react-router-dom';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
 const TherapyMusaiInfo: React.FC = () => {
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background">
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_THERAPY} />
       <div className="container mx-auto px-4 py-16 max-w-5xl">
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-pink-600 to-fuchsia-600 bg-clip-text text-transparent">TherapyMusai</h1>
           <p className="text-muted-foreground text-lg">A contextual mirror, an emotional debugger, and a compassionate co-navigator.</p>
-          <div className="mt-6">
-            <Button onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_THERAPY } })}>Open TherapyMusai</Button>
-          </div>
+          {/* Quick access now lives in the header */}
         </div>
 
         {/* What it is */}

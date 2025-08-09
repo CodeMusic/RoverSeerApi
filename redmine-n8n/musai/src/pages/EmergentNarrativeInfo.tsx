@@ -5,18 +5,18 @@ import { Theater, Sparkles, Layers, Compass, Brain, Mic, Image as ImageIcon, Git
 import { useNavigate } from 'react-router-dom';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
+import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
 const EmergentNarrativeInfo: React.FC = () => {
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background">
+      <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_NARRATIVE} />
       <div className="container mx-auto px-4 py-16 max-w-5xl">
         <div className="text-center mb-10">
           <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">Emergent Narrative (MusaiTale)</h1>
           <p className="text-muted-foreground text-lg">Where story writes itself—through interaction, reflection, and perspective.</p>
-          <div className="mt-6">
-            <Button onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_NARRATIVE } })}>Open MusaiTale</Button>
-          </div>
+          {/* Quick access now lives in the header */}
         </div>
 
         {/* What Is */}
@@ -64,6 +64,32 @@ const EmergentNarrativeInfo: React.FC = () => {
             <CardContent className="text-sm text-muted-foreground">Multiple versions can coexist—layered interpretations for recursive insight.</CardContent>
           </Card>
         </div>
+
+        {/* Memory Architecture */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Layers className="w-5 h-5" /> Bounded Memory Architecture</CardTitle>
+            <CardDescription>Characters know what they lived; they do not know what others privately thought.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <p>
+              MusaiTale treats memory as a psychological constraint that fuels emergence. Each agent/character carries
+              an episodic record of scenes they participated in and public narration. Private thought streams remain
+              inaccessible to others by design.
+            </p>
+            <ul className="list-disc ml-5 space-y-1">
+              <li><span className="font-medium">Agent memory scope</span>: sees shared dialogue and events; never other agents’ inner monologues.</li>
+              <li><span className="font-medium">Episode-bound recall</span>: characters only remember interactions they had; new pairings yield new dynamics.</li>
+              <li><span className="font-medium">Unknowns-as-signal</span>: ignorance is first-class—gaps create dramatic irony and drive narrative change.</li>
+              <li><span className="font-medium">Context composer</span>: generation calls receive a per-agent slice (conversation window + that agent’s memories) to enforce boundaries.</li>
+              <li><span className="font-medium">Persistence policy</span>: episodic memories persist per character per scene; private-thought streams remain ephemeral.</li>
+            </ul>
+            <p>
+              Practically, this boundary is enforced where context is composed—so tools like n8n receive only the
+              minimal, agent-scoped context needed for a given turn.
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Why It Matters */}
         <Card className="mb-10">

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { NarrativeSession } from "@/types/chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { VeilOfMemoryManager, localFileMemoryStore } from "@/lib/memory";
 
 interface Character {
   id: string;
@@ -112,6 +113,7 @@ export const SceneRunner = ({
   const [showNarratorDialog, setShowNarratorDialog] = useState(false);
   const [newInfluence, setNewInfluence] = useState<Partial<Influence>>({});
   const [newNarrator, setNewNarrator] = useState<Partial<NarratorPerspective>>({});
+  const veilRef = useRef(new VeilOfMemoryManager({ store: localFileMemoryStore }));
 
   const acts = (session.storyData as any)?.acts || [];
   const characters = (session.storyData as any)?.characters || [];
@@ -148,7 +150,11 @@ export const SceneRunner = ({
 
   const simulateCharacterTurn = useCallback(async (character: Character) => {
     setIsTyping(true);
-    
+    // Compose agent-scoped context (bounded memory) for this turn
+    try {
+      await veilRef.current.composeAgentContext(character.id, currentScene?.id);
+    } catch {}
+
     // Simulate AI response generation
     setTimeout(() => {
       const responses = [
@@ -174,9 +180,13 @@ export const SceneRunner = ({
       };
       
       setDialogue(prev => [...prev, newTurn]);
+      // Record public utterance into episodic memory
+      if (currentScene) {
+        void veilRef.current.recordPublic(character.id, currentScene.id, randomResponse);
+      }
       setIsTyping(false);
     }, 1500 + Math.random() * 1000);
-  }, [influences]);
+  }, [influences, currentScene]);
 
   const handlePlayScene = useCallback(() => {
     if (!isPlaying && currentCharacters.length >= 2) {
@@ -473,7 +483,7 @@ export const SceneRunner = ({
               <Label htmlFor="influenceType">Type</Label>
               <Select
                 value={newInfluence.type}
-                onValueChange={(value) => setNewInfluence({ ...newInfluence, type: value })}
+                onValueChange={(value) => setNewInfluence({ ...newInfluence, type: value as Influence['type'] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select influence type" />
@@ -522,7 +532,7 @@ export const SceneRunner = ({
               <Label htmlFor="influenceDuration">Duration</Label>
               <Select
                 value={newInfluence.duration}
-                onValueChange={(value) => setNewInfluence({ ...newInfluence, duration: value })}
+                onValueChange={(value) => setNewInfluence({ ...newInfluence, duration: value as Influence['duration'] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select duration" />
@@ -564,7 +574,7 @@ export const SceneRunner = ({
               <Label htmlFor="narratorMode">Narrator Mode</Label>
               <Select
                 value={newNarrator.mode}
-                onValueChange={(value) => setNewNarrator({ ...newNarrator, mode: value })}
+                onValueChange={(value) => setNewNarrator({ ...newNarrator, mode: value as NarratorPerspective['mode'] })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select narrator mode" />
