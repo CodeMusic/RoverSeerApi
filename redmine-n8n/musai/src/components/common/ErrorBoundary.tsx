@@ -1,4 +1,5 @@
 import React from 'react';
+import ErrorExperience from '@/pages/ErrorExperience';
 
 type ErrorBoundaryProps = {
   children: React.ReactNode;
@@ -33,14 +34,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   {
     if (this.state.hasError)
     {
-      return this.props.fallback ?? (
-        <div className="p-6">
-          <div className="max-w-xl mx-auto border rounded-lg p-4 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
-            <h2 className="text-red-700 dark:text-red-300 font-semibold mb-2">Something went wrong.</h2>
-            <p className="text-sm text-red-700/80 dark:text-red-300/80">Please try reloading the app. If the problem persists, check the console for details.</p>
-          </div>
-        </div>
-      );
+      return this.props.fallback ?? <ErrorExperience />;
     }
 
     return this.props.children;

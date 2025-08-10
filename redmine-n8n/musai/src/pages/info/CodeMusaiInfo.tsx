@@ -39,18 +39,6 @@ const CodeMusaiInfo: React.FC = () =>
             </div>
           </div>
         </div>
-
-        {/* Hero Image Prompt for designers */}
-        <Card className="mb-10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Images className="w-5 h-5" /> Hero Image Prompt</CardTitle>
-            <CardDescription>For design/generation teams</CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            “Futuristic split-brain visual — left side a sleek dolphin made of flowing logic circuits, right side a playful penguin formed from fractal creativity patterns, meeting in the center as a glowing fusion arc. Dark background with subtle glowing gridlines and faint data streams between them.”
-          </CardContent>
-        </Card>
-
         {/* Thinking strip demo */}
         <Card className="mb-10">
           <CardHeader>

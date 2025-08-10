@@ -310,19 +310,6 @@ const TaskMusaiInfo: React.FC = () =>
           </CardContent>
         </Card>
 
-        {/* Hero Visual Prompt */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Theater className="w-5 h-5" /> Hero Visual Prompt
-            </CardTitle>
-            <CardDescription>For design/generation teams</CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            “Scrum board turned runway”: clean kanban lanes morphing into a launch strip; agents represented by subtle glyphs (PO, SM, Dev, QA, Toolsmith) moving cards forward. Violet → rose energy accents echo execution flow.
-          </CardContent>
-        </Card>
-
         {/* FAQs */}
         <Card className="mb-10">
           <CardHeader>

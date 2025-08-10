@@ -113,6 +113,57 @@ const TherapyMusaiInfo: React.FC = () =>
           </Card>
         </section>
 
+        {/* Session Types */}
+        <section className="mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Session Types</CardTitle>
+              <CardDescription>
+                TherapyMusai adapts to your needs with multiple session modes — each with its own tone, pacing, and visual theme.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground grid md:grid-cols-2 gap-4">
+              {/* Standard Reflection */}
+              <div className="p-3 rounded-lg border bg-card">
+                <div className="font-medium mb-1">🌞 Standard Reflection</div>
+                <div>
+                  Your default journey — a balanced light/dark interface for open exploration, guided prompts, and symbolic reframing.
+                </div>
+              </div>
+
+              {/* Shadow Integration */}
+              <div className="p-3 rounded-lg border bg-card dark:bg-emerald-950/20 border-emerald-700/30">
+                <div className="font-medium mb-1">🌑 Shadow Integration (Dark Mode UX)</div>
+                <div className="space-y-2">
+                  <p>
+                    When you’re ready to face the unseen. This mode explores how social structures and internalized expectations shape your ought self, ideal self, and actual self — and how the superego (the inner voice of societal judgment) can cast parts of you into the shadows of shame.
+                  </p>
+                  <div>
+                    <div className="font-medium">What is a Shadow?</div>
+                    <div>A pattern or behavior hidden from conscious view because the self resists looking at it.</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Why Shadows Matter:</div>
+                    <div>Left unexamined, these routines can grow unchecked, fueled by emotions that have been misdirected or misunderstood.</div>
+                  </div>
+                  <div>
+                    <div className="font-medium">Core Insight:</div>
+                    <div>Many “bad” behaviors are actually distorted forms of good intentions — survival strategies warped by outdated contexts.</div>
+                  </div>
+                  <div>
+                    Shadow Integration sessions help you:
+                    <ol className="list-decimal ml-5 space-y-1 mt-1">
+                      <li>Identify the root intent behind shadow behaviors.</li>
+                      <li>Reconnect with the original healthy drive.</li>
+                      <li>Bring these parts back into conscious awareness with compassion and clarity.</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
         {/* How It Works — Acts in Your Personal Story Arc */}
         <section id="how-it-works" className="mb-8">
           <div className="grid md:grid-cols-2 gap-6">

@@ -68,19 +68,6 @@ const CareerMusaiInfo: React.FC = () =>
         </div>
       </div>
 
-      {/* Hero visual prompt for designers */}
-      <div className="container mx-auto px-4 pt-8">
-        <Card className="mb-10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Images className="w-5 h-5" /> Hero Visual Prompt</CardTitle>
-            <CardDescription>For design/generation teams</CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            “Ancient‑meets‑modern compass for work”: a brass‑and‑obsidian astrolabe overlaying a subtle kanban grid. Constellation lines connect ‘Goals • Skills • Projects • Identity’. Soft teal/emerald glow marks the current sprint. Minimal glyphs for backlog, sprint, review.
-          </CardContent>
-        </Card>
-      </div>
-
       {/* What it is / Key pillars */}
       <div className="container mx-auto px-4 py-12 max-w-5xl">
         <Card className="mb-8">

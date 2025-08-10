@@ -4,6 +4,7 @@ import { Brain, Sparkles, GitMerge, Layers, Eye, ArrowRight } from "lucide-react
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES, RouteUtils } from '@/config/routes';
+import meetmusaiHero from '@/assets/images/meetmusai.png';
 
 const MeetMusai = () => {
   const navigate = useNavigate();
@@ -27,6 +28,14 @@ const MeetMusai = () => {
 
           <h1 className="text-5xl md:text-6xl font-bold mb-3">Meet Musai</h1>
           <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300">The AI that sees from both sides.</p>
+
+          {/* Visual hero image */}
+          <div className="relative mt-8">
+            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-purple-500/15 via-orange-400/10 to-transparent blur-2xl" />
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
+              <img src={meetmusaiHero} alt="Meet Musai hero" className="block w-full h-auto" />
+            </div>
+          </div>
 
           {/* Constellation arc with soft badges */}
           <div className="relative mt-10 h-24">

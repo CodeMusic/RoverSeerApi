@@ -12,6 +12,9 @@ import { useCurationsAvailability } from "@/hooks/useCurationsAvailability";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
+import musaiLogoDark from '@/assets/images/musai_logo.png';
+import musaiLogoLight from '@/assets/images/musai_logo_light.png';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface NavigationBarProps {
   currentTab: string;
@@ -32,6 +35,7 @@ export const NavigationBar = ({
   const { toggleDevConsole, setToolColor, isCareerMusaiActive } = useMusaiMood();
   const { isAvailable: curationsAvailable } = useCurationsAvailability();
   const { preferences, isToolVisible } = useUserPreferences();
+  const { isDark } = useTheme();
 
   // ROYGBIV color coding for tools
   const toolColors = MUSAI_COLORS;
@@ -204,11 +208,13 @@ export const NavigationBar = ({
           />
         </div>
         {isExpanded && !isMobile && (
-          <div className="ml-3">
-            <div className="text-sm font-bold bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
-              MUSAI
-            </div>
-            <div className="text-xs text-muted-foreground">
+          <div className="ml-3 flex flex-col items-start">
+            <img
+              src={isDark ? musaiLogoDark : musaiLogoLight}
+              alt="Musai"
+              className="h-6 w-auto select-none pointer-events-none"
+            />
+            <div className="text-[10px] text-muted-foreground mt-1">
               AI Assistant
             </div>
           </div>

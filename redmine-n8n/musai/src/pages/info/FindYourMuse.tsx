@@ -324,7 +324,10 @@ const FindYourMuse = () =>
                   onClick={(tile as any).onClick}
                 >
                   {'icon' in tile && (tile as any).icon ? (
-                    (tile as any).icon({ className: "w-4 h-4 mr-2 mt-0.5" })
+                    (() => {
+                      const Icon = (tile as any).icon as any;
+                      return <Icon className="w-4 h-4 mr-2 mt-0.5" />;
+                    })()
                   ) : null}
                   <div className="min-w-0">
                     <div className="font-medium">{(tile as any).label}{(tile as any).selected ? ' (selected)' : ''}</div>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import medicalHero from '@/assets/images/medicalmusai_hero.png';
+import forkedPathDiagram from '@/assets/images/medical_musai_Forked path diagram.png';
 
 const MedicalMusaiInfo: React.FC = () =>
 {
@@ -135,7 +136,13 @@ const MedicalMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="h-full flex items-center justify-center text-xs text-muted-foreground border rounded-md">[Forked path diagram: Likely / Consider / Rule‑Out]</CardContent>
+              <CardContent className="p-0">
+                <img
+                  src={forkedPathDiagram}
+                  alt="Forked path diagram: Likely / Consider / Rule‑Out"
+                  className="block w-full h-auto rounded-md border"
+                />
+              </CardContent>
             </Card>
           </div>
         </section>
