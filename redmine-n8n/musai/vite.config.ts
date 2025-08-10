@@ -7,6 +7,11 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      protocol: "ws",
+      host: "localhost",
+      port: 8080,
+    },
     allowedHosts: ["musai.codemusic.ca","m2cbook.local", "localhost", "127.0.0.1", "0.0.0.0"],
     proxy: {
       '/api/n8n': {
@@ -34,6 +39,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
     include: ["uuid"], // Ensures uuid is properly bundled
