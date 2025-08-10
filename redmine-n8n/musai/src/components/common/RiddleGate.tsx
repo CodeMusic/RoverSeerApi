@@ -1,4 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import ROUTES from '@/config/routes';
+// Inserts an HTML comment into the DOM for source-inspectors
+function DomComment({ text }: { text: string })
+{
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() =>
+  {
+    if (!anchorRef.current)
+    {
+      return;
+    }
+
+    const commentNode = document.createComment(`\n${text}\n`);
+    const parent = anchorRef.current.parentNode;
+    if (parent)
+    {
+      parent.insertBefore(commentNode, anchorRef.current);
+    }
+  }, [text]);
+
+  return <span ref={anchorRef} style={{ display: 'none' }} />;
+}
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,11 +50,19 @@ async function sha256Hex(text: string): Promise<string>
 
 export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 {
-  const { toggleParty, toggleRainbow } = useMusaiMood();
+  const { toggleParty, activateRainbowWithPersistence } = useMusaiMood();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [now, setNow] = useState(new Date());
   const [input, setInput] = useState('');
+  const [hasTyped, setHasTyped] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Affective overlay control: red for failure, green for success
+  const [overlayType, setOverlayType] = useState<'success' | 'failure' | null>(null);
+  const [isOverlayVisible, setIsOverlayVisible] = useState(false);
+  const [hasJustUnlocked, setHasJustUnlocked] = useState(false);
 
   const today = useMemo(() => yyyymmdd(now), [now]);
   const storageKey = `musai_riddle_access_${today}`;
@@ -44,36 +77,104 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   const isAuthorized = useMemo(() => localStorage.getItem(storageKey) === 'ok', [storageKey]);
+  // Capture any pending intent (e.g., initialQuery/mode) while behind the gate
+  useEffect(() =>
+  {
+    if (isAuthorized)
+    {
+      return;
+    }
+
+    try
+    {
+      const searchParams = new URLSearchParams(location.search);
+      const state = location.state as any;
+      const pendingQuery = state?.initialQuery || searchParams.get('q') || '';
+      const pendingMode = searchParams.get('mode') || state?.switchToTab || '';
+
+      if (pendingQuery)
+      {
+        sessionStorage.setItem('musai-pending-query', JSON.stringify({ query: pendingQuery, mode: pendingMode }));
+      }
+    }
+    catch
+    {
+      // ignore storage errors
+    }
+  }, [isAuthorized, location.key]);
+
 
   const failCount = useMemo(() => parseInt(localStorage.getItem(failKey) || '0', 10), [failKey, now]);
   const lockUntilTs = useMemo(() => parseInt(localStorage.getItem(lockKey) || '0', 10), [lockKey, now]);
   const isLocked = lockUntilTs > Date.now();
   const remainingMs = Math.max(0, lockUntilTs - Date.now());
 
-  const handleSubmit = async (e: React.FormEvent) =>
+  const handleSubmit = async () =>
   {
-    e.preventDefault();
     if (isLocked) return;
+
+    // Require explicit typing + button click
+    if (!hasTyped)
+    {
+      setError('Please type your answer and click Continue.');
+      return;
+    }
 
     const normalized = input.trim().toLowerCase();
     const digest = await sha256Hex(`${normalized}|${today}|${PEPPER}`);
-    const expected = await sha256Hex(`context|${today}|${PEPPER}`);
+    // Accepted answer: "perspective" (case-insensitive)
+    const expected = await sha256Hex(`perspective|${today}|${PEPPER}`);
 
     if (digest === expected)
     {
+      // Activate rainbow effect and persist across next two navigations
+      activateRainbowWithPersistence(2);
       localStorage.setItem(storageKey, 'ok');
       localStorage.removeItem(failKey);
       localStorage.removeItem(lockKey);
       setError(null);
+      // Positive reinforcement: confetti + green affect overlay + smile
+      setOverlayType('success');
+      setIsOverlayVisible(true);
+      setHasJustUnlocked(true);
       // Celebrate with party effect
       toggleParty();
+
+      // Rainbow already activated above with persistence
+
+      // Fade out overlay after a short transition window
+      setTimeout(() => setIsOverlayVisible(false), 1800);
+
+      // After unlocking, if there was a pending query/mode, navigate to MAIN_APP with it so the tool can execute
+      try
+      {
+        const raw = sessionStorage.getItem('musai-pending-query');
+        if (raw)
+        {
+          const { query, mode } = JSON.parse(raw);
+          sessionStorage.removeItem('musai-pending-query');
+          // Re-navigate to main app with the pending intent preserved
+          const params = new URLSearchParams();
+          if (mode) params.set('mode', mode);
+          if (query) params.set('q', query);
+          navigate(`${ROUTES.MAIN_APP}?${params.toString()}`, { replace: true, state: { switchToTab: mode, initialQuery: query } });
+        }
+      }
+      catch
+      {
+        // ignore
+      }
     }
     else
     {
+      // Rainbow persistence only for real attempts
+      activateRainbowWithPersistence(2);
       const nextCount = failCount + 1;
       localStorage.setItem(failKey, String(nextCount));
-      // Trigger a brief rainbow effect to signal failure (non-blocking)
-      toggleRainbow();
+      // Negative reinforcement: brief red affect overlay (non-blocking)
+      setOverlayType('failure');
+      setIsOverlayVisible(true);
+      setTimeout(() => setIsOverlayVisible(false), 1000);
 
       if (nextCount >= MAX_ATTEMPTS)
       {
@@ -85,17 +186,14 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   };
 
-  if (isAuthorized)
-  {
-    return <>{children}</>;
-  }
-
   const minutes = Math.floor(remainingMs / 60000);
   const seconds = Math.floor((remainingMs % 60000) / 1000);
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-purple-50 via-background to-cyan-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
-      <Card className="w-full max-w-4xl shadow-xl border-purple-200/40 dark:border-purple-900/30">
+    <div className="relative min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-purple-50 via-background to-cyan-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
+      {/* Main content: gate when not authorized; app children when authorized */}
+      {!isAuthorized && (
+        <Card className="w-full max-w-4xl shadow-xl border-purple-200/40 dark:border-purple-900/30">
         <CardHeader className="pb-2">
           <CardTitle className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-purple-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent">
             🎭 The Riddle of the Three
@@ -107,6 +205,16 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Hidden hint for the inquisitive, inserted as a real HTML comment */}
+          <DomComment
+            text={
+              `Ah… so you’re the curious type.\n` +
+              `Trying to brute-force your way into early access, are we?\n` +
+              `I respect that.\n` +
+              `Here’s a hint: "What you call a mirror… is only flat until two stories meet upon it."\n` +
+              `Now, back to the riddle.`
+            }
+          />
           <div className="text-sm md:text-base text-muted-foreground mb-6 text-pretty">
             This is a private beta of Musai. Think of it as the <span className="font-semibold">Veil of Versions</span>: a threshold between what most see and what few are allowed to explore. Beyond lies an unfinished realm. Enter only if you are ready to help shape what comes next.
           </div>
@@ -175,17 +283,52 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
           <div className="text-xs text-muted-foreground mt-6 mb-3">
             Type your answer below. The Gate listens not for noise, but for knowing.
           </div>
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-3">
             <div className="flex items-center gap-2">
               <Input
                 placeholder={isLocked ? 'Locked — please wait for the timer' : 'Enter your answer'}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => { setInput(e.target.value); if (!hasTyped) setHasTyped(true); }}
                 className="mystical-glow"
                 disabled={isLocked}
                 autoFocus
               />
               <Button type="submit" className="rounded-xl" disabled={isLocked}>Continue</Button>
+            </div>
+
+            {/* Gentle nudge beneath the action controls */}
+            <div className="text-xs text-muted-foreground">
+              Sometimes the answer is hiding in the back of your head. In the meantime, exploring the product pages might reveal a clue.
+            </div>
+
+            {/* Discover More: randomly route to a Musai info page */}
+            <div>
+              <Button
+                type="button"
+                variant="ghost"
+                className="rounded-xl"
+                onClick={() => {
+                  // Activate rainbow persistence when exploring
+                  activateRainbowWithPersistence(2);
+                  const targets = [
+                    ROUTES.MEET_MUSAI,
+                    ROUTES.NEUROSCIENCE,
+                    ROUTES.FIND_YOUR_MUSE,
+                    ROUTES.LOCAL_AI,
+                    ROUTES.EYE_OF_MUSAI,
+                    ROUTES.CODE_MUSAI_INFO,
+                    ROUTES.THERAPY_MUSAI,
+                    ROUTES.MEDICAL_MUSAI,
+                    ROUTES.CAREER_MUSAI,
+                    ROUTES.EMERGENT_NARRATIVE,
+                    ROUTES.ROVERBYTE
+                  ];
+                  const index = Math.floor(Math.random() * targets.length);
+                  navigate(targets[index]);
+                }}
+              >
+                Discover More →
+              </Button>
             </div>
 
             {!isLocked && failCount > 0 && (
@@ -207,7 +350,30 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
             )}
           </form>
         </CardContent>
-      </Card>
+        </Card>
+      )}
+
+      {isAuthorized && (
+        <div className="w-full h-full">
+          {children}
+        </div>
+      )}
+
+      {/* Affective overlays - above everything, including confetti */}
+      {overlayType && (
+        <div
+          className="pointer-events-none fixed inset-0 z-[10001] flex items-center justify-center"
+          style={{
+            backgroundColor: overlayType === 'success' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)',
+            opacity: isOverlayVisible ? 1 : 0,
+            transition: 'opacity 700ms ease'
+          }}
+        >
+          {overlayType === 'success' && (
+            <div className="text-6xl md:text-7xl select-none">🙂</div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

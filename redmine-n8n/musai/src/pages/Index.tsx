@@ -277,6 +277,39 @@ const Index = () => {
     }
   }, [location.state, sessions, setCurrentSessionId, sendInitialMessage, currentSessionId]);
 
+  // Handle any initialQuery/q passed via URL or navigation state (e.g., after RiddleGate unlock)
+  useEffect(() => {
+    const stateAny = location.state as any;
+    const queryParam = searchParams.get('q');
+    const stateQuery = stateAny?.initialQuery;
+    const initialMessage = (stateQuery || queryParam || '').trim();
+
+    if (!initialMessage || hasSentInitialMessage.current) {
+      return;
+    }
+
+    const messageKey = `${currentTab}-${initialMessage}`;
+    const wasAlreadySent = localStorage.getItem(`sent_initial_${messageKey}`) === 'true';
+    if (wasAlreadySent) {
+      return;
+    }
+
+    hasSentInitialMessage.current = true;
+    initialMessageKey.current = messageKey;
+    localStorage.setItem(`sent_initial_${messageKey}`, 'true');
+
+    // Ensure a session exists for this tab before sending
+    const existingSession = getCurrentSessionForTab();
+    if (!existingSession) {
+      handleNewSession();
+      setTimeout(() => {
+        sendInitialMessage(initialMessage);
+      }, 200);
+    } else {
+      sendInitialMessage(initialMessage);
+    }
+  }, [location.search, location.state, currentTab]);
+
   // Handle session selection based on tab
   const handleSessionSelect = (sessionId: string) => {
     const session = allSessions.find(s => s.id === sessionId);

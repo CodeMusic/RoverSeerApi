@@ -9,6 +9,10 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import medicalHero from '@/assets/images/medicalmusai_hero.png';
 import forkedPathDiagram from '@/assets/images/medical_musai_Forked path diagram.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+import yokeHands from '@/assets/images/medical musai_yolk.png';
+import medicalTherapy from '@/assets/images/medicalmusai_medicaltherapy.png';
+import cityMap from '@/assets/images/medical_citymap.png';
 
 const MedicalMusaiInfo: React.FC = () =>
 {
@@ -162,7 +166,13 @@ const MedicalMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="h-full flex items-center justify-center text-xs text-muted-foreground border rounded-md">[Two hands on a yoke—patient lead hand, clinician support hand]</CardContent>
+              <CardContent className="p-0">
+                <img
+                  src={yokeHands}
+                  alt="Two hands on a yoke — patient lead hand, clinician support hand"
+                  className="block w-full h-auto rounded-md border"
+                />
+              </CardContent>
             </Card>
           </div>
         </section>
@@ -181,7 +191,13 @@ const MedicalMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="h-full flex items-center justify-center text-xs text-muted-foreground border rounded-md">[Two interlocking rings labeled “Medical” and “Therapy,” with arrows both ways]</CardContent>
+              <CardContent className="p-0">
+                <img
+                  src={medicalTherapy}
+                  alt="Two interlocking rings labeled Medical and Therapy with arrows both ways"
+                  className="block w-full h-auto rounded-md border"
+                />
+              </CardContent>
             </Card>
           </div>
         </section>
@@ -200,7 +216,13 @@ const MedicalMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="h-full flex items-center justify-center text-xs text-muted-foreground border rounded-md">[City map with warm pins (health, transit, counseling)]</CardContent>
+              <CardContent className="p-0">
+                <img
+                  src={cityMap}
+                  alt="City map with warm pins for health, transit, and counseling"
+                  className="block w-full h-auto rounded-md border"
+                />
+              </CardContent>
             </Card>
           </div>
         </section>
@@ -273,6 +295,7 @@ const MedicalMusaiInfo: React.FC = () =>
             </CardContent>
           </Card>
         </section>
+        <InfoFooterNav currentRoute={ROUTES.MEDICAL_MUSAI} />
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { MusaiShimmer } from '@/components/effects/MusaiEffects';
 import ROUTES from '@/config/routes';
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import { APP_TERMS } from '@/config/constants';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const LocalAI = () => {
   const navigate = useNavigate();
@@ -322,6 +323,7 @@ const LocalAI = () => {
             </Button>
           </div>
         </div>
+        <InfoFooterNav />
       </div>
     </div>
   );

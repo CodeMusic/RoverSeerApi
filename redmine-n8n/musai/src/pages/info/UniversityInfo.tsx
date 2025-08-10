@@ -24,6 +24,7 @@ import {
   GitBranch
 } from 'lucide-react';
 import universityHero from '@/assets/images/musaiuniversity_hero.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const UniversityInfo = () =>
 {
@@ -348,6 +349,7 @@ const UniversityInfo = () =>
             </Button>
           </div>
         </div>
+        <InfoFooterNav currentRoute={ROUTES.UNIVERSITY_INFO} />
       </div>
     </div>
   );

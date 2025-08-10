@@ -19,6 +19,8 @@ const Landing = () => {
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const autoplayRef = useRef<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const siteMapRef = useRef<HTMLDivElement | null>(null);
+  const [siteMapRevealed, setSiteMapRevealed] = useState(false);
 
   // Minimal links to cycle through
   // Order mirrors the main tool order: Chat, Search, Eye, Code, University, Narrative, Therapy, Medical, Task
@@ -27,7 +29,7 @@ const Landing = () => {
     { label: "Find Your Muse", icon: Search, to: ROUTES.FIND_YOUR_MUSE, border: "border-orange-500/30" },
     { label: "Eye of Musai", icon: Eye, to: ROUTES.EYE_OF_MUSAI, border: "border-cyan-500/30" },
     { label: "CodeMusai", icon: Code, to: ROUTES.CODE_MUSAI_INFO, border: "border-yellow-500/30" },
-    { label: "Musai U", icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO, border: "border-green-500/30" },
+    { label: "Musai University", icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO, border: "border-green-500/30" },
     { label: "Emergent Narrative", icon: Theater, to: ROUTES.EMERGENT_NARRATIVE, border: "border-blue-500/30" },
     { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI, border: "border-pink-500/30" },
     { label: "MedicalMusai", icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI, border: "border-emerald-500/30" },
@@ -38,6 +40,38 @@ const Landing = () => {
     { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE, border: "border-purple-500/30" },
     { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE, border: "border-orange-500/30" },
   ];
+
+  // Show only three Musai tiles in the bottom carousel (top-of-mind entry points)
+  const primaryCarouselLinks = infoLinks.slice(0, 3);
+
+  // Group links for a flat site map: modules first, then supporting pages
+  const moduleRouteSet = new Set<string>([
+    ROUTES.MEET_MUSAI,
+    ROUTES.FIND_YOUR_MUSE,
+    ROUTES.EYE_OF_MUSAI,
+    ROUTES.CODE_MUSAI_INFO,
+    ROUTES.UNIVERSITY_INFO,
+    ROUTES.EMERGENT_NARRATIVE,
+    ROUTES.THERAPY_MUSAI,
+    ROUTES.MEDICAL_MUSAI,
+    ROUTES.TASK_MUSAI,
+    ROUTES.CAREER_MUSAI,
+  ]);
+  const moduleLinks = infoLinks.filter((l) => moduleRouteSet.has(l.to as string));
+  const supportingLinks = infoLinks.filter((l) => !moduleRouteSet.has(l.to as string));
+
+  // Optional: if user scrolls past a bit, auto‑reveal site map
+  useEffect(() => {
+    const onScroll = () => {
+      if (siteMapRevealed) return;
+      const scrolled = window.scrollY || document.documentElement.scrollTop;
+      if (scrolled > window.innerHeight * 0.9) {
+        setSiteMapRevealed(true);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [siteMapRevealed]);
 
   // Autoplay that pauses on hover/focus
   useEffect(() => {
@@ -182,20 +216,21 @@ const Landing = () => {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 text-center max-w-4xl mx-auto">
+      <div className="relative z-10 text-center max-w-4xl mx-auto pt-10 sm:pt-12 md:pt-16">
         {/* Hero Section */}
         <div className="mb-8 slide-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64 flex items-center justify-center">
+              <div className="w-36 h-36 sm:w-52 sm:h-52 md:w-60 md:h-60 flex items-center justify-center">
                 <MusaiLifeLogo 
-                size="3xl" 
+                size="4xl" 
                 isDarkMode={false} 
-                noShimmer={true} 
+                noShimmer={true}
+                className="border-0"
                 onClick={() => navigate(ROUTES.CURATIONS)}
               />
               </div>
-              <div className="absolute -inset-3 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
+              <div className="absolute -inset-1.5 sm:-inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-15 blur-[2px]" />
             </div>
           </div>
           
@@ -333,14 +368,14 @@ const Landing = () => {
             onMouseLeave={() => setIsHovered(false)}
             className="relative mx-auto max-w-5xl"
           >
-            <Carousel setApi={setCarouselApi} opts={{ align: 'start', loop: true }}>
+            <Carousel setApi={setCarouselApi} opts={{ align: 'start', loop: true, slidesToScroll: 1 }}>
               <CarouselContent>
-                {infoLinks.map((link) => (
-                  <CarouselItem key={link.label} className="basis-2/3 xs:basis-1/2 sm:basis-1/3 md:basis-1/3 lg:basis-1/4">
+                {moduleLinks.map((link) => (
+                  <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3">
                     <Button
                       onClick={() => navigate(link.to)}
                       variant="outline"
-                      className={`w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
+                      className={`relative z-0 w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] hover:shadow-sm ${link.border} bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60`}
                     >
                       {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
                       {link.label}
@@ -351,6 +386,71 @@ const Landing = () => {
               <CarouselPrevious className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
               <CarouselNext className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
             </Carousel>
+          </div>
+        </div>
+
+        {/* Reveal Site Map CTA */}
+        {!siteMapRevealed && (
+          <div className="pt-10 pb-16 flex justify-center">
+            <Button variant="outline" onClick={() => {
+              setSiteMapRevealed(true);
+              setTimeout(() => siteMapRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+            }} className="rounded-xl border-2">
+              Explore the Musai site map <ChevronDown className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        )}
+
+        {/* Flat Site Map / Quick Navigation */}
+        <div className="pt-14 pb-20 relative">
+          {/* Subtle resistance veil */}
+          <div className="pointer-events-none absolute -top-8 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/80 to-transparent" />
+          <div
+            ref={siteMapRef}
+            className={`max-w-6xl mx-auto transition-all duration-700 ease-out ${
+              siteMapRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none select-none"
+            }`}
+          >
+            <div className="text-center mb-6">
+              <h2 className="text-2xl md:text-3xl font-bold">What is Musai?</h2>
+              <p className="text-muted-foreground mt-2">A flat, skimmable map — modules first, then supporting pages.</p>
+            </div>
+
+            {/* Modules (Musai forms) */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3">Modules</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {moduleLinks.map((link) => (
+                  <Button
+                    key={link.label}
+                    onClick={() => navigate(link.to)}
+                    variant="outline"
+                    className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
+                  >
+                    {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
+                    <span className="truncate">{link.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Supporting pages (architecture, integrations, docs) */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Supporting</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {supportingLinks.map((link) => (
+                  <Button
+                    key={link.label}
+                    onClick={() => navigate(link.to)}
+                    variant="outline"
+                    className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
+                  >
+                    {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
+                    <span className="truncate">{link.label}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

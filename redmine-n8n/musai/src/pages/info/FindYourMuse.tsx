@@ -23,6 +23,7 @@ import {
 import { ROUTES, RouteUtils } from "@/config/routes";
 import { APP_TERMS } from "@/config/constants";
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const FindYourMuse = () =>
 {
@@ -556,6 +557,23 @@ const FindYourMuse = () =>
             <ArrowRight className="w-5 h-5" />
           </Button>
         </div>
+
+        {/* More Musai content (non‑main pages) */}
+        <div className="mt-10">
+          <h3 className="text-xl font-semibold mb-3">More Musai content</h3>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <Button variant="outline" className="justify-start h-auto py-4 px-4 border-2" onClick={() => navigate(ROUTES.LOCAL_AI)}>
+              Local AI Architecture
+            </Button>
+            <Button variant="outline" className="justify-start h-auto py-4 px-4 border-2" onClick={() => navigate(ROUTES.NEUROSCIENCE)}>
+              Neuroscience & Architecture Notes
+            </Button>
+            <Button variant="outline" className="justify-start h-auto py-4 px-4 border-2" onClick={() => navigate(ROUTES.ROVERBYTE)}>
+              Musai × RoverByte
+            </Button>
+          </div>
+        </div>
+        <InfoFooterNav currentRoute={ROUTES.FIND_YOUR_MUSE} />
       </div>
     </div>
   );

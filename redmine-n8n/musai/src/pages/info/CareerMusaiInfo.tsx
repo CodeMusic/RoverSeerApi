@@ -18,6 +18,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import careerHero from '@/assets/images/careermusai_hero.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const CareerMusaiInfo: React.FC = () =>
 {
@@ -247,6 +248,7 @@ const CareerMusaiInfo: React.FC = () =>
             <Button variant="outline" onClick={() => navigate(ROUTES.FIND_YOUR_MUSE)} className="rounded-xl">Explore Ecosystem</Button>
           </div>
         </div>
+        <InfoFooterNav currentRoute={ROUTES.CAREER_MUSAI} />
       </div>
     </div>
   );

@@ -24,6 +24,7 @@ import {
   HelpCircle,
   Sparkles
 } from 'lucide-react';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const TaskMusaiInfo: React.FC = () =>
 {
@@ -349,6 +350,7 @@ const TaskMusaiInfo: React.FC = () =>
             </Button>
           </div>
         </div>
+        <InfoFooterNav currentRoute={ROUTES.TASK_MUSAI} />
       </div>
     </div>
   );

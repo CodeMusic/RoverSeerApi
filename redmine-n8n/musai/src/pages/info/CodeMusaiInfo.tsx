@@ -9,6 +9,7 @@ import { APP_TERMS } from '@/config/constants';
 import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
 import { HybridControlsPanel } from '@/components/code/HybridControlsPanel';
 import codeHero from '@/assets/images/CodeMusai_hero.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const CodeMusaiInfo: React.FC = () =>
 {
@@ -252,6 +253,7 @@ const CodeMusaiInfo: React.FC = () =>
           <Button onClick={() => navigate(ROUTES.CODE_PLAYGROUND)}>Try CodeMusai Now</Button>
           <Button variant="outline" onClick={() => navigate(ROUTES.MAIN_APP)}>Explore the Musai Ecosystem</Button>
         </div>
+        <InfoFooterNav currentRoute={ROUTES.CODE_MUSAI_INFO} />
       </div>
     </div>
   );

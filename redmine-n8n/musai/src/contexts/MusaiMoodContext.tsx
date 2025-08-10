@@ -18,6 +18,8 @@ interface MusaiMoodContextType {
   toggleDevConsole: () => void;
   toggleMatrix: () => void;
   toggleRainbow: () => void;
+  activateRainbowWithPersistence: (pagesRemaining: number) => void;
+  decrementRainbowPersistence: () => void;
   toggleParty: () => void;
   executeCommand: (command: string) => string;
 }
@@ -150,6 +152,63 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
     setIsRainbowActive(false);
     setIsPartyActive(false);
     setIsRainbowActive(prev => !prev);
+  };
+
+  // Activate rainbow and persist it across a limited number of route changes
+  const activateRainbowWithPersistence = (pagesRemaining: number) =>
+  {
+    setIsMatrixActive(false);
+    setIsPartyActive(false);
+    setIsRainbowActive(true);
+    try
+    {
+      sessionStorage.setItem('musai-rainbow-persist', String(Math.max(0, pagesRemaining)));
+      // Ensure base intensity is set for immediate visual consistency
+      document.documentElement.style.setProperty('--musai-rainbow-intensity', '1');
+    }
+    catch
+    {
+      // ignore storage errors
+    }
+  };
+
+  const decrementRainbowPersistence = () =>
+  {
+    try
+    {
+      const raw = sessionStorage.getItem('musai-rainbow-persist');
+      if (raw === null)
+      {
+        return;
+      }
+      const remaining = parseInt(raw, 10);
+      if (Number.isNaN(remaining))
+      {
+        sessionStorage.removeItem('musai-rainbow-persist');
+        return;
+      }
+
+      if (remaining <= 0)
+      {
+        document.documentElement.style.removeProperty('--musai-rainbow-intensity');
+        sessionStorage.removeItem('musai-rainbow-persist');
+        setIsRainbowActive(false);
+        return;
+      }
+
+      // Map remaining pages to intensity
+      // 3 -> 1.0, 2 -> 0.6, 1 -> 0.3
+      const intensity = remaining >= 3 ? 1 : remaining === 2 ? 0.6 : 0.3;
+      document.documentElement.style.setProperty('--musai-rainbow-intensity', String(intensity));
+      sessionStorage.setItem('musai-rainbow-persist', String(remaining - 1));
+
+      // Ensure effect is active while persisting
+      setIsRainbowActive(true);
+    }
+    catch
+    {
+      // ignore storage errors
+    }
   };
 
   const toggleParty = () => {
@@ -297,6 +356,8 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       toggleDevConsole,
       toggleMatrix,
       toggleRainbow,
+      activateRainbowWithPersistence,
+      decrementRainbowPersistence,
       toggleParty,
       executeCommand
     }}>

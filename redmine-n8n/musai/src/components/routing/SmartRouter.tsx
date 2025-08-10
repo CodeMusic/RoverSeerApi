@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import ROUTES from '@/config/routes';
+import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 
 interface SmartRouterProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { shouldShowLanding, getRecommendedRoute, recordToolUsage } = useUserPreferences();
+  const { decrementRainbowPersistence } = useMusaiMood();
 
   useEffect(() => {
     // Only handle root path routing
@@ -35,6 +37,12 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
       }
     }
   }, [location.pathname]); // Removed recordToolUsage from dependency array to prevent infinite loop
+
+  // Handle rainbow persistence countdown per navigation (any route change)
+  useEffect(() => {
+    decrementRainbowPersistence();
+    // run on route change
+  }, [location.pathname]);
 
   return <>{children}</>;
 };

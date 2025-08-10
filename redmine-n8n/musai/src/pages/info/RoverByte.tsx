@@ -2,6 +2,7 @@ import { AttentionalGatewayHeader } from '@/components/common/AttentionalGateway
 import { APP_TERMS } from '@/config/constants';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ExternalLink } from 'lucide-react';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const RoverByte = () =>
 {
@@ -34,6 +35,7 @@ const RoverByte = () =>
             Visit RoverByte <ExternalLink className="w-4 h-4" />
           </a>
         </div>
+        <InfoFooterNav />
       </div>
     </div>
   );

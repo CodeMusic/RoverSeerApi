@@ -6,6 +6,7 @@ import { ROUTES } from '@/config/routes';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import therapyHero from '@/assets/images/therapymusai_hero.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 import {
   Heart,
   Sparkles,
@@ -126,8 +127,15 @@ const TherapyMusaiInfo: React.FC = () =>
               {/* Standard Reflection */}
               <div className="p-3 rounded-lg border bg-card">
                 <div className="font-medium mb-1">🌞 Standard Reflection</div>
-                <div>
-                  Your default journey — a balanced light/dark interface for open exploration, guided prompts, and symbolic reframing.
+                <div className="space-y-2">
+                  <p>
+                    Your default journey — a balanced light/dark interface for open exploration or gentle guidance. Swap between free talk, concise prompts, and symbolic reframing as you go.
+                  </p>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Quick check‑ins, mood tagging, and micro‑insights</li>
+                    <li>Guided prompts when you want structure</li>
+                    <li>Symbolic reframes to see patterns from a new angle</li>
+                  </ul>
                 </div>
               </div>
 
@@ -136,28 +144,48 @@ const TherapyMusaiInfo: React.FC = () =>
                 <div className="font-medium mb-1">🌑 Shadow Integration (Dark Mode UX)</div>
                 <div className="space-y-2">
                   <p>
-                    When you’re ready to face the unseen. This mode explores how social structures and internalized expectations shape your ought self, ideal self, and actual self — and how the superego (the inner voice of societal judgment) can cast parts of you into the shadows of shame.
+                    When you’re ready to face the unseen. Explore how the ought self, ideal self, and actual self are shaped by internalized judgment — and how that casts behaviors into shadow.
                   </p>
-                  <div>
-                    <div className="font-medium">What is a Shadow?</div>
-                    <div>A pattern or behavior hidden from conscious view because the self resists looking at it.</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Why Shadows Matter:</div>
-                    <div>Left unexamined, these routines can grow unchecked, fueled by emotions that have been misdirected or misunderstood.</div>
-                  </div>
-                  <div>
-                    <div className="font-medium">Core Insight:</div>
-                    <div>Many “bad” behaviors are actually distorted forms of good intentions — survival strategies warped by outdated contexts.</div>
-                  </div>
-                  <div>
-                    Shadow Integration sessions help you:
-                    <ol className="list-decimal ml-5 space-y-1 mt-1">
-                      <li>Identify the root intent behind shadow behaviors.</li>
-                      <li>Reconnect with the original healthy drive.</li>
-                      <li>Bring these parts back into conscious awareness with compassion and clarity.</li>
-                    </ol>
-                  </div>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Shadow ≈ avoided pattern the self resists seeing</li>
+                    <li>Why it matters: unattended patterns can grow unchecked</li>
+                    <li>Core insight: many “bad” behaviors are misapplied good intentions</li>
+                  </ul>
+                  <ol className="list-decimal ml-5 space-y-1 mt-1">
+                    <li>Identify the root intent behind the behavior</li>
+                    <li>Reconnect with the original healthy drive</li>
+                    <li>Reintegrate with compassion and clear boundaries</li>
+                  </ol>
+                </div>
+              </div>
+
+              {/* Emergent Narrative — Re‑creatable Situations */}
+              <div className="p-3 rounded-lg border bg-card">
+                <div className="font-medium mb-1">🎭 Emergent Narrative (Re‑creatable Situations)</div>
+                <div className="space-y-2">
+                  <p>
+                    Turn moments into repeatable “scenes” you can revisit. Characters, roles, and cues are saved so you can rehearse new responses and compare outcomes over time.
+                  </p>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Scene setup: context, roles, goals, and emotional cues</li>
+                    <li>Rehearsal: safe practice for CBT/DBT techniques</li>
+                    <li>Re‑entry: reload prior branches to test alternatives</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Journaling */}
+              <div className="p-3 rounded-lg border bg-card">
+                <div className="font-medium mb-1">📝 Journaling</div>
+                <div className="space-y-2">
+                  <p>
+                    Free‑form or prompted writing with light structure. Capture daily reflections, tag themes, and watch micro‑insights accumulate into patterns.
+                  </p>
+                  <ul className="list-disc ml-5 space-y-1">
+                    <li>Daily prompts and streaks to build momentum</li>
+                    <li>Tags feed your Insight Timeline and search</li>
+                    <li>Voice‑to‑text capture for quick entries</li>
+                  </ul>
                 </div>
               </div>
             </CardContent>
@@ -356,6 +384,7 @@ const TherapyMusaiInfo: React.FC = () =>
           </div>
           <div className="mt-2 text-xs text-muted-foreground">[Arc diagram: Acts 1–4 story flow — Intake → Exploration → Synthesis → Background]</div>
         </section>
+        <InfoFooterNav currentRoute={ROUTES.THERAPY_MUSAI} />
       </div>
     </div>
   );

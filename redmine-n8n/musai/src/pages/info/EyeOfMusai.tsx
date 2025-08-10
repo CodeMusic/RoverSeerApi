@@ -8,6 +8,7 @@ import { APP_TERMS } from '@/config/constants';
 import { ROUTES, RouteUtils } from '@/config/routes';
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import eyeHero from '@/assets/images/eyeOfMusai_hero.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const EyeOfMusai: React.FC = () =>
 {
@@ -281,6 +282,7 @@ const EyeOfMusai: React.FC = () =>
             <Button variant="outline" onClick={() => navigate(ROUTES.FIND_YOUR_MUSE)} className="rounded-xl">Explore Musai Ecosystem</Button>
           </div>
         </div>
+        <InfoFooterNav currentRoute={ROUTES.EYE_OF_MUSAI} />
       </div>
     </div>
   );

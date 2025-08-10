@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import musaiLogoImage from '@/assets/images/musai_logo.png';
 import musaiCoreImage from '@/assets/images/musai_core.png';
+import musaiWaveLogo from '@/assets/images/logo_musai_wave.png';
 import musaiCurationsImage from '@/assets/images/musai_curations.png';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
 import { MUSAI_CHROMATIC_12, MUSAI_CHROMATIC_7 } from '@/config/constants';
@@ -156,11 +157,10 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, lo
   };
 
   // Choose logo image based on curations availability
+  // Use new wave/prayer logo as the primary brand mark
   const logoImage = useCurationsLogo 
     ? musaiCurationsImage 
-    : logoWithText 
-      ? musaiLogoImage 
-      : musaiCoreImage;
+    : musaiWaveLogo;
 
   return (
     <div className={cn(
@@ -326,7 +326,7 @@ export const DynamicProfileLogo = ({
   // Choose logo image based on curations availability
   const logoImage = shouldUseCurationsLogo 
     ? musaiCurationsImage 
-    : musaiCoreImage;
+    : musaiWaveLogo;
 
   const sizeClasses = {
     sm: 'w-8 h-8',

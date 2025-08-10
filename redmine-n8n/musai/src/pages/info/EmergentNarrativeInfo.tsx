@@ -26,6 +26,7 @@ import {
 import stageHero from '@/assets/images/emergnarr_stage_hero1.png';
 import emergeHero from '@/assets/images/emergentnarr_emerge_hero2.png';
 import constellationsHero from '@/assets/images/emergentnar_constellations_hero3.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const EmergentNarrativeInfo: React.FC = () =>
 {
@@ -91,23 +92,41 @@ const EmergentNarrativeInfo: React.FC = () =>
                 <Carousel setApi={setCarouselApi} opts={{ loop: true }}>
                   <CarouselContent>
                     {/* Slide 1 — Stage */}
-                    <CarouselItem>
+                    <CarouselItem className="group">
                       <AspectRatio ratio={16/9}>
-                        <img src={stageHero} alt="Emergent Narrative stage hero" className="block w-full h-full object-cover" />
+                        <div className="relative w-full h-full">
+                          <img src={stageHero} alt="Emergent Narrative stage hero" className="block w-full h-full object-cover rounded-md" />
+                          <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/10 via-transparent to-indigo-500/10" />
+                            <div className="absolute inset-0 ring-1 ring-indigo-500/20 rounded-md" />
+                          </div>
+                        </div>
                       </AspectRatio>
                     </CarouselItem>
 
                     {/* Slide 2 — Emergence */}
-                    <CarouselItem>
+                    <CarouselItem className="group">
                       <AspectRatio ratio={16/9}>
-                        <img src={emergeHero} alt="Emergent Narrative emergence hero" className="block w-full h-full object-cover" />
+                        <div className="relative w-full h-full">
+                          <img src={emergeHero} alt="Emergent Narrative emergence hero" className="block w-full h-full object-cover rounded-md" />
+                          <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="absolute inset-0 bg-gradient-to-b from-blue-500/10 via-transparent to-blue-500/10" />
+                            <div className="absolute inset-0 ring-1 ring-blue-500/20 rounded-md" />
+                          </div>
+                        </div>
                       </AspectRatio>
                     </CarouselItem>
 
                     {/* Slide 3 — Constellations */}
-                    <CarouselItem>
+                    <CarouselItem className="group">
                       <AspectRatio ratio={16/9}>
-                        <img src={constellationsHero} alt="Emergent Narrative constellations hero" className="block w-full h-full object-cover" />
+                        <div className="relative w-full h-full">
+                          <img src={constellationsHero} alt="Emergent Narrative constellations hero" className="block w-full h-full object-cover rounded-md" />
+                          <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 via-transparent to-purple-500/10" />
+                            <div className="absolute inset-0 ring-1 ring-purple-500/20 rounded-md" />
+                          </div>
+                        </div>
                       </AspectRatio>
                     </CarouselItem>
                   </CarouselContent>
@@ -274,6 +293,7 @@ const EmergentNarrativeInfo: React.FC = () =>
             <Button variant="outline" size="lg" onClick={handleScrollToHow}>See Example Scenes</Button>
           </div>
         </section>
+        <InfoFooterNav currentRoute={ROUTES.EMERGENT_NARRATIVE} />
       </div>
     </div>
   );

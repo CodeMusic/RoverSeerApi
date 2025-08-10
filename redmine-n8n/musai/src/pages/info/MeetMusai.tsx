@@ -1,13 +1,17 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Brain, Sparkles, GitMerge, Layers, Eye, ArrowRight } from "lucide-react";
+import { Sparkles, GitMerge, Layers, Eye, ArrowRight } from "lucide-react";
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES, RouteUtils } from '@/config/routes';
-import meetmusaiHero from '@/assets/images/meetmusai.png';
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+// Removed old Meet Musai hero variants; we now compose the orb + text directly
+import musaiWaveLogo from '@/assets/images/logo_musai_wave.png';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const MeetMusai = () => {
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
@@ -19,22 +23,18 @@ const MeetMusai = () => {
         <div className="text-center mb-16">
           <div className="flex justify-center mb-6">
             <div className="relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                <Brain className="w-12 h-12 text-white" />
+              <div className="absolute -inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-15 blur-[3px]" />
+              <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-56 md:h-56 rounded-full overflow-hidden shadow-lg bg-transparent">
+                <img src={musaiWaveLogo} alt="Musai orb" className="object-contain w-full h-full" />
               </div>
-              <div className="absolute -inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
             </div>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-bold mb-3">Meet Musai</h1>
-          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300">The AI that sees from both sides.</p>
-
-          {/* Visual hero image */}
-          <div className="relative mt-8">
-            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-purple-500/15 via-orange-400/10 to-transparent blur-2xl" />
-            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
-              <img src={meetmusaiHero} alt="Meet Musai hero" className="block w-full h-auto" />
-            </div>
+          {/* Orb + Branded text composition */}
+          <div className="mt-6 flex flex-col items-center">
+            <h1 className="text-4xl md:text-5xl font-bold">Meet Musai</h1>
+            <p className="mt-2 text-base md:text-lg text-muted-foreground">The AI that sees from both sides.</p>
+            <p className="mt-1 text-xs md:text-sm text-muted-foreground tracking-wide">Reflection · Reframe · Integrate</p>
           </div>
 
           {/* Constellation arc with soft badges */}
@@ -168,6 +168,7 @@ const MeetMusai = () => {
             <ArrowRight className="w-5 h-5" />
           </Button>
         </div>
+        <InfoFooterNav currentRoute={ROUTES.MEET_MUSAI} />
       </div>
     </div>
   );

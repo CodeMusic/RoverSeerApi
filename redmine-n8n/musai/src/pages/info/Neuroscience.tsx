@@ -9,6 +9,7 @@ import redmineMemoryStructure from "@/assets/images/redmine_memory_structure.png
 import dnaFlow from "@/assets/images/dna_flow.png";
 import dayNightTraining from "@/assets/images/day_night_training.png";
 import n8nWorkflow from "@/assets/images/n8n_workflow.png";
+import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const Neuroscience = () => {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ const Neuroscience = () => {
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_UNIVERSITY} />
       <div className="max-w-6xl mx-auto px-6 py-16">
         {/* Content from original Neuroscience page preserved */}
+        <InfoFooterNav />
       </div>
     </div>
   );
