@@ -10,6 +10,7 @@ export const APP_TERMS = {
   TASK: "TaskMusai",
   CAREER: "CareerMusai",
   THERAPY: "TherapyMusai",
+  MEDICAL: "MedicalMusai",
   EYE: "The Eye of Musai",
   SETTINGS: "Settings",
   
@@ -22,6 +23,7 @@ export const APP_TERMS = {
   TASK_BADGE: "Intelligent Automation",
   CAREER_BADGE: "Career Development",
   THERAPY_BADGE: "Mental Wellness",
+  MEDICAL_BADGE: "Health Navigation",
   EYE_BADGE: "Contextual Vision",
   
   // Descriptions
@@ -33,6 +35,7 @@ export const APP_TERMS = {
   TASK_DESCRIPTION: "Automate your workflow with intelligent task management and AI assistance",
   CAREER_DESCRIPTION: "AI-powered career development and job search assistance",
   THERAPY_DESCRIPTION: "AI-powered mental wellness support and therapeutic conversations",
+  MEDICAL_DESCRIPTION: "A meta-copilot that integrates specialists, GP insights, therapy context, and research into one clear flight plan for your health.",
   EYE_DESCRIPTION: "A contextual vision engine with MusaiDex—index anything, blend YOLO-style vision with language to understand form and meaning.",
   
   // Tab IDs
@@ -44,6 +47,7 @@ export const APP_TERMS = {
   TAB_TASK: "task-musai",
   TAB_CAREER: "career-musai",
   TAB_THERAPY: "therapy-musai",
+  TAB_MEDICAL: "medical-musai",
   TAB_EYE: "musai-eye",
   TAB_SETTINGS: "settings",
   
@@ -56,6 +60,7 @@ export const APP_TERMS = {
   PREMUSAI_TASK: "task",
   PREMUSAI_CAREER: "career",
   PREMUSAI_THERAPY: "therapy",
+  PREMUSAI_MEDICAL: "medical",
   PREMUSAI_EYE: "eye",
   
   // Session Types
@@ -77,6 +82,7 @@ export const APP_TERMS = {
   NAV_TASK: "TaskMusai",
   NAV_CAREER: "CareerMusai",
   NAV_THERAPY: "TherapyMusai",
+  NAV_MEDICAL: "MedicalMusai",
   NAV_EYE: "The Eye of Musai",
   NAV_SETTINGS: "Settings",
   
@@ -88,6 +94,7 @@ export const APP_TERMS = {
   PAGE_NARRATIVE: "MusaiTale",
   PAGE_TASK: "TaskMusai",
   PAGE_CAREER: "CareerMusai",
+  PAGE_MEDICAL: "MedicalMusai",
   
   // Common Actions
   ACTION_NEW: "New",
@@ -190,6 +197,7 @@ export const MUSAI_COLORS: Record<string, string> = {
   [APP_TERMS.TAB_CAREER]: '#4B0082',
   [APP_TERMS.TAB_TASK]: '#9400D3',
   [APP_TERMS.TAB_THERAPY]: '#FF69B4',
+  [APP_TERMS.TAB_MEDICAL]: '#16A34A',
   [APP_TERMS.TAB_EYE]: '#06B6D4',
   [APP_TERMS.TAB_SETTINGS]: '#808080',
 };

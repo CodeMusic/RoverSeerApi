@@ -19,6 +19,8 @@ export const ROUTES = {
   EYE_OF_MUSAI: '/eye-of-musai',
   CAREER_MUSAI: '/career-musai',
   THERAPY_MUSAI: '/therapy-musai',
+  MEDICAL_MUSAI: '/medical-musai',
+  MEDICAL_MUSAI_DEMO: '/medical-musai/demo',
   EMERGENT_NARRATIVE: '/emergent-narrative',
   TASK_MUSAI: '/task-musai',
   

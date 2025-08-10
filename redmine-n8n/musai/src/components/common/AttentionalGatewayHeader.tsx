@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
-import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye } from 'lucide-react';
+import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye, Stethoscope } from 'lucide-react';
 import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
 
 type TabId = typeof APP_TERMS[keyof typeof APP_TERMS];
@@ -20,6 +20,7 @@ interface SymbolOption
 const SYMBOL_OPTIONS: SymbolOption[] = [
   { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater },
   { id: APP_TERMS.TAB_THERAPY, label: 'TherapyMusai', icon: Heart },
+  { id: APP_TERMS.TAB_MEDICAL, label: 'MedicalMusai', icon: Stethoscope },
   { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare },
   { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search },
   { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code },
@@ -80,6 +81,7 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
       [ROUTES.MEET_MUSAI]: APP_TERMS.TAB_CHAT,
       [ROUTES.EMERGENT_NARRATIVE]: APP_TERMS.TAB_NARRATIVE,
       [ROUTES.THERAPY_MUSAI]: APP_TERMS.TAB_THERAPY,
+      [ROUTES.MEDICAL_MUSAI]: APP_TERMS.TAB_MEDICAL,
       [ROUTES.CAREER_MUSAI]: APP_TERMS.TAB_CAREER,
       [ROUTES.EYE_OF_MUSAI]: APP_TERMS.TAB_EYE,
       [ROUTES.LOCAL_AI]: APP_TERMS.TAB_CODE,
@@ -109,6 +111,8 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
         navigate(ROUTES.EMERGENT_NARRATIVE); break;
       case APP_TERMS.TAB_THERAPY:
         navigate(ROUTES.THERAPY_MUSAI); break;
+      case APP_TERMS.TAB_MEDICAL:
+        navigate(ROUTES.MEDICAL_MUSAI); break;
       case APP_TERMS.TAB_CAREER:
         navigate(ROUTES.CAREER_MUSAI); break;
       case APP_TERMS.TAB_EYE:

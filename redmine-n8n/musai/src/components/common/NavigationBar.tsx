@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp, Heart, Eye } from "lucide-react";
+import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp, Heart, Eye, Stethoscope } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
@@ -37,7 +37,7 @@ export const NavigationBar = ({
   const toolColors = MUSAI_COLORS;
 
   // Map tab id constants to tool visibility keys used in preferences.visibleTools
-  const tabIdToToolKey = (tabId: string): 'chat' | 'search' | 'code' | 'university' | 'narrative' | 'career' | 'therapy' | 'task' | 'eye' | 'settings' =>
+  const tabIdToToolKey = (tabId: string): 'chat' | 'search' | 'code' | 'university' | 'narrative' | 'career' | 'therapy' | 'medical' | 'task' | 'eye' =>
   {
     switch (tabId)
     {
@@ -55,12 +55,12 @@ export const NavigationBar = ({
         return 'career';
       case APP_TERMS.TAB_THERAPY:
         return 'therapy';
+      case APP_TERMS.TAB_MEDICAL:
+        return 'medical';
       case APP_TERMS.TAB_TASK:
         return 'task';
       case APP_TERMS.TAB_EYE:
         return 'eye';
-      case APP_TERMS.TAB_SETTINGS:
-        return 'settings';
       default:
         return 'chat';
     }
@@ -119,6 +119,14 @@ export const NavigationBar = ({
       available: true,
       comingSoon: false,
       color: toolColors[APP_TERMS.TAB_THERAPY],
+    },
+    {
+      id: APP_TERMS.TAB_MEDICAL,
+      icon: Stethoscope,
+      label: APP_TERMS.NAV_MEDICAL,
+      available: true,
+      comingSoon: false,
+      color: toolColors[APP_TERMS.TAB_MEDICAL] || '#16A34A',
     },
   ];
 

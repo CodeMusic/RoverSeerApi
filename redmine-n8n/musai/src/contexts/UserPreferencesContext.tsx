@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-export type MusaiTool = 'chat' | 'search' | 'eye' | 'code' | 'university' | 'task' | 'narrative' | 'career' | 'therapy';
+export type MusaiTool = 'chat' | 'search' | 'eye' | 'code' | 'university' | 'task' | 'narrative' | 'career' | 'therapy' | 'medical';
 
 interface LastSession {
   timestamp: number;
@@ -74,7 +74,8 @@ const defaultPreferences: UserPreferences = {
     task: 0,
     narrative: 0,
     career: 0,
-    therapy: 0,
+      therapy: 0,
+      medical: 0,
   },
   autoSelectFirstItem: false,
   lastSessions: {},
@@ -87,7 +88,8 @@ const defaultPreferences: UserPreferences = {
     task: true,
     narrative: true,
     career: true,
-    therapy: true,
+      therapy: true,
+      medical: true,
   }
 };
 

@@ -13,6 +13,8 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import EyeOfMusai from "@/pages/EyeOfMusai";
 import CareerMusaiInfo from "@/pages/CareerMusaiInfo";
 import TherapyMusaiInfo from "@/pages/TherapyMusaiInfo";
+import MedicalMusaiInfo from "@/pages/MedicalMusaiInfo.tsx";
+import MedicalMusaiDemo from "@/pages/MedicalMusaiDemo";
 import EmergentNarrativeInfo from "@/pages/EmergentNarrativeInfo";
 import RiddleGate from "@/components/common/RiddleGate";
 import TaskMusaiInfo from "@/pages/TaskMusaiInfo";
@@ -70,6 +72,8 @@ function App() {
                       <Route path={ROUTES.EYE_OF_MUSAI} element={<EyeOfMusai />} />
                       <Route path={ROUTES.CAREER_MUSAI} element={<CareerMusaiInfo />} />
                       <Route path={ROUTES.THERAPY_MUSAI} element={<TherapyMusaiInfo />} />
+                      <Route path={ROUTES.MEDICAL_MUSAI} element={<MedicalMusaiInfo />} />
+                      <Route path={ROUTES.MEDICAL_MUSAI_DEMO} element={<MedicalMusaiDemo />} />
                       <Route path={ROUTES.EMERGENT_NARRATIVE} element={<EmergentNarrativeInfo />} />
                       <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
                       <Route path={ROUTES.TASK_MUSAI} element={<TaskMusaiInfo />} />
