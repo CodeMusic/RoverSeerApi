@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart } from "lucide-react";
+import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart, Stethoscope } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
@@ -21,15 +21,21 @@ const Landing = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   // Minimal links to cycle through
+  // Order mirrors the main tool order: Chat, Search, Eye, Code, University, Narrative, Therapy, Medical, Task
   const infoLinks = [
-    { label: "Meet Musai", icon: User, to: ROUTES.MEET_MUSAI, border: "border-purple-500/30" },
-    { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE, border: "border-purple-500/30" },
-    { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI, border: "border-blue-500/30" },
-    { label: "Find Your Muse", icon: Sparkles, to: ROUTES.FIND_YOUR_MUSE, border: "border-purple-500/30" },
+    { label: "Meet Musai", icon: MessageSquare, to: ROUTES.MEET_MUSAI, border: "border-purple-500/30" },
+    { label: "Find Your Muse", icon: Search, to: ROUTES.FIND_YOUR_MUSE, border: "border-orange-500/30" },
     { label: "Eye of Musai", icon: Eye, to: ROUTES.EYE_OF_MUSAI, border: "border-cyan-500/30" },
-    { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI, border: "border-indigo-500/30" },
-    { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI, border: "border-pink-500/30" },
+    { label: "CodeMusai", icon: Code, to: ROUTES.CODE_MUSAI_INFO, border: "border-yellow-500/30" },
+    { label: "Musai U", icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO, border: "border-green-500/30" },
     { label: "Emergent Narrative", icon: Theater, to: ROUTES.EMERGENT_NARRATIVE, border: "border-blue-500/30" },
+    { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI, border: "border-pink-500/30" },
+    { label: "MedicalMusai", icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI, border: "border-emerald-500/30" },
+    { label: "TaskMusai", icon: Bot, to: ROUTES.TASK_MUSAI, border: "border-violet-500/30" },
+    // Additional marketing/info links follow the core tool order
+    { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI, border: "border-blue-500/30" },
+    { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI, border: "border-indigo-500/30" },
+    { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE, border: "border-purple-500/30" },
     { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE, border: "border-orange-500/30" },
   ];
 
@@ -100,9 +106,7 @@ const Landing = () => {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      handleMessageWithMode(message.trim(), selectedMode);
-    }
+    handleMessageWithMode(message.trim(), selectedMode);
   };
 
   const handleMessageWithMode = (messageText: string, mode: string) => {
@@ -183,15 +187,15 @@ const Landing = () => {
         <div className="mb-8 slide-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="w-64 h-64 flex items-center justify-center">
+              <div className="w-40 h-40 sm:w-56 sm:h-56 md:w-64 md:h-64 flex items-center justify-center">
                 <MusaiLifeLogo 
-                size="4xl" 
+                size="3xl" 
                 isDarkMode={false} 
                 noShimmer={true} 
                 onClick={() => navigate(ROUTES.CURATIONS)}
               />
               </div>
-              <div className="absolute -inset-4 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
+              <div className="absolute -inset-3 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
             </div>
           </div>
           
@@ -312,42 +316,14 @@ const Landing = () => {
             />
             <Button
               type="submit"
-              disabled={isAnimating || !message.trim()}
+              disabled={isAnimating}
               className="group relative overflow-hidden bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-6 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
             </Button>
           </form>
 
-          <div className="flex gap-4 items-center">
-            {/* Always visible - Enter App button */}
-            <Button
-              onClick={() => {
-                setIsAnimating(true);
-                setTimeout(() => {
-                  navigate(ROUTES.MAIN_APP);
-                }, 300);
-              }}
-              disabled={isAnimating}
-              variant="outline"
-              className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300 shadow-lg"
-            >
-              <ExternalLink className="w-5 h-5 mr-2" />
-              Enter App
-            </Button>
-
-            {/* Show history button only if there are past chats */}
-            {hasPastChats && (
-              <Button
-                onClick={handleViewPastChats}
-                disabled={isAnimating}
-                variant="outline"
-                className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300 shadow-lg"
-              >
-                <History className="w-5 h-5" />
-              </Button>
-            )}
-          </div>
+            {/* Enter App and History buttons removed per request. Sending with empty input now navigates into the app's module without starting chat. */}
         </div>
 
         {/* Minimalist Info Carousel */}
@@ -360,13 +336,13 @@ const Landing = () => {
             <Carousel setApi={setCarouselApi} opts={{ align: 'start', loop: true }}>
               <CarouselContent>
                 {infoLinks.map((link) => (
-                  <CarouselItem key={link.label} className="basis-3/4 sm:basis-1/3 lg:basis-1/4">
+                  <CarouselItem key={link.label} className="basis-2/3 xs:basis-1/2 sm:basis-1/3 md:basis-1/3 lg:basis-1/4">
                     <Button
                       onClick={() => navigate(link.to)}
                       variant="outline"
-                      className={`w-full px-6 py-3 text-base font-medium rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
+                      className={`w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
                     >
-                      {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2" /> })()}
+                      {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
                       {link.label}
                     </Button>
                   </CarouselItem>

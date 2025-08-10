@@ -3,21 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MessageSquare, 
-  Search, 
-  Code, 
-  GraduationCap, 
-  Bot, 
-  Sparkles, 
-  Heart, 
-  Lightbulb, 
-  Target, 
+import {
+  MessageSquare,
+  Search,
+  Code,
+  GraduationCap,
+  Bot,
+  Sparkles,
+  Heart,
+  Lightbulb,
+  Target,
   ArrowRight,
   Play,
-  BookOpen,
-  Zap,
-  Users,
   Brain,
   Theater,
   TrendingUp,
@@ -27,7 +24,8 @@ import { ROUTES } from "@/config/routes";
 import { APP_TERMS } from "@/config/constants";
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
-const FindYourMuse = () => {
+const FindYourMuse = () =>
+{
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
@@ -40,7 +38,7 @@ const FindYourMuse = () => {
       description: "Light conversation that helps you explore ideas and find clarity. MusaiChat learns your patterns and preferences, becoming a true reflection of your inner voice.",
       features: [
         "Natural conversation flow",
-        "Memory of past interactions", 
+        "Memory of past interactions",
         "Personalized responses",
         "Reflective questioning"
       ],
@@ -50,7 +48,7 @@ const FindYourMuse = () => {
     {
       id: "search",
       icon: Search,
-      title: "MusaiSearch", 
+      title: "MusaiSearch",
       subtitle: "Intelligent Discovery",
       description: "Advanced research and discovery mode that finds inspiration, answers, and connections you might not have considered. Perfect for exploring new ideas and finding fresh perspectives.",
       features: [
@@ -90,7 +88,7 @@ const FindYourMuse = () => {
         "Progress tracking quizzes"
       ],
       color: "from-purple-500 to-indigo-500",
-      action: () => navigate("/university")
+      action: () => navigate(ROUTES.UNIVERSITY_INFO)
     },
     {
       id: "narrative",
@@ -357,7 +355,6 @@ const FindYourMuse = () => {
                     </CardContent>
                   </Card>
                   
-                  {/* Arrow connector */}
                   {index < workflowSteps.length - 1 && (
                     <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2">
                       <ArrowRight className="w-6 h-6 text-purple-500" />
@@ -440,4 +437,7 @@ const FindYourMuse = () => {
   );
 };
 
-export default FindYourMuse; 
+export default FindYourMuse;
+
+
+

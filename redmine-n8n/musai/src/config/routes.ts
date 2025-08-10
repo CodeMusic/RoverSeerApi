@@ -11,6 +11,8 @@ export const ROUTES = {
   // Marketing/Info pages
   PLAYGROUND: '/playground',
   CODE_PLAYGROUND: '/code-musai',
+  CODE_MUSAI_INFO: '/code-musai/info',
+  UNIVERSITY_INFO: '/university/info',
   NEUROSCIENCE: '/neuroscience',
   MEET_MUSAI: '/meet-musai',
   FIND_YOUR_MUSE: '/find-your-muse',

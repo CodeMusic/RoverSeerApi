@@ -18,6 +18,7 @@ import { DevSession, Message } from '@/types/chat';
 import { format } from 'date-fns';
 import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
 
 interface ChatMessage {
   id: string;
@@ -549,6 +550,16 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                             <div className="text-xs opacity-70 mt-1">
                               {message.timestamp.toLocaleTimeString()}
                             </div>
+                            {message.role === 'assistant' && (
+                              <div className="mt-3">
+                                <CognitiveThinkingStrip
+                                  logicalState="complete"
+                                  creativeState="complete"
+                                  fusionState="complete"
+                                  cloudState="skipped"
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

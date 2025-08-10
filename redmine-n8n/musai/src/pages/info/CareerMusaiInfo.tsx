@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Target, Brain, BookOpen, Mic, Cpu, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { APP_TERMS } from '@/config/constants';
@@ -133,3 +132,6 @@ const CareerMusaiInfo: React.FC = () => {
 };
 
 export default CareerMusaiInfo;
+
+
+

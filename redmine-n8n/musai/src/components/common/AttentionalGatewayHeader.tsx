@@ -17,15 +17,16 @@ interface SymbolOption
   icon: React.ComponentType<{ className?: string }>;
 }
 
+// Ensure dropdown order matches main app/tool order
 const SYMBOL_OPTIONS: SymbolOption[] = [
+  { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare },
+  { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search },
+  { id: APP_TERMS.TAB_EYE, label: 'Eye of Musai', icon: Eye },
+  { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code },
+  { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap },
   { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater },
   { id: APP_TERMS.TAB_THERAPY, label: 'TherapyMusai', icon: Heart },
   { id: APP_TERMS.TAB_MEDICAL, label: 'MedicalMusai', icon: Stethoscope },
-  { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare },
-  { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search },
-  { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code },
-  { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap },
-  { id: APP_TERMS.TAB_EYE, label: 'Eye of Musai', icon: Eye },
   { id: APP_TERMS.TAB_TASK, label: 'TaskMusai', icon: Bot },
 ];
 
@@ -85,7 +86,9 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
       [ROUTES.CAREER_MUSAI]: APP_TERMS.TAB_CAREER,
       [ROUTES.EYE_OF_MUSAI]: APP_TERMS.TAB_EYE,
       [ROUTES.LOCAL_AI]: APP_TERMS.TAB_CODE,
+      [ROUTES.CODE_MUSAI_INFO]: APP_TERMS.TAB_CODE,
       [ROUTES.UNIVERSITY]: APP_TERMS.TAB_UNIVERSITY,
+      [ROUTES.UNIVERSITY_INFO]: APP_TERMS.TAB_UNIVERSITY,
       [ROUTES.FIND_YOUR_MUSE]: APP_TERMS.TAB_SEARCH,
       [ROUTES.TASK_MUSAI]: APP_TERMS.TAB_TASK,
     };
@@ -118,11 +121,13 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
       case APP_TERMS.TAB_EYE:
         navigate(ROUTES.EYE_OF_MUSAI); break;
       case APP_TERMS.TAB_CODE:
-        navigate(ROUTES.LOCAL_AI); break;
+        navigate(ROUTES.CODE_MUSAI_INFO); break;
       case APP_TERMS.TAB_UNIVERSITY:
-        navigate(ROUTES.UNIVERSITY); break;
+        navigate(ROUTES.UNIVERSITY_INFO); break;
       case APP_TERMS.TAB_TASK:
         navigate(ROUTES.TASK_MUSAI); break;
+      case APP_TERMS.TAB_SEARCH:
+        navigate(ROUTES.FIND_YOUR_MUSE); break;
       default:
         break;
     }

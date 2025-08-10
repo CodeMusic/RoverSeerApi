@@ -10,14 +10,14 @@ import { RainbowEffect } from "@/components/effects/RainbowEffect";
 import { PartyEffect } from "@/components/effects/PartyEffect";
 import { MusaiDevConsole } from "@/components/developer/MusaiDevConsole";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import EyeOfMusai from "@/pages/EyeOfMusai";
-import CareerMusaiInfo from "@/pages/CareerMusaiInfo";
-import TherapyMusaiInfo from "@/pages/TherapyMusaiInfo";
-import MedicalMusaiInfo from "@/pages/MedicalMusaiInfo.tsx";
+import EyeOfMusai from "@/pages/info/EyeOfMusai";
+import CareerMusaiInfo from "@/pages/info/CareerMusaiInfo";
+import TherapyMusaiInfo from "@/pages/info/TherapyMusaiInfo";
+import MedicalMusaiInfo from "@/pages/info/MedicalMusaiInfo";
 import MedicalMusaiDemo from "@/pages/MedicalMusaiDemo";
-import EmergentNarrativeInfo from "@/pages/EmergentNarrativeInfo";
+import EmergentNarrativeInfo from "@/pages/info/EmergentNarrativeInfo";
 import RiddleGate from "@/components/common/RiddleGate";
-import TaskMusaiInfo from "@/pages/TaskMusaiInfo";
+import TaskMusaiInfo from "@/pages/info/TaskMusaiInfo";
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -33,16 +33,18 @@ const queryClient = new QueryClient({
 import Landing from "@/pages/Landing";
 import Index from "@/pages/Index";
 import CodeMusaiPlayground from "@/pages/CodeMusaiPlayground";
+import CodeMusaiInfo from "@/pages/info/CodeMusaiInfo";
 import Playground from "@/pages/Playground";
-import Neuroscience from "@/pages/Neuroscience";
-import MeetMusai from "@/pages/MeetMusai";
-import FindYourMuse from "@/pages/FindYourMuse";
-import LocalAI from "@/pages/LocalAI";
+import Neuroscience from "@/pages/info/Neuroscience";
+import MeetMusai from "@/pages/info/MeetMusai";
+import FindYourMuse from "@/pages/info/FindYourMuse";
+import LocalAI from "@/pages/info/LocalAI";
 import University from "@/pages/University";
+import UniversityInfo from "@/pages/info/UniversityInfo";
 import LectureWizard from "@/pages/LectureWizard";
 import LectureView from "@/pages/LectureView";
 import CourseCreationPage from "@/pages/CourseCreationPage";
-import RoverByte from "@/pages/RoverByte";
+import RoverByte from "@/pages/info/RoverByte";
 import { Curations } from "@/pages/Curations";
 import { CurationsLocked } from "@/pages/CurationsLocked";
 import Settings from "@/pages/Settings";
@@ -66,6 +68,7 @@ function App() {
                       <Route path={ROUTES.MAIN_APP} element={<RiddleGate><Index /></RiddleGate>} />
                       <Route path={ROUTES.PLAYGROUND} element={<Playground />} />
                       <Route path={ROUTES.CODE_PLAYGROUND} element={<CodeMusaiPlayground />} />
+                      <Route path={ROUTES.CODE_MUSAI_INFO} element={<CodeMusaiInfo />} />
                       <Route path={ROUTES.NEUROSCIENCE} element={<Neuroscience />} />
                       <Route path={ROUTES.MEET_MUSAI} element={<MeetMusai />} />
                       <Route path={ROUTES.FIND_YOUR_MUSE} element={<FindYourMuse />} />
@@ -79,6 +82,7 @@ function App() {
                       <Route path={ROUTES.TASK_MUSAI} element={<TaskMusaiInfo />} />
                       <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
                       <Route path={ROUTES.UNIVERSITY} element={<University />} />
+                      <Route path={ROUTES.UNIVERSITY_INFO} element={<UniversityInfo />} />
                       <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<LectureWizard />} />
                       <Route path={ROUTES.UNIVERSITY_LECTURE_VIEW} element={<LectureView />} />
                       <Route path={ROUTES.UNIVERSITY_COURSE_NEW} element={<CourseCreationPage />} />
