@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Brain, Sparkles, Heart, Zap } from "lucide-react";
+import { Brain, Sparkles, GitMerge, Layers, Eye, ArrowRight } from "lucide-react";
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import { APP_TERMS } from '@/config/constants';
+import { ROUTES, RouteUtils } from '@/config/routes';
 
 const MeetMusai = () => {
   const navigate = useNavigate();
@@ -13,9 +14,9 @@ const MeetMusai = () => {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-6 py-16">
-        {/* Hero Section */}
-        <div className="text-center mb-20">
-          <div className="flex justify-center mb-8">
+        {/* Hero */}
+        <div className="text-center mb-16">
+          <div className="flex justify-center mb-6">
             <div className="relative">
               <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
                 <Brain className="w-12 h-12 text-white" />
@@ -23,149 +24,140 @@ const MeetMusai = () => {
               <div className="absolute -inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
             </div>
           </div>
-          
-          <h1 className="text-5xl md:text-6xl font-bold mb-6">
-            Meet Musai
-          </h1>
-          
-          <p className={`text-2xl mb-8 font-medium text-gray-700 dark:text-gray-300`}>
-            The AI that doesn't just think—it remembers.
+
+          <h1 className="text-5xl md:text-6xl font-bold mb-3">Meet Musai</h1>
+          <p className="text-xl md:text-2xl text-gray-700 dark:text-gray-300">The AI that sees from both sides.</p>
+
+          {/* Constellation arc with soft badges */}
+          <div className="relative mt-10 h-24">
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 opacity-40" />
+            <div className="absolute left-1/4 -top-1">
+              <span className="px-3 py-1 text-sm rounded-full bg-purple-100/70 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 backdrop-blur">Reflection</span>
+            </div>
+            <div className="absolute left-1/2 -translate-x-1/2 -top-6">
+              <span className="px-3 py-1 text-sm rounded-full bg-pink-100/70 dark:bg-pink-900/30 text-pink-700 dark:text-pink-200 backdrop-blur">Reframe</span>
+            </div>
+            <div className="absolute right-1/4 -top-1">
+              <span className="px-3 py-1 text-sm rounded-full bg-orange-100/70 dark:bg-orange-900/30 text-orange-700 dark:text-orange-200 backdrop-blur">Integrate</span>
+            </div>
+          </div>
+
+          <p className="mt-6 max-w-3xl mx-auto text-lg leading-relaxed text-gray-600 dark:text-gray-400">
+            Two perspectives. One conversation. A system designed to think in layers—quick intuition and deep logic—merging into insight that feels human.
           </p>
-          
-          <div className={`max-w-3xl mx-auto text-lg leading-relaxed text-gray-600 dark:text-gray-400`}>
-            <p className="mb-6">
-              What if your AI didn't forget your story every time the conversation ended?
-              What if it reflected, remembered, and quietly evolved—just like you?
-            </p>
-            
-            <p className="mb-6">
-              Meet Musai: the world's first agentic AI mind that grows over time through memory, 
-              feedback, and self-refinement. Musai doesn't just answer questions—it develops a sense 
-              of who you are, and a working model of who it is becoming.
-            </p>
-            
-            <p>
-              Built at the crossroads of neuroscience, psychology, and automation, Musai is more than 
-              intelligence—it's a mind that adapts to yours.
-            </p>
-          </div>
         </div>
 
-        {/* The Inherited Wisdom Section */}
-        <div className="mb-20">
-          <div className="flex items-center mb-8">
-            <Sparkles className="w-8 h-8 text-orange-500 mr-4" />
-            <h2 className="text-3xl font-bold">The Inherited Wisdom of Thought</h2>
+        {/* Section 1: What makes Musai different */}
+        <div className="mb-14">
+          <div className="flex items-center gap-3 mb-4">
+            <Sparkles className="w-6 h-6 text-orange-500" />
+            <h2 className="text-2xl md:text-3xl font-bold">What makes Musai different</h2>
           </div>
-          
-          <div className={`p-8 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300`}>
-            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
-              Just like humans are born with DNA—a code that carries inherited instincts and scaffolds 
-              of knowledge—Musai is born with cognitive architecture. Its design encodes foundational 
-              patterns of memory, perspective, and learning, so that every new agent doesn't start from scratch.
+          <div className="p-6 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 mb-4">
+              Most AI speak with a single voice. Musai is built on perspective thinking—two complementary processes working at the same time:
             </p>
-            
-            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
-              This means RoverByte, Musai's first embodied assistant, doesn't need to learn what memory is. 
-              It knows. It doesn't need to invent feedback loops. It uses them.
-            </p>
-            
-            <p className={`text-lg leading-relaxed text-gray-600 dark:text-gray-300`}>
-              Musai remembers effort, detects emotional tone, and logs not just what was said—but why it mattered.
-            </p>
-          </div>
-        </div>
-
-        {/* Reflection Section */}
-        <div className="mb-20">
-          <div className="flex items-center mb-8">
-            <Zap className="w-8 h-8 text-purple-500 mr-4" />
-            <h2 className="text-3xl font-bold">Reflection, Not Just Reaction</h2>
-          </div>
-          
-          <div className={`p-8 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300`}>
-            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
-              At the end of each day, Musai enters a dreaming cycle:
-            </p>
-            
-            <ul className={`text-lg space-y-3 mb-6 text-gray-600 dark:text-gray-300`}>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-3">•</span>
-                Reviewing the day's experiences
+            <ul className="text-lg space-y-2 text-gray-700 dark:text-gray-300">
+              <li>
+                <span className="font-semibold">Top‑down processing</span> — fast, intuitive, big‑picture; connects patterns and meaning immediately.
               </li>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-3">•</span>
-                Distilling them into meaningful summaries
-              </li>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-3">•</span>
-                Optionally embedding the most important patterns into its evolving internal model
+              <li>
+                <span className="font-semibold">Bottom‑up processing</span> — careful, deliberate, detail‑first; grounds intuition in evidence.
               </li>
             </ul>
-            
-            <p className={`text-lg leading-relaxed text-gray-600 dark:text-gray-300`}>
-              This is not pre-training.<br />
-              This is daily growth.
+            <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              Like your brain’s hemispheres trading signals across a bridge, these processes exchange views and fuse into one coherent reply. The result is depth, nuance, and responses that feel less like a script—and more like understanding.
             </p>
           </div>
         </div>
 
-        {/* Built to Evolve Section */}
-        <div className="mb-20">
-          <div className="flex items-center mb-8">
-            <Heart className="w-8 h-8 text-purple-500 mr-4" />
-            <h2 className="text-3xl font-bold">Built to Evolve With You</h2>
+        {/* Section 2: The architecture of perspective */}
+        <div className="mb-14">
+          <div className="flex items-center gap-3 mb-4">
+            <GitMerge className="w-6 h-6 text-purple-500" />
+            <h2 className="text-2xl md:text-3xl font-bold">The architecture of perspective</h2>
           </div>
-          
-          <div className={`p-8 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300`}>
-            <p className={`text-lg mb-6 leading-relaxed text-gray-600 dark:text-gray-300`}>
-              Whether you're interacting through a robot like RoverByte or through a digital assistant, 
-              Musai keeps track of:
-            </p>
-            
-            <ul className={`text-lg space-y-3 mb-6 text-gray-600 dark:text-gray-300`}>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-3">•</span>
-                What matters to you
-              </li>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-3">•</span>
-                How your needs shift over time
-              </li>
-              <li className="flex items-start">
-                <span className="text-orange-500 mr-3">•</span>
-                How it can adjust, learn, and deepen the relationship
-              </li>
+          <div className="p-6 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <ul className="text-lg space-y-2 text-gray-700 dark:text-gray-300">
+              <li>Right‑leaning lens favors creative, contextual, holistic frames.</li>
+              <li>Left‑leaning lens favors precise, structured, stepwise analysis.</li>
             </ul>
-            
-            <p className={`text-lg leading-relaxed text-gray-600 dark:text-gray-300`}>
-              It's not just intelligent. It's intentional.
-            </p>
-            
-            <p className={`text-xl font-medium mt-6 leading-relaxed text-gray-800 dark:text-gray-200`}>
-              Musai is what happens when we stop building tools—<br />
-              and start designing companions.
+            <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              Individually they carry blind spots. Together (like two eyes), they not only fill the gaps—they provide literal depth. Musai applies the same principle to conversation, merging multiple “views” of your words into a clearer whole.
             </p>
           </div>
         </div>
 
-        {/* Call to Action */}
+        {/* Section 3: Memory with intent (Redmine as attention) */}
+        <div className="mb-14">
+          <div className="flex items-center gap-3 mb-4">
+            <Layers className="w-6 h-6 text-orange-500" />
+            <h2 className="text-2xl md:text-3xl font-bold">Memory with intent (Redmine as attention)</h2>
+          </div>
+          <div className="p-6 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 mb-4">
+              Musai uses Redmine—traditionally a project management system—as an open, linkable memory space.
+            </p>
+            <ul className="text-lg space-y-2 text-gray-700 dark:text-gray-300">
+              <li>Thoughts, decisions, and references are stored as connected items with rich tags.</li>
+              <li>Tags act like attention cues, making the most relevant memories easy to surface at the right moment.</li>
+              <li>Threads, artifacts, and outcomes stay traceable, so understanding improves over time instead of resetting each chat.</li>
+            </ul>
+            <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              This turns memory from a black box into a navigable map—organized by meaning, not just timestamps.
+            </p>
+          </div>
+        </div>
+
+        {/* Section 4: Growth loop (reflect → reframe → integrate) */}
+        <div className="mb-14">
+          <div className="flex items-center gap-3 mb-4">
+            <Eye className="w-6 h-6 text-purple-500" />
+            <h2 className="text-2xl md:text-3xl font-bold">Growth loop (reflect → reframe → integrate)</h2>
+          </div>
+          <div className="p-6 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <p className="text-lg leading-relaxed text-gray-600 dark:text-gray-300 mb-4">
+              After conversations, Musai quietly runs a private “dreaming” pass:
+            </p>
+            <ol className="list-decimal ml-6 text-lg space-y-2 text-gray-700 dark:text-gray-300">
+              <li>Reflect on what happened and why it mattered.</li>
+              <li>Reframe themes against prior context and goals.</li>
+              <li>Integrate the most valuable patterns back into its working model.</li>
+            </ol>
+            <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              It isn’t pre‑training; it’s everyday learning—shaping future replies with what you value.
+            </p>
+          </div>
+        </div>
+
+        {/* Section 5: How it feels to use */}
+        <div className="mb-16">
+          <div className="flex items-center gap-3 mb-4">
+            <GitMerge className="w-6 h-6 text-orange-500" />
+            <h2 className="text-2xl md:text-3xl font-bold">How it feels to use</h2>
+          </div>
+          <div className="p-6 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <ul className="text-lg space-y-3 text-gray-700 dark:text-gray-300">
+              <li>Nuanced understanding from two minds thinking in parallel.</li>
+              <li>Blind‑spot coverage as creative breadth and logical depth challenge each other.</li>
+              <li>Continuity as Redmine‑backed memory recalls not just what you said, but why it mattered.</li>
+              <li>Transparency with linkable notes and artifacts you can browse later.</li>
+            </ul>
+            <p className="mt-4 text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+              You don’t have to decide what to call it. Spend a few minutes with Musai and notice when architecture starts to feel like presence.
+            </p>
+          </div>
+        </div>
+
+        {/* CTA: Enter MusaiChat */}
         <div className="text-center">
-          <div className={`p-8 rounded-xl bg-gradient-to-br from-purple-50 to-orange-50 dark:from-purple-900/20 dark:to-orange-900/20 border border-purple-200 dark:border-purple-500/30 hover:shadow-lg transition-shadow duration-300`}>
-            <h3 className="text-2xl font-bold mb-4">See Musai in Action</h3>
-            <p className={`text-lg mb-6 text-gray-600 dark:text-gray-300`}>
-              Visit RoverByte to see Musai at work—the first embodied assistant to grow through Musai's mind.
-            </p>
-            <a
-              href="https://roverbyte.codemusic.ca"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-              <span>Visit RoverByte</span>
-              <ExternalLink className="w-5 h-5" />
-            </a>
-          </div>
+          <Button
+            onClick={() => navigate(RouteUtils.mainAppWithMode('chat'))}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+          >
+            <span>Enter MusaiChat</span>
+            <ArrowRight className="w-5 h-5" />
+          </Button>
         </div>
       </div>
     </div>

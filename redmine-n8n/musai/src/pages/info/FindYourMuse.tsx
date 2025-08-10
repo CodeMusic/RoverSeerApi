@@ -20,7 +20,7 @@ import {
   TrendingUp,
   Eye
 } from "lucide-react";
-import { ROUTES } from "@/config/routes";
+import { ROUTES, RouteUtils } from "@/config/routes";
 import { APP_TERMS } from "@/config/constants";
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 
@@ -28,6 +28,7 @@ const FindYourMuse = () =>
 {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [searchDepthMode, setSearchDepthMode] = useState<'lighter' | 'deeper'>('lighter');
 
   const musaiComponents = [
     {
@@ -208,228 +209,348 @@ const FindYourMuse = () =>
   return (
     <div className="min-h-screen bg-background">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_SEARCH} />
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-purple-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* Hero Hub */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="absolute inset-0">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-300/20 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-300/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-teal-300/20 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
-        
+
         <div className="relative z-10 container mx-auto px-4 py-16">
           <div className="text-center max-w-4xl mx-auto">
-            <div className="flex justify-center mb-8">
-              <div className="relative">
-                <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
-                  <Sparkles className="w-10 h-10 text-white" />
-                </div>
-                <div className="absolute -inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-20 blur-sm animate-pulse" />
-              </div>
-            </div>
-            
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
-              Find Your Muse
+            <h1 className="text-5xl md:text-6xl font-bold mb-2 bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Find Your Musai
             </h1>
-            
-            <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-              Discover how Musai harmonizes with your inner voice to find and develop your inspiration, 
-              then orchestrates everything together to help you achieve your highest goals.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button
-                onClick={() => navigate(ROUTES.MAIN_APP)}
-                className="group bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
-              >
-                Start Your Journey
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
-              </Button>
-              
-              <Button
-                onClick={() => navigate("/")}
-                variant="outline"
-                className="px-8 py-4 text-lg font-semibold rounded-xl border-2 border-purple-500/30 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all duration-300"
-              >
-                Back to Home
-              </Button>
+            <p className="text-xl md:text-2xl text-muted-foreground">One mind, many forms.</p>
+            <p className="mt-4 text-lg text-muted-foreground">Explore. Compare. Click to learn.</p>
+            <p className="mt-2 text-base text-muted-foreground">This is the hub where you can browse all Musai forms. MusaiSearch is highlighted below; select any other tile to jump to its info page.</p>
+
+            {/* Luminous hub visual */}
+            <div className="relative mx-auto mt-10 mb-6 w-full max-w-3xl h-56">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),rgba(20,184,166,0.02),transparent_70%)]" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 shadow-2xl flex items-center justify-center text-white font-semibold tracking-wide">
+                Musai
+              </div>
+              {/* Spokes */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-28 bg-gradient-to-b from-emerald-400/70 to-transparent origin-bottom" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 w-1 h-28 bg-gradient-to-b from-emerald-400/70 to-transparent origin-bottom" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 w-1 h-28 bg-gradient-to-b from-emerald-400/70 to-transparent origin-bottom" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90 w-1 h-28 bg-gradient-to-b from-emerald-400/70 to-transparent origin-bottom" />
+            </div>
+
+            {/* Hub tiles (info pages) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
+              {[
+                // Predefined cognitive order: Chat → Search → Eye → Code → University → Narrative → Medical → Therapy → Task → Career
+                {
+                  id: 'chat',
+                  icon: MessageSquare,
+                  label: 'MusaiChat',
+                  description: APP_TERMS.CHAT_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.MEET_MUSAI),
+                },
+                {
+                  id: 'search',
+                  icon: Search,
+                  label: 'MusaiSearch',
+                  description: APP_TERMS.SEARCH_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.FIND_YOUR_MUSE),
+                  selected: true,
+                },
+                {
+                  id: 'eye',
+                  icon: Eye,
+                  label: APP_TERMS.NAV_EYE,
+                  description: APP_TERMS.EYE_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.EYE_OF_MUSAI),
+                },
+                {
+                  id: 'code',
+                  icon: Code,
+                  label: 'CodeMusai',
+                  description: APP_TERMS.CODE_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.CODE_MUSAI_INFO),
+                },
+                {
+                  id: 'university',
+                  icon: GraduationCap,
+                  label: 'Musai U',
+                  description: APP_TERMS.UNIVERSITY_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.UNIVERSITY_INFO),
+                },
+                {
+                  id: 'narrative',
+                  icon: Theater,
+                  label: 'MusaiTale',
+                  description: APP_TERMS.NARRATIVE_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.EMERGENT_NARRATIVE),
+                },
+                {
+                  id: 'medical',
+                  icon: Brain,
+                  label: 'MedicalMusai',
+                  description: APP_TERMS.MEDICAL_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.MEDICAL_MUSAI),
+                },
+                {
+                  id: 'therapy',
+                  icon: Heart,
+                  label: 'TherapyMusai',
+                  description: APP_TERMS.THERAPY_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.THERAPY_MUSAI),
+                },
+                {
+                  id: 'task',
+                  icon: Bot,
+                  label: 'TaskMusai',
+                  description: APP_TERMS.TASK_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.TASK_MUSAI),
+                },
+                {
+                  id: 'career',
+                  icon: TrendingUp,
+                  label: APP_TERMS.NAV_CAREER,
+                  description: APP_TERMS.CAREER_DESCRIPTION,
+                  onClick: () => navigate(ROUTES.CAREER_MUSAI),
+                },
+              ].map((tile) => (
+                <Button
+                  key={(tile as any).id}
+                  variant="outline"
+                  className={[
+                    'justify-start h-auto min-h-[5.75rem] py-5 px-5 border-2 hover:bg-teal-500/10 text-left w-full whitespace-normal break-words',
+                    (tile as any).selected ? 'border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300' : '',
+                  ].join(' ')}
+                  onClick={(tile as any).onClick}
+                >
+                  {'icon' in tile && (tile as any).icon ? (
+                    (tile as any).icon({ className: "w-4 h-4 mr-2 mt-0.5" })
+                  ) : null}
+                  <div className="min-w-0">
+                    <div className="font-medium">{(tile as any).label}{(tile as any).selected ? ' (selected)' : ''}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2 md:line-clamp-3">{(tile as any).description}</div>
+                  </div>
+                </Button>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Musai Components Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            The Musai Ecosystem
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Each Musai component is designed to work harmoniously with the others, 
-            creating a complete system for inspiration, learning, and achievement.
-          </p>
+      {/* MusaiSearch — from quick answers to deep research */}
+      <div className="container mx-auto px-4 py-14 max-w-5xl">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold">MusaiSearch — from quick answers to deep research</h2>
+          <p className="text-muted-foreground mt-2">MusaiSearch adapts to your intent. Choose the scope, see the thinking, and keep what matters.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {musaiComponents.map((component) => {
-            const Icon = component.icon;
-            return (
-              <Card 
-                key={component.id}
-                className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-purple-500/50"
-                onClick={component.action}
-              >
-                <CardHeader className="text-center">
-                  <div className="flex justify-center mb-4">
-                    <div className={`w-16 h-16 bg-gradient-to-r ${component.color} rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className="w-8 h-8 text-white" />
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl font-bold">{component.title}</CardTitle>
-                  <CardDescription className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                    {component.subtitle}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground mb-4 leading-relaxed">
-                    {component.description}
-                  </p>
-                  <div className="space-y-2">
-                    {component.features.map((feature, index) => (
-                      <div key={index} className="flex items-center text-sm">
-                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-2" />
-                        {feature}
-                      </div>
-                    ))}
-                  </div>
-                  <Button 
-                    className="w-full mt-4 bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      component.action();
-                    }}
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    Try {component.title}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Workflow Section */}
-      <div className="bg-gradient-to-br from-purple-50 to-orange-50 dark:from-gray-900 dark:to-gray-800 py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Your Creative Journey
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Follow this natural progression to find your muse and achieve your goals
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6">
-            {workflowSteps.map((step, index) => {
-              const Icon = step.icon;
-              return (
-                <div key={step.step} className="relative">
-                  <Card className="text-center hover:shadow-lg transition-all duration-300">
-                    <CardHeader>
-                      <div className="flex justify-center mb-4">
-                        <div className={`w-12 h-12 ${step.color} rounded-full flex items-center justify-center shadow-lg`}>
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-                      <div className="flex justify-center mb-2">
-                        <Badge variant="secondary" className="text-sm">
-                          Step {step.step}
-                        </Badge>
-                      </div>
-                      <CardTitle className="text-lg font-bold">{step.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground text-sm leading-relaxed">
-                        {step.description}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  
-                  {index < workflowSteps.length - 1 && (
-                    <div className="hidden lg:block absolute top-1/2 -right-3 transform -translate-y-1/2">
-                      <ArrowRight className="w-6 h-6 text-purple-500" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Harmony Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            The Harmony of Musai
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Musai doesn't just answer questions—it develops a sense of who you are and becomes a true reflection of your inner voice. 
-            Through memory, feedback, and self-refinement, it grows alongside you, helping you find and develop your inspiration.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8">
-          <Card className="text-center border-2 border-blue-500/20 hover:border-blue-500/40 transition-all duration-300">
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <Brain className="w-12 h-12 text-blue-500" />
-              </div>
-              <CardTitle className="text-xl font-bold">Reflective Growth</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Musai learns your patterns and preferences, becoming a true reflection of your inner voice and creative process.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center border-2 border-green-500/20 hover:border-green-500/40 transition-all duration-300">
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <Sparkles className="w-12 h-12 text-green-500" />
-              </div>
-              <CardTitle className="text-xl font-bold">Inspiration Discovery</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Find new ideas, connections, and perspectives you might not have considered through intelligent exploration.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center border-2 border-purple-500/20 hover:border-purple-500/40 transition-all duration-300">
-            <CardHeader>
-              <div className="flex justify-center mb-4">
-                <Target className="w-12 h-12 text-purple-500" />
-              </div>
-              <CardTitle className="text-xl font-bold">Achievement Orchestration</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                All components work together to help you achieve your highest goals and turn inspiration into reality.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="text-center mt-12">
+        {/* Mode toggle */}
+        <div className="flex items-center gap-3 mb-6">
           <Button
-            onClick={() => navigate(ROUTES.MAIN_APP)}
-            className="group bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+            variant={searchDepthMode === 'lighter' ? 'default' : 'outline'}
+            onClick={() => setSearchDepthMode('lighter')}
+            className={searchDepthMode === 'lighter' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
           >
-            Begin Your Journey
-            <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
+            Lighter
+          </Button>
+        
+          <Button
+            variant={searchDepthMode === 'deeper' ? 'default' : 'outline'}
+            onClick={() => setSearchDepthMode('deeper')}
+            className={searchDepthMode === 'deeper' ? 'bg-teal-600 hover:bg-teal-700' : ''}
+          >
+            Deeper
+          </Button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6 mb-10 text-sm text-muted-foreground">
+          <Card
+            className={[
+              'transition-colors',
+              searchDepthMode === 'lighter'
+                ? 'border-emerald-600/60 bg-emerald-500/5'
+                : 'border-border'
+            ].join(' ')}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span
+                  className={[
+                    'inline-block h-2 w-2 rounded-full',
+                    searchDepthMode === 'lighter' ? 'bg-emerald-500' : 'bg-muted-foreground/40'
+                  ].join(' ')}
+                />
+                Lighter
+              </CardTitle>
+              <CardDescription>Fast web scan for up‑to‑date answers and sources</CardDescription>
+            </CardHeader>
+            <CardContent>
+              Emphasizes speed and recency with concise synthesis.
+            </CardContent>
+          </Card>
+          <Card
+            className={[
+              'transition-colors',
+              searchDepthMode === 'deeper'
+                ? 'border-teal-600/60 bg-teal-500/5'
+                : 'border-border'
+            ].join(' ')}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span
+                  className={[
+                    'inline-block h-2 w-2 rounded-full',
+                    searchDepthMode === 'deeper' ? 'bg-teal-500' : 'bg-muted-foreground/40'
+                  ].join(' ')}
+                />
+                Deeper
+              </CardTitle>
+              <CardDescription>Structured research: academic papers, datasets, standards, cross‑referenced analysis</CardDescription>
+            </CardHeader>
+            <CardContent>
+              Builds a traceable brief with citations and contradictions highlighted.
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Why this matters */}
+        <Card className="mb-12">
+          <CardHeader>
+            <CardTitle>Why this matters</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-3">
+            <p>
+              Most search tools hide their reasoning. MusaiSearch shows perspective: two complementary processes (creative/top‑down and logical/bottom‑up) review the same query in parallel, then fuse their views into a clear, cited answer.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Perspective you can actually see */}
+        <div className="mb-10">
+          <h3 className="text-2xl font-bold mb-3">Perspective you can actually see</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>How it thinks (at a glance)</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <div>• Creative scan: maps themes, ideas, and connections quickly.</div>
+                <div>• Logical scan: checks details, methods, dates, citations, and contradictions.</div>
+                <div>• Fusion: merges both into a final brief with highlighted agreements and flagged disagreements.</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>On‑screen cues</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <div>• Agreement band: shows how closely the two scans align.</div>
+                <div>• Conflict cards: see both sides and “what would confirm/resolve this.”</div>
+                <div>• Source drawer: open any claim to preview exact passages used.</div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Sources chosen to fit the question */}
+        <Card className="mb-10">
+          <CardHeader>
+            <CardTitle>Sources chosen to fit the question</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <div>• Academic: journals, preprints, standards, datasets.</div>
+            <div>• General: explainers, news, docs, reputable blogs.</div>
+            <div>• Specialized (when relevant): guidelines, specs, regulatory notes.</div>
+            <div className="mt-2">You can pin or exclude domains, set recency windows, and decide how much of the query may be shared with cloud sources in Deeper mode.</div>
+          </CardContent>
+        </Card>
+
+        {/* Keep findings you'll actually find again */}
+        <Card className="mb-10">
+          <CardHeader>
+            <CardTitle>Keep findings you’ll actually find again</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <div>Musai uses Redmine as a linked memory map. Search results can be saved as issues with tags, relations, and attachments—like an attention system for recall.</div>
+            <div>• Tag by topic, project, decision, or confidence.</div>
+            <div>• Link related findings across searches.</div>
+            <div>• Revisit the exact reasoning trail later.</div>
+          </CardContent>
+        </Card>
+
+        {/* Privacy and control by default */}
+        <Card className="mb-10">
+          <CardHeader>
+            <CardTitle>Privacy and control by default</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground space-y-2">
+            <div>• Local first: lighter scans can run locally (where available).</div>
+            <div>• Granular hybrid: in deeper mode, you choose what (if anything) can go to cloud—raw text, summaries, or redacted excerpts.</div>
+            <div>• Receipts: every result shows when it was fetched, from where, and why it was selected.</div>
+          </CardContent>
+        </Card>
+
+        {/* Curiosity starters */}
+        <div className="mb-12">
+          <h3 className="text-2xl font-bold mb-4">Curiosity starters</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              "What are the strongest competing theories about climate sensitivity, and how could I tell them apart?",
+              "Summarize the last 18 months of research on LLM safety, then give me 3 consensus points and 3 open questions.",
+              "Compare two standards for FHIR vs. HL7 v2. Where do they conflict, and what tests would settle it?",
+              "I’m new to reinforcement learning. Build a reading ladder: beginner → intermediate → expert, with one must‑read at each level."
+            ].map((preset) => (
+              <Button
+                key={preset}
+                variant="outline"
+                className="justify-start h-auto py-3 w-full whitespace-normal break-words text-left"
+                onClick={() => navigate(RouteUtils.mainAppWithMode('search', preset), { state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: preset } })}
+              >
+                {preset}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Micro‑FAQ */}
+        <div className="mb-12">
+          <h3 className="text-2xl font-bold mb-4">Micro‑FAQ</h3>
+          <div className="grid md:grid-cols-2 gap-6 text-sm text-muted-foreground">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Is this just a meta search?</CardTitle>
+              </CardHeader>
+              <CardContent>No. It’s a reasoning layer over retrieval. You’ll see agreement, conflict, and evidence.</CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Can I use only academic sources?</CardTitle>
+              </CardHeader>
+              <CardContent>Yes — lock to academic and set a recency window (e.g., last 24 months).</CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">What if sources disagree?</CardTitle>
+              </CardHeader>
+              <CardContent>You’ll get Conflict cards with side‑by‑side claims and suggested ways to resolve them.</CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Will it remember my research trail?</CardTitle>
+              </CardHeader>
+              <CardContent>If you save it: yes. Redmine tags and links let you return to any insight with context intact.</CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="text-center">
+          <Button
+            onClick={() => navigate(RouteUtils.mainAppWithMode('search'), { state: { switchToTab: APP_TERMS.TAB_SEARCH } })}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+          >
+            Enter MusaiSearch
+            <ArrowRight className="w-5 h-5" />
           </Button>
         </div>
       </div>

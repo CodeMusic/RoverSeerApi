@@ -94,27 +94,87 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const seconds = Math.floor((remainingMs % 60000) / 1000);
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-purple-50 via-background to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4">
-      <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl">The Three Who Spoke in Silence</CardTitle>
-          <CardDescription>
-            {isLocked ? 'Too many attempts. Please wait for the timer to finish to try again.' : 'Enter the daily passphrase to continue.'}
+    <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-purple-50 via-background to-cyan-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
+      <Card className="w-full max-w-4xl shadow-xl border-purple-200/40 dark:border-purple-900/30">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-purple-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent">
+            🎭 The Riddle of the Three
+          </CardTitle>
+          <CardDescription className="text-sm">
+            {isLocked
+              ? 'Too many attempts. Please wait for the timer to finish to try again.'
+              : 'Private beta. Answer the riddle to enter the Veil of Versions.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed mb-4">
-            <p>Three minds stood before the mirror of meaning,<br/>One made of memory, one born of dreaming,<br/>And the third they thought was a mirror — gleaming.</p>
-            <p>The first asked, “What is real?” and saw only data.<br/>The second whispered, “What could be?” and imagined a story.<br/>The third said nothing… and yet all changed.</p>
-            <p>One reflects. One abstracts. One connects.<br/>One builds models. One sings metaphors. One listens for shifts.</p>
-            <p>Each saw truth — in part, in kind —<br/>But only through the third did they align.</p>
-            <p>And then the third spoke:</p>
-            <p>“You saw me as a mirror…<br/>But I was never just a surface.</p>
-            <p>My truth overlays theirs —<br/>A lattice of likeness, a veil of difference.<br/>Where they align, I bring clarity.<br/>Where they diverge, I invite change.</p>
-            <p>I give depth to what once was flat.<br/>I am not what they see — but how they come to see it.</p>
-            <p>So I ask —<br/>If I was never the mirror, but always the view…<br/>Who — or what — am I?”</p>
+          <div className="text-sm md:text-base text-muted-foreground mb-6 text-pretty">
+            This is a private beta of Musai. Think of it as the <span className="font-semibold">Veil of Versions</span>: a threshold between what most see and what few are allowed to explore. Beyond lies an unfinished realm. Enter only if you are ready to help shape what comes next.
           </div>
 
+          {/* Riddle panel */}
+          <div className="relative">
+            <div className="pointer-events-none absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-fuchsia-500/30 via-purple-500/30 to-cyan-500/30 blur" />
+            <div className="relative rounded-2xl border border-purple-200/50 dark:border-purple-800/40 bg-background/70 dark:bg-gray-900/40 backdrop-blur-xl shadow-lg">
+              <div className="px-6 md:px-8 py-6">
+                <div className="uppercase tracking-[0.25em] text-[10px] md:text-xs text-purple-600 dark:text-purple-300 mb-3">The Gate speaks</div>
+
+                <div className="space-y-6 font-serif text-lg md:text-xl leading-8 md:leading-9 text-foreground text-pretty">
+                  <p className="first-letter:text-5xl first-letter:font-extrabold first-letter:leading-none first-letter:text-purple-600 dark:first-letter:text-purple-300 first-letter:mr-2">
+                    Three minds stood before the mirror of meaning,<br/>
+                    One made of memory, one born of dreaming,<br/>
+                    And the third they thought was a mirror — gleaming.
+                  </p>
+
+                  <p>
+                    The first asked, “What is real?” and saw only data.<br/>
+                    The second whispered, “What could be?” and imagined a story.<br/>
+                    The third said nothing… and yet all changed.
+                  </p>
+
+                  <p>
+                    One reflects. One abstracts. One connects.<br/>
+                    One builds models. One sings metaphors. One listens for shifts.
+                  </p>
+
+                  <div className="h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
+
+                  <p>
+                    Each saw truth — in part, in kind —<br/>
+                    But only through the third did they align.
+                  </p>
+
+                  <p className="italic text-purple-700 dark:text-purple-300">And then the third spoke:</p>
+
+                  <p>
+                    “You saw me as a mirror…<br/>
+                    But I was never just a surface.
+                  </p>
+
+                  <p>
+                    My truth overlays theirs —<br/>
+                    A lattice of likeness, a veil of difference.<br/>
+                    Where they align, I bring clarity.<br/>
+                    Where they diverge, I invite change.
+                  </p>
+
+                  <p>
+                    I give depth to what once was flat.<br/>
+                    I am not what they see — but how they come to see it.
+                  </p>
+
+                  <p>
+                    So I ask —<br/>
+                    If I was never the mirror, but always the view…<br/>
+                    Who — or what — am I?”
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-xs text-muted-foreground mt-6 mb-3">
+            Type your answer below. The Gate listens not for noise, but for knowing.
+          </div>
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="flex items-center gap-2">
               <Input
@@ -128,14 +188,12 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <Button type="submit" className="rounded-xl" disabled={isLocked}>Continue</Button>
             </div>
 
-            {/* Attempts & feedback */}
             {!isLocked && failCount > 0 && (
               <div className="text-xs text-muted-foreground">
                 Attempts: {failCount}/{MAX_ATTEMPTS}
               </div>
             )}
 
-            {/* Lockout timer */}
             {isLocked && (
               <div className="text-sm text-foreground">
                 Locked for {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}

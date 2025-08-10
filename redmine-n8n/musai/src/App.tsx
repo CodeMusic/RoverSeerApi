@@ -9,6 +9,7 @@ import { MatrixEffect } from "@/components/effects/MatrixEffect";
 import { RainbowEffect } from "@/components/effects/RainbowEffect";
 import { PartyEffect } from "@/components/effects/PartyEffect";
 import { MusaiDevConsole } from "@/components/developer/MusaiDevConsole";
+import { AttentionalScrollReset } from "@/components/routing/AttentionalScrollReset";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import EyeOfMusai from "@/pages/info/EyeOfMusai";
 import CareerMusaiInfo from "@/pages/info/CareerMusaiInfo";
@@ -61,6 +62,7 @@ function App() {
           <UserPreferencesProvider>
             <MusaiAlertsProvider>
               <Router>
+                <AttentionalScrollReset />
                 <ErrorBoundary>
                   <div className="min-h-screen">
                     <Routes>

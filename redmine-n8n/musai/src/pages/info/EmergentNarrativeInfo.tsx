@@ -23,6 +23,9 @@ import {
   CarouselPrevious,
   type CarouselApi
 } from '@/components/ui/carousel';
+import stageHero from '@/assets/images/emergnarr_stage_hero1.png';
+import emergeHero from '@/assets/images/emergentnarr_emerge_hero2.png';
+import constellationsHero from '@/assets/images/emergentnar_constellations_hero3.png';
 
 const EmergentNarrativeInfo: React.FC = () =>
 {
@@ -87,54 +90,24 @@ const EmergentNarrativeInfo: React.FC = () =>
               <div className="relative rounded-2xl border bg-card/70 backdrop-blur p-0 overflow-hidden">
                 <Carousel setApi={setCarouselApi} opts={{ loop: true }}>
                   <CarouselContent>
-                    {/* Slide 1 — Theatre imagery */}
+                    {/* Slide 1 — Stage */}
                     <CarouselItem>
                       <AspectRatio ratio={16/9}>
-                        <div className="absolute inset-0">
-                          <div className="h-full w-full bg-gradient-to-br from-slate-800 via-indigo-900 to-slate-800">
-                            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.12) 0, transparent 40%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.12) 0, transparent 40%)' }} />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="flex items-center gap-3 text-indigo-100">
-                                <Theater className="w-6 h-6" />
-                                <div className="text-sm">Stage lights, curtains, silhouettes</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <img src={stageHero} alt="Emergent Narrative stage hero" className="block w-full h-full object-cover" />
                       </AspectRatio>
                     </CarouselItem>
 
-                    {/* Slide 2 — Emergence imagery */}
+                    {/* Slide 2 — Emergence */}
                     <CarouselItem>
                       <AspectRatio ratio={16/9}>
-                        <div className="absolute inset-0">
-                          <div className="h-full w-full bg-gradient-to-br from-cyan-900 via-blue-900 to-indigo-950">
-                            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'conic-gradient(from 90deg at 50% 50%, rgba(0,255,255,0.25), transparent 10%, rgba(147,197,253,0.25), transparent 20%)' }} />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="flex items-center gap-3 text-cyan-100">
-                                <Sparkles className="w-6 h-6" />
-                                <div className="text-sm">Branching light, neural webs, form emerging</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <img src={emergeHero} alt="Emergent Narrative emergence hero" className="block w-full h-full object-cover" />
                       </AspectRatio>
                     </CarouselItem>
 
-                    {/* Slide 3 — Hybrid imagery */}
+                    {/* Slide 3 — Constellations */}
                     <CarouselItem>
                       <AspectRatio ratio={16/9}>
-                        <div className="absolute inset-0">
-                          <div className="h-full w-full bg-gradient-to-br from-violet-900 via-indigo-900 to-slate-900">
-                            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 30% 70%, rgba(255,255,255,0.12) 0, transparent 40%), radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.12) 0, transparent 40%)' }} />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="flex items-center gap-3 text-violet-100">
-                                <Layers className="w-6 h-6" />
-                                <div className="text-sm">Actors casting constellations as shadows</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <img src={constellationsHero} alt="Emergent Narrative constellations hero" className="block w-full h-full object-cover" />
                       </AspectRatio>
                     </CarouselItem>
                   </CarouselContent>

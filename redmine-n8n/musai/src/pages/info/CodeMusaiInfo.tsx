@@ -1,13 +1,14 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, Wand2, GitMerge, Cloud, Lock, ShieldCheck, Layers, MonitorPlay } from 'lucide-react';
+import { Brain, Wand2, GitMerge, Cloud, Lock, ShieldCheck, Layers, MonitorPlay, Images } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import { APP_TERMS } from '@/config/constants';
 import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
 import { HybridControlsPanel } from '@/components/code/HybridControlsPanel';
+import codeHero from '@/assets/images/CodeMusai_hero.png';
 
 const CodeMusaiInfo: React.FC = () =>
 {
@@ -16,20 +17,39 @@ const CodeMusaiInfo: React.FC = () =>
   return (
     <div className="min-h-screen bg-background">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_CODE} />
-      <div className="container mx-auto px-4 py-14 max-w-5xl">
+      <div className="container mx-auto px-4 py-14 max-w-6xl">
         {/* Hero */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-yellow-500 to-purple-600 bg-clip-text text-transparent">
-            CodeMusai — Two Minds. One Goal. Your Perspective, Expanded.
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            A bicameral local AI with optional hybrid cloud — deeper insight, faster results, smarter decisions.
-          </p>
-          <div className="mt-6 flex gap-3 justify-center">
-            <Button onClick={() => navigate(ROUTES.CODE_PLAYGROUND)}>Try CodeMusai</Button>
-            <Button variant="outline" onClick={() => navigate(ROUTES.LOCAL_AI)}>Learn How It Works</Button>
+        <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-6 items-center mb-12">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-yellow-500 to-purple-600 bg-clip-text text-transparent">
+              CodeMusai — Two Minds. One Goal. Your Perspective, Expanded.
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              A bicameral local AI with optional hybrid cloud — deeper insight, faster results, smarter decisions.
+            </p>
+            <div className="mt-6 flex gap-3 md:justify-start justify-center">
+              <Button onClick={() => navigate(ROUTES.CODE_PLAYGROUND)}>Try CodeMusai</Button>
+              <Button variant="outline" onClick={() => navigate(ROUTES.LOCAL_AI)}>Learn How It Works</Button>
+            </div>
+          </div>
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-yellow-500/15 via-purple-400/10 to-transparent blur-2xl" />
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
+              <img src={codeHero} alt="CodeMusai hero" className="block w-full h-auto" />
+            </div>
           </div>
         </div>
+
+        {/* Hero Image Prompt for designers */}
+        <Card className="mb-10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Images className="w-5 h-5" /> Hero Image Prompt</CardTitle>
+            <CardDescription>For design/generation teams</CardDescription>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            “Futuristic split-brain visual — left side a sleek dolphin made of flowing logic circuits, right side a playful penguin formed from fractal creativity patterns, meeting in the center as a glowing fusion arc. Dark background with subtle glowing gridlines and faint data streams between them.”
+          </CardContent>
+        </Card>
 
         {/* Thinking strip demo */}
         <Card className="mb-10">
@@ -49,19 +69,22 @@ const CodeMusaiInfo: React.FC = () =>
             <CardDescription>A dual-minded local system that thinks in parallel</CardDescription>
           </CardHeader>
           <CardContent className="grid md:grid-cols-2 gap-6 text-sm text-muted-foreground">
+            <div className="md:col-span-2 -mt-2 mb-2 text-muted-foreground">
+              CodeMusai is a dual-minded AI system running on your machine. It thinks in two complementary ways — logical and creative — and merges them into answers that are faster, deeper, and more balanced.
+            </div>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5"><Brain className="w-4 h-4" /></div>
                 <div>
                   <div className="font-medium">Logical Mind (Dolphin)</div>
-                  <div>Precise, analytical, depth-first reasoning</div>
+                  <div>Precise, analytical, depth-first reasoning.</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="mt-0.5"><Wand2 className="w-4 h-4" /></div>
                 <div>
                   <div className="font-medium">Creative Mind (Penguin)</div>
-                  <div>Associative, generative, breadth-first exploration</div>
+                  <div>Associative, generative, breadth-first exploration.</div>
                 </div>
               </div>
             </div>
@@ -70,14 +93,14 @@ const CodeMusaiInfo: React.FC = () =>
                 <div className="mt-0.5"><GitMerge className="w-4 h-4" /></div>
                 <div>
                   <div className="font-medium">Musai Fusion</div>
-                  <div>A synthesis that catches blind spots, weighs trade-offs, and explains why</div>
+                  <div>A synthesis that weighs trade-offs, catches blind spots, and explains why.</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="mt-0.5"><Cloud className="w-4 h-4" /></div>
                 <div>
-                  <div className="font-medium">Optional Hybrid</div>
-                  <div>When you allow it, a Cloud Mind is consulted for real-time knowledge or heavy lifting — always with granular controls over what’s shared</div>
+                  <div className="font-medium">Optional Cloud Assist</div>
+                  <div>When you choose, CodeMusai can briefly consult a cloud-based “third mind” for real-time knowledge or heavy lifting — always with granular controls over what’s shared.</div>
                 </div>
               </div>
             </div>
@@ -92,15 +115,15 @@ const CodeMusaiInfo: React.FC = () =>
           <CardContent className="grid md:grid-cols-3 gap-6 text-sm text-muted-foreground">
             <div>
               <div className="font-medium mb-1">Depth + Breadth</div>
-              <div>Logic digs; creativity scans. Together they cover more ground, faster.</div>
+              <div>Logic digs deep; creativity scans wide — together they cover more ground.</div>
             </div>
             <div>
               <div className="font-medium mb-1">Bias Balancing</div>
-              <div>Divergent views reduce tunnel vision and overfitting to a single style.</div>
+              <div>Divergent views reduce tunnel vision.</div>
             </div>
             <div>
-              <div className="font-medium mb-1">Explained Answers</div>
-              <div>See agreement, disagreements, and how the final answer emerges.</div>
+              <div className="font-medium mb-1">Explained Thinking</div>
+              <div>See where the minds agree, where they differ, and how the final answer was formed.</div>
             </div>
           </CardContent>
         </Card>
@@ -108,32 +131,34 @@ const CodeMusaiInfo: React.FC = () =>
         {/* How it works */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>How the Dual‑Mind System Works</CardTitle>
+            <CardTitle>How CodeMusai Works</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 text-sm text-muted-foreground">
             <div>
-              <div className="font-medium">1) Request Analysis (Local)</div>
-              <div>Classifies complexity, sensitivity, and intent. Chooses a thinking strategy.</div>
+              <div className="font-medium">1) Request Analysis</div>
+              <div>Classifies complexity, sensitivity, and intent to choose the best thinking strategy.</div>
             </div>
             <div>
               <div className="font-medium">2) Bicameral Thinking (Local, Always)</div>
               <ul className="list-disc ml-5 space-y-1">
-                <li>Logical Mind builds structured steps, proofs, or plans.</li>
-                <li>Creative Mind surfaces analogies, alternatives, and edge cases.</li>
-                <li>Musai Fusion reconciles both into a single, actionable answer.</li>
+                <li>Logical Mind → structured plans and reasoning.</li>
+                <li>Creative Mind → analogies, alternatives, edge cases.</li>
+                <li>Musai Fusion → reconciles both into a single, actionable answer.</li>
               </ul>
             </div>
             <div>
-              <div className="font-medium">3) Smart Routing (n8n, Your Call)</div>
+              <div className="font-medium">3) Smart Routing (Your Choice)</div>
               <ul className="list-disc ml-5 space-y-1">
-                <li>Local Only — default for privacy/speed.</li>
-                <li>Hybrid (Opt‑In) — route specific sub‑tasks to the Cloud Mind (e.g., “fetch current standards,” “summarize a long PDF”).</li>
-                <li>You choose what goes up, how much, and when.</li>
+                <li>Local Only — private, instant, default.</li>
+                <li>Hybrid (Opt‑In) — send specific subtasks to cloud for research, summarization, or long‑form work.</li>
               </ul>
             </div>
             <div>
-              <div className="font-medium">4) Memory Integration (Redmine)</div>
-              <div>Stores outcomes, preferences, rationales, and artifacts — so future answers are faster, clearer, and more you.</div>
+              <div className="font-medium">4) Memory Integration via Redmine</div>
+              <ul className="list-disc ml-5 space-y-1">
+                <li>Stores past decisions, reasoning, and preferences.</li>
+                <li>Tags memories for quick retrieval — like a custom attention system for AI.</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
@@ -147,17 +172,16 @@ const CodeMusaiInfo: React.FC = () =>
             <div>
               <div className="font-medium mb-1">Local AI First (Bicameral)</div>
               <ul className="list-disc ml-5 space-y-1">
-                <li>Two complementary minds run on your machine</li>
-                <li>Low latency, private by default</li>
-                <li>Tuned for your hardware</li>
+                <li>Runs entirely on your hardware for privacy.</li>
+                <li>Two minds in parallel = faster, richer insights.</li>
               </ul>
             </div>
             <div>
               <div className="font-medium mb-1">Smart Hybrid (Optional)</div>
               <ul className="list-disc ml-5 space-y-1">
-                <li>Per‑task, granular send rules (redact, summarize, or block)</li>
-                <li>Cloud consulted only when it adds value you approve</li>
-                <li>Full audit trail of what was shared and why</li>
+                <li>Per‑task controls: redact, summarize before upload, limit tokens.</li>
+                <li>Domain allowlists and complete transparency on what’s shared.</li>
+                <li>Cloud consulted only when it adds value you approve.</li>
               </ul>
             </div>
             <div>
@@ -210,11 +234,11 @@ const CodeMusaiInfo: React.FC = () =>
             <CardTitle>Why You’ll Feel the Difference</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
-            <div>CodeMusai doesn’t just answer — it shows the synthesis:</div>
+            <div>CodeMusai doesn’t just give you answers — it shows the synthesis:</div>
             <ul className="list-disc ml-5 space-y-1">
-              <li>Where Logic and Creativity agreed</li>
-              <li>Where they challenged each other</li>
-              <li>The final fused rationale and next best step</li>
+              <li>Where Logic and Creativity agreed.</li>
+              <li>Where they challenged each other.</li>
+              <li>The rationale that emerged.</li>
             </ul>
           </CardContent>
         </Card>
@@ -224,7 +248,7 @@ const CodeMusaiInfo: React.FC = () =>
           <HybridControlsPanel enabled={false} />
         </div>
 
-        {/* Hero image prompt for designers */}
+        {/* Playground prompt for designers */}
         <Card className="mb-10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><MonitorPlay className="w-5 h-5" /> Playground at a Glance</CardTitle>

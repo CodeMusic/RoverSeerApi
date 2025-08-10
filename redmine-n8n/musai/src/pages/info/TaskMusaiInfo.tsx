@@ -4,6 +4,7 @@ import { AttentionalGatewayHeader } from '@/components/common/AttentionalGateway
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import taskHero from '@/assets/images/taskmusai_hero.png';
 import { Button } from '@/components/ui/button';
 import {
   Bot,
@@ -42,22 +43,30 @@ const TaskMusaiInfo: React.FC = () =>
     <div className="min-h-screen bg-background">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_TASK} />
 
-      <div className="container mx-auto px-4 py-16 max-w-5xl">
+      <div className="container mx-auto px-4 py-16 max-w-6xl">
         {/* Hero */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-violet-600 to-rose-600 bg-clip-text text-transparent">
-            TaskMusai — Your On-Demand Scrum Team
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Agents that plan, build, demo, and iterate — powered by n8n, shaped by Redmine.
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <Button size="lg" onClick={handleStartSprint}>
-              <Rocket className="w-4 h-4" /> Start a Sprint
-            </Button>
-            <Button variant="outline" size="lg" onClick={handleViewSampleBacklog}>
-              <BookOpen className="w-4 h-4" /> View a Sample Backlog
-            </Button>
+        <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-6 items-center mb-12">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-violet-600 to-rose-600 bg-clip-text text-transparent">
+              TaskMusai — Your On-Demand Scrum Team
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Agents that plan, build, demo, and iterate — powered by n8n, shaped by Redmine.
+            </p>
+            <div className="mt-6 flex items-center gap-3 md:justify-start justify-center">
+              <Button size="lg" onClick={handleStartSprint}>
+                <Rocket className="w-4 h-4" /> Start a Sprint
+              </Button>
+              <Button variant="outline" size="lg" onClick={handleViewSampleBacklog}>
+                <BookOpen className="w-4 h-4" /> View a Sample Backlog
+              </Button>
+            </div>
+          </div>
+          <div className="relative">
+            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-violet-500/15 via-rose-400/10 to-transparent blur-2xl" />
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
+              <img src={taskHero} alt="TaskMusai hero" className="block w-full h-auto" />
+            </div>
           </div>
         </div>
 
@@ -298,6 +307,19 @@ const TaskMusaiInfo: React.FC = () =>
               <li>Always in context — Redmine keeps intent, decisions, and artifacts together.</li>
               <li>Faster alignment — narrative demos stakeholders understand.</li>
             </ul>
+          </CardContent>
+        </Card>
+
+        {/* Hero Visual Prompt */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Theater className="w-5 h-5" /> Hero Visual Prompt
+            </CardTitle>
+            <CardDescription>For design/generation teams</CardDescription>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            “Scrum board turned runway”: clean kanban lanes morphing into a launch strip; agents represented by subtle glyphs (PO, SM, Dev, QA, Toolsmith) moving cards forward. Violet → rose energy accents echo execution flow.
           </CardContent>
         </Card>
 

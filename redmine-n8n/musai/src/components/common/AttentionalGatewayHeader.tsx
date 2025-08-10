@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
-import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye, Stethoscope } from 'lucide-react';
+import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye, Stethoscope, TrendingUp } from 'lucide-react';
 import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
 
 type TabId = typeof APP_TERMS[keyof typeof APP_TERMS];
@@ -25,6 +25,7 @@ const SYMBOL_OPTIONS: SymbolOption[] = [
   { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code },
   { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap },
   { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater },
+    { id: APP_TERMS.TAB_CAREER, label: 'CareerMusai', icon: TrendingUp },
   { id: APP_TERMS.TAB_THERAPY, label: 'TherapyMusai', icon: Heart },
   { id: APP_TERMS.TAB_MEDICAL, label: 'MedicalMusai', icon: Stethoscope },
   { id: APP_TERMS.TAB_TASK, label: 'TaskMusai', icon: Bot },
