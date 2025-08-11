@@ -361,11 +361,12 @@ const Landing = () => {
         <div className="pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
           <div className="relative mx-auto max-w-5xl">
             <Carousel
-              className="px-6 sm:px-8 md:px-10"
+              className="px-4 sm:px-6"
               setApi={setCarouselApi}
               opts={{ align: 'start', loop: true, slidesToScroll: 1, watchDrag: true, containScroll: 'trimSnaps' as any, duration: 10 }}
+              style={{ paddingLeft: "max(env(safe-area-inset-left), 16px)", paddingRight: "max(env(safe-area-inset-right), 16px)" }}
             >
-              <CarouselContent className="-ml-5 sm:-ml-6 md:-ml-8">
+              <CarouselContent className="gap-3">
                 {(() => {
                   const links = primaryCarouselLinks;
                   const toneIdx = computeToneIndices(links.length, MUSAI_CHROMATIC_12.length);
@@ -379,7 +380,7 @@ const Landing = () => {
                       : hexToRgba(tone.hex, 0.12);
                     const IconComp = link.icon as any;
                     return (
-                      <CarouselItem key={link.label} className="basis-1/3 pl-5 sm:pl-6 md:pl-8">
+                      <CarouselItem key={link.label} className="basis-[calc((100%-1.5rem)/3)] flex-none">
                         <div className="rounded-lg p-px w-full overflow-hidden" style={{ background: border }}>
                           <Button
                             variant="outline"
@@ -396,8 +397,8 @@ const Landing = () => {
                   });
                 })()}
               </CarouselContent>
-              <CarouselPrevious className="left-0 sm:left-1 md:left-2 border-0 bg-gradient-to-r from-background/80 to-transparent hover:from-background/90 text-muted-foreground" />
-              <CarouselNext className="right-0 sm:right-1 md:right-2 border-0 bg-gradient-to-l from-background/80 to-transparent hover:from-background/90 text-muted-foreground" />
+              <CarouselPrevious className="-left-1 sm:left-0 border-0 bg-gradient-to-r from-background/90 to-transparent hover:from-background/95 text-muted-foreground" />
+              <CarouselNext className="-right-1 sm:right-0 border-0 bg-gradient-to-l from-background/90 to-transparent hover:from-background/95 text-muted-foreground" />
             </Carousel>
           </div>
         </div>
