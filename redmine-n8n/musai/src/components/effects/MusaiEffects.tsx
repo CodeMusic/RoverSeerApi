@@ -20,6 +20,25 @@ export function getTemporalChromaticColors(date = new Date()) {
   return { yearTone, weekTone };
 }
 
+// Convert hex to "r, g, b" triplet for CSS variables
+function hexToRgbTriplet(hex: string): string {
+  const normalized = hex.replace('#', '');
+  const bigint = parseInt(normalized.length === 3
+    ? normalized.split('').map((c) => c + c).join('')
+    : normalized, 16);
+
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `${r}, ${g}, ${b}`;
+}
+
+// Create rgba() string from hex and alpha
+function rgbaFromHex(hex: string, alpha: number): string {
+  const [r, g, b] = hexToRgbTriplet(hex).split(',').map((v) => Number(v.trim()));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 // Chakra mapping (root->violet) aligned to 7-tone
 export const CHAKRA_TONES = [
   MUSAI_CHROMATIC_7[0], // Root - Red
@@ -77,6 +96,12 @@ export const MusaiShimmer = ({ children, className, speed = 'normal', rounded = 
 
 // AI Face Logo Component
 export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiLogoProps) => {
+  const { weekTone } = getTemporalChromaticColors();
+  const glowVariable = useMemo(() => ({
+    // Drive .mystical-glow and related pulses with weekday chroma
+    ['--musai-accent-rgb' as any]: hexToRgbTriplet(weekTone.hex)
+  }), [weekTone.hex]);
+
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12', 
@@ -88,15 +113,21 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
   };
 
   return (
-    <div className={cn(
-      "relative flex items-center justify-center rounded-full overflow-hidden",
-      "bg-gradient-to-br from-purple-500 via-blue-500 to-cyan-500",
+    <div style={glowVariable as React.CSSProperties} className={cn(
+      "relative flex items-center justify-center rounded-full overflow-hidden aspect-square",
+      // Base fill remains subtle; glow layer below carries weekday chroma
+      "bg-transparent",
       "mystical-glow logo-gentle-pulse border border-gray-300/30",
       sizeClasses[size],
       className
     )}>
       {/* Background gradient with mystical effects - contained within border */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-600/80 via-blue-600/80 to-cyan-600/80 mystical-pulse" />
+      <div
+        className="absolute inset-0 mystical-pulse blur-sm"
+        style={{
+          background: `radial-gradient(circle at 50% 50%, ${rgbaFromHex(weekTone.hex, 0.35)} 0%, ${rgbaFromHex(weekTone.hex, 0.2)} 40%, transparent 70%)`
+        }}
+      />
       
       {/* AI Face elements */}
       <div className="relative z-10 flex flex-col items-center justify-center">
@@ -146,6 +177,10 @@ export const MusaiLogo = ({ size = 'md', className, isDarkMode = false }: MusaiL
 
 // Custom Musai Logo Image with Effects
 export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, logoWithText = false, useCurationsLogo = false }: MusaiLogoProps) => {
+  const { weekTone } = getTemporalChromaticColors();
+  const glowVariable = useMemo(() => ({
+    ['--musai-accent-rgb' as any]: hexToRgbTriplet(weekTone.hex)
+  }), [weekTone.hex]);
   const sizeClasses = {
     sm: 'w-8 h-8',
     md: 'w-12 h-12', 
@@ -163,32 +198,31 @@ export const MusaiCustomLogo = ({ size = 'md', className, isDarkMode = false, lo
     : musaiWaveLogo;
 
   return (
-    <div className={cn(
-      "relative flex items-center justify-center rounded-full overflow-hidden",
+    <div style={glowVariable as React.CSSProperties} className={cn(
+      "relative flex items-center justify-center rounded-full overflow-hidden aspect-square",
       "mystical-glow logo-gentle-pulse border border-gray-300/30",
       sizeClasses[size],
       className
     )}>
       {/* Background glow effect - contained within border */}
-      <div className={cn(
-        "absolute inset-0 mystical-pulse blur-sm",
-        useCurationsLogo 
-          ? "bg-gradient-to-br from-emerald-600/30 via-teal-600/30 to-cyan-600/30"
-          : "bg-gradient-to-br from-purple-600/30 via-blue-600/30 to-cyan-600/30"
-      )} />
+      <div
+        className={cn(
+          "absolute inset-0 mystical-pulse blur-sm"
+        )}
+        style={{
+          background: `radial-gradient(circle at 50% 50%, ${rgbaFromHex(weekTone.hex, 0.35)} 0%, ${rgbaFromHex(weekTone.hex, 0.18)} 45%, transparent 72%)`
+        }}
+      />
       
       {/* Custom logo image */}
       <img 
         src={logoImage} 
         alt={useCurationsLogo ? "Musai AI Curations" : "Musai AI Logo"}
         className={cn(
-          "relative z-10 object-contain logo-color-pulse",
-          sizeClasses[size]
+          "relative z-10 object-contain logo-color-pulse w-full h-full"
         )}
-        style={{ 
-          filter: useCurationsLogo 
-            ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))' 
-            : 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.5))' 
+        style={{
+          filter: `drop-shadow(0 0 8px ${rgbaFromHex(weekTone.hex, 0.5)})`
         }}
       />
       
@@ -319,6 +353,10 @@ export const DynamicProfileLogo = ({
   showUserPhoto = false
 }: DynamicProfileLogoProps) => {
   const { isAvailable: curationsAvailable } = useCurationsAvailability();
+  const { weekTone } = getTemporalChromaticColors();
+  const glowVariable = useMemo(() => ({
+    ['--musai-accent-rgb' as any]: hexToRgbTriplet(weekTone.hex)
+  }), [weekTone.hex]);
   
   // Determine if we should show curations logo
   const shouldUseCurationsLogo = useCurationsLogo !== undefined ? useCurationsLogo : curationsAvailable;
@@ -339,33 +377,32 @@ export const DynamicProfileLogo = ({
   };
 
   const logoContent = (
-    <div className={cn(
-      "relative flex items-center justify-center rounded-full overflow-hidden",
+    <div style={glowVariable as React.CSSProperties} className={cn(
+      "relative flex items-center justify-center rounded-full overflow-hidden aspect-square",
       "mystical-glow logo-gentle-pulse border border-gray-300/30",
       sizeClasses[size],
       className
     )}>
       {/* Background glow effect */}
-      <div className={cn(
-        "absolute inset-0 mystical-pulse blur-sm",
-        shouldUseCurationsLogo 
-          ? "bg-gradient-to-br from-emerald-600/30 via-teal-600/30 to-cyan-600/30"
-          : "bg-gradient-to-br from-purple-600/30 via-blue-600/30 to-cyan-600/30"
-      )} />
+      <div
+        className={cn(
+          "absolute inset-0 mystical-pulse blur-sm"
+        )}
+        style={{
+          background: `radial-gradient(circle at 50% 50%, ${rgbaFromHex(weekTone.hex, 0.35)} 0%, ${rgbaFromHex(weekTone.hex, 0.18)} 45%, transparent 72%)`
+        }}
+      />
       
       {/* Musai Logo - always present but can be faded */}
       <img 
         src={logoImage} 
         alt={shouldUseCurationsLogo ? "Musai AI Curations" : "Musai AI Logo"}
         className={cn(
-          "absolute inset-0 object-contain logo-color-pulse transition-opacity duration-500",
-          sizeClasses[size],
+          "absolute inset-0 object-contain logo-color-pulse transition-opacity duration-500 w-full h-full",
           showUserPhoto && userPhotoUrl ? "opacity-0" : "opacity-100"
         )}
-        style={{ 
-          filter: shouldUseCurationsLogo 
-            ? 'drop-shadow(0 0 8px rgba(16, 185, 129, 0.5))' 
-            : 'drop-shadow(0 0 8px rgba(147, 51, 234, 0.5))' 
+        style={{
+          filter: `drop-shadow(0 0 8px ${rgbaFromHex(weekTone.hex, 0.5)})`
         }}
       />
       
@@ -375,8 +412,7 @@ export const DynamicProfileLogo = ({
           src={userPhotoUrl} 
           alt="User Profile"
           className={cn(
-            "absolute inset-0 object-cover transition-opacity duration-500",
-            sizeClasses[size],
+            "absolute inset-0 object-cover transition-opacity duration-500 w-full h-full",
             showUserPhoto ? "opacity-100" : "opacity-0"
           )}
         />

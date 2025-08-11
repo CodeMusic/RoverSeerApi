@@ -422,6 +422,16 @@
   animation: logoColorPulse 4s ease-in-out infinite;
 }
 
+/* Reduce animation artifacts on small screens (iOS Safari) */
+@media (max-width: 480px) {
+  .mystical-glow,
+  .logo-gentle-pulse,
+  .logo-color-pulse,
+  .mystical-pulse {
+    animation-duration: 6s;
+  }
+}
+
 /* Wave effect for message reception */
 @keyframes mysticalWave {
   0% {

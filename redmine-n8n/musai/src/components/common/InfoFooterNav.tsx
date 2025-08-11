@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/config/routes';
+import { MUSAI_CHROMATIC_12 } from '@/config/constants';
 import {
   MessageSquare,
   Search,
@@ -61,17 +62,41 @@ export function InfoFooterNav(props: InfoFooterNavProps)
             <span className="font-semibold">{selected.label} (current)</span>
           </div>
         )}
-        {others.map(({ route, label, Icon }) => (
-          <Button
-            key={route}
-            variant="outline"
-            className="justify-start h-auto py-4 px-4 border-2 text-left whitespace-normal break-words"
-            onClick={() => navigate(route)}
-          >
-            <Icon className="w-4 h-4 mr-2 mt-0.5" />
-            <span className="font-medium">{label}</span>
-          </Button>
-        ))}
+        {(() => {
+          const toRgb = (hex: string) => {
+            const n = hex.replace('#', '');
+            const v = parseInt(n.length === 3 ? n.split('').map(c => c + c).join('') : n, 16);
+            return [(v >> 16) & 255, (v >> 8) & 255, v & 255] as const;
+          };
+          const rgba = (hex: string, a: number) => {
+            const [r, g, b] = toRgb(hex);
+            return `rgba(${r}, ${g}, ${b}, ${a})`;
+          };
+          const count = others.length;
+          const last = MUSAI_CHROMATIC_12.length - 1;
+          const indices = Array.from({ length: count }, (_, i) => Math.round((i * last) / (count - 1)));
+          const duals = new Set([1, 3, 7, 10]);
+          return others.map(({ route, label, Icon }, i) => {
+            const idx = Math.min(last, indices[i] || 0);
+            const tone = MUSAI_CHROMATIC_12[idx];
+            const border = duals.has(idx)
+              ? `linear-gradient(90deg, ${rgba(MUSAI_CHROMATIC_12[idx - 1]?.hex || tone.hex, 0.18)}, ${rgba(MUSAI_CHROMATIC_12[idx + 1]?.hex || tone.hex, 0.18)})`
+              : rgba(tone.hex, 0.18);
+            const iconColor = duals.has(idx) ? rgba(MUSAI_CHROMATIC_12[idx + 1]?.hex || tone.hex, 0.7) : rgba(tone.hex, 0.7);
+            return (
+              <div key={route} className="rounded-md p-px" style={{ background: border }}>
+                <Button
+                  variant="outline"
+                  className="justify-start h-auto py-4 px-4 border-0 text-left whitespace-normal break-words w-full rounded-md"
+                  onClick={() => navigate(route)}
+                >
+                  <Icon className="w-4 h-4 mr-2 mt-0.5" style={{ color: iconColor }} />
+                  <span className="font-medium">{label}</span>
+                </Button>
+              </div>
+            );
+          });
+        })()}
       </div>
     </div>
   );

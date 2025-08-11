@@ -7,7 +7,7 @@ import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquar
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
-import { APP_TERMS } from "@/config/constants";
+import { APP_TERMS, MUSAI_CHROMATIC_12 } from "@/config/constants";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 
 const Landing = () => {
@@ -25,21 +25,108 @@ const Landing = () => {
   // Minimal links to cycle through
   // Order mirrors the main tool order: Chat, Search, Eye, Code, University, Narrative, Therapy, Medical, Task
   const infoLinks = [
-    { label: "Meet Musai", icon: MessageSquare, to: ROUTES.MEET_MUSAI, border: "border-purple-500/30" },
-    { label: "Find Your Muse", icon: Search, to: ROUTES.FIND_YOUR_MUSE, border: "border-orange-500/30" },
-    { label: "Eye of Musai", icon: Eye, to: ROUTES.EYE_OF_MUSAI, border: "border-cyan-500/30" },
-    { label: "CodeMusai", icon: Code, to: ROUTES.CODE_MUSAI_INFO, border: "border-yellow-500/30" },
-    { label: "Musai University", icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO, border: "border-green-500/30" },
-    { label: "Emergent Narrative", icon: Theater, to: ROUTES.EMERGENT_NARRATIVE, border: "border-blue-500/30" },
-    { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI, border: "border-pink-500/30" },
-    { label: "MedicalMusai", icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI, border: "border-emerald-500/30" },
-    { label: "TaskMusai", icon: Bot, to: ROUTES.TASK_MUSAI, border: "border-violet-500/30" },
+    { label: "Meet Musai", icon: MessageSquare, to: ROUTES.MEET_MUSAI },
+    { label: "Find Your Muse", icon: Search, to: ROUTES.FIND_YOUR_MUSE },
+    { label: "Eye of Musai", icon: Eye, to: ROUTES.EYE_OF_MUSAI },
+    { label: "CodeMusai", icon: Code, to: ROUTES.CODE_MUSAI_INFO },
+    { label: "Musai University", icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO },
+    { label: "Emergent Narrative", icon: Theater, to: ROUTES.EMERGENT_NARRATIVE },
+    { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI },
+    { label: "MedicalMusai", icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI },
+    { label: "TaskMusai", icon: Bot, to: ROUTES.TASK_MUSAI },
     // Additional marketing/info links follow the core tool order
-    { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI, border: "border-blue-500/30" },
-    { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI, border: "border-indigo-500/30" },
-    { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE, border: "border-purple-500/30" },
-    { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE, border: "border-orange-500/30" },
+    { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI },
+    { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI },
+    { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE },
+    { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE },
   ];
+
+  // Chromatic accent system for lists: map first to red and last to violet (12-tone scale)
+  function computeToneIndices(count: number): number[]
+  {
+    if (count <= 1)
+    {
+      return [0];
+    }
+
+    // Special handcrafted mapping for 10 items: red, red-orange, orange, orange-yellow, yellow, green, green/blue, blue, indigo, violet
+    if (count === 10)
+    {
+      return [0, 1, 2, 3, 4, 6, 7, 8, 9, 11];
+    }
+
+    const indices: number[] = [];
+    const last = MUSAI_CHROMATIC_12.length - 1; // 11
+    let prev = -1;
+    for (let i = 0; i < count; i++)
+    {
+      const raw = Math.round((i * last) / (count - 1));
+      const idx = Math.min(last, Math.max(prev + 1, raw));
+      indices.push(idx);
+      prev = idx;
+    }
+    return indices;
+  }
+
+  function hexToRgbTriplet(hex: string): [number, number, number]
+  {
+    const normalized = hex.replace('#', '');
+    const value = parseInt(normalized.length === 3
+      ? normalized.split('').map((c) => c + c).join('')
+      : normalized, 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    return [r, g, b];
+  }
+
+  function rgbaFromHex(hex: string, alpha: number): string
+  {
+    const [r, g, b] = hexToRgbTriplet(hex);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function getGradientForIndex(index: number): string | null
+  {
+    // Define dual-color steps relative to neighbors
+    const neighbor = (i: number) => MUSAI_CHROMATIC_12[Math.min(MUSAI_CHROMATIC_12.length - 1, Math.max(0, i))].hex;
+    if (index === 1)
+    {
+      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(0), 0.18)}, ${rgbaFromHex(neighbor(2), 0.18)})`;
+    }
+    if (index === 3)
+    {
+      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(2), 0.18)}, ${rgbaFromHex(neighbor(4), 0.18)})`;
+    }
+    if (index === 7)
+    {
+      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(6), 0.18)}, ${rgbaFromHex(neighbor(8), 0.18)})`;
+    }
+    if (index === 10)
+    {
+      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(9), 0.18)}, ${rgbaFromHex(neighbor(11), 0.18)})`;
+    }
+    return null;
+  }
+
+  function buildAccentForList(length: number)
+  {
+    const toneIdx = computeToneIndices(length);
+    return toneIdx.map((idx) =>
+    {
+      const tone = MUSAI_CHROMATIC_12[idx];
+      const gradient = getGradientForIndex(idx);
+      // Subtlety: reduce alpha for single tones too
+      const borderStyle = gradient || rgbaFromHex(tone.hex, 0.18);
+      // Icon uses softened tone; for duals choose the second neighbor for emphasis
+      let iconColor = rgbaFromHex(tone.hex, 0.7);
+      if (idx === 1) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[2].hex, 0.7); // orange
+      if (idx === 3) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[4].hex, 0.7); // yellow
+      if (idx === 7) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[8].hex, 0.7); // blue
+      if (idx === 10) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[11].hex, 0.7); // violet
+      return { borderStyle, iconColor };
+    });
+  }
 
   // Show only three Musai tiles in the bottom carousel (top-of-mind entry points)
   const primaryCarouselLinks = infoLinks.slice(0, 3);
@@ -221,14 +308,14 @@ const Landing = () => {
         <div className="mb-8 slide-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="w-36 h-36 sm:w-52 sm:h-52 md:w-60 md:h-60 flex items-center justify-center">
+              <div className="w-36 h-36 sm:w-52 sm:h-52 md:w-60 md:h-60 flex items-center justify-center aspect-square">
                 <MusaiLifeLogo 
-                size="4xl" 
-                isDarkMode={false} 
-                noShimmer={true}
-                className="border-0"
-                onClick={() => navigate(ROUTES.CURATIONS)}
-              />
+                  size="4xl" 
+                  isDarkMode={false} 
+                  noShimmer={true}
+                  className="border-0 w-full h-full"
+                  onClick={() => navigate(ROUTES.CURATIONS)}
+                />
               </div>
               <div className="absolute -inset-1.5 sm:-inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-15 blur-[2px]" />
             </div>
@@ -370,18 +457,23 @@ const Landing = () => {
           >
             <Carousel setApi={setCarouselApi} opts={{ align: 'start', loop: true, slidesToScroll: 1 }}>
               <CarouselContent>
-                {moduleLinks.map((link) => (
-                  <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3">
-                    <Button
-                      onClick={() => navigate(link.to)}
-                      variant="outline"
-                      className={`relative z-0 w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] hover:shadow-sm ${link.border} bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60`}
-                    >
-                      {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
-                      {link.label}
-                    </Button>
-                  </CarouselItem>
-                ))}
+                {(() => {
+                  const accents = buildAccentForList(moduleLinks.length);
+                  return moduleLinks.map((link, i) => (
+                    <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3">
+                      <div className="rounded-xl p-px" style={{ background: accents[i].borderStyle }}>
+                        <Button
+                          onClick={() => navigate(link.to)}
+                          variant="outline"
+                          className={`relative z-0 w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-0 transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] hover:shadow-sm bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60`}
+                        >
+                          {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: accents[i].iconColor }} /> })()}
+                          {link.label}
+                        </Button>
+                      </div>
+                    </CarouselItem>
+                  ));
+                })()}
               </CarouselContent>
               <CarouselPrevious className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
               <CarouselNext className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
@@ -420,17 +512,21 @@ const Landing = () => {
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3">Modules</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {moduleLinks.map((link) => (
-                  <Button
-                    key={link.label}
-                    onClick={() => navigate(link.to)}
-                    variant="outline"
-                    className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
-                  >
-                    {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
-                    <span className="truncate">{link.label}</span>
-                  </Button>
-                ))}
+                {(() => {
+                  const accents = buildAccentForList(moduleLinks.length);
+                  return moduleLinks.map((link, i) => (
+                    <div key={link.label} className="rounded-xl p-px" style={{ background: accents[i].borderStyle }}>
+                      <Button
+                        onClick={() => navigate(link.to)}
+                        variant="outline"
+                        className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-0 hover:bg-sidebar-accent/30 transition-all duration-300 w-full`}
+                      >
+                        {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: accents[i].iconColor }} /> })()}
+                        <span className="truncate">{link.label}</span>
+                      </Button>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
 
@@ -438,17 +534,21 @@ const Landing = () => {
             <div>
               <h3 className="text-lg font-semibold mb-3">Supporting</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {supportingLinks.map((link) => (
-                  <Button
-                    key={link.label}
-                    onClick={() => navigate(link.to)}
-                    variant="outline"
-                    className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-2 hover:bg-sidebar-accent/30 transition-all duration-300 ${link.border}`}
-                  >
-                    {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" /> })()}
-                    <span className="truncate">{link.label}</span>
-                  </Button>
-                ))}
+                {(() => {
+                  const accents = buildAccentForList(supportingLinks.length);
+                  return supportingLinks.map((link, i) => (
+                    <div key={link.label} className="rounded-xl p-px" style={{ background: accents[i].borderStyle }}>
+                      <Button
+                        onClick={() => navigate(link.to)}
+                        variant="outline"
+                        className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-0 hover:bg-sidebar-accent/30 transition-all duration-300 w-full`}
+                      >
+                        {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: accents[i].iconColor }} /> })()}
+                        <span className="truncate">{link.label}</span>
+                      </Button>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           </div>
