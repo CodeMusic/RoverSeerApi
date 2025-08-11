@@ -59,7 +59,7 @@ export function IconTileList(props: IconTileListProps)
           return (
             <div
               key={to}
-              className="rounded-md p-px w-full overflow-hidden h-full"
+              className="rounded-md p-px w-full h-full"
               style={{ background: border, minHeight: `${minItemHeight}px` }}
             >
               <Button

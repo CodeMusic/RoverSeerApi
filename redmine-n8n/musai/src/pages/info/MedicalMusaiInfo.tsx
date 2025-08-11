@@ -47,6 +47,10 @@ const MedicalMusaiInfo: React.FC = () =>
                   const el = document.getElementById('how-it-works');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
                 }}>See How It Works</Button>
+                <Button variant="outline" onClick={() => {
+                  const el = document.getElementById('doctor-modeling');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}>Doctor Modeling</Button>
                 <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
                   <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" /> Privacy‑first
                 </div>
@@ -111,6 +115,41 @@ const MedicalMusaiInfo: React.FC = () =>
               const el = document.getElementById('community');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}>Find Community Resources</Button>
+          </div>
+        </section>
+
+        {/* 4.5) Doctor Modeling — Speak Your Doctor’s Language */}
+        <section id="doctor-modeling" className="mb-8">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Doctor Modeling — translate intent into results</CardTitle>
+                <CardDescription>Optional, private profiling of your clinician’s communication style</CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <div>• Learns from signals you provide: short voice memos after visits, decisions made, portal messages, and follow‑up notes.</div>
+                <div>• Builds a light “style map” of preferences: phrasing, level of detail, when to lead with risk vs. benefit, and what gets traction.</div>
+                <div>• Generates SBAR‑style briefs tuned to your GP: one clear ask first, supportive context second — not time‑window assertions.</div>
+                <div className="pt-2 flex flex-wrap gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><Mic className="w-3.5 h-3.5" /> Voice notes</span>
+                  <span className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><ClipboardList className="w-3.5 h-3.5" /> Decisions</span>
+                  <span className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> Portal msgs</span>
+                  <span className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><CalendarClock className="w-3.5 h-3.5" /> Outcomes</span>
+                </div>
+                <div className="pt-3"><Button size="sm" variant="outline">Try SBAR Generator</Button></div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Privacy & Control</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <div>• Local‑first processing for voice notes and summaries when sensitive</div>
+                <div>• Explicit consent when exporting a brief to share; clear audit trail</div>
+                <div>• One‑click reset: delete the doctor model at any time</div>
+                <div className="pt-2 inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><ShieldCheck className="w-3.5 h-3.5" /> Your data, your rules</div>
+              </CardContent>
+            </Card>
           </div>
         </section>
 

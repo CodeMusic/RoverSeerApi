@@ -49,6 +49,10 @@ import CourseCreationPage from "@/pages/CourseCreationPage";
 import RoverByte from "@/pages/info/RoverByte";
 import { Curations } from "@/pages/Curations";
 import { CurationsLocked } from "@/pages/CurationsLocked";
+import MusaiCurationsInfo from "@/pages/info/MusaiCurationsInfo";
+import MusaiStudioInfo from "@/pages/info/MusaiStudioInfo";
+import MusaiStudio from "@/pages/MusaiStudio";
+import Roadmap from "@/pages/Roadmap";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
@@ -92,6 +96,10 @@ function App() {
                         <Route path={ROUTES.UNIVERSITY_COURSE_NEW} element={<CourseCreationPage />} />
                         <Route path={ROUTES.UNIVERSITY_COURSE_VIEW} element={<University />} />
                         <Route path={ROUTES.CURATIONS} element={<Curations />} />
+                        <Route path={ROUTES.CURATIONS_INFO} element={<MusaiCurationsInfo />} />
+                        <Route path={ROUTES.MUSAI_STUDIO_INFO} element={<MusaiStudioInfo />} />
+                        <Route path={ROUTES.MUSAI_STUDIO} element={<MusaiStudio />} />
+                        <Route path={ROUTES.ROADMAP} element={<Roadmap />} />
                         <Route path="/curations/locked" element={<CurationsLocked />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />

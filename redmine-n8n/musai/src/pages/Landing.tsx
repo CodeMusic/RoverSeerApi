@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart, Stethoscope } from "lucide-react";
+import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart, Stethoscope, Music, Map } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
@@ -39,12 +39,15 @@ const Landing = () => {
     { label: "Emergent Narrative", icon: Theater, to: ROUTES.EMERGENT_NARRATIVE },
     { label: "TherapyMusai", icon: Heart, to: ROUTES.THERAPY_MUSAI },
     { label: "MedicalMusai", icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI },
+    { label: "MusaiCurations", icon: Sparkles, to: ROUTES.CURATIONS_INFO },
+    { label: "MusaiStudio", icon: Music, to: ROUTES.MUSAI_STUDIO_INFO },
     { label: "TaskMusai", icon: Bot, to: ROUTES.TASK_MUSAI },
     // Additional marketing/info links follow the core tool order
     { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI },
     { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI },
     { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE },
     { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE },
+    { label: "Roadmap", icon: Map, to: ROUTES.ROADMAP },
   ];
 
   // Chromatic accent system moved to IconTileList
@@ -60,6 +63,8 @@ const Landing = () => {
     ROUTES.THERAPY_MUSAI,
     ROUTES.MEDICAL_MUSAI,
     ROUTES.TASK_MUSAI,
+    ROUTES.CURATIONS_INFO,
+    ROUTES.MUSAI_STUDIO_INFO,
     ROUTES.CAREER_MUSAI,
   ]);
   const moduleLinks = infoLinks.filter((l) => moduleRouteSet.has(l.to as string));
@@ -403,14 +408,23 @@ const Landing = () => {
           </div>
         </div>
 
-        {/* Reveal Site Map CTA */}
+        {/* Reveal Section CTA: Roadmap + Explore */}
         {!siteMapRevealed && (
-          <div className="pt-10 pb-16 flex justify-center">
+          <div className="pt-10 pb-16 flex justify-center gap-3">
             <Button variant="outline" onClick={() => {
               setSiteMapRevealed(true);
               setTimeout(() => siteMapRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
             }} className="rounded-xl border-2">
-              Explore the Musai site map <ChevronDown className="w-4 h-4 ml-2" />
+              Explore more <ChevronDown className="w-4 h-4 ml-2" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigate(ROUTES.ROADMAP);
+              }}
+              className="rounded-xl border-2"
+            >
+              Roadmap
             </Button>
           </div>
         )}
@@ -425,22 +439,65 @@ const Landing = () => {
               siteMapRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none select-none"
             }`}
           >
-            <br />
-            <div className="text-center mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold">What is Musai?</h2>
-              <p className="text-muted-foreground mt-2">Musai is a creative–technical framework for exploring AI as both code and companion. It’s built as a flat, skimmable map: main modules first, then supporting pages. Part toolset, part philosophy, it’s designed to help ideas flow between logic and imagination.</p>
-            </div>
-            <br />
-            {/* Modules (Musai forms) */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3">Modules</h3>
-              <IconTileList items={moduleLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
+            {/* Tabs: Explore | Roadmap */}
+            <div className="flex justify-center mb-6 gap-2">
+              <input type="radio" name="landing-tabs" id="tab-explore" defaultChecked className="hidden peer/explore" />
+              <input type="radio" name="landing-tabs" id="tab-roadmap" className="hidden peer/roadmap" />
+              <button onClick={() => {
+                const explore = document.getElementById('tab-explore') as HTMLInputElement | null;
+                const roadmap = document.getElementById('tab-roadmap') as HTMLInputElement | null;
+                if (explore) explore.checked = true;
+                if (roadmap) roadmap.checked = false;
+              }} className="px-3 py-1.5 rounded-full border text-sm" id="explore-tab-btn">Explore</button>
+              <button onClick={() => {
+                const explore = document.getElementById('tab-explore') as HTMLInputElement | null;
+                const roadmap = document.getElementById('tab-roadmap') as HTMLInputElement | null;
+                if (roadmap) roadmap.checked = true;
+                if (explore) explore.checked = false;
+              }} className="px-3 py-1.5 rounded-full border text-sm" id="roadmap-tab-btn">Roadmap</button>
             </div>
 
-            {/* Supporting pages (architecture, integrations, docs) */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Supporting</h3>
-              <IconTileList items={supportingLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
+            {/* Explore Panel */}
+            <div className="peer-checked/explore:block peer-checked/roadmap:hidden block">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold">What is Musai?</h2>
+                <p className="text-muted-foreground mt-2">Musai is a creative–technical framework for exploring AI as both code and companion. It’s built as a flat, skimmable map: main modules first, then supporting pages. Part toolset, part philosophy, it’s designed to help ideas flow between logic and imagination.</p>
+              </div>
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3">Modules</h3>
+                <IconTileList items={moduleLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Supporting</h3>
+                <IconTileList items={supportingLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
+              </div>
+            </div>
+
+            {/* Roadmap Panel (summary) */}
+            <div className="peer-checked/roadmap:block peer-checked/explore:hidden hidden">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold">Roadmap</h2>
+                <p className="text-muted-foreground mt-2">High‑level status and the latest updates. Full page has more detail and raw JSON.</p>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg border bg-card">
+                  <div className="font-medium mb-2">Latest updates</div>
+                  <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
+                    <li>MusaiCurations + MusaiStudio info pages landed</li>
+                    <li>Explore carousel and site map refined</li>
+                  </ul>
+                </div>
+                <div className="p-4 rounded-lg border bg-card">
+                  <div className="font-medium mb-2">Near‑term items</div>
+                  <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
+                    <li>Taste Tuning overlay (Curations)</li>
+                    <li>“Why this?” explainer per card</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="text-center mt-6">
+                <Button variant="outline" onClick={() => navigate(ROUTES.ROADMAP)}>Open full roadmap</Button>
+              </div>
             </div>
           </div>
         </div>

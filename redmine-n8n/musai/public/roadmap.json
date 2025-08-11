@@ -1,0 +1,64 @@
+{
+  "updatedAt": "2025-08-11",
+  "summary": "High‑level status across Musai. This JSON is the single source of truth for the public roadmap until the DB is wired.",
+  "latestUpdates": [
+    {
+      "date": "2025-08-11",
+      "title": "MedicalMusai: Doctor Modeling section",
+      "details": "Explains GP style‑mapping from voice notes, decisions, and portal messages; outputs SBAR‑style briefs."
+    },
+    {
+      "date": "2025-08-11",
+      "title": "TherapyMusai: Symbolic Images + Partner Counseling visuals (WIP)",
+      "details": "Info page now lists image‑based tools for emotional externalization and couple dialogue."
+    },
+    {
+      "date": "2025-08-11",
+      "title": "Landing: Roadmap tab + twin CTA",
+      "details": "Adds Roadmap alongside Explore; links to full roadmap page backed by this JSON."
+    },
+    {
+      "date": "2025-08-11",
+      "title": "Ordering: TaskMusai placed last across lists",
+      "details": "Reflects that TaskMusai composes other Musai capabilities."
+    },
+    {
+      "date": "2025-08-10",
+      "title": "MusaiCurations + MusaiStudio info pages added",
+      "details": "New marketing pages, routes, and nav surfaced on Landing."
+    },
+    {
+      "date": "2025-08-09",
+      "title": "Explore carousel polishing",
+      "details": "Chromatic mapping stabilized; site map grouping refined."
+    }
+  ],
+  "phases": [
+    {
+      "name": "Q3 Shiplist",
+      "items": [
+        { "label": "MusaiCurations public view", "done": true },
+        { "label": "MusaiStudio info + placeholder route", "done": true },
+        { "label": "Roadmap page + JSON source of truth", "done": true },
+        { "label": "Landing: Explore/Roadmap twin CTA + tabs", "done": true },
+        { "label": "MedicalMusai: Doctor Modeling (info section)", "done": true },
+        { "label": "TherapyMusai: Symbolic Images (WIP)", "done": false },
+        { "label": "TherapyMusai: Partner Counseling visuals (WIP)", "done": false },
+        { "label": "Global ordering: TaskMusai listed last", "done": true },
+        { "label": "Taste Tuning overlay (Curations)", "done": false },
+        { "label": "\"Why this?\" explainer per card (Curations)", "done": false }
+      ]
+    },
+    {
+      "name": "Q4 Enhancements",
+      "items": [
+        { "label": "MusaiStudio v1.1: seeds + lyric mode", "done": false },
+        { "label": "Curations: inbox cadence controls", "done": false },
+        { "label": "MedicalMusai: SBAR Generator + PDF export", "done": false },
+        { "label": "Roadmap: move to DB + lightweight admin", "done": false }
+      ]
+    }
+  ]
+}
+
+

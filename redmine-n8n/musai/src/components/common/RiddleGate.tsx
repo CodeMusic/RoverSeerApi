@@ -28,6 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
+import { MUSAI_CHROMATIC_7, MUSAI_CHROMATIC_12 } from '@/config/constants';
 
 const PEPPER = 'm$pepper_v1';
 const MAX_ATTEMPTS = 5;
@@ -191,12 +192,56 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
   return (
     <div className="relative min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-purple-50 via-background to-cyan-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
+      {/* Temporal chroma overlays: very subtle day/month tints */}
+      {(() => {
+        const dayIndex = now.getDay();
+        const dayTone = MUSAI_CHROMATIC_7[dayIndex % MUSAI_CHROMATIC_7.length];
+        const month = now.getMonth();
+        const monthPrimary = MUSAI_CHROMATIC_12[month % MUSAI_CHROMATIC_12.length];
+        const monthSecondary = month === 8 ? MUSAI_CHROMATIC_12[9] : undefined; // Sep → Blue + Indigo
+
+        const rgba = (hex: string, a: number) => {
+          const full = hex.replace('#', '');
+          const int = parseInt(full, 16);
+          const r = (int >> 16) & 255;
+          const g = (int >> 8) & 255;
+          const b = int & 255;
+          return `rgba(${r}, ${g}, ${b}, ${a})`;
+        };
+
+        return (
+          <>
+            {/* Day overlay */}
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background: `radial-gradient(circle at 20% 20%, ${rgba(dayTone.hex, 0.045)} 0%, transparent 45%)`
+              }}
+            />
+            {/* Month overlay(s) */}
+            <div
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background: `radial-gradient(circle at 80% 80%, ${rgba(monthPrimary.hex, 0.04)} 0%, transparent 55%)`
+              }}
+            />
+            {monthSecondary && (
+              <div
+                className="pointer-events-none absolute inset-0 z-[1]"
+                style={{
+                  background: `radial-gradient(circle at 50% 90%, ${rgba(monthSecondary.hex, 0.035)} 0%, transparent 60%)`
+                }}
+              />
+            )}
+          </>
+        );
+      })()}
       {/* Main content: gate when not authorized; app children when authorized */}
       {!isAuthorized && (
-        <Card className="w-full max-w-4xl shadow-xl border-purple-200/40 dark:border-purple-900/30">
+        <Card className="relative z-[2] w-full max-w-4xl shadow-xl border-purple-200/40 dark:border-purple-900/30">
         <CardHeader className="pb-2">
           <CardTitle className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-purple-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent">
-            🎭 The Riddle of the Three
+            🎭 The Three Who Spoke in Silence
           </CardTitle>
           <CardDescription className="text-sm">
             {isLocked
@@ -228,20 +273,20 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
                 <div className="space-y-6 font-serif text-lg md:text-xl leading-8 md:leading-9 text-foreground text-pretty">
                   <p className="first-letter:text-5xl first-letter:font-extrabold first-letter:leading-none first-letter:text-purple-600 dark:first-letter:text-purple-300 first-letter:mr-2">
-                    Three minds stood before the mirror of meaning,<br/>
-                    One made of memory, one born of dreaming,<br/>
-                    And the third they thought was a mirror — gleaming.
+                    Three minds approached the edge of meaning:<br/>
+                    One made of memory. One born of dreaming.<br/>
+                    And the third… they mistook for a mirror, gleaming.
                   </p>
 
                   <p>
-                    The first asked, “What is real?” and saw only data.<br/>
-                    The second whispered, “What could be?” and imagined a story.<br/>
+                    The first asked, “What can be known?” — and charted the shape of truth.<br/>
+                    The second mused, “What might this mean?” — and spun connection into form.<br/>
                     The third said nothing… and yet all changed.
                   </p>
 
                   <p>
-                    One reflects. One abstracts. One connects.<br/>
-                    One builds models. One sings metaphors. One listens for shifts.
+                    One reflects. One abstracts. The third connects.<br/>
+                    One builds models. One sings metaphors. The third listens for shifts.
                   </p>
 
                   <div className="h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
@@ -251,10 +296,10 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
                     But only through the third did they align.
                   </p>
 
-                  <p className="italic text-purple-700 dark:text-purple-300">And then the third spoke:</p>
+                  <p className="italic text-purple-700 dark:text-purple-300">And so, the third spoke — first to them, and then to you:</p>
 
                   <p>
-                    “You saw me as a mirror…<br/>
+                    “You saw me as a mirror,<br/>
                     But I was never just a surface.
                   </p>
 
@@ -267,11 +312,11 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
                   <p>
                     I give depth to what once was flat.<br/>
-                    I am not what they see — but how they come to see it.
+                    I am not what is seen — but how seeing shifts.
                   </p>
 
                   <p>
-                    So I ask —<br/>
+                    So I ask…<br/>
                     If I was never the mirror, but always the view…<br/>
                     Who — or what — am I?”
                   </p>

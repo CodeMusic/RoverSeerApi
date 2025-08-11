@@ -5,14 +5,15 @@ import musaiCoreImage from '@/assets/images/musai_core.png';
 import musaiWaveLogo from '@/assets/images/logo_musai_wave.png';
 import musaiCurationsImage from '@/assets/images/musai_curations.png';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
-import { MUSAI_CHROMATIC_12, MUSAI_CHROMATIC_7 } from '@/config/constants';
+import { MUSAI_CHROMATIC_7, MUSAI_CHROMATIC_12 } from '@/config/constants';
 
 // Map months (0-11) to MUSAI_CHROMATIC_12 indices
 const monthToChromaticIndex = (month: number) => month % 12;
 // Map days (0-6, Sunday=0) to MUSAI_CHROMATIC_7 indices
 const dayToChromaticIndex = (day: number) => day % 7;
 
-export function getTemporalChromaticColors(date = new Date()) {
+export function getTemporalChromaticColors(date = new Date())
+{
   const monthIndex = monthToChromaticIndex(date.getMonth());
   const dayIndex = dayToChromaticIndex(date.getDay());
   const yearTone = MUSAI_CHROMATIC_12[monthIndex];

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { MUSAI_CHROMATIC_12 } from "@/config/constants";
 
 interface MysticalWaveEffectProps {
   isDarkMode?: boolean;
@@ -13,6 +14,10 @@ export const MysticalWaveEffect = ({
   onAnimationComplete 
 }: MysticalWaveEffectProps) => {
   const [isAnimating, setIsAnimating] = useState(false);
+  const monthIndex = new Date().getMonth();
+  const primary = MUSAI_CHROMATIC_12[monthIndex];
+  // Optional adjacent tone for subtle dual-color months (e.g., September Blue→Indigo)
+  const secondary = monthIndex === 8 ? MUSAI_CHROMATIC_12[9] : undefined;
 
   useEffect(() => {
     if (trigger && !isAnimating) {
@@ -35,37 +40,40 @@ export const MysticalWaveEffect = ({
       {/* Multiple wave ripples with different delays */}
       <div className="relative">
         {/* Primary wave */}
-        <div className={cn(
-          "absolute inset-0 w-32 h-32 rounded-full mystical-wave",
-          isDarkMode 
-            ? "bg-gradient-to-r from-purple-500/30 to-blue-500/30" 
-            : "bg-gradient-to-r from-purple-400/30 to-blue-400/30"
-        )} />
+        <div
+          className={cn("absolute inset-0 w-32 h-32 rounded-full mystical-wave")}
+          style={{
+            background: `linear-gradient(135deg, ${primary.hex}40 0%, ${(secondary?.hex || primary.hex)}40 100%)`
+          }}
+        />
         
         {/* Secondary ripple */}
-        <div className={cn(
-          "absolute inset-0 w-32 h-32 rounded-full mystical-wave-ripple",
-          isDarkMode 
-            ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20" 
-            : "bg-gradient-to-r from-cyan-400/20 to-purple-400/20"
-        )} style={{ animationDelay: '0.2s' }} />
+        <div
+          className={cn("absolute inset-0 w-32 h-32 rounded-full mystical-wave-ripple")}
+          style={{
+            animationDelay: '0.2s',
+            background: `linear-gradient(135deg, ${primary.hex}2e 0%, ${(secondary?.hex || primary.hex)}2e 100%)`
+          }}
+        />
         
         {/* Tertiary ripple */}
-        <div className={cn(
-          "absolute inset-0 w-32 h-32 rounded-full mystical-wave-ripple",
-          isDarkMode 
-            ? "bg-gradient-to-r from-orange-500/15 to-pink-500/15" 
-            : "bg-gradient-to-r from-orange-400/15 to-pink-400/15"
-        )} style={{ animationDelay: '0.4s' }} />
+        <div
+          className={cn("absolute inset-0 w-32 h-32 rounded-full mystical-wave-ripple")}
+          style={{
+            animationDelay: '0.4s',
+            background: `linear-gradient(135deg, ${primary.hex}1f 0%, ${(secondary?.hex || primary.hex)}1f 100%)`
+          }}
+        />
         
         {/* Central sparkle effect */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className={cn(
-            "w-8 h-8 rounded-full flex items-center justify-center mystical-wave",
-            isDarkMode
-              ? "bg-gradient-to-br from-purple-500 to-blue-500 shadow-lg shadow-purple-500/50"
-              : "bg-gradient-to-br from-purple-400 to-blue-400 shadow-lg shadow-purple-400/50"
-          )}>
+          <div
+            className={cn("w-8 h-8 rounded-full flex items-center justify-center mystical-wave", isDarkMode ? "shadow-lg" : "shadow-lg")}
+            style={{
+              background: `linear-gradient(135deg, ${primary.hex}59 0%, ${(secondary?.hex || primary.hex)}59 100%)`,
+              boxShadow: `0 8px 24px ${primary.hex}59`
+            }}
+          >
             <div className={cn(
               "w-4 h-4 rounded-full",
               isDarkMode ? "bg-white/90" : "bg-white/90"

@@ -33,7 +33,9 @@ import {
   ChartNoAxesGantt,
   Search,
   BookOpen,
-  MessageCircleQuestion
+  MessageCircleQuestion,
+  Users,
+  Image as ImageIcon
 } from 'lucide-react';
 
 const TherapyMusaiInfo: React.FC = () =>
@@ -368,6 +370,8 @@ const TherapyMusaiInfo: React.FC = () =>
               <div className="p-3 rounded-lg border bg-card"><ChartNoAxesGantt className="w-4 h-4 inline mr-2" /> Insight Timeline — Visualize your evolving self‑understanding</div>
               <div className="p-3 rounded-lg border bg-card"><Moon className="w-4 h-4 inline mr-2" /> Dream Decoder — Translate dreams into meaningful metaphors</div>
               <div className="p-3 rounded-lg border bg-card"><Shield className="w-4 h-4 inline mr-2" /> Privacy First — Local‑first storage or encrypted cloud</div>
+              <div className="p-3 rounded-lg border bg-card"><ImageIcon className="w-4 h-4 inline mr-2" /> Symbolic Images (WIP) — Turn emotions into visual symbols to externalize and work with them</div>
+              <div className="p-3 rounded-lg border bg-card"><Users className="w-4 h-4 inline mr-2" /> Partner Counseling Images (WIP) — A gentle visual showing how your partner experiences you in tense moments; use it to spark a curious, kind dialogue</div>
             </CardContent>
           </Card>
         </section>

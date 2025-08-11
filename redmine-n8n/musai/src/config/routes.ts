@@ -25,6 +25,10 @@ export const ROUTES = {
   MEDICAL_MUSAI_DEMO: '/medical-musai/demo',
   EMERGENT_NARRATIVE: '/emergent-narrative',
   TASK_MUSAI: '/task-musai',
+  CURATIONS_INFO: '/curations/info',
+  MUSAI_STUDIO_INFO: '/musai-studio/info',
+  MUSAI_STUDIO: '/musai-studio',
+  ROADMAP: '/roadmap',
   
   // University routes
   UNIVERSITY: '/university',

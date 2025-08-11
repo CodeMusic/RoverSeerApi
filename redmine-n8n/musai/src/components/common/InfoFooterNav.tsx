@@ -20,7 +20,9 @@ import {
   Brain,
   Heart,
   Bot,
-  TrendingUp
+  TrendingUp,
+  Sparkles,
+  Music
 } from 'lucide-react';
 
 type InfoFooterNavProps = {
@@ -45,8 +47,10 @@ export function InfoFooterNav(props: InfoFooterNavProps)
     { route: ROUTES.EMERGENT_NARRATIVE, label: 'MusaiTale', Icon: Theater },
     { route: ROUTES.MEDICAL_MUSAI, label: 'MedicalMusai', Icon: Brain },
     { route: ROUTES.THERAPY_MUSAI, label: 'TherapyMusai', Icon: Heart },
-    { route: ROUTES.TASK_MUSAI, label: 'TaskMusai', Icon: Bot },
     { route: ROUTES.CAREER_MUSAI, label: 'CareerMusai', Icon: TrendingUp },
+    { route: ROUTES.CURATIONS_INFO, label: 'MusaiCurations', Icon: Sparkles },
+    { route: ROUTES.MUSAI_STUDIO_INFO, label: 'MusaiStudio', Icon: Music },
+    { route: ROUTES.TASK_MUSAI, label: 'TaskMusai', Icon: Bot },
   ];
 
   const selectedRoute = currentRoute;
@@ -79,14 +83,18 @@ export function InfoFooterNav(props: InfoFooterNavProps)
           if (isCurrent)
           {
             return (
-              <div key={route} className="rounded-md p-px" style={{ background: border }}>
-                <div className="justify-start h-auto py-4 px-4 border-2 text-left whitespace-normal break-words w-full rounded-md bg-sidebar-accent/40 border-border/50 text-foreground/80 cursor-default flex items-center">
+              <div key={route} className="rounded-md p-px overflow-hidden" style={{ background: border }}>
+                <Button
+                  variant="outline"
+                  disabled
+                  className="justify-start h-auto py-4 px-4 border-0 text-left whitespace-normal break-words w-full rounded-md bg-sidebar-accent/50 cursor-default pointer-events-none"
+                >
                   <Icon
                     className={`w-4 h-4 mr-2 mt-0.5 ${isDual ? 'dual-color-phase' : ''}`}
                     style={isDual ? { ['--phase-color-a' as any]: tone.hex, ['--phase-color-b' as any]: next.hex } : { color: hexToRgba(tone.hex, 0.7) }}
                   />
                   <span className="font-semibold">{label} (current)</span>
-                </div>
+                </Button>
               </div>
             );
           }

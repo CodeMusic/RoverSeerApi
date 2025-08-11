@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useLayoutEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,8 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
   const location = useLocation();
   const [selectedTab, setSelectedTab] = useState<string>(defaultTabId || APP_TERMS.TAB_CHAT);
   const [prompt, setPrompt] = useState('');
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState<number>(64);
 
   const selectedOption = useMemo(() => SYMBOL_OPTIONS.find(o => o.id === selectedTab) || SYMBOL_OPTIONS[0], [selectedTab]);
 
@@ -92,6 +94,8 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
       [ROUTES.UNIVERSITY_INFO]: APP_TERMS.TAB_UNIVERSITY,
       [ROUTES.FIND_YOUR_MUSE]: APP_TERMS.TAB_SEARCH,
       [ROUTES.TASK_MUSAI]: APP_TERMS.TAB_TASK,
+      [ROUTES.CURATIONS_INFO]: APP_TERMS.TAB_SEARCH,
+      [ROUTES.MUSAI_STUDIO_INFO]: APP_TERMS.TAB_CODE,
     };
     const mapped = pathToTab[path];
     if (mapped && mapped !== selectedTab)
@@ -134,8 +138,16 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
     }
   }, [navigate]);
 
+  useLayoutEffect(() => {
+    const measure = () => setHeaderHeight(headerRef.current?.offsetHeight || 64);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
   return (
-    <div className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+    <div ref={headerRef} className="fixed top-0 left-0 right-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
         {/* Logo as App Portal */}
         <button onClick={handleLogoClick} className="flex items-center gap-2 group" aria-label="Open Musai">
@@ -174,6 +186,8 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
         </div>
       </div>
     </div>
+    <div style={{ height: headerHeight }} aria-hidden="true" />
+    </>
   );
 };
 
