@@ -207,7 +207,7 @@ const Landing = () => {
       {/* Animated Background Shapes */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-300/20 rounded-full blur-3xl animate-pulse delay-1000" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-300/20 rounded-full blur-3xl animate-pulse delay-1000" aria-hidden="true" />
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-400/10 to-orange-400/10 rounded-full blur-3xl animate-pulse delay-500" />
       </div>
 
@@ -416,7 +416,7 @@ const Landing = () => {
         )}
 
         {/* Flat Site Map / Quick Navigation */}
-        <div className="pt-14 pb-20 relative overflow-x-hidden">
+          <div className="pt-14 pb-20 relative overflow-hidden">
           {/* Subtle resistance veil */}
           <div className="pointer-events-none absolute -top-8 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/80 to-transparent" />
           <div

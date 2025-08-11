@@ -13,6 +13,13 @@ import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 import yokeHands from '@/assets/images/medical musai_yolk.png';
 import medicalTherapy from '@/assets/images/medicalmusai_medicaltherapy.png';
 import cityMap from '@/assets/images/medical_citymap.png';
+// Glyphs / placeholders artwork
+import notepadTimeline from '@/assets/images/medicalmusai_notepadetimeline.png';
+import compassClarity from '@/assets/images/medicalmusai_compass clarity.png';
+import runwayChecklist from '@/assets/images/medicalmusai_runawaychecklist.png';
+import threeColumns from '@/assets/images/medical musai_ three columns clarity configence connection.png';
+import polaroidCards from '@/assets/images/medical musai_Three polaroid‑style cards with captio.png';
+import runwayLights from '@/assets/images/medical musai _ runway.png';
 
 const MedicalMusaiInfo: React.FC = () =>
 {
@@ -65,19 +72,37 @@ const MedicalMusaiInfo: React.FC = () =>
         {/* 2) How it Works — Record → Understand → Act */}
         <section id="how-it-works" className="mb-8">
           <div className="grid md:grid-cols-3 gap-6">
-            {[{ title: 'Record', desc: 'Bring notes, discharge summaries, lab results, even rough memories. MedicalMusai organizes them into a clean timeline and evidence cards you can trust.', hint: '[Notepad → timeline]' },
-              { title: 'Understand', desc: 'We translate jargon into plain language, highlight watch‑outs, show typical vs. atypical, and map possible differentials.', hint: '[Compass → clarity highlights]' },
-              { title: 'Act', desc: 'Generate doctor‑ready questions, next‑visit checklists, and referrals/resources. Export a one‑page Co‑Pilot Brief for your appointment.', hint: '[Runway → checklist]' }]
-              .map((s) => (
-                <Card key={s.title}>
-                  <CardHeader>
-                    <CardTitle>{s.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-sm text-muted-foreground">
-                    <p>{s.desc}</p>
-                    <div className="mt-3 rounded-lg border bg-card p-3 text-xs text-muted-foreground text-center">{s.hint}</div>
-                  </CardContent>
-                </Card>
+            {[
+              {
+                title: 'Record',
+                desc: 'Bring notes, discharge summaries, lab results, even rough memories. MedicalMusai organizes them into a clean timeline and evidence cards you can trust.',
+                img: notepadTimeline,
+                alt: 'Notepad turning into timeline',
+              },
+              {
+                title: 'Understand',
+                desc: 'We translate jargon into plain language, highlight watch‑outs, show typical vs. atypical, and map possible differentials.',
+                img: compassClarity,
+                alt: 'Compass revealing clarity highlights',
+              },
+              {
+                title: 'Act',
+                desc: 'Generate doctor‑ready questions, next‑visit checklists, and referrals/resources. Export a one‑page Co‑Pilot Brief for your appointment.',
+                img: runwayChecklist,
+                alt: 'Runway leading to a checklist',
+              },
+            ].map((s) => (
+              <Card key={s.title}>
+                <CardHeader>
+                  <CardTitle>{s.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  <p>{s.desc}</p>
+                  <div className="mt-3 rounded-md border bg-card overflow-hidden">
+                    <img src={s.img} alt={s.alt} className="block w-full h-auto" />
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
@@ -123,7 +148,13 @@ const MedicalMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
           </div>
-          <div className="mt-3 text-xs text-muted-foreground text-center">[Three columns labeled Clarity / Confidence / Connection with small UI snippets]</div>
+          <div className="mt-3 rounded-md border bg-card overflow-hidden">
+            <img
+              src={threeColumns}
+              alt="Three columns labeled Clarity, Confidence, Connection with miniature UI snippets"
+              className="block w-full h-auto"
+            />
+          </div>
         </section>
 
         {/* 4) Diagnoses & Decisions — Challenge, Kindly */}
@@ -263,7 +294,13 @@ const MedicalMusaiInfo: React.FC = () =>
               {['The Five‑Minute Visit: You showed a one‑page brief; you left with a plan.', 'The “Maybe It’s Not That” Moment: You asked the differential question; got the right test.', 'The “I Can Do This” Week: TherapyMusai broke it into 10‑minute habits; you did them.'].map((t) => (
                 <div key={t} className="rounded-lg border bg-card p-4">{t}</div>
               ))}
-              <div className="md:col-span-3 text-center text-xs text-muted-foreground">[Three polaroid‑style cards with captions]</div>
+              <div className="md:col-span-3 rounded-md border bg-card overflow-hidden">
+                <img
+                  src={polaroidCards}
+                  alt="Three polaroid‑style cards with captions"
+                  className="block w-full h-auto"
+                />
+              </div>
             </CardContent>
           </Card>
         </section>
@@ -291,7 +328,13 @@ const MedicalMusaiInfo: React.FC = () =>
             </CardHeader>
             <CardContent>
               <Button onClick={() => navigate(ROUTES.MEDICAL_MUSAI_DEMO)}>Start Your Pre‑Flight</Button>
-              <div className="mt-2 text-xs text-muted-foreground">[Gentle runway lights leading into the horizon]</div>
+              <div className="mt-3 rounded-md border bg-card overflow-hidden">
+                <img
+                  src={runwayLights}
+                  alt="Gentle runway lights leading into the horizon"
+                  className="block w-full h-auto"
+                />
+              </div>
             </CardContent>
           </Card>
         </section>

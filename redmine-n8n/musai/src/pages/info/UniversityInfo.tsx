@@ -24,6 +24,7 @@ import {
   GitBranch
 } from 'lucide-react';
 import universityHero from '@/assets/images/musaiuniversity_hero.png';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const UniversityInfo = () =>
@@ -45,7 +46,7 @@ const UniversityInfo = () =>
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_UNIVERSITY} />
 
       <div className="container mx-auto px-4 py-16 max-w-6xl">
@@ -67,26 +68,15 @@ const UniversityInfo = () =>
               </Button>
             </div>
           </div>
-          <div className="relative">
-            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-slate-400/10 to-transparent blur-2xl" />
-            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
-              <img src={universityHero} alt="Musai University hero" className="block w-full h-auto" />
+          <div className="relative overflow-hidden">
+            <div className="absolute -inset-2 sm:-inset-6 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-slate-400/10 to-transparent blur-2xl pointer-events-none" />
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden w-full">
+              <AspectRatio ratio={16/9}>
+                <img src={universityHero} alt="Musai University hero" className="block w-full h-full object-contain" />
+              </AspectRatio>
             </div>
           </div>
         </div>
-
-        {/* Hero image prompt for designers */}
-        <Card className="mb-10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Images className="w-5 h-5" /> Hero Image Prompt
-            </CardTitle>
-            <CardDescription>For design/generation teams</CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Elegant academic hero: dark slate → deep‑indigo gradient; subtle campus‑crest silhouette; floating cards labeled “Lecture • Professor Chat • Quiz”; thin constellations implying knowledge graphs; soft teal/emerald accents.
-          </CardContent>
-        </Card>
 
         {/* What makes it a University */}
         <Card className="mb-8">

@@ -38,7 +38,7 @@ const StagePill: React.FC<{
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-md border px-3 py-2 bg-card',
+        'w-full sm:w-auto flex-1 sm:flex-none min-w-0 flex items-center gap-2 rounded-md border px-3 py-2 bg-card',
         isRunning && 'ring-2 ring-primary/40 border-primary/40',
         isComplete && 'border-emerald-500/30',
         isSkipped && 'opacity-50'
@@ -70,7 +70,7 @@ export const CognitiveThinkingStrip: React.FC<CognitiveThinkingStripProps> = ({
 {
   return (
     <div className={cn('w-full flex flex-col gap-2', className)}>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <StagePill
           icon={Brain}
           title="Logical Mind"
@@ -78,7 +78,7 @@ export const CognitiveThinkingStrip: React.FC<CognitiveThinkingStripProps> = ({
           state={logicalState}
           accentClass="bg-primary/10 text-primary"
         />
-        <div className="text-xs text-muted-foreground">→</div>
+        <div className="hidden sm:block text-xs text-muted-foreground">→</div>
         <StagePill
           icon={Wand2}
           title="Creative Mind"
@@ -86,7 +86,7 @@ export const CognitiveThinkingStrip: React.FC<CognitiveThinkingStripProps> = ({
           state={creativeState}
           accentClass="bg-purple-500/10 text-purple-500"
         />
-        <div className="text-xs text-muted-foreground">→</div>
+        <div className="hidden sm:block text-xs text-muted-foreground">→</div>
         <StagePill
           icon={GitMerge}
           title="Musai Fusion"
@@ -94,7 +94,7 @@ export const CognitiveThinkingStrip: React.FC<CognitiveThinkingStripProps> = ({
           state={fusionState}
           accentClass="bg-emerald-500/10 text-emerald-600"
         />
-        <div className="text-xs text-muted-foreground">→</div>
+        <div className="hidden sm:block text-xs text-muted-foreground">→</div>
         <StagePill
           icon={Cloud}
           title="Cloud Assist"

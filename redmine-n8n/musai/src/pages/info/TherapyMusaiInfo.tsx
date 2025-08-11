@@ -7,6 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import therapyHero from '@/assets/images/therapymusai_hero.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+// Aesthetic preview images
+import mobileMock from '@/assets/images/therapymusai_Mobile therapy interface mock- single column glass cards .png';
+import toolsGrid from '@/assets/images/therapy musai _Grid of therapy tools- 5-4-3-2-1, breathing, body scan, saf.png';
+import flowDiagram from '@/assets/images/therapy musai_Therapy flow diagram- Thought → Emotion → Behavior → Reframe, .png';
+import therapeuticDashboard from '@/assets/images/therapy musai_Therapeutic dashboard- mood ring, safety indicator, .png';
+import allianceThreads from '@/assets/images/therapymusai_ Two abstract figures (guide + client) made of flowing light .png';
+import iconsSet from '@/assets/images/therapymusai_  Minimal line icons on glass chips- breathing, journal, .png';
+import valuesGoals from '@/assets/images/therapy musai _  Values and goals cards floating- compass icon, mountain .png';
+import progressChart from '@/assets/images/therapymusai_Therapeutic progress visualization- soft curved line chart .png';
 import {
   Heart,
   Sparkles,
@@ -192,6 +202,22 @@ const TherapyMusaiInfo: React.FC = () =>
           </Card>
         </section>
 
+        {/* Visual inserts — Mobile UI and Tools grid */}
+        <section className="mb-8">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="rounded-md border bg-card overflow-hidden">
+              <AspectRatio ratio={16/9}>
+                <img src={mobileMock} alt="Mobile therapy interface mock — single column glass cards" className="block w-full h-full object-contain" />
+              </AspectRatio>
+            </div>
+            <div className="rounded-md border bg-card overflow-hidden">
+              <AspectRatio ratio={16/9}>
+                <img src={toolsGrid} alt="Grid of therapy tools — 5-4-3-2-1, breathing, body scan" className="block w-full h-full object-contain" />
+              </AspectRatio>
+            </div>
+          </div>
+        </section>
+
         {/* How It Works — Acts in Your Personal Story Arc */}
         <section id="how-it-works" className="mb-8">
           <div className="grid md:grid-cols-2 gap-6">
@@ -258,6 +284,11 @@ const TherapyMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
           </div>
+          <div className="mt-4 rounded-md border bg-card overflow-hidden">
+            <AspectRatio ratio={16/9}>
+              <img src={flowDiagram} alt="Therapy flow diagram — Thought → Emotion → Behavior → Reframe" className="block w-full h-full object-contain" />
+            </AspectRatio>
+          </div>
         </section>
 
         {/* Core Models & Philosophies */}
@@ -306,6 +337,22 @@ const TherapyMusaiInfo: React.FC = () =>
           </div>
         </section>
 
+        {/* Visual inserts — Dashboard and Alliance */}
+        <section className="mb-8">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="rounded-md border bg-card overflow-hidden">
+              <AspectRatio ratio={16/9}>
+                <img src={therapeuticDashboard} alt="Therapeutic dashboard — mood ring and safety indicator" className="block w-full h-full object-contain" />
+              </AspectRatio>
+            </div>
+            <div className="rounded-md border bg-card overflow-hidden">
+              <AspectRatio ratio={16/9}>
+                <img src={allianceThreads} alt="Two abstract figures (guide and client) made of flowing light" className="block w-full h-full object-contain" />
+              </AspectRatio>
+            </div>
+          </div>
+        </section>
+
         {/* Key Tools & Features */}
         <section className="mb-8">
           <Card>
@@ -325,6 +372,22 @@ const TherapyMusaiInfo: React.FC = () =>
           </Card>
         </section>
 
+        {/* Visual inserts — Icons and Values */}
+        <section className="mb-8">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="rounded-md border bg-card overflow-hidden">
+              <AspectRatio ratio={16/9}>
+                <img src={iconsSet} alt="Minimal line icons on glass chips — breathing, journal, tools" className="block w-full h-full object-contain" />
+              </AspectRatio>
+            </div>
+            <div className="rounded-md border bg-card overflow-hidden">
+              <AspectRatio ratio={16/9}>
+                <img src={valuesGoals} alt="Values and goals cards floating — compass and mountain icons" className="block w-full h-full object-contain" />
+              </AspectRatio>
+            </div>
+          </div>
+        </section>
+
         {/* Gamified Growth */}
         <section className="mb-8">
           <Card>
@@ -339,6 +402,15 @@ const TherapyMusaiInfo: React.FC = () =>
               </ul>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Visual insert — Progress chart */}
+        <section className="mb-8">
+          <div className="rounded-md border bg-card overflow-hidden">
+            <AspectRatio ratio={16/9}>
+              <img src={progressChart} alt="Therapeutic progress visualization — soft curved line chart" className="block w-full h-full object-contain" />
+            </AspectRatio>
+          </div>
         </section>
 
         {/* In the Future */}

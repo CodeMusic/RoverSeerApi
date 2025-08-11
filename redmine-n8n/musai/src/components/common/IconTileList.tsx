@@ -64,7 +64,7 @@ export function IconTileList(props: IconTileListProps)
             >
               <Button
                 variant="outline"
-                className={`justify-start h-auto ${dense ? 'py-3' : 'py-4'} px-4 text-left whitespace-normal break-words w-full rounded-md border-0 bg-background/80 h-full`}
+                className={`relative overflow-hidden justify-start h-auto ${dense ? 'py-3' : 'py-4'} px-4 text-left whitespace-normal break-words w-full rounded-md border-0 bg-background/80 h-full`}
                 onClick={() => {
                   if (onItemClick)
                   {

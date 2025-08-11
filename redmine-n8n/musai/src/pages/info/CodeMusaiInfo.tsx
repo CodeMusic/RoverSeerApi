@@ -232,9 +232,9 @@ const CodeMusaiInfo: React.FC = () =>
           </CardContent>
         </Card>
 
-        {/* Hybrid controls demo */}
+        {/* Hybrid controls demo (read-only) */}
         <div className="mb-10">
-          <HybridControlsPanel enabled={false} />
+          <HybridControlsPanel enabled={false} readOnly />
         </div>
 
         {/* Playground prompt for designers */}
@@ -249,10 +249,6 @@ const CodeMusaiInfo: React.FC = () =>
         </Card>
 
         {/* CTA */}
-        <div className="flex gap-3 justify-center">
-          <Button onClick={() => navigate(ROUTES.CODE_PLAYGROUND)}>Try CodeMusai Now</Button>
-          <Button variant="outline" onClick={() => navigate(ROUTES.MAIN_APP)}>Explore the Musai Ecosystem</Button>
-        </div>
         <InfoFooterNav currentRoute={ROUTES.CODE_MUSAI_INFO} />
       </div>
     </div>

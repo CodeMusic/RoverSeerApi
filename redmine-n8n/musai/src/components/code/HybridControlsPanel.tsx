@@ -11,6 +11,7 @@ export interface HybridControlsPanelProps
 {
   enabled?: boolean;
   onChange?: (state: HybridSettingsState) => void;
+  readOnly?: boolean;
 }
 
 export interface HybridSettingsState
@@ -22,7 +23,7 @@ export interface HybridSettingsState
   allowlistDomains: string;
 }
 
-export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enabled = false, onChange }) =>
+export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enabled = false, onChange, readOnly = false }) =>
 {
   const [state, setState] = useState<HybridSettingsState>({
     enabled,
@@ -34,6 +35,10 @@ export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enable
 
   const update = (partial: Partial<HybridSettingsState>) =>
   {
+    if (readOnly)
+    {
+      return;
+    }
     const next = { ...state, ...partial };
     setState(next);
     onChange?.(next);
@@ -47,9 +52,16 @@ export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enable
             <CardTitle className="flex items-center gap-2">
               <UploadCloud className="w-5 h-5" /> Hybrid Cloud Controls
             </CardTitle>
-            <CardDescription>Opt-in, granular, and fully transparent.</CardDescription>
+            <CardDescription>
+              {readOnly
+                ? 'Demo preview — controls are disabled on this page.'
+                : 'Opt-in, granular, and fully transparent.'}
+            </CardDescription>
           </div>
-          <Badge variant={state.enabled ? 'default' : 'outline'}>{state.enabled ? 'Enabled' : 'Disabled'}</Badge>
+          <div className="flex items-center gap-2">
+            {readOnly && <Badge variant="outline">Demo</Badge>}
+            <Badge variant={state.enabled ? 'default' : 'outline'}>{state.enabled ? 'Enabled' : 'Disabled'}</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -58,18 +70,18 @@ export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enable
             <Label htmlFor="enabled">Hybrid Assist</Label>
             <p className="text-xs text-muted-foreground">Allow routing specific sub-tasks to cloud models</p>
           </div>
-          <Switch id="enabled" checked={state.enabled} onCheckedChange={(v) => update({ enabled: v })} />
+          <Switch id="enabled" checked={state.enabled} disabled={readOnly} onCheckedChange={(v) => update({ enabled: v })} />
         </div>
 
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><EyeOff className="w-4 h-4" /> Redact identifiers</Label>
-            <Switch checked={state.redactIdentifiers} onCheckedChange={(v) => update({ redactIdentifiers: v })} />
+            <Switch checked={state.redactIdentifiers} disabled={readOnly} onCheckedChange={(v) => update({ redactIdentifiers: v })} />
             <p className="text-xs text-muted-foreground">Removes emails, tokens, and IDs before sending</p>
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><Scissors className="w-4 h-4" /> Summarize large docs</Label>
-            <Switch checked={state.summarizeLargeDocs} onCheckedChange={(v) => update({ summarizeLargeDocs: v })} />
+            <Switch checked={state.summarizeLargeDocs} disabled={readOnly} onCheckedChange={(v) => update({ summarizeLargeDocs: v })} />
             <p className="text-xs text-muted-foreground">Condense long PDFs or logs before upload</p>
           </div>
         </div>
@@ -77,14 +89,14 @@ export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enable
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="tokenCap" className="flex items-center gap-2"><Filter className="w-4 h-4" /> Token cap</Label>
-            <Input id="tokenCap" type="number" min={512} max={32000} value={state.tokenCap}
+            <Input id="tokenCap" type="number" min={512} max={32000} value={state.tokenCap} disabled={readOnly}
                    onChange={(e) => update({ tokenCap: Number(e.target.value) })} />
             <p className="text-xs text-muted-foreground">Maximum tokens per cloud request</p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="allowlist" className="flex items-center gap-2"><FileText className="w-4 h-4" /> Domain allowlist</Label>
-            <Input id="allowlist" placeholder="example.com, docs.org" value={state.allowlistDomains}
+            <Input id="allowlist" placeholder="example.com, docs.org" value={state.allowlistDomains} disabled={readOnly}
                    onChange={(e) => update({ allowlistDomains: e.target.value })} />
             <p className="text-xs text-muted-foreground">Comma-separated list of domains allowed for retrieval</p>
           </div>
@@ -95,8 +107,8 @@ export const HybridControlsPanel: React.FC<HybridControlsPanelProps> = ({ enable
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setState({ enabled: false, redactIdentifiers: true, summarizeLargeDocs: true, tokenCap: 4000, allowlistDomains: '' })}>Reset</Button>
-          <Button onClick={() => onChange?.(state)}>Save</Button>
+          <Button variant="outline" disabled={readOnly} aria-disabled={readOnly} onClick={() => setState({ enabled: false, redactIdentifiers: true, summarizeLargeDocs: true, tokenCap: 4000, allowlistDomains: '' })}>Reset</Button>
+          <Button disabled={readOnly} aria-disabled={readOnly} onClick={() => onChange?.(state)}>Save</Button>
         </div>
       </CardContent>
     </Card>
