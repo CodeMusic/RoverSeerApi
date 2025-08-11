@@ -16,6 +16,7 @@ import {
   isDualValenceIndex,
 } from "@/utils/chroma";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+import { IconTileList } from "@/components/common/IconTileList";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -24,8 +25,6 @@ const Landing = () => {
   const [message, setMessage] = useState("");
   const [selectedMode, setSelectedMode] = useState("auto");
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
-  const autoplayRef = useRef<number | null>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const siteMapRef = useRef<HTMLDivElement | null>(null);
   const [siteMapRevealed, setSiteMapRevealed] = useState(false);
 
@@ -48,31 +47,7 @@ const Landing = () => {
     { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE },
   ];
 
-  // Chromatic accent system for lists (shared utilities)
-  function buildAccentForList(length: number)
-  {
-    const toneIdx = computeToneIndices(length, MUSAI_CHROMATIC_12.length);
-    return toneIdx.map((idx) =>
-    {
-      const tone = getToneByIndex(idx);
-      const { previous, next } = getNeighborTones(idx);
-      const isDual = isDualValenceIndex(idx);
-      const borderStyle = isDual
-        ? `linear-gradient(90deg, ${hexToRgba(previous.hex, 0.18)}, ${hexToRgba(next.hex, 0.18)})`
-        : hexToRgba(tone.hex, 0.18);
-
-      // Provide class/style for icon to optionally phase between tones on dual indices
-      const iconClass = isDual ? 'dual-color-phase' : '';
-      const iconStyle = isDual
-        ? { ['--phase-color-a' as any]: tone.hex, ['--phase-color-b' as any]: next.hex }
-        : { color: hexToRgba(tone.hex, 0.7) };
-
-      return { borderStyle, iconClass, iconStyle } as const;
-    });
-  }
-
-  // Show only three Musai tiles in the bottom carousel (top-of-mind entry points)
-  const primaryCarouselLinks = infoLinks.slice(0, 3);
+  // Chromatic accent system moved to IconTileList
 
   // Group links for a flat site map: modules first, then supporting pages
   const moduleRouteSet = new Set<string>([
@@ -90,6 +65,9 @@ const Landing = () => {
   const moduleLinks = infoLinks.filter((l) => moduleRouteSet.has(l.to as string));
   const supportingLinks = infoLinks.filter((l) => !moduleRouteSet.has(l.to as string));
 
+  // Show only main Musai module pages in the bottom carousel
+  const primaryCarouselLinks = moduleLinks;
+
   // Optional: if user scrolls past a bit, auto‑reveal site map
   useEffect(() => {
     const onScroll = () => {
@@ -103,27 +81,7 @@ const Landing = () => {
     return () => window.removeEventListener('scroll', onScroll);
   }, [siteMapRevealed]);
 
-  // Autoplay that pauses on hover/focus
-  useEffect(() => {
-    if (!carouselApi) return;
-    if (isHovered) {
-      if (autoplayRef.current) cancelAnimationFrame(autoplayRef.current);
-      return;
-    }
-    let last = performance.now();
-    const tick = (now: number) => {
-      if (now - last > 3500) {
-        carouselApi.scrollNext();
-        last = now;
-      }
-      autoplayRef.current = requestAnimationFrame(tick);
-    };
-    autoplayRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (autoplayRef.current) cancelAnimationFrame(autoplayRef.current);
-      autoplayRef.current = null;
-    };
-  }, [carouselApi, isHovered]);
+  // Disable autoplay; clicks will advance one full item
 
   const modeOptions = [
     { id: "auto", icon: Sparkles, label: "Auto", description: "Let AI decide" },
@@ -401,29 +359,45 @@ const Landing = () => {
 
         {/* Minimalist Info Carousel */}
         <div className="pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
-          <div
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className="relative mx-auto max-w-5xl"
-          >
-            <Carousel setApi={setCarouselApi} opts={{ align: 'start', loop: true, slidesToScroll: 1 }}>
-              <CarouselContent>
+          <div className="relative mx-auto max-w-5xl">
+            <Carousel
+              className="px-6 sm:px-8 md:px-10"
+              setApi={setCarouselApi}
+              opts={{ align: 'start', loop: true, slidesToScroll: 1, watchDrag: true, containScroll: 'trimSnaps' as any, duration: 10 }}
+            >
+              <CarouselContent className="-ml-5 sm:-ml-6 md:-ml-8">
                 {(() => {
-                  const accents = buildAccentForList(moduleLinks.length);
-                  return moduleLinks.map((link, i) => (
-                    <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3">
-                      <div className="rounded-xl p-px w-full overflow-hidden min-h-[52px]" style={{ background: accents[i].borderStyle }}>
-                        <Button onClick={() => navigate(link.to)} variant="outline" className={tileButtonClass}>
-                          {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
-                          {link.label}
-                        </Button>
-                      </div>
-                    </CarouselItem>
-                  ));
+                  const links = primaryCarouselLinks;
+                  const toneIdx = computeToneIndices(links.length, MUSAI_CHROMATIC_12.length);
+                  return links.map((link, i) => { 
+                    const idx = toneIdx[i] ?? 0;
+                    const tone = getToneByIndex(idx);
+                    const { previous, next } = getNeighborTones(idx);
+                    const isDual = isDualValenceIndex(idx);
+                    const border = isDual
+                      ? `linear-gradient(90deg, ${hexToRgba(previous.hex, 0.12)}, ${hexToRgba(next.hex, 0.12)})`
+                      : hexToRgba(tone.hex, 0.12);
+                    const IconComp = link.icon as any;
+                    return (
+                      <CarouselItem key={link.label} className="basis-1/3 pl-5 sm:pl-6 md:pl-8">
+                        <div className="rounded-lg p-px w-full overflow-hidden" style={{ background: border }}>
+                          <Button
+                            variant="outline"
+                            className="justify-start h-[48px] px-4 text-left whitespace-nowrap text-sm w-full rounded-lg border-0 bg-background/70 md:bg-background/60"
+                            onClick={() => navigate(link.to as string)}
+                            aria-label={link.label}
+                          >
+                            <IconComp className="w-4 h-4 mr-2 opacity-90" style={{ color: hexToRgba(tone.hex, 0.7) }} />
+                            <span className="font-medium leading-snug truncate">{link.label}</span>
+                          </Button>
+                        </div>
+                      </CarouselItem>
+                    );
+                  });
                 })()}
               </CarouselContent>
-              <CarouselPrevious className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
-              <CarouselNext className="border-0 bg-transparent hover:bg-transparent text-muted-foreground" />
+              <CarouselPrevious className="left-0 sm:left-1 md:left-2 border-0 bg-gradient-to-r from-background/80 to-transparent hover:from-background/90 text-muted-foreground" />
+              <CarouselNext className="right-0 sm:right-1 md:right-2 border-0 bg-gradient-to-l from-background/80 to-transparent hover:from-background/90 text-muted-foreground" />
             </Carousel>
           </div>
         </div>
@@ -446,49 +420,26 @@ const Landing = () => {
           <div className="pointer-events-none absolute -top-8 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/80 to-transparent" />
           <div
             ref={siteMapRef}
-            className={`max-w-6xl mx-auto transition-all duration-700 ease-out ${
+            className={`max-w-5xl md:max-w-6xl mx-auto transition-all duration-700 ease-out ${
               siteMapRevealed ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none select-none"
             }`}
           >
+            <br />
             <div className="text-center mb-6">
               <h2 className="text-2xl md:text-3xl font-bold">What is Musai?</h2>
-              <p className="text-muted-foreground mt-2">A flat, skimmable map — modules first, then supporting pages.</p>
+              <p className="text-muted-foreground mt-2">Musai is a creative–technical framework for exploring AI as both code and companion. It’s built as a flat, skimmable map: main modules first, then supporting pages. Part toolset, part philosophy, it’s designed to help ideas flow between logic and imagination.</p>
             </div>
-
+            <br />
             {/* Modules (Musai forms) */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold mb-3">Modules</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {(() => {
-                  const accents = buildAccentForList(moduleLinks.length);
-                  return moduleLinks.map((link, i) => (
-                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden min-h-[52px]" style={{ background: accents[i].borderStyle }}>
-                      <Button onClick={() => navigate(link.to)} variant="outline" className={tileButtonClass}>
-                        {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
-                        <span className="whitespace-normal break-words text-left leading-snug">{link.label}</span>
-                      </Button>
-                    </div>
-                  ));
-                })()}
-              </div>
+              <IconTileList items={moduleLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
             </div>
 
             {/* Supporting pages (architecture, integrations, docs) */}
             <div>
               <h3 className="text-lg font-semibold mb-3">Supporting</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {(() => {
-                  const accents = buildAccentForList(supportingLinks.length);
-                  return supportingLinks.map((link, i) => (
-                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden min-h-[52px]" style={{ background: accents[i].borderStyle }}>
-                      <Button onClick={() => navigate(link.to)} variant="outline" className={tileButtonClass}>
-                        {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
-                        <span className="whitespace-normal break-words text-left leading-snug">{link.label}</span>
-                      </Button>
-                    </div>
-                  ));
-                })()}
-              </div>
+              <IconTileList items={supportingLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
             </div>
           </div>
         </div>

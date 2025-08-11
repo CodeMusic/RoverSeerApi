@@ -98,6 +98,15 @@
   }
 }
 
+/* Prevent unintended horizontal scrolling/zoom-out on iOS by ensuring the layout never exceeds the viewport width */
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 /* CodeMusai Compiler Animations */
 @keyframes fadeInZoom {
   from {
@@ -726,7 +735,7 @@
 /* iOS Safari blur performance: reduce backdrop blur on small screens */
 @media (max-width: 480px) {
   .backdrop-blur {
-    -webkit-backdrop-filter: none !important;
-    backdrop-filter: none !important;
+    -webkit-backdrop-filter: blur(0px) !important;
+    backdrop-filter: blur(0px) !important;
   }
 }
