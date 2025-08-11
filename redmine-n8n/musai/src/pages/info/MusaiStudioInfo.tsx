@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 import { Music, LayoutTemplate, Timer, Rocket, Wand2, Brain, Palette, Download } from 'lucide-react';
+import studioHero from '@/assets/images/musaistudio hero.png';
+
 
 const MusaiStudioInfo: React.FC = () =>
 {
@@ -27,8 +29,11 @@ const MusaiStudioInfo: React.FC = () =>
             <Button onClick={() => navigate(ROUTES.MUSAI_STUDIO)}>Open the Studio</Button>
             <Button variant="outline" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>See How It Works</Button>
           </div>
-          <div className="mt-8 h-56 rounded-2xl border border-slate-200/40 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 flex items-center justify-center">
-            <span className="text-slate-500 dark:text-slate-400">[Timeline UI: 4 lanes — drums, bass, chords, lead; seed panel for Mood/Genre/Key/BPM; glowing Export button]</span>
+          <div className="mt-8 relative">
+            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-blue-500/15 via-indigo-400/10 to-transparent blur-2xl" />
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden border-slate-200/40 dark:border-slate-700">
+              <img src={studioHero} alt="MusaiStudio timeline hero" className="block w-full h-auto" />
+            </div>
           </div>
         </div>
 

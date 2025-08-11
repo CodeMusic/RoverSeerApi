@@ -1,5 +1,5 @@
 import React from 'react';
-import studioHero from '@/assets/images/musaistudio_Timeline UI- 4 lanes — drums, bass, chords, lead; seed .png';
+import studioHero from '@/assets/images/musaistudio hero.png';
 
 const MusaiStudio: React.FC = () =>
 {
