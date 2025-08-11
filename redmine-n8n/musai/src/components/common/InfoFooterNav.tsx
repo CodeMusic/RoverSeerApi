@@ -4,6 +4,13 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/config/routes';
 import { MUSAI_CHROMATIC_12 } from '@/config/constants';
 import {
+  computeToneIndices,
+  getToneByIndex,
+  getNeighborTones,
+  hexToRgba,
+  isDualValenceIndex,
+} from '@/utils/chroma';
+import {
   MessageSquare,
   Search,
   Eye,
@@ -42,8 +49,8 @@ export function InfoFooterNav(props: InfoFooterNavProps)
     { route: ROUTES.CAREER_MUSAI, label: 'CareerMusai', Icon: TrendingUp },
   ];
 
-  const selected = cognitiveDestinations.find((d) => d.route === currentRoute);
-  const others = cognitiveDestinations.filter((d) => d.route !== currentRoute);
+  const selectedRoute = currentRoute;
+  const toneIndices = computeToneIndices(cognitiveDestinations.length, MUSAI_CHROMATIC_12.length);
 
   if (cognitiveDestinations.length === 0)
   {
@@ -56,47 +63,50 @@ export function InfoFooterNav(props: InfoFooterNavProps)
         <div className="text-sm text-muted-foreground">Explore other Musai main pages</div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {selected && (
-          <div className="justify-start h-auto py-4 px-4 border-2 text-left whitespace-normal break-words rounded-md bg-sidebar-accent/40 border-border/50 text-foreground/80 cursor-default flex items-center">
-            <selected.Icon className="w-4 h-4 mr-2 mt-0.5" />
-            <span className="font-semibold">{selected.label} (current)</span>
-          </div>
-        )}
-        {(() => {
-          const toRgb = (hex: string) => {
-            const n = hex.replace('#', '');
-            const v = parseInt(n.length === 3 ? n.split('').map(c => c + c).join('') : n, 16);
-            return [(v >> 16) & 255, (v >> 8) & 255, v & 255] as const;
-          };
-          const rgba = (hex: string, a: number) => {
-            const [r, g, b] = toRgb(hex);
-            return `rgba(${r}, ${g}, ${b}, ${a})`;
-          };
-          const count = others.length;
-          const last = MUSAI_CHROMATIC_12.length - 1;
-          const indices = Array.from({ length: count }, (_, i) => Math.round((i * last) / (count - 1)));
-          const duals = new Set([1, 3, 7, 10]);
-          return others.map(({ route, label, Icon }, i) => {
-            const idx = Math.min(last, indices[i] || 0);
-            const tone = MUSAI_CHROMATIC_12[idx];
-            const border = duals.has(idx)
-              ? `linear-gradient(90deg, ${rgba(MUSAI_CHROMATIC_12[idx - 1]?.hex || tone.hex, 0.18)}, ${rgba(MUSAI_CHROMATIC_12[idx + 1]?.hex || tone.hex, 0.18)})`
-              : rgba(tone.hex, 0.18);
-            const iconColor = duals.has(idx) ? rgba(MUSAI_CHROMATIC_12[idx + 1]?.hex || tone.hex, 0.7) : rgba(tone.hex, 0.7);
+        {cognitiveDestinations.map(({ route, label, Icon }, i) =>
+        {
+          const paletteIndex = toneIndices[i] ?? 0;
+          const tone = getToneByIndex(paletteIndex);
+          const { previous, next } = getNeighborTones(paletteIndex);
+          const isDual = isDualValenceIndex(paletteIndex);
+
+          const border = isDual
+            ? `linear-gradient(90deg, ${hexToRgba(previous.hex, 0.18)}, ${hexToRgba(next.hex, 0.18)})`
+            : hexToRgba(tone.hex, 0.18);
+
+          const isCurrent = route === selectedRoute;
+
+          if (isCurrent)
+          {
             return (
               <div key={route} className="rounded-md p-px" style={{ background: border }}>
-                <Button
-                  variant="outline"
-                  className="justify-start h-auto py-4 px-4 border-0 text-left whitespace-normal break-words w-full rounded-md"
-                  onClick={() => navigate(route)}
-                >
-                  <Icon className="w-4 h-4 mr-2 mt-0.5" style={{ color: iconColor }} />
-                  <span className="font-medium">{label}</span>
-                </Button>
+                <div className="justify-start h-auto py-4 px-4 border-2 text-left whitespace-normal break-words w-full rounded-md bg-sidebar-accent/40 border-border/50 text-foreground/80 cursor-default flex items-center">
+                  <Icon
+                    className={`w-4 h-4 mr-2 mt-0.5 ${isDual ? 'dual-color-phase' : ''}`}
+                    style={isDual ? { ['--phase-color-a' as any]: tone.hex, ['--phase-color-b' as any]: next.hex } : { color: hexToRgba(tone.hex, 0.7) }}
+                  />
+                  <span className="font-semibold">{label} (current)</span>
+                </div>
               </div>
             );
-          });
-        })()}
+          }
+
+          return (
+            <div key={route} className="rounded-md p-px" style={{ background: border }}>
+              <Button
+                variant="outline"
+                className="justify-start h-auto py-4 px-4 border-0 text-left whitespace-normal break-words w-full rounded-md"
+                onClick={() => navigate(route)}
+              >
+                <Icon
+                  className={`w-4 h-4 mr-2 mt-0.5 ${isDual ? 'dual-color-phase' : ''}`}
+                  style={isDual ? { ['--phase-color-a' as any]: tone.hex, ['--phase-color-b' as any]: next.hex } : { color: hexToRgba(tone.hex, 0.7) }}
+                />
+                <span className="font-medium">{label}</span>
+              </Button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

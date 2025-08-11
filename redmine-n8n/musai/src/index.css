@@ -701,3 +701,24 @@
 .glyph-spin {
   animation: glyphSpin 4s linear infinite;
 }
+
+/* Dual-color phase for icons where gradients are subtle */
+@keyframes dualColorPhase {
+  0%, 100% {
+    color: var(--phase-color-a, currentColor);
+  }
+  50% {
+    color: var(--phase-color-b, currentColor);
+  }
+}
+
+.dual-color-phase {
+  animation: dualColorPhase 3s ease-in-out infinite;
+  will-change: color;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dual-color-phase {
+    animation: none;
+  }
+}

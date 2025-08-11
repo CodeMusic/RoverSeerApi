@@ -8,6 +8,13 @@ import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
 import { APP_TERMS, MUSAI_CHROMATIC_12 } from "@/config/constants";
+import {
+  computeToneIndices,
+  getNeighborTones,
+  getToneByIndex,
+  hexToRgba,
+  isDualValenceIndex,
+} from "@/utils/chroma";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 
 const Landing = () => {
@@ -41,90 +48,26 @@ const Landing = () => {
     { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE },
   ];
 
-  // Chromatic accent system for lists: map first to red and last to violet (12-tone scale)
-  function computeToneIndices(count: number): number[]
-  {
-    if (count <= 1)
-    {
-      return [0];
-    }
-
-    // Special handcrafted mapping for 10 items: red, red-orange, orange, orange-yellow, yellow, green, green/blue, blue, indigo, violet
-    if (count === 10)
-    {
-      return [0, 1, 2, 3, 4, 6, 7, 8, 9, 11];
-    }
-
-    const indices: number[] = [];
-    const last = MUSAI_CHROMATIC_12.length - 1; // 11
-    let prev = -1;
-    for (let i = 0; i < count; i++)
-    {
-      const raw = Math.round((i * last) / (count - 1));
-      const idx = Math.min(last, Math.max(prev + 1, raw));
-      indices.push(idx);
-      prev = idx;
-    }
-    return indices;
-  }
-
-  function hexToRgbTriplet(hex: string): [number, number, number]
-  {
-    const normalized = hex.replace('#', '');
-    const value = parseInt(normalized.length === 3
-      ? normalized.split('').map((c) => c + c).join('')
-      : normalized, 16);
-    const r = (value >> 16) & 255;
-    const g = (value >> 8) & 255;
-    const b = value & 255;
-    return [r, g, b];
-  }
-
-  function rgbaFromHex(hex: string, alpha: number): string
-  {
-    const [r, g, b] = hexToRgbTriplet(hex);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  function getGradientForIndex(index: number): string | null
-  {
-    // Define dual-color steps relative to neighbors
-    const neighbor = (i: number) => MUSAI_CHROMATIC_12[Math.min(MUSAI_CHROMATIC_12.length - 1, Math.max(0, i))].hex;
-    if (index === 1)
-    {
-      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(0), 0.18)}, ${rgbaFromHex(neighbor(2), 0.18)})`;
-    }
-    if (index === 3)
-    {
-      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(2), 0.18)}, ${rgbaFromHex(neighbor(4), 0.18)})`;
-    }
-    if (index === 7)
-    {
-      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(6), 0.18)}, ${rgbaFromHex(neighbor(8), 0.18)})`;
-    }
-    if (index === 10)
-    {
-      return `linear-gradient(90deg, ${rgbaFromHex(neighbor(9), 0.18)}, ${rgbaFromHex(neighbor(11), 0.18)})`;
-    }
-    return null;
-  }
-
+  // Chromatic accent system for lists (shared utilities)
   function buildAccentForList(length: number)
   {
-    const toneIdx = computeToneIndices(length);
+    const toneIdx = computeToneIndices(length, MUSAI_CHROMATIC_12.length);
     return toneIdx.map((idx) =>
     {
-      const tone = MUSAI_CHROMATIC_12[idx];
-      const gradient = getGradientForIndex(idx);
-      // Subtlety: reduce alpha for single tones too
-      const borderStyle = gradient || rgbaFromHex(tone.hex, 0.18);
-      // Icon uses softened tone; for duals choose the second neighbor for emphasis
-      let iconColor = rgbaFromHex(tone.hex, 0.7);
-      if (idx === 1) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[2].hex, 0.7); // orange
-      if (idx === 3) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[4].hex, 0.7); // yellow
-      if (idx === 7) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[8].hex, 0.7); // blue
-      if (idx === 10) iconColor = rgbaFromHex(MUSAI_CHROMATIC_12[11].hex, 0.7); // violet
-      return { borderStyle, iconColor };
+      const tone = getToneByIndex(idx);
+      const { previous, next } = getNeighborTones(idx);
+      const isDual = isDualValenceIndex(idx);
+      const borderStyle = isDual
+        ? `linear-gradient(90deg, ${hexToRgba(previous.hex, 0.18)}, ${hexToRgba(next.hex, 0.18)})`
+        : hexToRgba(tone.hex, 0.18);
+
+      // Provide class/style for icon to optionally phase between tones on dual indices
+      const iconClass = isDual ? 'dual-color-phase' : '';
+      const iconStyle = isDual
+        ? { ['--phase-color-a' as any]: tone.hex, ['--phase-color-b' as any]: next.hex }
+        : { color: hexToRgba(tone.hex, 0.7) };
+
+      return { borderStyle, iconClass, iconStyle } as const;
     });
   }
 
@@ -461,13 +404,13 @@ const Landing = () => {
                   const accents = buildAccentForList(moduleLinks.length);
                   return moduleLinks.map((link, i) => (
                     <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3">
-                      <div className="rounded-xl p-px" style={{ background: accents[i].borderStyle }}>
+                      <div className="rounded-xl p-px w-full overflow-hidden" style={{ background: accents[i].borderStyle }}>
                         <Button
                           onClick={() => navigate(link.to)}
                           variant="outline"
                           className={`relative z-0 w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-0 transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] hover:shadow-sm bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60`}
                         >
-                          {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: accents[i].iconColor }} /> })()}
+                          {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
                           {link.label}
                         </Button>
                       </div>
@@ -494,7 +437,7 @@ const Landing = () => {
         )}
 
         {/* Flat Site Map / Quick Navigation */}
-        <div className="pt-14 pb-20 relative">
+        <div className="pt-14 pb-20 relative overflow-x-hidden">
           {/* Subtle resistance veil */}
           <div className="pointer-events-none absolute -top-8 left-0 right-0 h-16 bg-gradient-to-b from-background via-background/80 to-transparent" />
           <div
@@ -515,14 +458,14 @@ const Landing = () => {
                 {(() => {
                   const accents = buildAccentForList(moduleLinks.length);
                   return moduleLinks.map((link, i) => (
-                    <div key={link.label} className="rounded-xl p-px" style={{ background: accents[i].borderStyle }}>
+                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden" style={{ background: accents[i].borderStyle }}>
                       <Button
                         onClick={() => navigate(link.to)}
                         variant="outline"
                         className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-0 hover:bg-sidebar-accent/30 transition-all duration-300 w-full`}
                       >
-                        {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: accents[i].iconColor }} /> })()}
-                        <span className="truncate">{link.label}</span>
+                        {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
+                        <span className="whitespace-normal break-words text-left leading-snug">{link.label}</span>
                       </Button>
                     </div>
                   ));
@@ -537,14 +480,14 @@ const Landing = () => {
                 {(() => {
                   const accents = buildAccentForList(supportingLinks.length);
                   return supportingLinks.map((link, i) => (
-                    <div key={link.label} className="rounded-xl p-px" style={{ background: accents[i].borderStyle }}>
+                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden" style={{ background: accents[i].borderStyle }}>
                       <Button
                         onClick={() => navigate(link.to)}
                         variant="outline"
                         className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-0 hover:bg-sidebar-accent/30 transition-all duration-300 w-full`}
                       >
-                        {(() => { const Icon = link.icon; return <Icon className="w-4 h-4 mr-2 flex-shrink-0" style={{ color: accents[i].iconColor }} /> })()}
-                        <span className="truncate">{link.label}</span>
+                        {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
+                        <span className="whitespace-normal break-words text-left leading-snug">{link.label}</span>
                       </Button>
                     </div>
                   ));
