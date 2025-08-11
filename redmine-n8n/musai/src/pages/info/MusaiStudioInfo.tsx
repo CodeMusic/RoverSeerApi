@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 import { Music, LayoutTemplate, Timer, Rocket, Wand2, Brain, Palette, Download } from 'lucide-react';
+import { InfoPageSurface } from '@/components/common/InfoPageSurface';
 import studioHero from '@/assets/images/musaistudio hero.png';
 
 
@@ -21,24 +22,26 @@ const MusaiStudioInfo: React.FC = () =>
       <div className="container mx-auto px-4 py-14 max-w-6xl">
         {/* Hero */}
         <div className="text-center space-y-6 mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold">Make music that ships — right from your browser.</h1>
-          <p className="text-muted-foreground max-w-3xl mx-auto">
-            MusaiStudio runs locally on a Pi‑5 and generates your loops, voices, and arrangements using the same family of AI sound models behind Meta’s AudioCraft and SoundCraft — but with a simple, playful interface that anyone can use.
-          </p>
-          <div className="flex gap-4 justify-center">
-            <Button onClick={() => navigate(ROUTES.MUSAI_STUDIO)}>Open the Studio</Button>
-            <Button variant="outline" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>See How It Works</Button>
-          </div>
-          <div className="mt-8 relative">
-            <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-blue-500/15 via-indigo-400/10 to-transparent blur-2xl" />
-            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden border-slate-200/40 dark:border-slate-700">
-              <img src={studioHero} alt="MusaiStudio timeline hero" className="block w-full h-auto" />
+          <InfoPageSurface auraClassName="from-blue-500/15 via-indigo-400/10">
+            <h1 className="text-4xl md:text-5xl font-bold">Make music that ships — right from your browser.</h1>
+            <p className="text-muted-foreground max-w-3xl mx-auto">
+              MusaiStudio runs locally on a Pi‑5 and generates your loops, voices, and arrangements using the same family of AI sound models behind Meta’s AudioCraft and SoundCraft — but with a simple, playful interface that anyone can use.
+            </p>
+            <div className="flex gap-4 justify-center">
+              <Button onClick={() => navigate(ROUTES.MUSAI_STUDIO)}>Open the Studio</Button>
+              <Button variant="outline" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>See How It Works</Button>
             </div>
-          </div>
+            <div className="mt-8 relative">
+              <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden border-slate-200/40 dark:border-slate-700">
+                <img src={studioHero} alt="MusaiStudio timeline hero" className="block w-full h-auto" />
+              </div>
+            </div>
+          </InfoPageSurface>
         </div>
 
         {/* How It Works */}
         <div id="how-it-works" className="grid md:grid-cols-3 gap-6 mb-12">
+          <InfoPageSurface>
           {[
             { title: 'Generate', desc: 'Loopable stems for drums, bass, chords, lead — plus expressive AI voices via Piper.' },
             { title: 'Arrange', desc: 'Drag clips on a bar/beat timeline; set BPM & key; add effects; loop or trim.' },
@@ -51,10 +54,12 @@ const MusaiStudioInfo: React.FC = () =>
               </CardHeader>
             </Card>
           ))}
+          </InfoPageSurface>
         </div>
 
         {/* Dual‑Mind Touch */}
-        <Card className="mb-12">
+        <InfoPageSurface>
+        <Card className="mb-12 shadow-none border-0">
           <CardHeader>
             <CardTitle className="text-xl">The Dual‑Mind Touch</CardTitle>
             <CardDescription>Musai’s two creative perspectives shape your track.</CardDescription>
@@ -65,9 +70,11 @@ const MusaiStudioInfo: React.FC = () =>
             <div className="md:col-span-2 text-xs text-muted-foreground">You can re‑roll either side until the vibe is right.</div>
           </CardContent>
         </Card>
+        </InfoPageSurface>
 
         {/* Why It Feels Different */}
-        <Card className="mb-12">
+        <InfoPageSurface>
+        <Card className="mb-12 shadow-none border-0">
           <CardHeader>
             <CardTitle>Why It Feels Different</CardTitle>
           </CardHeader>
@@ -78,9 +85,11 @@ const MusaiStudioInfo: React.FC = () =>
             <div className="p-4 rounded-lg border bg-card">Instant export — one click and your song is share‑ready.</div>
           </CardContent>
         </Card>
+        </InfoPageSurface>
 
         {/* Feature Highlights */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <InfoPageSurface>
           <Card>
             <CardHeader>
               <CardTitle>v1 (Now)</CardTitle>
@@ -95,6 +104,8 @@ const MusaiStudioInfo: React.FC = () =>
               </ul>
             </CardContent>
           </Card>
+          </InfoPageSurface>
+          <InfoPageSurface>
           <Card>
             <CardHeader>
               <CardTitle>v1.1 (Next)</CardTitle>
@@ -107,6 +118,8 @@ const MusaiStudioInfo: React.FC = () =>
               </ul>
             </CardContent>
           </Card>
+          </InfoPageSurface>
+          <InfoPageSurface>
           <Card>
             <CardHeader>
               <CardTitle>v1.2 (Later)</CardTitle>
@@ -119,10 +132,12 @@ const MusaiStudioInfo: React.FC = () =>
               </ul>
             </CardContent>
           </Card>
+          </InfoPageSurface>
         </div>
 
         {/* UI Layout */}
-        <Card className="mb-12">
+        <InfoPageSurface>
+        <Card className="mb-12 shadow-none border-0">
           <CardHeader>
             <CardTitle>UI Layout</CardTitle>
           </CardHeader>
@@ -134,9 +149,11 @@ const MusaiStudioInfo: React.FC = () =>
             <div className="p-4 rounded-lg border bg-card md:col-span-2">Bottom: Master output meter and export controls</div>
           </CardContent>
         </Card>
+        </InfoPageSurface>
 
         {/* FAQ */}
-        <Card className="mb-12">
+        <InfoPageSurface>
+        <Card className="mb-12 shadow-none border-0">
           <CardHeader>
             <CardTitle>FAQ</CardTitle>
           </CardHeader>
@@ -155,14 +172,17 @@ const MusaiStudioInfo: React.FC = () =>
             </div>
           </CardContent>
         </Card>
+        </InfoPageSurface>
 
         {/* Final CTA */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold">Ready to turn an idea into a track today?</h2>
-          <div className="mt-4 flex gap-3 justify-center">
-            <Button onClick={() => navigate(ROUTES.MUSAI_STUDIO)}>Open the Studio</Button>
-            <Button variant="outline">Try a 60‑Second Cue</Button>
-          </div>
+          <InfoPageSurface className="mx-auto max-w-3xl">
+            <h2 className="text-3xl font-bold">Ready to turn an idea into a track today?</h2>
+            <div className="mt-4 flex gap-3 justify-center">
+              <Button onClick={() => navigate(ROUTES.MUSAI_STUDIO)}>Open the Studio</Button>
+              <Button variant="outline">Try a 60‑Second Cue</Button>
+            </div>
+          </InfoPageSurface>
         </div>
 
         <InfoFooterNav currentRoute={ROUTES.MUSAI_STUDIO_INFO} />

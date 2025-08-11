@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import therapyHero from '@/assets/images/therapymusai_hero.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+import { InfoPageSurface } from '@/components/common/InfoPageSurface';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 // Aesthetic preview images
 import mobileMock from '@/assets/images/therapymusai_Mobile therapy interface mock- single column glass cards .png';
@@ -64,71 +65,75 @@ const TherapyMusaiInfo: React.FC = () =>
       <div className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-rose-600/10 via-fuchsia-500/5 to-transparent" />
         <div className="container mx-auto px-4 pt-14 pb-6 max-w-6xl">
-          <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-6 items-center">
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-3">
-                TherapyMusai — Your Contextual Mirror & Emotional Debugger
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                Healing Through Reflection, Growth Through Play. Explore your inner world, reframe experiences, and integrate insights — turning personal growth into a living story you can see unfold.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Button size="lg" onClick={handleStartSession}>
-                  Start a Session
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleScrollToSection('how-it-works')}
-                >
-                  See How It Works
-                </Button>
-                <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
-                  <BadgeCheck className="w-3.5 h-3.5 text-rose-600" /> Privacy‑first
+          <InfoPageSurface auraClassName="from-rose-500/15 via-fuchsia-400/10">
+            <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-6 items-center">
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold mb-3">
+                  TherapyMusai — Your Contextual Mirror & Emotional Debugger
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                  Healing Through Reflection, Growth Through Play. Explore your inner world, reframe experiences, and integrate insights — turning personal growth into a living story you can see unfold.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Button size="lg" onClick={handleStartSession}>
+                    Start a Session
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => handleScrollToSection('how-it-works')}
+                  >
+                    See How It Works
+                  </Button>
+                  <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
+                    <BadgeCheck className="w-3.5 h-3.5 text-rose-600" /> Privacy‑first
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
+                    <BadgeCheck className="w-3.5 h-3.5 text-rose-600" /> Therapy‑informed
+                  </div>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs">
-                  <BadgeCheck className="w-3.5 h-3.5 text-rose-600" /> Therapy‑informed
+              </div>
+              <div className="relative">
+                <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
+                  <img src={therapyHero} alt="TherapyMusai hero" className="block w-full h-auto" />
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-rose-500/15 via-fuchsia-400/10 to-transparent blur-2xl" />
-              <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
-                <img src={therapyHero} alt="TherapyMusai hero" className="block w-full h-auto" />
-              </div>
-            </div>
-          </div>
+          </InfoPageSurface>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-10 max-w-6xl">
         {/* What Is TherapyMusai? */}
         <section className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Heart className="w-5 h-5" /> What Is TherapyMusai?
-              </CardTitle>
-              <CardDescription>
-                Your reflective AI companion — a context‑first listener and emotional debugger that connects past events, present feelings, and future choices.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>
-                It’s not a replacement for therapy — it’s a bridge between sessions. TherapyMusai surfaces patterns and recurring themes, offers symbolic and cognitive reframes, and tracks your growth as a visible life story arc.
-              </p>
-              <ul className="list-disc ml-5 space-y-1">
-                <li>Surfaces patterns and recurring themes</li>
-                <li>Offers symbolic and cognitive reframes</li>
-                <li>Tracks your growth as a visible life story arc</li>
-              </ul>
-            </CardContent>
-          </Card>
+          <InfoPageSurface>
+            <Card className="shadow-none border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Heart className="w-5 h-5" /> What Is TherapyMusai?
+                </CardTitle>
+                <CardDescription>
+                  Your reflective AI companion — a context‑first listener and emotional debugger that connects past events, present feelings, and future choices.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  It’s not a replacement for therapy — it’s a bridge between sessions. TherapyMusai surfaces patterns and recurring themes, offers symbolic and cognitive reframes, and tracks your growth as a visible life story arc.
+                </p>
+                <ul className="list-disc ml-5 space-y-1">
+                  <li>Surfaces patterns and recurring themes</li>
+                  <li>Offers symbolic and cognitive reframes</li>
+                  <li>Tracks your growth as a visible life story arc</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </InfoPageSurface>
         </section>
 
         {/* Session Types */}
         <section className="mb-8">
-          <Card>
+          <InfoPageSurface>
+          <Card className="shadow-none border-0">
             <CardHeader>
               <CardTitle>Session Types</CardTitle>
               <CardDescription>
@@ -202,10 +207,12 @@ const TherapyMusaiInfo: React.FC = () =>
               </div>
             </CardContent>
           </Card>
+          </InfoPageSurface>
         </section>
 
         {/* Visual inserts — Mobile UI and Tools grid */}
         <section className="mb-8">
+          <InfoPageSurface>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-md border bg-card overflow-hidden">
               <AspectRatio ratio={16/9}>
@@ -218,10 +225,12 @@ const TherapyMusaiInfo: React.FC = () =>
               </AspectRatio>
             </div>
           </div>
+          </InfoPageSurface>
         </section>
 
         {/* How It Works — Acts in Your Personal Story Arc */}
         <section id="how-it-works" className="mb-8">
+          <InfoPageSurface>
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -291,10 +300,12 @@ const TherapyMusaiInfo: React.FC = () =>
               <img src={flowDiagram} alt="Therapy flow diagram — Thought → Emotion → Behavior → Reframe" className="block w-full h-full object-contain" />
             </AspectRatio>
           </div>
+          </InfoPageSurface>
         </section>
 
         {/* Core Models & Philosophies */}
         <section id="core-models" className="mb-8">
+          <InfoPageSurface>
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -337,10 +348,12 @@ const TherapyMusaiInfo: React.FC = () =>
               </CardContent>
             </Card>
           </div>
+          </InfoPageSurface>
         </section>
 
         {/* Visual inserts — Dashboard and Alliance */}
         <section className="mb-8">
+          <InfoPageSurface>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-md border bg-card overflow-hidden">
               <AspectRatio ratio={16/9}>
@@ -353,11 +366,13 @@ const TherapyMusaiInfo: React.FC = () =>
               </AspectRatio>
             </div>
           </div>
+          </InfoPageSurface>
         </section>
 
         {/* Key Tools & Features */}
         <section className="mb-8">
-          <Card>
+          <InfoPageSurface>
+          <Card className="shadow-none border-0">
             <CardHeader>
               <CardTitle>Key Tools & Features</CardTitle>
             </CardHeader>
@@ -374,10 +389,12 @@ const TherapyMusaiInfo: React.FC = () =>
               <div className="p-3 rounded-lg border bg-card"><Users className="w-4 h-4 inline mr-2" /> Partner Counseling Images (WIP) — A gentle visual showing how your partner experiences you in tense moments; use it to spark a curious, kind dialogue</div>
             </CardContent>
           </Card>
+          </InfoPageSurface>
         </section>
 
         {/* Visual inserts — Icons and Values */}
         <section className="mb-8">
+          <InfoPageSurface>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-md border bg-card overflow-hidden">
               <AspectRatio ratio={16/9}>
@@ -390,11 +407,13 @@ const TherapyMusaiInfo: React.FC = () =>
               </AspectRatio>
             </div>
           </div>
+          </InfoPageSurface>
         </section>
 
         {/* Gamified Growth */}
         <section className="mb-8">
-          <Card>
+          <InfoPageSurface>
+          <Card className="shadow-none border-0">
             <CardHeader>
               <CardTitle>Gamified Growth</CardTitle>
             </CardHeader>
@@ -406,20 +425,24 @@ const TherapyMusaiInfo: React.FC = () =>
               </ul>
             </CardContent>
           </Card>
+          </InfoPageSurface>
         </section>
 
         {/* Visual insert — Progress chart */}
         <section className="mb-8">
+          <InfoPageSurface>
           <div className="rounded-md border bg-card overflow-hidden">
             <AspectRatio ratio={16/9}>
               <img src={progressChart} alt="Therapeutic progress visualization — soft curved line chart" className="block w-full h-full object-contain" />
             </AspectRatio>
           </div>
+          </InfoPageSurface>
         </section>
 
         {/* In the Future */}
         <section className="mb-8">
-          <Card>
+          <InfoPageSurface>
+          <Card className="shadow-none border-0">
             <CardHeader>
               <CardTitle>In the Future</CardTitle>
             </CardHeader>
@@ -429,11 +452,13 @@ const TherapyMusaiInfo: React.FC = () =>
               <div>• Model Visualizer — See your evolving inner model as an interactive map</div>
             </CardContent>
           </Card>
+          </InfoPageSurface>
         </section>
 
         {/* Why It’s Different */}
         <section className="mb-10">
-          <Card>
+          <InfoPageSurface>
+          <Card className="shadow-none border-0">
             <CardHeader>
               <CardTitle>Why It’s Different</CardTitle>
             </CardHeader>
@@ -446,19 +471,22 @@ const TherapyMusaiInfo: React.FC = () =>
               </p>
             </CardContent>
           </Card>
+          </InfoPageSurface>
         </section>
 
         {/* Final CTA */}
         <section className="mb-12 text-center">
-          <div className="flex items-center justify-center gap-3">
-            <Button size="lg" onClick={handleStartSession}>
-              Start Your First Session
-            </Button>
-            <Button variant="outline" size="lg" onClick={() => handleScrollToSection('core-models')}>
-              Learn More About the Models
-            </Button>
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">[Arc diagram: Acts 1–4 story flow — Intake → Exploration → Synthesis → Background]</div>
+          <InfoPageSurface className="mx-auto max-w-3xl">
+            <div className="flex items-center justify-center gap-3">
+              <Button size="lg" onClick={handleStartSession}>
+                Start Your First Session
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => handleScrollToSection('core-models')}>
+                Learn More About the Models
+              </Button>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">[Arc diagram: Acts 1–4 story flow — Intake → Exploration → Synthesis → Background]</div>
+          </InfoPageSurface>
         </section>
         <InfoFooterNav currentRoute={ROUTES.THERAPY_MUSAI} />
       </div>
