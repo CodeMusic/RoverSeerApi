@@ -95,7 +95,9 @@ const TherapyMusaiInfo: React.FC = () =>
               </div>
               <div className="relative">
                 <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
-                  <img src={therapyHero} alt="TherapyMusai hero" className="block w-full h-auto" />
+                  <div className="w-full max-w-5xl mx-auto">
+                    <img src={therapyHero} alt="TherapyMusai hero" className="block w-full h-auto object-contain" />
+                  </div>
                 </div>
               </div>
             </div>

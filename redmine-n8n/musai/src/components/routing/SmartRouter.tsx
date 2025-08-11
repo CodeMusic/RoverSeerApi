@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
-import ROUTES from '@/config/routes';
+import ROUTES, { TOOL_TO_ROUTE } from '@/config/routes';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 
 interface SmartRouterProps {
@@ -21,19 +21,14 @@ export const SmartRouter: React.FC<SmartRouterProps> = ({ children }) => {
       // This ensures home page is always the main entry point
       return;
     } else {
-      // Track tool usage based on current path
-      const pathToTool: Record<string, string> = {
-        [ROUTES.MAIN_APP]: 'chat',
-        '/search': 'search', 
-        '/code': 'code',
-        '/university': 'university',
-        '/task': 'task',
-        '/narrative': 'narrative'
-      };
+      // Track tool usage using canonical TOOL_TO_ROUTE mapping
+      const pathname = location.pathname;
+      const matchedTool = Object.entries(TOOL_TO_ROUTE).find(([, route]) => 
+        pathname === route || pathname.startsWith(`${route}/`)
+      )?.[0];
 
-      const tool = pathToTool[location.pathname];
-      if (tool) {
-        recordToolUsage(tool as any);
+      if (matchedTool) {
+        recordToolUsage(matchedTool as any);
       }
     }
   }, [location.pathname]); // Removed recordToolUsage from dependency array to prevent infinite loop

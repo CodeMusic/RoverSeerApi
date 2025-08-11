@@ -1,4 +1,5 @@
 import { AgentContextSlice, GenerationPayload, MemoryEvent, MemoryStore } from '@/types/memory';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface VeilOfMemoryOptions
 {
@@ -57,7 +58,7 @@ export class VeilOfMemoryManager
   {
     const ev: MemoryEvent =
     {
-      id: `${sceneId}:${agentId}:${Date.now()}:pub`,
+      id: uuidv4(),
       sceneId,
       agentId,
       visibility: 'public',
@@ -72,7 +73,7 @@ export class VeilOfMemoryManager
   {
     const ev: MemoryEvent =
     {
-      id: `${sceneId}:${agentId}:${Date.now()}:priv`,
+      id: uuidv4(),
       sceneId,
       agentId,
       visibility: 'private',

@@ -24,8 +24,10 @@ A real-time chat application integrated with **N8N workflows** for automated res
 Create a `.env` file in the root directory with the following variables:
 
 ```env
-# Required
-VITE_N8N_WEBHOOK_URL=your_n8n_webhook_url
+# Required (either key works)
+VITE_N8N_BASE_URL=your_n8n_webhook_base_url
+# or legacy name
+VITE_N8N_WEBHOOK_URL=your_n8n_webhook_base_url
 VITE_N8N_WEBHOOK_USERNAME=your_webhook_username
 VITE_N8N_WEBHOOK_SECRET=your_webhook_secret
 
@@ -66,7 +68,7 @@ npm run preview
 1. **Using Docker Run**:
 ```bash
 docker run -d -p 8009:80 \
-  -e VITE_N8N_WEBHOOK_URL="your_n8n_webhook_url" \
+  -e VITE_N8N_BASE_URL="your_n8n_webhook_base_url" \
   -e VITE_N8N_WEBHOOK_USERNAME="your_username" \
   -e VITE_N8N_WEBHOOK_SECRET="your_secret" \
   -e VITE_WELCOME_MESSAGE="Your welcome message" \

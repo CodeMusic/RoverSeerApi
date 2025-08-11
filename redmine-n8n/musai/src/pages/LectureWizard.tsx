@@ -294,18 +294,15 @@ const LectureWizard = () =>
   return (
     <BaseLayout
       currentTab={APP_TERMS.TAB_UNIVERSITY}
-      sessions={[]} // LectureWizard doesn't use traditional sessions
+      sessions={[]}
       currentSessionId=""
-      onNewSession={() => {}} // No-op for lecture wizard
-      onSessionSelect={() => {}} // No-op for lecture wizard
-      onDeleteSession={() => {}} // No-op for lecture wizard
-      onRenameSession={() => {}} // No-op for lecture wizard
-      onToggleFavorite={() => {}} // No-op for lecture wizard
+      onNewSession={() => {}}
+      onSessionSelect={() => {}}
+      onDeleteSession={() => {}}
+      onRenameSession={() => {}}
+      onToggleFavorite={() => {}}
       renderMainContent={renderMainContent}
-      onTabChange={(tab) => {
-        // Handle tab navigation if needed
-        console.log('LectureWizard tab change:', tab);
-      }}
+      onTabChange={() => {}}
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}
     />

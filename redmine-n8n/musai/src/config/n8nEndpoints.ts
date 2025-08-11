@@ -2,9 +2,21 @@
  * N8N API Endpoints Configuration
  * Centralized definitions for all webhook and automation endpoints
  */
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
+import { TIMEOUTS } from '@/config/timeouts';
+
+const resolveBaseUrl = (): string => {
+  const winEnv = (typeof window !== 'undefined' && (window as any).env) ? (window as any).env : undefined;
+  return (
+    import.meta.env.VITE_N8N_BASE_URL ||
+    import.meta.env.VITE_N8N_WEBHOOK_URL ||
+    (winEnv && (winEnv.VITE_N8N_BASE_URL || winEnv.VITE_N8N_WEBHOOK_URL)) ||
+    'http://localhost:5678/webhook'
+  );
+};
 
 export const N8N_ENDPOINTS = {
-  BASE_URL: import.meta.env.VITE_N8N_BASE_URL || 'http://localhost:5678/webhook',
+  BASE_URL: resolveBaseUrl(),
 
   // PreMusai Dynamic Content
   PREMUSAI: {
@@ -226,7 +238,11 @@ class N8NApiHelper {
   // Check if n8n service is available
   async isServiceAvailable(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`);
+      const response = await fetchWithTimeout(
+        `${this.baseUrl}/health`,
+        { method: 'GET' },
+        TIMEOUTS.API_REQUEST
+      );
       return response.ok;
     } catch {
       return false;
@@ -236,11 +252,15 @@ class N8NApiHelper {
   // Trigger curation generation (runs every few hours automatically)
   async triggerCurationGeneration(userContext?: any): Promise<boolean> {
     try {
-      const response = await fetch(this.getEndpointUrl(N8N_ENDPOINTS.CURATIONS.TRIGGER_NEW_CURATION), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userContext, timestamp: Date.now() })
-      });
+      const response = await fetchWithTimeout(
+        this.getEndpointUrl(N8N_ENDPOINTS.CURATIONS.TRIGGER_NEW_CURATION),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userContext, timestamp: Date.now() })
+        },
+        TIMEOUTS.API_REQUEST
+      );
       return response.ok;
     } catch {
       return false;
@@ -250,11 +270,15 @@ class N8NApiHelper {
   // Submit user interaction for AI learning
   async submitInteraction(toolType: string, action: string, context: any): Promise<void> {
     try {
-      await fetch(this.getEndpointUrl(N8N_ENDPOINTS.ANALYTICS.TRACK_USER_JOURNEY), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toolType, action, context, timestamp: Date.now() })
-      });
+      await fetchWithTimeout(
+        this.getEndpointUrl(N8N_ENDPOINTS.ANALYTICS.TRACK_USER_JOURNEY),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ toolType, action, context, timestamp: Date.now() })
+        },
+        TIMEOUTS.API_REQUEST
+      );
     } catch (error) {
       console.warn('Failed to submit interaction:', error);
     }
@@ -263,17 +287,21 @@ class N8NApiHelper {
   // Submit curation feedback
   async submitCurationFeedback(curationId: string, feedback: 'like' | 'dislike' | 'love' | 'meh', comment?: string): Promise<boolean> {
     try {
-      const response = await fetch(this.getEndpointUrl(N8N_ENDPOINTS.CURATIONS.SUBMIT_CURATION_FEEDBACK), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          curationId, 
-          feedback, 
-          comment, 
-          timestamp: Date.now(),
-          userAgent: navigator.userAgent 
-        })
-      });
+      const response = await fetchWithTimeout(
+        this.getEndpointUrl(N8N_ENDPOINTS.CURATIONS.SUBMIT_CURATION_FEEDBACK),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            curationId, 
+            feedback, 
+            comment, 
+            timestamp: Date.now(),
+            userAgent: navigator.userAgent 
+          })
+        },
+        TIMEOUTS.API_REQUEST
+      );
       return response.ok;
     } catch (error) {
       console.error('Failed to submit curation feedback:', error);

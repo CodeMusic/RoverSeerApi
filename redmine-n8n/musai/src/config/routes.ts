@@ -56,6 +56,25 @@ export const createRouteWithParams = (route: string, params: Record<string, stri
 };
 
 /**
+ * Canonical mapping from tool identity to application route.
+ * Keep this as the single source of truth to avoid path mismatches.
+ */
+export const TOOL_TO_ROUTE: Record<string, string> = {
+  chat: ROUTES.MAIN_APP,
+  code: ROUTES.CODE_PLAYGROUND,
+  university: ROUTES.UNIVERSITY,
+  task: ROUTES.TASK_MUSAI,
+  narrative: ROUTES.EMERGENT_NARRATIVE,
+  search: ROUTES.PLAYGROUND, // Map search to playground until a dedicated route exists
+  career: ROUTES.CAREER_MUSAI,
+  therapy: ROUTES.THERAPY_MUSAI,
+  medical: ROUTES.MEDICAL_MUSAI,
+  eye: ROUTES.EYE_OF_MUSAI,
+  curations: ROUTES.CURATIONS,
+  studio: ROUTES.MUSAI_STUDIO,
+} as const;
+
+/**
  * Route utilities for navigation
  */
 export const RouteUtils = {

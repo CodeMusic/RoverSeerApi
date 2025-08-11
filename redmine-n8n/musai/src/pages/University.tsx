@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import ROUTES from '@/config/routes';
 import { universityApi } from '@/lib/universityApi';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { cn } from '@/lib/utils';
@@ -33,10 +34,12 @@ const University = () => {
     if (initialQuery) {
       console.log('University page received initial query:', initialQuery);
       // Auto-navigate to create new course with the query as topic
-      navigate(`/university/course/new?topic=${encodeURIComponent(initialQuery)}`, { 
+      // Route into main app framework, University tab, preserving topic
+      navigate(`${ROUTES.MAIN_APP}?mode=university&q=${encodeURIComponent(initialQuery)}`, { 
         state: { 
           initialTopic: initialQuery,
-          fromLanding: true 
+          fromLanding: true, 
+          switchToTab: 'university'
         },
         replace: true // Replace current history entry to prevent back button issues
       });
@@ -117,7 +120,7 @@ const University = () => {
             </div>
             <div className="flex gap-2">
               <Button 
-                onClick={() => navigate('/university/course/new')}
+                onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: 'university', initialQuery: 'course:new' } })}
                 className="bg-purple-600 hover:bg-purple-700 text-white"
                 size="lg"
               >
@@ -203,7 +206,7 @@ const University = () => {
                   icon: GraduationCap,
                   title: "Create Course",
                   description: "Build a structured learning path",
-                  action: () => navigate('/university/course/new')
+                   action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: 'university', initialQuery: 'course:new' } })
                 },
                 {
                   icon: BookOpen,

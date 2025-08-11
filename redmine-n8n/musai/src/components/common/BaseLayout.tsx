@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { AllSessions, ChatSession, CareerSession, TherapySession } from '@/types/chat';
 import { APP_TERMS } from '@/config/constants';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BaseLayoutProps {
   // Layout structure
@@ -49,7 +50,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   const { preferences } = useUserPreferences();
-  const isMobile = false; // Simplified for now
+  const isMobile = useIsMobile();
   const rightContent = renderRightSidebar ? renderRightSidebar() : null;
   const hasRightContent = Boolean(rightContent);
 
@@ -125,7 +126,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                 onRenameSession={onRenameSession}
                 onToggleFavorite={onToggleFavorite}
                 isSidebarOpen={isSidebarOpen}
-                isCollapsed={false}
+                isCollapsed={isSidebarCollapsed}
                 onToggleCollapse={() => setIsSidebarCollapsed(true)}
               />
             </div>

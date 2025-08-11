@@ -9,6 +9,8 @@ import { AttentionalGatewayHeader } from '@/components/common/AttentionalGateway
 import { APP_TERMS } from '@/config/constants';
 import { ClipboardList, FileUp, FileText, Play, Stethoscope, Brain, CheckCircle, MessageCircle, ArrowRight } from 'lucide-react';
 import type { Artifact, ConversationPrep, Insight, TimelineEvent } from '@/types/medicalMusai';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
+import impressedPhysician from '@/assets/images/medical_musai_impressedphysician_completedpreflight.png';
 
 // Stubbed data for investor demo
 const stubArtifacts: Artifact[] = [
@@ -44,6 +46,27 @@ export default function MedicalMusaiDemo()
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [prep, setPrep] = useState<ConversationPrep | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const impressedPhysicianPrompt = `Portrait of an impressed physician in a calm, modern exam room reviewing a patient's 90-second brief and Challenge Radar on a tablet.
+
+Mood: confident partnership; patient-as-pilot energy.
+Expression: warm, attentive, a hint of admiration.
+Composition: physician in 3/4 profile, tablet UI visible with badges labeled "timeline", "insights", "prep".
+Lighting: soft, natural, diffused.
+Palette: teal → indigo → violet accents.
+Style: photorealistic, clean, minimal clutter, medical accuracy.
+Keywords: evidence-informed, shared decision-making, preparation, clarity, trust.`;
+
+  function handleCopyPrompt()
+  {
+    navigator.clipboard.writeText(impressedPhysicianPrompt)
+      .then(() =>
+      {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+  }
 
   useEffect(() => {
     // Initialize with stub "import" done
@@ -63,8 +86,8 @@ export default function MedicalMusaiDemo()
       <div className="container mx-auto px-4 py-10 max-w-5xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">MedicalMusai — Guided Demo</h1>
-            <p className="text-sm text-muted-foreground">A short walkthrough showing the patient-as-pilot flow with stubbed data.</p>
+            <h1 className="text-2xl font-semibold">MedicalMusai</h1>
+            <p className="text-xs text-muted-foreground">You are the pilot in your life; we are your copilots.</p>
           </div>
           <Button variant="outline" onClick={() => navigate(ROUTES.MEDICAL_MUSAI)}>
             Back to Info
@@ -194,11 +217,30 @@ export default function MedicalMusaiDemo()
               <CardTitle className="flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Demo Complete</CardTitle>
               <CardDescription>Patient stays the pilot: upload → timeline → insights → prep → confident visit.</CardDescription>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => navigate(ROUTES.MEDICAL_MUSAI)}>
-                  Return to MedicalMusai <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-md border bg-card overflow-hidden">
+                  <AspectRatio ratio={16/9}>
+                    <img
+                      src={impressedPhysician}
+                      alt="Impressed physician reviewing a patient prep brief and challenge radar on a tablet"
+                      className="block w-full h-full object-cover"
+                    />
+                  </AspectRatio>
+                </div>
+
+                <div className="rounded-md border bg-card p-3">
+                  <div className="text-sm text-muted-foreground mb-2">Impressed Physician — Image Prompt (copy to generate)</div>
+                  <pre className="whitespace-pre-wrap text-xs md:text-sm leading-relaxed font-mono bg-background/50 p-3 rounded-md border">
+{impressedPhysicianPrompt}
+                  </pre>
+                  <div className="mt-3 flex gap-2">
+                    <Button size="sm" onClick={handleCopyPrompt}>{copied ? 'Copied' : 'Copy Prompt'}</Button>
+                    <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.MEDICAL_MUSAI)}>
+                      Return to MedicalMusai <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

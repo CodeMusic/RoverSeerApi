@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { TOOL_TO_ROUTE } from '@/config/routes';
 
 export type MusaiTool = 'chat' | 'search' | 'eye' | 'code' | 'university' | 'task' | 'narrative' | 'career' | 'therapy' | 'medical';
 
@@ -225,8 +226,9 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
       getMostUsedTool() || 
       preferences.lastUsedTool || 
       'chat';
-    
-    return `/${recommendedTool}`;
+
+    const route = TOOL_TO_ROUTE[recommendedTool];
+    return route ?? TOOL_TO_ROUTE.chat;
   };
 
   // Determine if we should show landing page

@@ -24,7 +24,6 @@ import {
   GitBranch
 } from 'lucide-react';
 import universityHero from '@/assets/images/musaiuniversity_hero.png';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const UniversityInfo = () =>
@@ -70,10 +69,12 @@ const UniversityInfo = () =>
           </div>
           <div className="relative overflow-hidden">
             <div className="absolute -inset-2 sm:-inset-6 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-slate-400/10 to-transparent blur-2xl pointer-events-none" />
-            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden w-full">
-              <AspectRatio ratio={16/9}>
-                <img src={universityHero} alt="Musai University hero" className="block w-full h-full object-contain" />
-              </AspectRatio>
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden w-full flex items-center justify-center p-2 sm:p-4">
+              <img
+                src={universityHero}
+                alt="Musai University hero"
+                className="block w-full h-auto max-h-[420px] md:max-h-[560px] object-contain"
+              />
             </div>
           </div>
         </div>

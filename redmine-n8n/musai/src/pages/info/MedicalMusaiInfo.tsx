@@ -10,6 +10,8 @@ import { ROUTES } from '@/config/routes';
 import medicalHero from '@/assets/images/medicalmusai_hero.png';
 import forkedPathDiagram from '@/assets/images/medical_musai_Forked path diagram.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import MedicalFormModal from '@/components/medical/MedicalFormModal';
 import yokeHands from '@/assets/images/medical musai_yolk.png';
 import medicalTherapy from '@/assets/images/medicalmusai_medicaltherapy.png';
 import cityMap from '@/assets/images/medical_citymap.png';
@@ -25,6 +27,112 @@ const MedicalMusaiInfo: React.FC = () =>
 {
   const navigate = useNavigate();
 
+  // Shared SBAR sample data (used by generator preview and download)
+  const sbarPatientMeta = {
+    Patient: 'Jane Doe',
+    DOB: '1988‑04‑02',
+    MRN: 'A19‑4472',
+    Date: '2025‑08‑11',
+    'Visit Type': 'Follow‑up',
+    Allergies: 'NKDA',
+  } as const;
+
+  const sbarSectionsHtml: { title: string; html: string }[] = [
+    {
+      title: 'S — Situation',
+      html: 'Persistent chest tightness 2–3×/week, worsened by stairs; one near‑syncope last week.'
+    },
+    {
+      title: 'B — Background',
+      html: `
+        <ul>
+          <li>Hx: mild asthma (childhood), borderline hypertension; parent with CAD in 50s</li>
+          <li>Meds: amlodipine 5mg QD; albuterol PRN (rarely used)</li>
+          <li>Recent: viral URI 4 weeks ago; symptoms started after</li>
+        </ul>
+      `
+    },
+    {
+      title: 'A — Assessment',
+      html: `
+        <ul>
+          <li>Likely deconditioning vs. reactive airway; rule‑out cardiac contributors given family hx</li>
+          <li>Red flags: near‑syncope (single episode), exertional component</li>
+        </ul>
+      `
+    },
+    {
+      title: 'R — Recommendation',
+      html: `
+        <ol>
+          <li>Baseline workup: vitals, ECG; consider troponin if indicated by ECG/symptoms</li>
+          <li>PFTs or peak‑flow to evaluate airway; trial of ICS/LABA if reactive pattern</li>
+          <li>Lifestyle: graded activity plan; BP log 2×/day for 2 weeks</li>
+          <li>Safety: when to seek urgent care (worsening chest pain, syncope, dyspnea at rest)</li>
+        </ol>
+      `
+    },
+  ];
+
+  const openPrintableMedicalForm = (
+    formTitle: string,
+    patientMeta: Record<string, string>,
+    sections: { title: string; html: string }[]
+  ): void =>
+  {
+    const printWindow = window.open('', '_blank', 'width=860,height=1100');
+    if (!printWindow)
+    {
+      return;
+    }
+    const sectionsHtml = sections.map(s => `
+      <div class="section">
+        <div class="section-title">${s.title}</div>
+        <div class="section-content">${s.html}</div>
+      </div>
+    `).join('');
+
+    const metaHtml = Object.entries(patientMeta).map(([k, v]) => `
+      <div class="cell"><div class="label">${k}</div><div class="value">${v}</div></div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${formTitle}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif; padding: 24px; color: #111; }
+            .band { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 16px; }
+            .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 12px; }
+            .cell { display: flex; border: 1px solid #ddd; }
+            .label { background: #f5f5f5; width: 120px; padding: 6px; font-weight: 600; }
+            .value { padding: 6px; flex: 1; }
+            .section { border: 1px solid #ddd; margin-top: 12px; }
+            .section-title { background: #f7f7f7; padding: 8px 10px; font-weight: 600; font-size: 14px; border-bottom: 1px solid #ddd; }
+            .section-content { padding: 10px 12px; font-size: 13px; }
+            ul { margin: 6px 0 0 18px; }
+            ol { margin: 6px 0 0 18px; }
+            @media print { body { padding: 12mm; } }
+          </style>
+        </head>
+        <body>
+          <div class="band">
+            <div>
+              <div style="font-weight:700;">Co‑Pilot Health</div>
+              <div style="font-size:12px;color:#666">Confidential — For clinical review</div>
+            </div>
+            <div style="font-size:12px;color:#666">${new Date().toLocaleDateString()}</div>
+          </div>
+          <div class="grid">${metaHtml}</div>
+          ${sectionsHtml}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_MEDICAL} />
@@ -35,14 +143,38 @@ const MedicalMusaiInfo: React.FC = () =>
         <div className="container mx-auto px-4 pt-14 pb-6 max-w-6xl">
           <div className="grid md:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-3">
-                You’re the pilot. Your doctor’s the co‑pilot.
+              <h1 className="text-4xl md:text-5xl font-bold mb-1">
+                MedicalMusai
               </h1>
+              <p className="text-sm text-muted-foreground mb-3">You are the pilot in your life; we are your copilots.</p>
               <p className="text-muted-foreground text-lg">
-                MedicalMusai helps you understand diagnoses, challenge assumptions, and choose next steps—with a clear plan and the right support.
+                Understand diagnoses, challenge assumptions, and choose next steps—with a clear plan and the right support.
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button onClick={() => navigate(ROUTES.MEDICAL_MUSAI_DEMO)}>Start Your Pre‑Flight</Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">Pre‑Flight preview</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Pre‑Flight Checklist (preview)</DialogTitle>
+                      <DialogDescription>What you’ll do in 3–5 minutes</DialogDescription>
+                    </DialogHeader>
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <ul className="list-disc ml-5 space-y-1">
+                        <li>Capture your current concern and goals</li>
+                        <li>Add key facts: symptoms, meds, diagnoses, recent tests</li>
+                        <li>Flag risks/red‑flags and constraints</li>
+                        <li>Draft 1–2 priority questions for your clinician</li>
+                        <li>Optional: export a one‑page Co‑Pilot Brief</li>
+                      </ul>
+                      <div className="pt-2">
+                        <Button size="sm" onClick={() => navigate(ROUTES.MEDICAL_MUSAI_DEMO)}>Start Pre‑Flight</Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <Button variant="outline" onClick={() => {
                   const el = document.getElementById('how-it-works');
                   if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -136,7 +268,56 @@ const MedicalMusaiInfo: React.FC = () =>
                   <span className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><MessageCircle className="w-3.5 h-3.5" /> Portal msgs</span>
                   <span className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><CalendarClock className="w-3.5 h-3.5" /> Outcomes</span>
                 </div>
-                <div className="pt-3"><Button size="sm" variant="outline">Try SBAR Generator</Button></div>
+                <div className="pt-3">
+                  <MedicalFormModal
+                    triggerLabel="Try SBAR Generator"
+                    title="SBAR Generator (Preview)"
+                    subtitle="Generated draft from your recent visit notes"
+                    patientMeta={{
+                      "Patient": "Jane Doe",
+                      "DOB": "1988‑04‑02",
+                      "MRN": "A19‑4472",
+                      "Date": "2025‑08‑11",
+                      "Visit Type": "Follow‑up",
+                      "Allergies": "NKDA"
+                    }}
+                    sections={[
+                      { title: 'S — Situation', content: (<div>Persistent chest tightness 2–3×/week, worsened by stairs; one near‑syncope last week.</div>) },
+                      { title: 'B — Background', content: (<ul className="list-disc ml-5 space-y-1"><li>Hx: mild asthma (childhood), borderline hypertension; parent with CAD in 50s</li><li>Meds: amlodipine 5mg QD; albuterol PRN (rarely used)</li><li>Recent: viral URI 4 weeks ago; symptoms started after</li></ul>) },
+                      { title: 'A — Assessment', content: (<ul className="list-disc ml-5 space-y-1"><li>Likely deconditioning vs. reactive airway; rule‑out cardiac contributors given family hx</li><li>Red flags: near‑syncope (single episode), exertional component</li></ul>) },
+                      { title: 'R — Recommendation', content: (<ol className="list-decimal ml-5 space-y-1"><li>ECG today; consider troponin if indicated</li><li>PFT/peak‑flow; trial ICS/LABA if reactive pattern</li><li>BP log 2×/day × 2 weeks; graded activity plan</li></ol>) }
+                    ]}
+                    variants={[
+                      {
+                        patientMeta: { "Patient": "John Patel", "DOB": "1976‑09‑12", "MRN": "K22‑1180", "Date": "2025‑08‑11", "Visit Type": "Initial", "Allergies": "Penicillin" },
+                        sections: [
+                          { title: 'S — Situation', content: (<div>3 months of morning cough with occasional wheeze; worse with cold air.</div>) },
+                          { title: 'B — Background', content: (<ul className="list-disc ml-5 space-y-1"><li>Hx: seasonal allergies; smoker 10 pack‑years, quit 2015</li><li>Meds: cetirizine PRN</li><li>Recent: mild URI 2 months ago</li></ul>) },
+                          { title: 'A — Assessment', content: (<ul className="list-disc ml-5 space-y-1"><li>Likely post‑infectious airway hyperreactivity vs. cough‑variant asthma</li><li>No red flags reported</li></ul>) },
+                          { title: 'R — Recommendation', content: (<ol className="list-decimal ml-5 space-y-1"><li>Trial low‑dose ICS for 4 weeks</li><li>Peak‑flow diary AM/PM</li><li>Return if hemoptysis, weight loss, or fever</li></ol>) }
+                        ]
+                      },
+                      {
+                        patientMeta: { "Patient": "Maria Rossi", "DOB": "1991‑02‑07", "MRN": "R33‑5521", "Date": "2025‑08‑11", "Visit Type": "Follow‑up", "Allergies": "NKDA" },
+                        sections: [
+                          { title: 'S — Situation', content: (<div>Episodic palpitations with lightheadedness after coffee; no syncope.</div>) },
+                          { title: 'B — Background', content: (<ul className="list-disc ml-5 space-y-1"><li>Hx: anemia (resolved)</li><li>Meds: none</li><li>Family: no premature cardiac disease</li></ul>) },
+                          { title: 'A — Assessment', content: (<ul className="list-disc ml-5 space-y-1"><li>Likely benign supraventricular ectopy; low suspicion for structural disease</li></ul>) },
+                          { title: 'R — Recommendation', content: (<ol className="list-decimal ml-5 space-y-1"><li>Limit caffeine; hydration</li><li>12‑lead ECG; consider Holter if persists</li><li>Return if chest pain or syncope</li></ol>) }
+                        ]
+                      },
+                      {
+                        patientMeta: { "Patient": "Devin Lee", "DOB": "1983‑11‑30", "MRN": "L08‑9034", "Date": "2025‑08‑11", "Visit Type": "Urgent", "Allergies": "NSAIDs" },
+                        sections: [
+                          { title: 'S — Situation', content: (<div>Acute low back pain after lifting; no bowel/bladder symptoms.</div>) },
+                          { title: 'B — Background', content: (<ul className="list-disc ml-5 space-y-1"><li>Hx: none significant</li><li>Meds: ibuprofen allergy (hives)</li><li>Occupation: warehouse</li></ul>) },
+                          { title: 'A — Assessment', content: (<ul className="list-disc ml-5 space-y-1"><li>Likely mechanical strain without red flags</li></ul>) },
+                          { title: 'R — Recommendation', content: (<ol className="list-decimal ml-5 space-y-1"><li>Acetaminophen scheduled × 3 days</li><li>Heat + gentle mobility</li><li>Return if weakness, numbness, or incontinence</li></ol>) }
+                        ]
+                      }
+                    ]}
+                  />
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -188,11 +369,13 @@ const MedicalMusaiInfo: React.FC = () =>
             </Card>
           </div>
           <div className="mt-3 rounded-md border bg-card overflow-hidden">
-            <img
-              src={threeColumns}
-              alt="Three columns labeled Clarity, Confidence, Connection with miniature UI snippets"
-              className="block w-full h-auto"
-            />
+            <div className="w-full max-w-3xl mx-auto">
+              <img
+                src={threeColumns}
+                alt="Three columns labeled Clarity, Confidence, Connection with miniature UI snippets"
+                className="block w-full h-auto object-contain max-h-80 md:max-h-96"
+              />
+            </div>
           </div>
         </section>
 
@@ -232,7 +415,66 @@ const MedicalMusaiInfo: React.FC = () =>
                 <div>• Shared Language: one‑page SBAR‑style brief your clinician will love (Situation, Background, Assessment, Recommendation)</div>
                 <div>• Time‑Respectful: one clear question, followed by 2–3 backups if time allows</div>
                 <div>• Follow‑Through: log agreed actions; get reminders for labs, meds, and red‑flags</div>
-                <div className="pt-2"><Button size="sm" variant="outline">Download sample brief</Button></div>
+                <div className="pt-2 flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openPrintableMedicalForm('Sample SBAR Brief', { ...sbarPatientMeta }, sbarSectionsHtml)}
+                  >
+                    Download sample brief
+                  </Button>
+
+                  <MedicalFormModal
+                    triggerLabel="View Co‑Pilot Brief"
+                    title="Co‑Pilot Brief (Sample)"
+                    subtitle="One‑page patient summary for primary care"
+                    patientMeta={{
+                      "Patient": "Jane Doe",
+                      "DOB": "1988‑04‑02",
+                      "MRN": "A19‑4472",
+                      "Date": "2025‑08‑11",
+                      "Primary": "Dr. Smith",
+                      "Insurance": "OHIP"
+                    }}
+                    sections={[
+                      {
+                        title: 'Chief Concern',
+                        content: (
+                          <div>Chest tightness on exertion; fatigue after stairs; one near‑syncope.</div>
+                        )
+                      },
+                      {
+                        title: 'Pertinent History',
+                        content: (
+                          <ul className="list-disc ml-5 space-y-1">
+                            <li>FHx: CAD (parent in 50s)</li>
+                            <li>PMHx: mild asthma (childhood), borderline HTN</li>
+                            <li>Meds: amlodipine 5mg QD; albuterol PRN</li>
+                          </ul>
+                        )
+                      },
+                      {
+                        title: 'Objective (self‑reported)',
+                        content: (
+                          <ul className="list-disc ml-5 space-y-1">
+                            <li>BP home log avg ~136/86 last 2 weeks</li>
+                            <li>Pulse 78–96; O2 97–99% at rest</li>
+                          </ul>
+                        )
+                      },
+                      {
+                        title: 'Plan Request',
+                        content: (
+                          <ol className="list-decimal ml-5 space-y-1">
+                            <li>ECG today; guidance re: troponin if indicated</li>
+                            <li>Consider PFT/peak‑flow; trial ICS/LABA if reactive</li>
+                            <li>BP log 2×/day × 2 weeks; follow‑up visit after</li>
+                          </ol>
+                        )
+                      }
+                    ]}
+                  />
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -308,17 +550,51 @@ const MedicalMusaiInfo: React.FC = () =>
               <div>• You own your data. On‑device first; encrypted in transit; minimal cloud where required</div>
               <div>• Consent receipts for shared summaries; clear audit trail of what went where</div>
               <div>• No diagnosis without a clinician. We’re decision support, not a medical provider</div>
-              <Accordion type="single" collapsible className="mt-3 border rounded-md">
-                <AccordionItem value="local-ai">
-                  <AccordionTrigger className="px-3">Local AI options (private inference)</AccordionTrigger>
-                  <AccordionContent className="px-3">
-                    <div className="space-y-2">
-                      <div className="inline-flex items-center gap-2 rounded-full border bg-card px-2.5 py-1 text-xs"><Cpu className="w-3.5 h-3.5" /> On‑device where it matters most</div>
-                      <div>Summaries and phrasing can run locally when sensitive. Larger research pulls can be cloud‑assisted, with consent and visible logs.</div>
+              <div className="mt-3">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start">Local AI options (private inference)</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                      <DialogTitle>Local vs Hybrid AI — Privacy, IP, and Implicit Learning</DialogTitle>
+                      <DialogDescription>How to protect sensitive data while keeping flexibility</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 text-sm text-muted-foreground">
+                      <div>
+                        <div className="font-medium text-foreground">The risk — implicit learning + logs</div>
+                        <ul className="list-disc ml-5 space-y-1">
+                          <li>Some AI systems log prompts/outputs or further train on them. Secrets can be memorized or pattern‑learned.</li>
+                          <li>Unsettled copyright/policy norms mean generated assertions might reflect your private inputs.</li>
+                          <li>Result: in theory, sharing a secret could create downstream IP exposure if it reappears elsewhere.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">Local AI — containment by default</div>
+                        <ul className="list-disc ml-5 space-y-1">
+                          <li>Inference runs on your hardware; prompts and artifacts stay on‑device.</li>
+                          <li>Ideal for sensitive drafts, PHI/PII, and proprietary designs.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">Hybrid AI — best of both worlds</div>
+                        <ul className="list-disc ml-5 space-y-1">
+                          <li>Opt‑in per task: redact or summarize before upload; restrict domains; keep logs visible.</li>
+                          <li>Use cloud only for heavy research or long‑form generation you explicitly approve.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">Practical guardrails</div>
+                        <ul className="list-disc ml-5 space-y-1">
+                          <li>Avoid raw secrets in prompts. Prefer local runs for anything sensitive.</li>
+                          <li>When hybrid is needed, send abstractions (summaries, diffs, masked values).</li>
+                          <li>Review provider retention/policy settings; disable training on your data when possible.</li>
+                        </ul>
+                      </div>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardContent>
           </Card>
         </section>
@@ -367,6 +643,15 @@ const MedicalMusaiInfo: React.FC = () =>
             </CardHeader>
             <CardContent>
               <Button onClick={() => navigate(ROUTES.MEDICAL_MUSAI_DEMO)}>Start Your Pre‑Flight</Button>
+              <div className="mt-3 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground mb-1">Pre‑Flight includes:</div>
+                <ul className="list-disc ml-5 space-y-1">
+                  <li>Define your situation and desired outcome</li>
+                  <li>Note symptoms, meds, and relevant history</li>
+                  <li>Select 1–2 priority questions for the visit</li>
+                  <li>Optional: export a one‑page Co‑Pilot Brief</li>
+                </ul>
+              </div>
               <div className="mt-3 rounded-md border bg-card overflow-hidden">
                 <img
                   src={runwayLights}

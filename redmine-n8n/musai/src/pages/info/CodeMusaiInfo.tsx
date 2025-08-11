@@ -38,6 +38,9 @@ const CodeMusaiInfo: React.FC = () =>
             <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
               <img src={codeHero} alt="CodeMusai hero" className="block w-full h-auto" />
             </div>
+            <div className="mt-2 text-xs text-muted-foreground italic text-center md:text-left">
+              Why dolphin and penguin? Dolphins map their world with echolocation and coordinated problem‑solving — our cue for depth‑first, precise reasoning. Penguins succeed through social coordination and adaptive navigation in changing seas — our cue for breadth‑first, generative exploration.
+            </div>
           </div>
         </div>
         {/* Thinking strip demo */}
@@ -66,14 +69,14 @@ const CodeMusaiInfo: React.FC = () =>
                 <div className="mt-0.5"><Brain className="w-4 h-4" /></div>
                 <div>
                   <div className="font-medium">Logical Mind (Dolphin)</div>
-                  <div>Precise, analytical, depth-first reasoning.</div>
+                  <div>Precise, analytical, depth‑first reasoning — inspired by dolphins’ echolocation and tool‑use problem solving.</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <div className="mt-0.5"><Wand2 className="w-4 h-4" /></div>
                 <div>
                   <div className="font-medium">Creative Mind (Penguin)</div>
-                  <div>Associative, generative, breadth-first exploration.</div>
+                  <div>Associative, generative, breadth‑first exploration — inspired by penguins’ coordinated foraging and adaptive navigation.</div>
                 </div>
               </div>
             </div>
