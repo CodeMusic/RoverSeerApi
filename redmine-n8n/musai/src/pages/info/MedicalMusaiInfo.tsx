@@ -74,6 +74,37 @@ const MedicalMusaiInfo: React.FC = () =>
     },
   ];
 
+  const sbarVariantsHtml: Array<{ patientMeta: Record<string, string>; sections: { title: string; html: string }[] }> = [
+    { patientMeta: { ...sbarPatientMeta }, sections: sbarSectionsHtml },
+    {
+      patientMeta: { Patient: 'John Patel', DOB: '1976‑09‑12', MRN: 'K22‑1180', Date: '2025‑08‑11', 'Visit Type': 'Initial', Allergies: 'Penicillin' },
+      sections: [
+        { title: 'S — Situation', html: '3 months of morning cough with occasional wheeze; worse with cold air.' },
+        { title: 'B — Background', html: '<ul><li>Hx: seasonal allergies; smoker 10 pack‑years, quit 2015</li><li>Meds: cetirizine PRN</li><li>Recent: mild URI 2 months ago</li></ul>' },
+        { title: 'A — Assessment', html: '<ul><li>Likely post‑infectious airway hyperreactivity vs. cough‑variant asthma</li><li>No red flags reported</li></ul>' },
+        { title: 'R — Recommendation', html: '<ol><li>Trial low‑dose ICS for 4 weeks</li><li>Peak‑flow diary AM/PM</li><li>Return if hemoptysis, weight loss, or fever</li></ol>' },
+      ]
+    },
+    {
+      patientMeta: { Patient: 'Maria Rossi', DOB: '1991‑02‑07', MRN: 'R33‑5521', Date: '2025‑08‑11', 'Visit Type': 'Follow‑up', Allergies: 'NKDA' },
+      sections: [
+        { title: 'S — Situation', html: 'Episodic palpitations with lightheadedness after coffee; no syncope.' },
+        { title: 'B — Background', html: '<ul><li>Hx: anemia (resolved)</li><li>Meds: none</li><li>Family: no premature cardiac disease</li></ul>' },
+        { title: 'A — Assessment', html: '<ul><li>Likely benign supraventricular ectopy; low suspicion for structural disease</li></ul>' },
+        { title: 'R — Recommendation', html: '<ol><li>Limit caffeine; hydration</li><li>12‑lead ECG; consider Holter if persists</li><li>Return if chest pain or syncope</li></ol>' },
+      ]
+    },
+    {
+      patientMeta: { Patient: 'Devin Lee', DOB: '1983‑11‑30', MRN: 'L08‑9034', Date: '2025‑08‑11', 'Visit Type': 'Urgent', Allergies: 'NSAIDs' },
+      sections: [
+        { title: 'S — Situation', html: 'Acute low back pain after lifting; no bowel/bladder symptoms.' },
+        { title: 'B — Background', html: '<ul><li>Hx: none significant</li><li>Meds: ibuprofen allergy (hives)</li><li>Occupation: warehouse</li></ul>' },
+        { title: 'A — Assessment', html: '<ul><li>Likely mechanical strain without red flags</li></ul>' },
+        { title: 'R — Recommendation', html: '<ol><li>Acetaminophen scheduled × 3 days</li><li>Heat + gentle mobility</li><li>Return if weakness, numbness, or incontinence</li></ol>' },
+      ]
+    }
+  ];
+
   const openPrintableMedicalForm = (
     formTitle: string,
     patientMeta: Record<string, string>,
@@ -118,8 +149,8 @@ const MedicalMusaiInfo: React.FC = () =>
         <body>
           <div class="band">
             <div>
-              <div style="font-weight:700;">Co‑Pilot Health</div>
-              <div style="font-size:12px;color:#666">Confidential — For clinical review</div>
+              <div style="font-weight:700;">MedicalMusai</div>
+              <div style="font-size:12px;color:#666">Patient‑as‑Pilot — For clinical review</div>
             </div>
             <div style="font-size:12px;color:#666">${new Date().toLocaleDateString()}</div>
           </div>
@@ -167,7 +198,7 @@ const MedicalMusaiInfo: React.FC = () =>
                         <li>Add key facts: symptoms, meds, diagnoses, recent tests</li>
                         <li>Flag risks/red‑flags and constraints</li>
                         <li>Draft 1–2 priority questions for your clinician</li>
-                        <li>Optional: export a one‑page Co‑Pilot Brief</li>
+                        <li>Optional: export a one‑page MedicalMusai Brief</li>
                       </ul>
                       <div className="pt-2">
                         <Button size="sm" onClick={() => navigate(ROUTES.MEDICAL_MUSAI_DEMO)}>Start Pre‑Flight</Button>
@@ -223,7 +254,7 @@ const MedicalMusaiInfo: React.FC = () =>
               },
               {
                 title: 'Act',
-                desc: 'Generate doctor‑ready questions, next‑visit checklists, and referrals/resources. Export a one‑page Co‑Pilot Brief for your appointment.',
+                desc: 'Generate doctor‑ready questions, next‑visit checklists, and referrals/resources. Export a one‑page MedicalMusai Brief for your appointment.',
                 img: runwayChecklist,
                 alt: 'Runway leading to a checklist',
               },
@@ -362,7 +393,7 @@ const MedicalMusaiInfo: React.FC = () =>
                 <CardTitle>Connection</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-2">
-                <div>• Care Team Sync: export a Co‑Pilot Brief (PDF) for your doctor</div>
+                <div>• Care Team Sync: export a MedicalMusai Brief (PDF) for your doctor</div>
                 <div>• TherapyMusai Bridge: process fears, stick to plans, celebrate small wins</div>
                 <div>• Community Navigator: local services, transportation, benefits (coming online)</div>
               </CardContent>
@@ -419,14 +450,17 @@ const MedicalMusaiInfo: React.FC = () =>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => openPrintableMedicalForm('Sample SBAR Brief', { ...sbarPatientMeta }, sbarSectionsHtml)}
+                    onClick={() => {
+                      const v = sbarVariantsHtml[Math.floor(Math.random() * sbarVariantsHtml.length)];
+                      openPrintableMedicalForm('Sample SBAR Brief', { ...v.patientMeta }, v.sections);
+                    }}
                   >
                     Download sample brief
                   </Button>
 
                   <MedicalFormModal
-                    triggerLabel="View Co‑Pilot Brief"
-                    title="Co‑Pilot Brief (Sample)"
+                    triggerLabel="View MedicalMusai Brief"
+                    title="MedicalMusai Brief (Sample)"
                     subtitle="One‑page patient summary for primary care"
                     patientMeta={{
                       "Patient": "Jane Doe",
@@ -649,15 +683,20 @@ const MedicalMusaiInfo: React.FC = () =>
                   <li>Define your situation and desired outcome</li>
                   <li>Note symptoms, meds, and relevant history</li>
                   <li>Select 1–2 priority questions for the visit</li>
-                  <li>Optional: export a one‑page Co‑Pilot Brief</li>
+                  <li>Optional: export a one‑page MedicalMusai Brief</li>
                 </ul>
               </div>
-              <div className="mt-3 rounded-md border bg-card overflow-hidden">
-                <img
-                  src={runwayLights}
-                  alt="Gentle runway lights leading into the horizon"
-                  className="block w-full h-auto"
-                />
+              <div className="pt-3 mt-3 w-full rounded-md border bg-card overflow-hidden">
+                <div className="relative w-full">
+                  <img
+                    src={runwayLights}
+                    alt="Gentle runway lights leading into the horizon"
+                    className="block w-full h-auto"
+                  />
+                  {/* Subtle atmospheric gradient and runway glow */}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10" />
+                  <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-[12%] w-[60%] h-[35%] rounded-full bg-amber-300/15 blur-3xl" />
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -77,7 +77,19 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     return () => clearInterval(id);
   }, []);
 
-  const isAuthorized = useMemo(() => localStorage.getItem(storageKey) === 'ok', [storageKey]);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(localStorage.getItem(storageKey) === 'ok');
+  useEffect(() =>
+  {
+    const onStorage = (e: StorageEvent) =>
+    {
+      if (e.key === storageKey)
+      {
+        setIsAuthorized(e.newValue === 'ok');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [storageKey]);
   // Capture any pending intent (e.g., initialQuery/mode) while behind the gate
   useEffect(() =>
   {
@@ -93,9 +105,9 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       const pendingQuery = state?.initialQuery || searchParams.get('q') || '';
       const pendingMode = searchParams.get('mode') || state?.switchToTab || '';
 
-      if (pendingQuery)
+      if (pendingQuery || pendingMode)
       {
-        sessionStorage.setItem('musai-pending-query', JSON.stringify({ query: pendingQuery, mode: pendingMode }));
+        sessionStorage.setItem('musai-pending-query', JSON.stringify({ query: pendingQuery || '', mode: pendingMode || '' }));
       }
     }
     catch
@@ -131,6 +143,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       // Activate rainbow effect and persist across next two navigations
       activateRainbowWithPersistence(2);
       localStorage.setItem(storageKey, 'ok');
+      setIsAuthorized(true);
       localStorage.removeItem(failKey);
       localStorage.removeItem(lockKey);
       setError(null);
@@ -150,16 +163,14 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       try
       {
         const raw = sessionStorage.getItem('musai-pending-query');
-        if (raw)
-        {
-          const { query, mode } = JSON.parse(raw);
-          sessionStorage.removeItem('musai-pending-query');
-          // Re-navigate to main app with the pending intent preserved
-          const params = new URLSearchParams();
-          if (mode) params.set('mode', mode);
-          if (query) params.set('q', query);
-          navigate(`${ROUTES.MAIN_APP}?${params.toString()}`, { replace: true, state: { switchToTab: mode, initialQuery: query } });
-        }
+        const { query = '', mode = '' } = raw ? JSON.parse(raw) : { };
+        sessionStorage.removeItem('musai-pending-query');
+
+        // Always navigate to MAIN_APP, defaulting to chat if no mode provided
+        const params = new URLSearchParams();
+        if (mode) params.set('mode', mode);
+        if (query) params.set('q', query);
+        navigate(`${ROUTES.MAIN_APP}?${params.toString()}`, { replace: true, state: { switchToTab: mode || 'chat', initialQuery: query } });
       }
       catch
       {

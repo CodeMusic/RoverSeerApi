@@ -36,11 +36,13 @@ const MusaiCurationsInfo: React.FC = () =>
             <Button variant="outline" onClick={() => document.getElementById('how-it-learns')?.scrollIntoView({ behavior: 'smooth' })}>How It Learns</Button>
           </div>
           <div className="mt-8">
-            <img
-              src={curationsHero}
-              alt="Musai Curations — card stack gliding into place"
-              className="w-full rounded-2xl border border-slate-200/40 dark:border-slate-700 shadow-sm"
-            />
+            <div className="w-full max-w-5xl mx-auto">
+              <img
+                src={curationsHero}
+                alt="Musai Curations — card stack gliding into place"
+                className="block w-full h-auto object-contain max-h-[520px] md:max-h-[560px] rounded-2xl border border-slate-200/40 dark:border-slate-700 shadow-sm"
+              />
+            </div>
           </div>
         </div>
 

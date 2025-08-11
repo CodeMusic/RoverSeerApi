@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Brain, Wand2, GitMerge, Cloud, Lock, ShieldCheck, Layers, MonitorPlay, Images } from 'lucide-react';
+import { Brain, Wand2, GitMerge, Cloud, Lock, ShieldCheck, Layers, MonitorPlay } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
@@ -9,6 +9,7 @@ import { APP_TERMS } from '@/config/constants';
 import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
 import { HybridControlsPanel } from '@/components/code/HybridControlsPanel';
 import codeHero from '@/assets/images/CodeMusai_hero.png';
+import codeSplitView from '@/assets/images/clean split‑view of an editor (dark theme) with code .png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const CodeMusaiInfo: React.FC = () =>
@@ -240,14 +241,16 @@ const CodeMusaiInfo: React.FC = () =>
           <HybridControlsPanel enabled={false} readOnly />
         </div>
 
-        {/* Playground prompt for designers */}
+        {/* Playground visual */}
         <Card className="mb-10">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><MonitorPlay className="w-5 h-5" /> Playground at a Glance</CardTitle>
             <CardDescription>Split‑view: code left, AI chat right, output docked below.</CardDescription>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Image prompt: “Clean split‑view of an editor (dark theme) with code left, chat right, and a console/output pane. Minimal chrome; subtle glow.”
+          <CardContent>
+            <div className="rounded-2xl border bg-card/70 overflow-hidden">
+              <img src={codeSplitView} alt="Clean split‑view editor — code left, chat right, output pane below" className="block w-full h-auto" />
+            </div>
           </CardContent>
         </Card>
 

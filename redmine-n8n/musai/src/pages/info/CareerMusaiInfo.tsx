@@ -143,20 +143,6 @@ const CareerMusaiInfo: React.FC = () =>
           </Card>
         </div>
 
-        <Card className="mb-10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Images className="w-5 h-5" /> MusaiDex × Eye of Musai</CardTitle>
-            <CardDescription>Visual intelligence for your work</CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Train quick catalogs for tools, docs, and spaces. Eye recognizes what matters; MusaiDex keeps it organized.
-            <ul className="list-disc ml-5 mt-2 space-y-1">
-              <li>Few‑shot teach your gear or document types</li>
-              <li>Context‑aware labels and fast retrieval</li>
-              <li>Attach findings to Redmine items for continuity</li>
-            </ul>
-          </CardContent>
-        </Card>
 
         {/* How it works */}
         <Card className="mb-8">

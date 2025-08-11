@@ -8,6 +8,7 @@ import { APP_TERMS } from '@/config/constants';
 import { ROUTES, RouteUtils } from '@/config/routes';
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import eyeHero from '@/assets/images/eyeOfMusai_hero.png';
+import specimenGrid from '@/assets/images/eyeofmusai_Grid of tasteful “specimen cards” (tools, leaves, dishes) .png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const EyeOfMusai: React.FC = () =>
@@ -58,19 +59,6 @@ const EyeOfMusai: React.FC = () =>
         </div>
       </div>
 
-      {/* Hero visual prompt for designers */}
-      <div className="container mx-auto px-4 pt-8">
-        <Card className="mb-10">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Images className="w-5 h-5" /> Hero Visual Prompt</CardTitle>
-            <CardDescription>For design/generation teams</CardDescription>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Ancient instrument meets modern UI: a softly glowing obsidian lens nested inside a minimal brass astrolabe ring. Etched runes hint at classes/tags; faint constellations map to bounding boxes and feature points. Dark slate background with teal/emerald glints. A thin ribbon of text/icons indicates “See • Name • Understand • Create”.
-          </CardContent>
-        </Card>
-      </div>
-
       {/* What it is / Key Features */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid lg:grid-cols-2 gap-6">
@@ -114,6 +102,9 @@ const EyeOfMusai: React.FC = () =>
               <CardDescription>
                 The front-end where vision becomes personal and practical.
               </CardDescription>
+              <div className="mt-1">
+                <Badge variant="secondary">Coming Soon</Badge>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <p>Use MusaiDex to load, name, and teach the forms that matter to you. Build a bird guide, organize recipes visually, map your toolkit, or label research specimens — Eye will learn to see them the way you do.</p>
@@ -136,8 +127,14 @@ const EyeOfMusai: React.FC = () =>
             <CardTitle className="flex items-center gap-2"><Images className="w-5 h-5" /> MusaiDex Card Prompt</CardTitle>
             <CardDescription>For design/generation teams</CardDescription>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Grid of tasteful “specimen cards” (tools, leaves, dishes) with tiny brass corner tabs; each card shows a thumbnail, tags (traits/variants), and a confidence bar. Subtle parchment texture overlay; modern UI type.
+          <CardContent>
+            <div className="rounded-md border bg-card overflow-hidden">
+              <img
+                src={specimenGrid}
+                alt="Grid of tasteful specimen cards with tags and confidence bars"
+                className="block w-full h-auto"
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -275,7 +272,7 @@ const EyeOfMusai: React.FC = () =>
       <div className="container mx-auto px-4 pb-16">
         <div className="max-w-3xl mx-auto text-center">
           <Badge className="mb-4" variant="secondary">Get Started</Badge>
-          <h2 className="text-2xl md:text-3xl font-semibold mb-3">Open Eye and start a MusaiDex</h2>
+          <h2 className="text-2xl md:text-3xl font-semibold mb-3">Open Eye and start a MusaiDex (Coming Soon)</h2>
           <p className="text-muted-foreground mb-6">Upload an image or craft a prompt to teach your first class. Iterate quickly — Eye will adapt in minutes.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button onClick={() => navigate(RouteUtils.mainAppWithMode('eye'))} className="rounded-xl">Open Eye</Button>

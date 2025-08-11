@@ -37,6 +37,7 @@ export const MedicalFormModal: React.FC<MedicalFormModalProps> = ({
   const [open, setOpen] = React.useState(false);
   const [selectedMeta, setSelectedMeta] = React.useState<Record<string, string>>(patientMeta);
   const [selectedSections, setSelectedSections] = React.useState<MedicalFormSection[]>(sections);
+  const printRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     if (!open) return;
@@ -55,7 +56,69 @@ export const MedicalFormModal: React.FC<MedicalFormModalProps> = ({
 
   const handlePrint = (): void =>
   {
-    window.print();
+    try
+    {
+      const container = printRef.current;
+      if (!container)
+      {
+        window.print();
+        return;
+      }
+
+      const sectionEls = Array.from(container.querySelectorAll('.mf-section')) as HTMLElement[];
+      const sectionsHtml = sectionEls.map((el) => {
+        const title = el.getAttribute('data-title') || '';
+        const contentEl = el.querySelector('.mf-content') as HTMLElement | null;
+        const contentHtml = contentEl ? contentEl.innerHTML : '';
+        return `<div class="section"><div class="section-title">${title}</div><div class="section-content">${contentHtml}</div></div>`;
+      }).join('');
+
+      const metaHtml = Object.entries(selectedMeta).map(([k, v]) => `
+        <div class="cell"><div class="label">${k}</div><div class="value">${v}</div></div>
+      `).join('');
+
+      const w = window.open('', '_blank', 'width=860,height=1100');
+      if (!w) { window.print(); return; }
+      w.document.write(`
+        <html>
+          <head>
+            <title>${title}</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif; padding: 24px; color: #111; }
+              .band { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 16px; }
+              .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 12px; }
+              .cell { display: flex; border: 1px solid #ddd; }
+              .label { background: #f5f5f5; width: 120px; padding: 6px; font-weight: 600; }
+              .value { padding: 6px; flex: 1; }
+              .section { border: 1px solid #ddd; margin-top: 12px; }
+              .section-title { background: #f7f7f7; padding: 8px 10px; font-weight: 600; font-size: 14px; border-bottom: 1px solid #ddd; }
+              .section-content { padding: 10px 12px; font-size: 13px; }
+              ul { margin: 6px 0 0 18px; }
+              ol { margin: 6px 0 0 18px; }
+              @media print { body { padding: 12mm; } }
+            </style>
+          </head>
+          <body>
+            <div class="band">
+              <div>
+                <div style="font-weight:700;">MedicalMusai</div>
+                <div style="font-size:12px;color:#666">Patient‑as‑Pilot — For clinical review</div>
+              </div>
+              <div style="font-size:12px;color:#666">${new Date().toLocaleDateString()}</div>
+            </div>
+            <div class="grid">${metaHtml}</div>
+            ${sectionsHtml}
+          </body>
+        </html>
+      `);
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+    catch
+    {
+      window.print();
+    }
   };
 
   return (
@@ -69,13 +132,13 @@ export const MedicalFormModal: React.FC<MedicalFormModalProps> = ({
           {subtitle && (<DialogDescription>{subtitle}</DialogDescription>)}
         </DialogHeader>
 
-        <div className="bg-white text-black dark:text-foreground dark:bg-card border rounded-md">
+        <div ref={printRef} className="bg-white text-black dark:text-foreground dark:bg-card border rounded-md">
           {/* Header band */}
-          <div className="px-6 py-4 border-b flex items-center justify-between">
-            <div>
-              <div className="text-base font-semibold">Co‑Pilot Health</div>
-              <div className="text-xs text-muted-foreground">Confidential — For clinical review</div>
-            </div>
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <div>
+                <div className="text-base font-semibold">MedicalMusai</div>
+                <div className="text-xs text-muted-foreground">Patient‑as‑Pilot — For clinical review</div>
+              </div>
             <Button variant="outline" size="sm" onClick={handlePrint}>Print</Button>
           </div>
 
@@ -96,9 +159,9 @@ export const MedicalFormModal: React.FC<MedicalFormModalProps> = ({
           {/* Sections */}
           <div className="px-6 pb-6 space-y-4">
             {selectedSections.map((section) => (
-              <div key={section.title} className="border rounded-md">
+              <div key={section.title} className="border rounded-md mf-section" data-title={section.title}>
                 <div className="px-3 py-2 border-b bg-muted/30 font-medium text-sm">{section.title}</div>
-                <div className="px-4 py-3 text-sm text-muted-foreground">
+                <div className="px-4 py-3 text-sm text-muted-foreground mf-content">
                   {section.content}
                 </div>
               </div>

@@ -41,20 +41,20 @@ const MusaiStudioInfo: React.FC = () =>
 
         {/* How It Works */}
         <div id="how-it-works" className="grid md:grid-cols-3 gap-6 mb-12">
-          <InfoPageSurface>
           {[
             { title: 'Generate', desc: 'Loopable stems for drums, bass, chords, lead — plus expressive AI voices via Piper.' },
             { title: 'Arrange', desc: 'Drag clips on a bar/beat timeline; set BPM & key; add effects; loop or trim.' },
             { title: 'Export', desc: 'Mix down to WAV in‑browser or let the Pi create MP3/OGG versions.' },
           ].map(({ title, desc }) => (
-            <Card key={title}>
-              <CardHeader>
-                <CardTitle className="text-lg">{title}</CardTitle>
-                <CardDescription>{desc}</CardDescription>
-              </CardHeader>
-            </Card>
+            <InfoPageSurface key={title}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">{title}</CardTitle>
+                  <CardDescription>{desc}</CardDescription>
+                </CardHeader>
+              </Card>
+            </InfoPageSurface>
           ))}
-          </InfoPageSurface>
         </div>
 
         {/* Dual‑Mind Touch */}

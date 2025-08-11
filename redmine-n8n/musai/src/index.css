@@ -107,6 +107,16 @@ body,
   overflow-x: hidden;
 }
 
+/* iOS 100dvh fix for chrome/safari address bar collapse */
+.h-\[100dvh\] {
+  height: 100dvh; /* already used; ensure class exists in output */
+}
+
+/* Prevent textarea zoom on iOS by using 16px base size */
+textarea, input, button {
+  font-size: 16px;
+}
+
 /* CodeMusai Compiler Animations */
 @keyframes fadeInZoom {
   from {

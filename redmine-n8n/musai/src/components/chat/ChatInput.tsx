@@ -85,7 +85,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   ];
 
   return (
-    <div className="p-4 space-y-3">
+    <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-3">
       {/* Therapy Mood Selector */}
       {module === 'therapy' && (
         <div className="flex gap-2 flex-wrap">

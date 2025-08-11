@@ -104,10 +104,10 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       <div className={cn(
         "flex-1 transition-all duration-300 relative z-10",
         isMobile 
-          ? "ml-16" 
+          ? "ml-12" // match compact mobile nav width
           : isNavigationExpanded 
-            ? "ml-52" 
-            : "ml-20"
+            ? "ml-48" 
+            : "ml-16"
       )}>
         <div className="h-[100dvh] flex">
           {/* Left Sidebar */}
