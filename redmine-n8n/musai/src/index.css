@@ -722,3 +722,11 @@
     animation: none;
   }
 }
+
+/* iOS Safari blur performance: reduce backdrop blur on small screens */
+@media (max-width: 480px) {
+  .backdrop-blur {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

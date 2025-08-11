@@ -233,6 +233,14 @@ const Landing = () => {
 
   const hasPastChats = sessions.length > 0;
 
+  const tileButtonClass = `
+    relative z-10 w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-0
+    transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] hover:shadow-sm
+    bg-background/90 md:bg-background/70 md:backdrop-blur supports-[backdrop-filter]:md:bg-background/60
+    text-[hsl(var(--foreground))] min-h-[48px] leading-tight
+    flex items-center justify-start touch-manipulation
+  `;
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background Elements */}
@@ -404,12 +412,8 @@ const Landing = () => {
                   const accents = buildAccentForList(moduleLinks.length);
                   return moduleLinks.map((link, i) => (
                     <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3">
-                      <div className="rounded-xl p-px w-full overflow-hidden" style={{ background: accents[i].borderStyle }}>
-                        <Button
-                          onClick={() => navigate(link.to)}
-                          variant="outline"
-                          className={`relative z-0 w-full px-4 py-3 text-sm sm:text-base font-medium rounded-xl border-0 transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] hover:shadow-sm bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60`}
-                        >
+                      <div className="rounded-xl p-px w-full overflow-hidden min-h-[52px]" style={{ background: accents[i].borderStyle }}>
+                        <Button onClick={() => navigate(link.to)} variant="outline" className={tileButtonClass}>
                           {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
                           {link.label}
                         </Button>
@@ -458,12 +462,8 @@ const Landing = () => {
                 {(() => {
                   const accents = buildAccentForList(moduleLinks.length);
                   return moduleLinks.map((link, i) => (
-                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden" style={{ background: accents[i].borderStyle }}>
-                      <Button
-                        onClick={() => navigate(link.to)}
-                        variant="outline"
-                        className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-0 hover:bg-sidebar-accent/30 transition-all duration-300 w-full`}
-                      >
+                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden min-h-[52px]" style={{ background: accents[i].borderStyle }}>
+                      <Button onClick={() => navigate(link.to)} variant="outline" className={tileButtonClass}>
                         {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
                         <span className="whitespace-normal break-words text-left leading-snug">{link.label}</span>
                       </Button>
@@ -480,12 +480,8 @@ const Landing = () => {
                 {(() => {
                   const accents = buildAccentForList(supportingLinks.length);
                   return supportingLinks.map((link, i) => (
-                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden" style={{ background: accents[i].borderStyle }}>
-                      <Button
-                        onClick={() => navigate(link.to)}
-                        variant="outline"
-                        className={`justify-start h-auto py-3 px-4 text-sm rounded-xl border-0 hover:bg-sidebar-accent/30 transition-all duration-300 w-full`}
-                      >
+                    <div key={link.label} className="rounded-xl p-px w-full overflow-hidden min-h-[52px]" style={{ background: accents[i].borderStyle }}>
+                      <Button onClick={() => navigate(link.to)} variant="outline" className={tileButtonClass}>
                         {(() => { const Icon = link.icon; return <Icon className={`w-4 h-4 mr-2 flex-shrink-0 ${accents[i].iconClass || ''}`} style={accents[i].iconStyle as any} /> })()}
                         <span className="whitespace-normal break-words text-left leading-snug">{link.label}</span>
                       </Button>
