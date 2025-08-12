@@ -4,7 +4,7 @@ import { AttentionalGatewayHeader } from '@/components/common/AttentionalGateway
 import { APP_TERMS } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import taskHero from '@/assets/images/taskmusai_hero.png';
+import agilemusaiHero from '@/assets/images/agilemusai_hero.png';
 import { Button } from '@/components/ui/button';
 import {
   Bot,
@@ -66,7 +66,7 @@ const TaskMusaiInfo: React.FC = () =>
           <div className="relative">
             <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-violet-500/15 via-rose-400/10 to-transparent blur-2xl" />
             <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
-              <img src={taskHero} alt="AgileMusai hero" className="block w-full h-auto" />
+              <img src={agilemusaiHero} alt="AgileMusai hero" className="block w-full h-auto" />
             </div>
           </div>
         </div>
