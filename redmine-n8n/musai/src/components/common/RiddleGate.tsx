@@ -64,6 +64,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [overlayType, setOverlayType] = useState<'success' | 'failure' | 'near' | null>(null);
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [hasJustUnlocked, setHasJustUnlocked] = useState(false);
+  const [lastFeedbackType, setLastFeedbackType] = useState<'near' | 'failure' | null>(null);
+  const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
 
   const today = useMemo(() => yyyymmdd(now), [now]);
   const storageKey = `musai_riddle_access_${today}`;
@@ -130,6 +132,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     if (!hasTyped)
     {
       setError('Please type your answer and click Continue.');
+      setLastFeedbackType(null);
       return;
     }
 
@@ -166,8 +169,10 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       localStorage.removeItem(failKey);
       localStorage.removeItem(lockKey);
       setError(null);
+      setLastFeedbackType(null);
       // Positive reinforcement: confetti + green affect overlay + smile
       setOverlayType('success');
+      setOverlayMessage('Welcome to Musai');
       setIsOverlayVisible(true);
       setHasJustUnlocked(true);
       // Celebrate with party effect
@@ -201,9 +206,19 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       // Do not increment fail count or lock; encourage human reflection
       activateRainbowWithPersistence(1);
       setOverlayType('near');
+      const nearHeadings = [
+        'You are close',
+        'Nearly there',
+        'On the threshold',
+        'Almost in tune',
+        'Within a breath'
+      ];
+      const headingIndex = Math.floor(Math.random() * nearHeadings.length);
+      setOverlayMessage(nearHeadings[headingIndex]);
       setIsOverlayVisible(true);
       setTimeout(() => setIsOverlayVisible(false), 1200);
-      setError('Very close — but you may need to look at this from a human perspective. If you tried using an AI, you might miss the music in your code.');
+      setError('Very close — but you may need to look at this from a human perspective.\nIf you tried using an AI, you might miss the music in your code.\nCheck out seeingsharp.ca to read musings that might help.');
+      setLastFeedbackType('near');
     }
     else
     {
@@ -223,6 +238,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       }
 
       setError("Nice try. Hint: Reflect like a mirror, then connect like insight. What bridges map and metaphor is the quiet awareness witnessing both.");
+      setLastFeedbackType('failure');
     }
   };
 
@@ -367,10 +383,50 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
               <Button type="submit" className="rounded-xl" disabled={isLocked}>Continue</Button>
             </div>
 
-            {/* Gentle nudge beneath the action controls */}
-            <div className="text-xs text-muted-foreground">
-              Sometimes the answer is hiding in the back of your head. In the meantime, exploring the product pages might reveal a clue.
-            </div>
+            {/* Insight box: appears when there is feedback (near or failure), styled as an inverse/reflection panel */}
+            {(lastFeedbackType === 'near' || lastFeedbackType === 'failure') && (
+              <div
+                className={
+                  `relative rounded-xl border px-4 py-3 text-xs md:text-sm transition-colors ` +
+                  (lastFeedbackType === 'near'
+                    ? 'border-amber-500/40 bg-amber-50/70 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200'
+                    : 'border-red-500/40 bg-red-50/70 dark:bg-red-900/20 text-red-900 dark:text-red-200')
+                }
+              >
+                <div className="absolute -inset-0.5 rounded-xl pointer-events-none"
+                     style={{
+                       background: lastFeedbackType === 'near'
+                         ? 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05))'
+                         : 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))'
+                     }}
+                />
+                <div className="relative">
+                  <div className="font-semibold mb-1">
+                    {lastFeedbackType === 'near' ? 'You are close' : 'Try again'}
+                  </div>
+                  {lastFeedbackType === 'near'
+                    ? (
+                      <div className="text-xs md:text-sm">
+                        <div>
+                          Very close — but you may need to look at this from a human perspective.
+                        </div>
+                        <div className="mt-2">
+                          If you tried using an AI, you might miss the music in your code.
+                        </div>
+                        <div className="mt-2">
+                          Check out <a href="https://seeingsharp.ca" target="_blank" rel="noopener noreferrer" className="underline">seeingsharp.ca</a> to read musings that might help.
+                        </div>
+                      </div>
+                    )
+                    : (
+                      <div className="whitespace-pre-line">
+                        {error}
+                      </div>
+                    )
+                  }
+                </div>
+              </div>
+            )}
 
             {/* Discover More: randomly route to a Musai info page */}
             <div>
@@ -446,10 +502,22 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
           }}
         >
           {overlayType === 'success' && (
-            <div className="text-6xl md:text-7xl select-none">🙂</div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-6xl md:text-7xl select-none">🙂</div>
+              {overlayMessage && (
+                <div className="text-lg md:text-xl font-semibold text-foreground select-none">
+                  {overlayMessage}
+                </div>
+              )}
+            </div>
           )}
           {overlayType === 'near' && (
-            <div className="text-6xl md:text-7xl select-none">🟧</div>
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-6xl md:text-7xl select-none">😮</div>
+              <div className="text-lg md:text-xl font-semibold text-foreground select-none">
+                {overlayMessage || 'You are close'}
+              </div>
+            </div>
           )}
         </div>
       )}
