@@ -4,10 +4,16 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusaiMoodProvider, useMusaiMood } from "@/contexts/MusaiMoodContext";
 import { UserPreferencesProvider } from "@/contexts/UserPreferencesContext";
 import { MusaiAlertsProvider } from "@/contexts/MusaiAlertsContext";
+import { MusaiStatusProvider, useMusaiStatus } from "@/contexts/MusaiStatusContext";
+import { KnowledgePopinProvider } from '@/contexts/KnowledgePopinContext';
+import KnowledgePopin from '@/components/common/KnowledgePopin';
 import { Toaster } from "@/components/ui/toaster";
 import { MatrixEffect } from "@/components/effects/MatrixEffect";
 import { RainbowEffect } from "@/components/effects/RainbowEffect";
 import { PartyEffect } from "@/components/effects/PartyEffect";
+import { useEffect } from 'react';
+import { attentionalRequestQueue } from '@/lib/AttentionalRequestQueue';
+import { presenceService } from '@/lib/PresenceService';
 import { MusaiDevConsole } from "@/components/developer/MusaiDevConsole";
 import { AttentionalScrollReset } from "@/components/routing/AttentionalScrollReset";
 import { SmartRouter } from "@/components/routing/SmartRouter";
@@ -19,7 +25,7 @@ import MedicalMusaiInfo from "@/pages/info/MedicalMusaiInfo";
 import MedicalMusaiDemo from "@/pages/MedicalMusaiDemo";
 import EmergentNarrativeInfo from "@/pages/info/EmergentNarrativeInfo";
 import RiddleGate from "@/components/common/RiddleGate";
-import TaskMusaiInfo from "@/pages/info/TaskMusaiInfo";
+import AgileMusaiInfo from "@/pages/info/AgileMusaiInfo";
 
 // Create a client for React Query
 const queryClient = new QueryClient({
@@ -66,8 +72,11 @@ function App() {
         <MusaiMoodProvider>
           <UserPreferencesProvider>
             <MusaiAlertsProvider>
+            <MusaiStatusProvider>
+              <KnowledgePopinProvider>
               <Router>
                 <SmartRouter>
+                  <BootMetrics />
                   <AttentionalScrollReset />
                   <ErrorBoundary>
                     <div className="min-h-screen">
@@ -87,7 +96,7 @@ function App() {
                         <Route path={ROUTES.MEDICAL_MUSAI_DEMO} element={<MedicalMusaiDemo />} />
                         <Route path={ROUTES.EMERGENT_NARRATIVE} element={<EmergentNarrativeInfo />} />
                         <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
-                        <Route path={ROUTES.TASK_MUSAI} element={<TaskMusaiInfo />} />
+                        <Route path={ROUTES.TASK_MUSAI} element={<AgileMusaiInfo />} />
                         <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
                         <Route path={ROUTES.UNIVERSITY} element={<University />} />
                         <Route path={ROUTES.UNIVERSITY_INFO} element={<UniversityInfo />} />
@@ -111,8 +120,11 @@ function App() {
                   <MatrixEffectWrapper />
                   <RainbowEffectWrapper />
                   <PartyEffectWrapper />
+                  <KnowledgePopin />
                 </SmartRouter>
               </Router>
+              </KnowledgePopinProvider>
+            </MusaiStatusProvider>
             </MusaiAlertsProvider>
           </UserPreferencesProvider>
         </MusaiMoodProvider>
@@ -124,11 +136,14 @@ function App() {
 // Matrix Effect Wrapper Component
 function MatrixEffectWrapper() {
   const { isMatrixActive, toggleMatrix } = useMusaiMood();
-  
+  const passivePreferred = true;
+  // Render as passive background without interaction; allow overlay only when explicitly toggled
   return (
-    <MatrixEffect 
-      isActive={isMatrixActive} 
-      onClose={toggleMatrix} 
+    <MatrixEffect
+      isActive={isMatrixActive}
+      onClose={toggleMatrix}
+      mode={passivePreferred ? 'passive' : 'overlay'}
+      density={0.35}
     />
   );
 }
@@ -158,3 +173,43 @@ function PartyEffectWrapper() {
 }
 
 export default App;
+
+// Boot-time side-effects for presence and request metrics, inside providers
+function BootMetrics()
+{
+  const { setStatus } = useMusaiStatus();
+  useEffect(() =>
+  {
+    presenceService.startHeartbeat(30000);
+
+    const onMetrics = (ev: Event) =>
+    {
+      const detail = (ev as CustomEvent<any>).detail;
+      setStatus({
+        activeRequests: detail.activeCount,
+        queuedRequests: detail.queuedCount,
+        maxConcurrentRequests: detail.maxConcurrent,
+        totalRequestsStarted: detail.totalStarted,
+        totalRequestsCompleted: detail.totalCompleted,
+      });
+    };
+    const onPresence = (ev: Event) =>
+    {
+      const detail = (ev as CustomEvent<any>).detail;
+      if (typeof detail?.activeUsers === 'number')
+      {
+        setStatus({ activeUsers: detail.activeUsers });
+      }
+    };
+
+    attentionalRequestQueue.addEventListener('metrics', onMetrics as EventListener);
+    presenceService.addEventListener('presence', onPresence as EventListener);
+    return () =>
+    {
+      attentionalRequestQueue.removeEventListener('metrics', onMetrics as EventListener);
+      presenceService.removeEventListener('presence', onPresence as EventListener);
+      presenceService.stopHeartbeat();
+    };
+  }, [setStatus]);
+  return null;
+}

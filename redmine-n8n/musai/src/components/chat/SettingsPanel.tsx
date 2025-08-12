@@ -8,17 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Settings, Palette, Bell, Shield, HelpCircle, Info, Navigation, User, Bot, Image, Trash2, Plus } from "lucide-react";
+import { Settings, Palette, Bell, Shield, HelpCircle, Info, Navigation, User, Bot, Image, Trash2, Plus, Gauge } from "lucide-react";
 import { useUserPreferences } from "@/contexts/UserPreferencesContext";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";
 import { useState } from "react";
+import { configureQueueMaxConcurrent, getServerMaxConcurrent } from '@/lib/AttentionalRequestQueue';
 
 interface SettingsPanelProps {
   onClose: () => void;
 }
 
 export const SettingsPanel = ({ onClose }: SettingsPanelProps) => {
-  const { preferences, setAutoSelectFirstItem, setUserPhoto, clearUserPhoto, setShowUserPhoto } = useUserPreferences();
+  const { preferences, setAutoSelectFirstItem, setUserPhoto, clearUserPhoto, setShowUserPhoto, getClientMaxConcurrent, setClientMaxConcurrent } = useUserPreferences();
   const { moodPhrase, setMoodPhrase } = useMusaiMood();
   const [activeTab, setActiveTab] = useState("general");
   
@@ -82,6 +83,40 @@ export const SettingsPanel = ({ onClose }: SettingsPanelProps) => {
 
             {/* General Settings Tab */}
             <TabsContent value="general" className="space-y-6 mt-6">
+              {/* Performance */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gauge className="w-5 h-5" />
+                    Performance
+                  </CardTitle>
+                  <CardDescription>
+                    Tune request concurrency for this session. Server limit caps the maximum.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div>
+                      <Label htmlFor="client-concurrency">Max concurrent requests (session)</Label>
+                      <Input
+                        id="client-concurrency"
+                        type="number"
+                        min={1}
+                        max={getServerMaxConcurrent()}
+                        defaultValue={preferences.clientMaxConcurrent ?? getClientMaxConcurrent()}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value || '1', 10);
+                          setClientMaxConcurrent(value);
+                          configureQueueMaxConcurrent(value);
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Server cap: {getServerMaxConcurrent()} — Effective: {getClientMaxConcurrent()}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
               {/* Appearance */}
               <Card>
                 <CardHeader>

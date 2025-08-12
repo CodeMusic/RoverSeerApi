@@ -50,7 +50,7 @@ export function InfoFooterNav(props: InfoFooterNavProps)
     { route: ROUTES.CAREER_MUSAI, label: 'CareerMusai', Icon: TrendingUp },
     { route: ROUTES.CURATIONS_INFO, label: 'MusaiCurations', Icon: Sparkles },
     { route: ROUTES.MUSAI_STUDIO_INFO, label: 'MusaiStudio', Icon: Music },
-    { route: ROUTES.TASK_MUSAI, label: 'TaskMusai', Icon: Bot },
+    { route: ROUTES.TASK_MUSAI, label: 'AgileMusai', Icon: Bot },
   ];
 
   const selectedRoute = currentRoute;

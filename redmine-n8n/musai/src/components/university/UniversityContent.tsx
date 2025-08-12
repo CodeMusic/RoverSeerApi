@@ -194,7 +194,7 @@ export const UniversityContent = () => {
     <div className="p-6 h-full overflow-auto">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
           <div className="flex-1">
             <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 border-b-2 border-purple-200 dark:border-purple-800 pb-2">
               🎓 Musai U
@@ -203,10 +203,10 @@ export const UniversityContent = () => {
               AI-powered personalized learning experiences
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button 
               onClick={() => setCurrentView('create-course')}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
               size="lg"
             >
               <GraduationCap className="mr-2 h-5 w-5" />
@@ -216,6 +216,7 @@ export const UniversityContent = () => {
               onClick={() => setCurrentView('create-lecture')}
               variant="outline"
               size="lg"
+              className="w-full sm:w-auto"
             >
               <Sparkles className="mr-2 h-5 w-5" />
               Create Lecture

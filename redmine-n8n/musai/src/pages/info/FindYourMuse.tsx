@@ -140,9 +140,9 @@ const FindYourMuse = () =>
     {
       id: "task",
       icon: Bot,
-      title: "TaskMusai",
+      title: "AgileMusai",
       subtitle: "Orchestrated Achievement",
-      description: "Where everything comes together. TaskMusai coordinates all other Musai components to help you achieve high-level goals. It's the conductor of your creative symphony.",
+      description: "Where everything comes together. AgileMusai coordinates all other Musai components to help you achieve high-level goals. It's the conductor of your creative symphony.",
       features: [
         "Multi-component orchestration",
         "Goal decomposition",
@@ -201,7 +201,7 @@ const FindYourMuse = () =>
     {
       step: 5,
       title: "Achieve Together",
-      description: "Let TaskMusai orchestrate all components to help you reach your highest goals and dreams.",
+      description: "Let AgileMusai orchestrate all components to help you reach your highest goals and dreams.",
       icon: Target,
       color: "bg-purple-500"
     }
@@ -303,7 +303,7 @@ const FindYourMuse = () =>
                 {
                   id: 'task',
                   icon: Bot,
-                  label: 'TaskMusai',
+                  label: 'AgileMusai',
                   description: APP_TERMS.TASK_DESCRIPTION,
                   onClick: () => navigate(ROUTES.TASK_MUSAI),
                 },

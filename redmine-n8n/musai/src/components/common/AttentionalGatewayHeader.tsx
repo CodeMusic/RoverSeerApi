@@ -3,9 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { APP_TERMS } from '@/config/constants';
+import { APP_TERMS, CANONICAL_TOOL_ORDER } from '@/config/constants';
 import { ROUTES } from '@/config/routes';
-import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye, Stethoscope, TrendingUp } from 'lucide-react';
+import { Theater, Heart, Search, MessageSquare, Code, GraduationCap, Bot, Eye, Stethoscope, TrendingUp, Sparkles } from 'lucide-react';
 import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
 
 type TabId = typeof APP_TERMS[keyof typeof APP_TERMS];
@@ -17,19 +17,21 @@ interface SymbolOption
   icon: React.ComponentType<{ className?: string }>;
 }
 
-// Ensure dropdown order matches main app/tool order
+// Ensure dropdown order matches canonical order everywhere
 const SYMBOL_OPTIONS: SymbolOption[] = [
   { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare },
   { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search },
   { id: APP_TERMS.TAB_EYE, label: 'Eye of Musai', icon: Eye },
   { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code },
+  { id: 'studio', label: 'Musai Studio', icon: Code },
   { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap },
   { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater },
-    { id: APP_TERMS.TAB_CAREER, label: 'CareerMusai', icon: TrendingUp },
+  { id: APP_TERMS.TAB_CAREER, label: 'CareerMusai', icon: TrendingUp },
   { id: APP_TERMS.TAB_THERAPY, label: 'TherapyMusai', icon: Heart },
   { id: APP_TERMS.TAB_MEDICAL, label: 'MedicalMusai', icon: Stethoscope },
-  { id: APP_TERMS.TAB_TASK, label: 'TaskMusai', icon: Bot },
-];
+  { id: 'curations', label: 'Musai Curations', icon: Sparkles },
+  { id: APP_TERMS.TAB_TASK, label: 'AgileMusai', icon: Bot },
+].sort((a, b) => CANONICAL_TOOL_ORDER.indexOf(a.id) - CANONICAL_TOOL_ORDER.indexOf(b.id));
 
 export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ defaultTabId }) =>
 {
@@ -55,6 +57,16 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
       {
         navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_SEARCH } });
       }
+      return;
+    }
+    if (selectedTab === 'curations')
+    {
+      navigate(ROUTES.CURATIONS);
+      return;
+    }
+    if (selectedTab === 'studio')
+    {
+      navigate(ROUTES.MUSAI_STUDIO);
       return;
     }
     if (selectedTab === APP_TERMS.TAB_CHAT)
@@ -94,8 +106,10 @@ export const AttentionalGatewayHeader: React.FC<{ defaultTabId?: string }> = ({ 
       [ROUTES.UNIVERSITY_INFO]: APP_TERMS.TAB_UNIVERSITY,
       [ROUTES.FIND_YOUR_MUSE]: APP_TERMS.TAB_SEARCH,
       [ROUTES.TASK_MUSAI]: APP_TERMS.TAB_TASK,
-      [ROUTES.CURATIONS_INFO]: APP_TERMS.TAB_SEARCH,
-      [ROUTES.MUSAI_STUDIO_INFO]: APP_TERMS.TAB_CODE,
+      [ROUTES.CURATIONS_INFO]: 'curations',
+      [ROUTES.CURATIONS]: 'curations',
+      [ROUTES.MUSAI_STUDIO_INFO]: 'studio',
+      [ROUTES.MUSAI_STUDIO]: 'studio',
     };
     const mapped = pathToTab[path];
     if (mapped && mapped !== selectedTab)

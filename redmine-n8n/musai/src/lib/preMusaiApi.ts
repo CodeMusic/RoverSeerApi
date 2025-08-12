@@ -223,7 +223,7 @@ const defaultContent: Record<string, PreMusaiContent> = {
 
   task: {
     type: 'task',
-    title: 'TaskMusai',
+    title: 'AgileMusai',
     subtitle: 'Automate your workflow with intelligent task management and AI assistance.',
     placeholder: 'What task would you like to automate or manage?',
     examples: [

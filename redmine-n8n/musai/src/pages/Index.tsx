@@ -12,6 +12,7 @@ import { APP_TERMS } from "@/config/constants";
 import { PreMusaiPageType } from "@/components/common/PreMusaiPage";
 import NarrativePanel from "@/components/narrative/NarrativePanel";
 import PortalEffect from "@/components/effects/PortalEffect";
+import VictoryModal from "@/components/common/VictoryModal";
 
 const Index = () => {
   const location = useLocation();
@@ -23,6 +24,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [portalPhase, setPortalPhase] = useState<'enter' | 'leave' | 'none'>('none');
+  const [showVictory, setShowVictory] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<string>(
     location.state?.switchToTab || 
     (searchParams.get('mode') === 'search' ? APP_TERMS.TAB_SEARCH :
@@ -242,6 +244,18 @@ const Index = () => {
 
   // Handle navigation state from landing page
   useEffect(() => {
+    // Show victory modal if arriving from RiddleGate success
+    const victoryQuery = searchParams.get('victory') === '1';
+    const justUnlocked = Boolean((location.state as any)?.justUnlocked);
+    const hasShown = localStorage.getItem('musai-victory-shown') === 'true';
+    if ((victoryQuery || justUnlocked) && !hasShown)
+    {
+      setShowVictory(true);
+      // Enable debug bicamera agent flow temporarily in beta
+      localStorage.setItem('musai-debug-bicamera', 'true');
+      localStorage.setItem('musai-victory-shown', 'true');
+    }
+
     if (location.state?.newSession) {
       // A new session was created from the landing page
       // The session is already created and selected by createNewSession()
@@ -503,6 +517,7 @@ const Index = () => {
   return (
     <div className="relative">
       <PortalEffect phase={portalPhase} />
+      <VictoryModal isOpen={showVictory} onOpenChange={setShowVictory} />
       <BaseLayout
       currentTab={currentTab}
       sessions={allSessions}

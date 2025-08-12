@@ -9,6 +9,7 @@ import { MarkdownRenderer } from './chat/MarkdownRenderer';
 import { ThinkPanel } from './chat/ThinkPanel';
 import { useEmotionEffects } from '@/hooks/useEmotionEffects';
 import { useEffect } from 'react';
+import { DEBUG_FLAGS } from '@/config/constants';
 import {
   Dialog,
   DialogContent,
@@ -126,7 +127,9 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
         
         {/* Think Panel for Assistant Messages */}
         {isAssistant && message.thoughts && (
-          <ThinkPanel thoughts={message.thoughts} isDarkMode={isDarkMode} />
+          DEBUG_FLAGS.hideThinkingTags === 'true' ? null : (
+            <ThinkPanel thoughts={message.thoughts} isDarkMode={isDarkMode} />
+          )
         )}
         
         <div className="mt-2 flex justify-between items-center">

@@ -194,7 +194,9 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
         const params = new URLSearchParams();
         if (mode) params.set('mode', mode);
         if (query) params.set('q', query);
-        navigate(`${ROUTES.MAIN_APP}?${params.toString()}`, { replace: true, state: { switchToTab: mode || 'chat', initialQuery: query } });
+        // Flag to trigger Victory modal once inside the main app
+        params.set('victory', '1');
+        navigate(`${ROUTES.MAIN_APP}?${params.toString()}`, { replace: true, state: { switchToTab: mode || 'chat', initialQuery: query, justUnlocked: true } });
       }
       catch
       {

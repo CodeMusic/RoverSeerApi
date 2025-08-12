@@ -71,7 +71,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       
       // Use the actual n8n musai_search webhook
       // Try without signal first to see if that's the issue
-      const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
+      // Route through queue to respect concurrency limits and attach identity headers
+      const response = await (await import('@/lib/AttentionalRequestQueue')).queuedFetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,7 +83,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           timestamp: Date.now()
         }),
         // signal, // Temporarily removed to test if this is causing the issue
-      });
+      }, TIMEOUTS.SEARCH_REQUEST * 2);
       
       console.log(`Fetch completed, status: ${response.status}`);
       

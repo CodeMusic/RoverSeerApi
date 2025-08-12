@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import { NavigationBar } from '@/components/common/NavigationBar';
+import TopAppBar from '@/components/common/TopAppBar';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
@@ -91,23 +92,15 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   }, [currentTab, filteredSessions.length, preferences.autoSelectFirstItem]);
 
   return (
-    <div className="h-full flex">
-      {/* Vertical Toolbar */}
-      <NavigationBar
-        currentTab={currentTab}
-        onTabChange={onTabChange}
-        isExpanded={isNavigationExpanded}
-        onToggleExpanded={onToggleNavigation}
-      />
+    <div className="h-full flex flex-col">
+      {/* Top App Bar replaces vertical toolbar for now */}
+      <TopAppBar />
 
-      {/* Main Layout with offset for navigation */}
+      {/* Main Layout below top bar */}
       <div className={cn(
         "flex-1 transition-all duration-300 relative z-10",
-        isMobile 
-          ? "ml-12" // match compact mobile nav width
-          : isNavigationExpanded 
-            ? "ml-48" 
-            : "ml-16"
+        // No left offset when using a top app bar
+        "pt-14"
       )}>
         <div className="h-[100dvh] flex">
           {/* Left Sidebar */}
@@ -188,16 +181,6 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           )}
         </div>
       </div>
-
-      {/* Mobile Menu Button */}
-      {isMobile && (
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="fixed top-4 left-4 z-30 p-2 bg-background border rounded-md shadow-lg lg:hidden"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
-      )}
     </div>
   );
 };

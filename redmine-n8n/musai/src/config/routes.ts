@@ -24,7 +24,7 @@ export const ROUTES = {
   MEDICAL_MUSAI: '/medical-musai',
   MEDICAL_MUSAI_DEMO: '/medical-musai/demo',
   EMERGENT_NARRATIVE: '/emergent-narrative',
-  TASK_MUSAI: '/task-musai',
+  TASK_MUSAI: '/agile-musai',
   CURATIONS_INFO: '/curations/info',
   MUSAI_STUDIO_INFO: '/musai-studio/info',
   MUSAI_STUDIO: '/musai-studio',

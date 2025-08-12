@@ -34,6 +34,8 @@ interface UserPreferences {
   showUserPhoto?: boolean;
   // Tool visibility settings
   visibleTools: Record<MusaiTool, boolean>;
+  // Performance tuning per UI session
+  clientMaxConcurrent?: number; // user-selected per-session cap
 }
 
 interface UserPreferencesContextType {
@@ -57,6 +59,9 @@ interface UserPreferencesContextType {
   setToolVisibility: (tool: MusaiTool, visible: boolean) => void;
   getVisibleTools: () => MusaiTool[];
   isToolVisible: (tool: MusaiTool) => boolean;
+  // Performance tuning API
+  getClientMaxConcurrent: () => number;
+  setClientMaxConcurrent: (value: number) => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextType | undefined>(undefined);
@@ -273,7 +278,26 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     setShowUserPhoto,
     setToolVisibility,
     getVisibleTools,
-    isToolVisible
+    isToolVisible,
+    getClientMaxConcurrent: () => {
+      const serverDefault = (() => {
+        try {
+          const winEnv = (typeof window !== 'undefined' && (window as any).env) ? (window as any).env : undefined;
+          const raw = (import.meta as any).env?.VITE_N8N_MAX_CONCURRENCY || winEnv?.VITE_N8N_MAX_CONCURRENCY;
+          const parsed = raw ? parseInt(String(raw), 10) : NaN;
+          return !Number.isNaN(parsed) && parsed > 0 ? parsed : 3;
+        } catch { return 3; }
+      })();
+      const clientPref = preferences.clientMaxConcurrent;
+      if (typeof clientPref === 'number' && clientPref > 0)
+      {
+        return Math.min(clientPref, serverDefault);
+      }
+      return serverDefault;
+    },
+    setClientMaxConcurrent: (value: number) => {
+      setPreferences(prev => ({ ...prev, clientMaxConcurrent: Math.max(1, Math.floor(value)) }));
+    }
   };
 
   return (

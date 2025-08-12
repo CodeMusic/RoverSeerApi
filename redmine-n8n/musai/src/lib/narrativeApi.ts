@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
+import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 
 export type NarrativeMode = 'general' | 'therapy' | 'career' | 'code' | 'university';
 
@@ -28,7 +28,7 @@ class NarrativeApiService
 
   public async createNarrative(payload: CreateNarrativeRequest): Promise<NarrativeSummary>
   {
-    const response = await fetchWithTimeout(`${this.baseUrl}/narratives/create`, {
+    const response = await queuedFetch(`${this.baseUrl}/narratives/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -44,7 +44,7 @@ class NarrativeApiService
   public async listNarratives(mode?: NarrativeMode): Promise<NarrativeSummary[]>
   {
     const url = mode ? `${this.baseUrl}/narratives/list?mode=${mode}` : `${this.baseUrl}/narratives/list`;
-    const response = await fetchWithTimeout(url, { method: 'GET' }, 10000);
+    const response = await queuedFetch(url, { method: 'GET' }, 10000);
     if (!response.ok)
     {
       throw new Error(`Failed to list narratives: ${response.status}`);

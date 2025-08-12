@@ -117,7 +117,7 @@ export const N8N_ENDPOINTS = {
     GET_ALTERNATIVE_PATHS: '/narrative/paths/alternatives',
   },
 
-  // TaskMusai Endpoints
+  // AgileMusai (formerly TaskMusai) Endpoints
   TASK: {
     // Workflow automation
     GET_WORKFLOW_TEMPLATES: '/task/workflows/templates',
@@ -133,7 +133,7 @@ export const N8N_ENDPOINTS = {
     GET_TOOL_INTEGRATIONS: '/task/integrations',
     SETUP_WEBHOOKS: '/task/webhooks/setup',
 
-    // TaskMusai sprint orchestration (webhook workflows in n8n)
+    // AgileMusai sprint orchestration (webhook workflows in n8n)
     START_SPRINT: '/task/sprint/start',
     GET_SPRINT_STATUS: '/task/sprint/status', // expects { sprintId }
     SUBMIT_SPRINT_FEEDBACK: '/task/sprint/feedback',

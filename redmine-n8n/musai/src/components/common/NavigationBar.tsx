@@ -4,7 +4,7 @@ import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Spa
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
-import { APP_TERMS, MUSAI_COLORS } from "@/config/constants";
+import { APP_TERMS, MUSAI_COLORS, CANONICAL_TOOL_ORDER } from "@/config/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 //
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -141,7 +141,7 @@ export const NavigationBar = ({
     color: toolColors[APP_TERMS.TAB_CAREER],
   } : null;
 
-  // Task item (Violet - 7th position)
+  // Task item (Violet - 7th position) — now AgileMusai
   const taskItem = {
     id: APP_TERMS.TAB_TASK,
     icon: Bot,
@@ -152,26 +152,25 @@ export const NavigationBar = ({
   };
 
   // Build navigation items in correct order
-  const navigationItems = [
+  const unordered: any[] = [
     ...baseNavigationItems.filter(item => isToolVisible(tabIdToToolKey(item.id))),
     ...(careerItem && isToolVisible('career') ? [careerItem] : []),
-    ...(isToolVisible('task') ? [taskItem] : []),
-    ...(curationsAvailable ? [{
-      id: "curations",
-      icon: Sparkles,
-      label: "AI Curations",
-      available: true,
-      comingSoon: false,
-      isExternal: true,
-      color: '#FF69B4',
-    }] : []),
+    // Studio insertion
     {
-      id: APP_TERMS.TAB_SETTINGS,
-      icon: Settings,
-      label: APP_TERMS.NAV_SETTINGS,
-      available: true,
-      color: '#808080',
+      id: 'studio', icon: Code, label: 'Musai Studio', available: true, comingSoon: false, color: '#FFD400'
     },
+    // Narrative is already in base
+    // Therapy, Medical in base
+    // Curations conditional
+    ...(curationsAvailable ? [{ id: 'curations', icon: Sparkles, label: 'Musai Curations', available: true, comingSoon: false, color: '#FF69B4' }] : []),
+    // Agile/Task
+    ...(isToolVisible('task') ? [taskItem] : []),
+  ];
+
+  // Sort by canonical tool order and append Settings at the end
+  const navigationItems = [
+    ...unordered.sort((a, b) => CANONICAL_TOOL_ORDER.indexOf(a.id) - CANONICAL_TOOL_ORDER.indexOf(b.id)),
+    { id: APP_TERMS.TAB_SETTINGS, icon: Settings, label: APP_TERMS.NAV_SETTINGS, available: true, color: '#808080' },
   ];
 
   return (
@@ -290,8 +289,10 @@ export const NavigationBar = ({
                   } as React.CSSProperties : undefined}
                   onClick={() => {
                     if (item.available) {
-                      if (item.id === "curations") {
+                      if (item.id === 'curations') {
                         navigate(ROUTES.CURATIONS);
+                      } else if (item.id === 'studio') {
+                        navigate(ROUTES.MUSAI_STUDIO);
                       } else if (item.id === APP_TERMS.TAB_SETTINGS) {
                         navigate("/settings");
                       } else {

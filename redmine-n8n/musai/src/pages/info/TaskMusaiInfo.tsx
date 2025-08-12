@@ -49,7 +49,7 @@ const TaskMusaiInfo: React.FC = () =>
         <div className="grid md:grid-cols-[1.05fr_0.95fr] gap-6 items-center mb-12">
           <div className="text-center md:text-left">
             <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-violet-600 to-rose-600 bg-clip-text text-transparent">
-              TaskMusai — Your On-Demand Scrum Team
+              AgileMusai — Your On-Demand Scrum Team
             </h1>
             <p className="text-muted-foreground text-lg">
               Agents that plan, build, demo, and iterate — powered by n8n, shaped by Redmine.
@@ -66,7 +66,7 @@ const TaskMusaiInfo: React.FC = () =>
           <div className="relative">
             <div className="absolute -inset-6 rounded-2xl bg-gradient-to-tr from-violet-500/15 via-rose-400/10 to-transparent blur-2xl" />
             <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
-              <img src={taskHero} alt="TaskMusai hero" className="block w-full h-auto" />
+              <img src={taskHero} alt="AgileMusai hero" className="block w-full h-auto" />
             </div>
           </div>
         </div>
@@ -298,7 +298,7 @@ const TaskMusaiInfo: React.FC = () =>
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Gauge className="w-5 h-5" /> Why Teams Pick TaskMusai
+              <Gauge className="w-5 h-5" /> Why Teams Pick AgileMusai
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
@@ -333,7 +333,7 @@ const TaskMusaiInfo: React.FC = () =>
             </div>
             <div>
               <div className="font-medium">Can we bring our own tools?</div>
-              <div>Absolutely. TaskMusai composes existing tools and only builds new ones when needed.</div>
+              <div>Absolutely. AgileMusai composes existing tools and only builds new ones when needed.</div>
             </div>
           </CardContent>
         </Card>

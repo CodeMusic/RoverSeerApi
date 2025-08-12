@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import therapyHero from '@/assets/images/therapymusai_hero.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+import KnowledgeTerm from '@/components/common/KnowledgeTerm';
 import { InfoPageSurface } from '@/components/common/InfoPageSurface';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 // Aesthetic preview images
@@ -291,7 +292,7 @@ const TherapyMusaiInfo: React.FC = () =>
               <CardContent className="text-sm text-muted-foreground space-y-2">
                 <ul className="list-disc ml-5 space-y-1">
                   <li>Analyzes themes across sessions: fears, triggers, identity patterns</li>
-                  <li>Detects stuck loops using the Contextual Feedback Model (CFM)</li>
+                  <li>Detects stuck loops using the <KnowledgeTerm k="cfm">Contextual Feedback Model (CFM)</KnowledgeTerm></li>
                   <li>Gamifies growth: unlock achievements like Increased Emotional Intelligence or Pattern Breaker</li>
                 </ul>
               </CardContent>
@@ -312,7 +313,7 @@ const TherapyMusaiInfo: React.FC = () =>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Puzzle className="w-5 h-5" /> Contextual Feedback Model (CFM)
+                  <Puzzle className="w-5 h-5" /> <KnowledgeTerm k="cfm">Contextual Feedback Model (CFM)</KnowledgeTerm>
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
@@ -322,7 +323,7 @@ const TherapyMusaiInfo: React.FC = () =>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" /> Awareness‑First Model
+                  <Sparkles className="w-5 h-5" /> <KnowledgeTerm k="awareness-first">Awareness‑First Model</KnowledgeTerm>
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">

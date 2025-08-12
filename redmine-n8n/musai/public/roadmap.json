@@ -3,6 +3,11 @@
   "summary": "High‑level status across Musai. This JSON is the single source of truth for the public roadmap until the DB is wired.",
   "latestUpdates": [
     {
+      "date": "2025-08-12",
+      "title": "TaskMusai renamed to AgileMusai",
+      "details": "Routes, tabs, labels, and placeholders updated across the app."
+    },
+    {
       "date": "2025-08-11",
       "title": "MedicalMusai: Doctor Modeling section",
       "details": "Explains GP style‑mapping from voice notes, decisions, and portal messages; outputs SBAR‑style briefs."
@@ -44,7 +49,7 @@
         { "label": "MedicalMusai: Doctor Modeling (info section)", "done": true },
         { "label": "TherapyMusai: Symbolic Images (WIP)", "done": false },
         { "label": "TherapyMusai: Partner Counseling visuals (WIP)", "done": false },
-        { "label": "Global ordering: TaskMusai listed last", "done": true },
+        { "label": "Global ordering: AgileMusai listed last", "done": true },
         { "label": "Taste Tuning overlay (Curations)", "done": false },
         { "label": "\"Why this?\" explainer per card (Curations)", "done": false }
       ]

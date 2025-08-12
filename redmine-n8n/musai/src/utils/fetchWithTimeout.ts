@@ -5,8 +5,8 @@ export const FETCH_TIMEOUT = TIMEOUTS.CHAT_MESSAGE;
 export const FETCH_TIMEOUT_SHORT = TIMEOUTS.API_REQUEST;
 
 export const fetchWithTimeout = async (
-  url: string, 
-  options: RequestInit,
+  url: string,
+  options: RequestInit = {},
   timeout: number = TIMEOUTS.CHAT_MESSAGE
 ) => {
   const { controller, timeoutId, cleanup, signal } = createTimeoutController(timeout);

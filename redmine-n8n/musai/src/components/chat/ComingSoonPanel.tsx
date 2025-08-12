@@ -53,7 +53,7 @@ export const ComingSoonPanel = ({ tab, onClose }: ComingSoonPanelProps) => {
       case "agents": // Keep for backward compatibility
         return {
           icon: Bot,
-          title: "TaskMusai",
+          title: "AgileMusai",
           subtitle: "Autonomous Task Performers",
           description: "Deploy specialized AI agents that can perform complex tasks and workflows autonomously on your behalf.",
           features: [

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import careerHero from '@/assets/images/careermusai_hero.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
+import KnowledgeTerm from '@/components/common/KnowledgeTerm';
 
 const CareerMusaiInfo: React.FC = () =>
 {
@@ -84,11 +85,11 @@ const CareerMusaiInfo: React.FC = () =>
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Brain className="w-5 h-5" /> Awareness‑Driven Architecture (CFM)</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Brain className="w-5 h-5" /> Awareness‑Driven Architecture (<KnowledgeTerm k="cfm">CFM</KnowledgeTerm>)</CardTitle>
               <CardDescription>Human‑like insight loop</CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground space-y-2">
-              <div>Contextual Feedback Model where new input reshapes internal understanding.</div>
+              <div><KnowledgeTerm k="cfm">Contextual Feedback Model</KnowledgeTerm> where new input reshapes internal understanding.</div>
               <ul className="list-disc ml-5 space-y-1">
                 <li>Emotions as compressed context (urgent vs. important)</li>
                 <li>Bias as hidden influence (surface and rebalance)</li>

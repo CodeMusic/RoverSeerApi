@@ -7,7 +7,7 @@ export const APP_TERMS = {
   CODE: "CodeMusai",
   UNIVERSITY: "Musai U",
   NARRATIVE: "MusaiTale",
-  TASK: "TaskMusai",
+  TASK: "AgileMusai",
   CAREER: "CareerMusai",
   THERAPY: "TherapyMusai",
   MEDICAL: "MedicalMusai",
@@ -20,7 +20,7 @@ export const APP_TERMS = {
   CODE_BADGE: "Interactive Playground",
   UNIVERSITY_BADGE: "Generative Learning",
   NARRATIVE_BADGE: "Story Emergence",
-  TASK_BADGE: "Intelligent Automation",
+  TASK_BADGE: "Agile Orchestration",
   CAREER_BADGE: "Career Development",
   THERAPY_BADGE: "Mental Wellness",
   MEDICAL_BADGE: "Health Navigation",
@@ -32,7 +32,7 @@ export const APP_TERMS = {
   CODE_DESCRIPTION: "Write, run, and experiment with code in multiple programming languages",
   UNIVERSITY_DESCRIPTION: "Generative emergent learning",
   NARRATIVE_DESCRIPTION: "Where thoughts become stories through emergent narrative",
-  TASK_DESCRIPTION: "Automate your workflow with intelligent task management and AI assistance",
+  TASK_DESCRIPTION: "Plan sprints, orchestrate tasks, and adapt quickly with AI support",
   CAREER_DESCRIPTION: "AI-powered career development and job search assistance",
   THERAPY_DESCRIPTION: "AI-powered mental wellness support and therapeutic conversations",
   MEDICAL_DESCRIPTION: "A meta-copilot that integrates specialists, GP insights, therapy context, and research into one clear flight plan for your health.",
@@ -44,7 +44,7 @@ export const APP_TERMS = {
   TAB_CODE: "code-musai",
   TAB_UNIVERSITY: "musai-university",
   TAB_NARRATIVE: "emergent-narrative",
-  TAB_TASK: "task-musai",
+  TAB_TASK: "agile-musai",
   TAB_CAREER: "career-musai",
   TAB_THERAPY: "therapy-musai",
   TAB_MEDICAL: "medical-musai",
@@ -79,7 +79,7 @@ export const APP_TERMS = {
   NAV_CODE: "CodeMusai", 
   NAV_UNIVERSITY: "Musai U",
   NAV_NARRATIVE: "MusaiTale",
-  NAV_TASK: "TaskMusai",
+  NAV_TASK: "AgileMusai",
   NAV_CAREER: "CareerMusai",
   NAV_THERAPY: "TherapyMusai",
   NAV_MEDICAL: "MedicalMusai",
@@ -92,7 +92,7 @@ export const APP_TERMS = {
   PAGE_CODE: "CodeMusai",
   PAGE_UNIVERSITY: "Musai U",
   PAGE_NARRATIVE: "MusaiTale",
-  PAGE_TASK: "TaskMusai",
+  PAGE_TASK: "AgileMusai",
   PAGE_CAREER: "CareerMusai",
   PAGE_MEDICAL: "MedicalMusai",
   
@@ -116,7 +116,7 @@ export const APP_TERMS = {
   PLACEHOLDER_CHAT: "Type your message...",
   PLACEHOLDER_CODE: "Enter your code...",
   PLACEHOLDER_NARRATIVE: "Start your story...",
-  PLACEHOLDER_TASK: "Describe your task...",
+  PLACEHOLDER_TASK: "Describe your sprint or task...",
   PLACEHOLDER_CAREER: "What job are you looking for?",
   
   // Error Messages
@@ -131,6 +131,22 @@ export const APP_TERMS = {
   SUCCESS_DELETED: "Deleted successfully",
   SUCCESS_UPDATED: "Updated successfully",
 } as const;
+
+// Canonical tool order (tab IDs and special pseudo-ids)
+// Keep Agile (Task) last. Include Studio and Curations before Agile.
+export const CANONICAL_TOOL_ORDER: string[] = [
+  APP_TERMS.TAB_CHAT,
+  APP_TERMS.TAB_SEARCH,
+  APP_TERMS.TAB_CODE,
+  APP_TERMS.TAB_UNIVERSITY,
+  APP_TERMS.TAB_NARRATIVE,
+  APP_TERMS.TAB_MEDICAL,
+  APP_TERMS.TAB_THERAPY,
+  'curations',
+  APP_TERMS.TAB_CAREER,
+  'studio',
+  APP_TERMS.TAB_TASK,
+];
 
 // Type-safe access to constants
 export type AppTerm = keyof typeof APP_TERMS;
@@ -200,4 +216,12 @@ export const MUSAI_COLORS: Record<string, string> = {
   [APP_TERMS.TAB_MEDICAL]: '#16A34A',
   [APP_TERMS.TAB_EYE]: '#06B6D4',
   [APP_TERMS.TAB_SETTINGS]: '#808080',
+};
+
+// Beta flags for visibility of agent internals
+export const DEBUG_FLAGS = {
+  // When true, remove or collapse any <think> tags or internal thought content in UI
+  hideThinkingTags: (typeof window !== 'undefined' && (window as any).env?.VITE_HIDE_THINKING_TAGS) ?? import.meta.env.VITE_HIDE_THINKING_TAGS ?? 'true',
+  // When true, hide bicameral intermediate outputs; when false (beta), show them
+  hideBicameralVoiceOutput: (typeof window !== 'undefined' && (window as any).env?.VITE_HIDE_BICAMERAL_VOICE_OUTPUT) ?? import.meta.env.VITE_HIDE_BICAMERAL_VOICE_OUTPUT ?? 'false',
 };

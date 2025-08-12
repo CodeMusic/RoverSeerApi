@@ -7,7 +7,7 @@ import { Send, History, Sparkles, ExternalLink, User, Brain, Check, MessageSquar
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
 import ROUTES, { RouteUtils } from "@/config/routes";
-import { APP_TERMS, MUSAI_CHROMATIC_12 } from "@/config/constants";
+import { APP_TERMS, MUSAI_CHROMATIC_12, CANONICAL_TOOL_ORDER } from "@/config/constants";
 import {
   computeToneIndices,
   getNeighborTones,
@@ -28,8 +28,7 @@ const Landing = () => {
   const siteMapRef = useRef<HTMLDivElement | null>(null);
   const [siteMapRevealed, setSiteMapRevealed] = useState(false);
 
-  // Minimal links to cycle through
-  // Order mirrors the main tool order: Chat, Search, Eye, Code, University, Narrative, Therapy, Medical, Task
+  // Marketing/info links (used by carousel) – labels remain as-is
   const infoLinks = [
     { label: "Meet Musai", icon: MessageSquare, to: ROUTES.MEET_MUSAI },
     { label: "Find Your Muse", icon: Search, to: ROUTES.FIND_YOUR_MUSE },
@@ -41,7 +40,7 @@ const Landing = () => {
     { label: "MedicalMusai", icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI },
     { label: "MusaiCurations", icon: Sparkles, to: ROUTES.CURATIONS_INFO },
     { label: "MusaiStudio", icon: Music, to: ROUTES.MUSAI_STUDIO_INFO },
-    { label: "TaskMusai", icon: Bot, to: ROUTES.TASK_MUSAI },
+    { label: "AgileMusai", icon: Bot, to: ROUTES.TASK_MUSAI },
     // Additional marketing/info links follow the core tool order
     { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI },
     { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI },
@@ -52,26 +51,50 @@ const Landing = () => {
 
   // Chromatic accent system moved to IconTileList
 
-  // Group links for a flat site map: modules first, then supporting pages
-  const moduleRouteSet = new Set<string>([
-    ROUTES.MEET_MUSAI,
-    ROUTES.FIND_YOUR_MUSE,
-    ROUTES.EYE_OF_MUSAI,
-    ROUTES.CODE_MUSAI_INFO,
-    ROUTES.UNIVERSITY_INFO,
-    ROUTES.EMERGENT_NARRATIVE,
-    ROUTES.THERAPY_MUSAI,
-    ROUTES.MEDICAL_MUSAI,
-    ROUTES.TASK_MUSAI,
-    ROUTES.CURATIONS_INFO,
-    ROUTES.MUSAI_STUDIO_INFO,
-    ROUTES.CAREER_MUSAI,
-  ]);
+  // Canonical module order and labels for Explore (module names), omit Eye here
+  const canonicalModules = [
+    { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare, to: ROUTES.MEET_MUSAI },
+    { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search, to: ROUTES.FIND_YOUR_MUSE },
+    { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code, to: ROUTES.CODE_MUSAI_INFO },
+    { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO },
+    { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater, to: ROUTES.EMERGENT_NARRATIVE },
+    { id: APP_TERMS.TAB_MEDICAL, label: 'MedicalMusai', icon: Stethoscope, to: ROUTES.MEDICAL_MUSAI },
+    { id: APP_TERMS.TAB_THERAPY, label: 'TherapyMusai', icon: Heart, to: ROUTES.THERAPY_MUSAI },
+    { id: 'curations', label: 'MusaiCurations', icon: Sparkles, to: ROUTES.CURATIONS_INFO },
+    { id: APP_TERMS.TAB_CAREER, label: 'CareerMusai', icon: Target, to: ROUTES.CAREER_MUSAI },
+    { id: 'studio', label: 'MusaiStudio', icon: Music, to: ROUTES.MUSAI_STUDIO_INFO },
+    { id: APP_TERMS.TAB_TASK, label: 'AgileMusai', icon: Bot, to: ROUTES.TASK_MUSAI },
+  ].sort((a, b) => CANONICAL_TOOL_ORDER.indexOf(a.id) - CANONICAL_TOOL_ORDER.indexOf(b.id));
+
+  // Prepare sets for splitting Explore into modules vs supporting
+  const moduleRouteSet = new Set<string>(canonicalModules.map(m => m.to as string));
   const moduleLinks = infoLinks.filter((l) => moduleRouteSet.has(l.to as string));
   const supportingLinks = infoLinks.filter((l) => !moduleRouteSet.has(l.to as string));
 
-  // Show only main Musai module pages in the bottom carousel
-  const primaryCarouselLinks = moduleLinks;
+  // Carousel: keep marketing labels but enforce canonical ordering
+  const primaryCarouselLinks = moduleLinks
+    .slice()
+    .sort((a, b) => {
+      const idFor = (to: string): string => {
+        switch (to) {
+          case ROUTES.MEET_MUSAI: return APP_TERMS.TAB_CHAT;
+          case ROUTES.FIND_YOUR_MUSE: return APP_TERMS.TAB_SEARCH;
+          case ROUTES.CODE_MUSAI_INFO: return APP_TERMS.TAB_CODE;
+          case ROUTES.UNIVERSITY_INFO: return APP_TERMS.TAB_UNIVERSITY;
+          case ROUTES.EMERGENT_NARRATIVE: return APP_TERMS.TAB_NARRATIVE;
+          case ROUTES.MEDICAL_MUSAI: return APP_TERMS.TAB_MEDICAL;
+          case ROUTES.THERAPY_MUSAI: return APP_TERMS.TAB_THERAPY;
+          case ROUTES.CURATIONS_INFO: return 'curations';
+          case ROUTES.MUSAI_STUDIO_INFO: return 'studio';
+          case ROUTES.CAREER_MUSAI: return APP_TERMS.TAB_CAREER;
+          case ROUTES.TASK_MUSAI: return APP_TERMS.TAB_TASK;
+          default: return 'zz';
+        }
+      };
+      return CANONICAL_TOOL_ORDER.indexOf(idFor(a.to as string)) - CANONICAL_TOOL_ORDER.indexOf(idFor(b.to as string));
+    });
+
+  // Explore tiles use module names in canonical order (4 columns at lg via IconTileList default)
 
   // Optional: if user scrolls past a bit, auto‑reveal site map
   useEffect(() => {
@@ -242,7 +265,7 @@ const Landing = () => {
              selectedMode === "code" ? "CodeMusai" :
              selectedMode === "university" ? "Musai U" :
              selectedMode === "emergent-narrative" ? "MusaiTale" :
-             selectedMode === "task" ? "TaskMusai" :
+             selectedMode === "task" ? "AgileMusai" :
              "MusaiChat"}
           </h1>
           
@@ -366,12 +389,12 @@ const Landing = () => {
         <div className="pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
           <div className="relative mx-auto max-w-5xl">
             <Carousel
-              className="px-4 sm:px-6"
+              className="px-2 sm:px-4"
               setApi={setCarouselApi}
               opts={{ align: 'start', loop: true, slidesToScroll: 1, watchDrag: true, containScroll: 'trimSnaps' as any, duration: 10 }}
               style={{ paddingLeft: "max(env(safe-area-inset-left), 16px)", paddingRight: "max(env(safe-area-inset-right), 16px)" }}
             >
-              <CarouselContent className="gap-3">
+              <CarouselContent className="gap-2 sm:gap-3">
                 {(() => {
                   const links = primaryCarouselLinks;
                   const toneIdx = computeToneIndices(links.length, MUSAI_CHROMATIC_12.length);
@@ -385,7 +408,7 @@ const Landing = () => {
                       : hexToRgba(tone.hex, 0.12);
                     const IconComp = link.icon as any;
                     return (
-                      <CarouselItem key={link.label} className="basis-[calc((100%-1.5rem)/3)] flex-none">
+                      <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3 flex-none">
                         <div className="rounded-lg p-px w-full overflow-hidden" style={{ background: border }}>
                           <Button
                             variant="outline"

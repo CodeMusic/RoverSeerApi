@@ -1,0 +1,12 @@
+{
+  "items": [
+    { "title": "Stability passes on ChatMusai", "note": "Tighten message flow, retries, and partial failover." },
+    { "title": "Activity Monitor (Local)", "note": "Prevent runaway parallel tasks and protect system resources." },
+    { "title": "Agent Flow Debug Toggle", "note": "Reveal bicamera intermediates during beta only." },
+    { "title": "Frontier Support via OpenAI Key", "note": "Let testers attach their own key for larger models." },
+    { "title": "Hybrid Mode", "note": "Blend local + remote for cost/perf flexibility (later)." },
+    { "title": "Top Bar Musai Status Area", "note": "Header, progress, symbol, achievements, and inline quick actions from modules." }
+  ]
+}
+
+

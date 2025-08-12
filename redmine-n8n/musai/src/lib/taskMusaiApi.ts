@@ -1,4 +1,5 @@
 import { N8N_ENDPOINTS, n8nApi } from '@/config/n8nEndpoints';
+import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 
 export interface StartSprintRequest
 {
@@ -21,36 +22,36 @@ export const taskMusaiApi =
 {
   async startSprint(payload: StartSprintRequest): Promise<{ sprintId: string }>
   {
-    const response = await fetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.TASK.START_SPRINT),
+    const response = await queuedFetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.TASK.START_SPRINT),
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...payload, timestamp: Date.now() }),
-    });
+    }, 30000);
     if (!response.ok) throw new Error('Failed to start sprint');
     return response.json();
   },
 
   async getSprintStatus(sprintId: string): Promise<SprintStatus>
   {
-    const response = await fetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.TASK.GET_SPRINT_STATUS),
+    const response = await queuedFetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.TASK.GET_SPRINT_STATUS),
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sprintId, timestamp: Date.now() }),
-    });
+    }, 15000);
     if (!response.ok) throw new Error('Failed to fetch sprint status');
     return response.json();
   },
 
   async submitSprintFeedback(sprintId: string, feedback: string): Promise<void>
   {
-    await fetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.TASK.SUBMIT_SPRINT_FEEDBACK),
+    await queuedFetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.TASK.SUBMIT_SPRINT_FEEDBACK),
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sprintId, feedback, timestamp: Date.now() }),
-    });
+    }, 15000);
   },
 };
 

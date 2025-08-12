@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Message } from '@/types/chat';
 import { fetchWithTimeout, FETCH_TIMEOUT } from '@/utils/fetchWithTimeout';
+import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 import { extractResponseContent, extractResponseThoughts } from '@/utils/responseHandler';
 import { QueryClient } from '@tanstack/react-query';
 import { handleApiResponse, handleApiError } from '@/utils/apiResponseHandler';
@@ -118,7 +119,7 @@ export const useMessageSender = (
           hasFile: !!fileData
         });
 
-        const response = await fetchWithTimeout(
+        const response = await queuedFetch(
           effectiveWebhookUrl,
           {
             method: "POST",
