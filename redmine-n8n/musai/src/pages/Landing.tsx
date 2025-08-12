@@ -228,7 +228,7 @@ const Landing = () => {
   `;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-[100svh] bg-background flex items-center justify-center p-4 relative overflow-x-hidden overflow-y-auto">
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900" />
       
@@ -486,11 +486,11 @@ const Landing = () => {
                 <h2 className="text-2xl md:text-3xl font-bold">What is Musai?</h2>
                 <p className="text-muted-foreground mt-2">Musai is a creative–technical framework for exploring AI as both code and companion. It’s built as a flat, skimmable map: main modules first, then supporting pages. Part toolset, part philosophy, it’s designed to help ideas flow between logic and imagination.</p>
               </div>
-              <div className="mb-6">
+              <div className="mb-6 px-4">
                 <h3 className="text-lg font-semibold mb-3">Modules</h3>
                 <IconTileList items={moduleLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
               </div>
-              <div>
+              <div className="px-4">
                 <h3 className="text-lg font-semibold mb-3">Supporting</h3>
                 <IconTileList items={supportingLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
               </div>

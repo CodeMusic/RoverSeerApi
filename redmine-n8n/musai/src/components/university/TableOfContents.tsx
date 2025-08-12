@@ -68,14 +68,14 @@ const TableOfContents = ({ lecture, onStepChange }: TableOfContentsProps) =>
   };
 
   return (
-    <Card className="h-[calc(100vh-200px)]">
+    <Card className="h-[calc(100dvh-200px)]">
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           📋 Table of Contents
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="space-y-1 max-h-[calc(100vh-300px)] overflow-y-auto">
+        <div className="space-y-1 max-h-[calc(100dvh-300px)] overflow-y-auto">
           {lecture.steps.map((step, index) => {
             const isCurrentStep = index === lecture.currentStep;
             const canAccess = canAccessStep(index);

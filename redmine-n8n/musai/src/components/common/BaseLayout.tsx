@@ -102,7 +102,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
         // No left offset when using a top app bar
         "pt-14"
       )}>
-        <div className="h-[100dvh] flex">
+        <div className="h-[100dvh] md:h-[100svh] flex">
           {/* Left Sidebar */}
           {!isSidebarCollapsed && (
             <div className={cn(

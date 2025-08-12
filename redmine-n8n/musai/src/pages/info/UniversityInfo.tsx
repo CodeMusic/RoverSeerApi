@@ -45,7 +45,7 @@ const UniversityInfo = () =>
   };
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-[100svh] bg-background overflow-x-hidden">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_UNIVERSITY} />
 
       <div className="container mx-auto px-4 py-16 max-w-6xl">

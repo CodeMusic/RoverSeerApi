@@ -431,7 +431,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                     isOutputPopped={isOutputPopped}
                   />
                 </CardHeader>
-                <CardContent className="p-4 pb-8 h-[calc(100vh-12rem)]">
+                <CardContent className="p-4 pb-8 h-[calc(100dvh-12rem)]">
                   <ResizablePanelGroup 
                     direction="vertical" 
                     className="h-full rounded-md border"

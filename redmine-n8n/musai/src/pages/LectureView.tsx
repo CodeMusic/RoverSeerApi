@@ -230,7 +230,7 @@ const LectureView = () =>
 
           {/* Main Content Area */}
           <div className="lg:col-span-3">
-            <Card className="h-[calc(100vh-200px)]">
+            <Card className="h-[calc(100dvh-200px)]">
               <CardHeader>
                 <CardTitle className="text-lg">
                   Step {lecture.currentStep + 1}: {lecture.steps[lecture.currentStep]?.title}
