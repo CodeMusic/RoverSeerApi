@@ -19,8 +19,8 @@ import cityMap from '@/assets/images/medical_citymap.png';
 import notepadTimeline from '@/assets/images/medicalmusai_notepadetimeline.png';
 import compassClarity from '@/assets/images/medicalmusai_compass clarity.png';
 import runwayChecklist from '@/assets/images/medicalmusai_runawaychecklist.png';
-import threeColumns from '@/assets/images/medical musai_ three columns clarity configence connection.png';
-import polaroidCards from '@/assets/images/medical musai_Three polaroid‑style cards with captio.png';
+import threeColumns from '@/assets/images/medical musai_ three columns.png';
+import polaroidCards from '@/assets/images/medical musai_Three polaroid.png';
 import runwayLights from '@/assets/images/medical musai _ runway.png';
 
 const MedicalMusaiInfo: React.FC = () =>

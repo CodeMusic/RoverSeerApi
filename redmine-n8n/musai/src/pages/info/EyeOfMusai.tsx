@@ -8,7 +8,7 @@ import { APP_TERMS } from '@/config/constants';
 import { ROUTES, RouteUtils } from '@/config/routes';
 import { AttentionalGatewayHeader } from '@/components/common/AttentionalGatewayHeader';
 import eyeHero from '@/assets/images/eyeOfMusai_hero.png';
-import specimenGrid from '@/assets/images/eyeofmusai_Grid of tasteful “specimen cards” (tools, leaves, dishes) .png';
+import specimenGrid from '@/assets/images/eyeofmusai_specimen cards.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const EyeOfMusai: React.FC = () =>

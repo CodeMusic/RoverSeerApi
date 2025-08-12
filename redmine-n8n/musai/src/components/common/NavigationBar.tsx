@@ -6,15 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
 import { APP_TERMS, MUSAI_COLORS } from "@/config/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { MusaiLifeLogo, MusaiShimmer } from "@/components/effects/MusaiEffects";
+//
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useCurationsAvailability } from "@/hooks/useCurationsAvailability";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { DynamicProfileLogo } from '@/components/effects/MusaiEffects';
-import musaiLogoDark from '@/assets/images/musai_logo.png';
-import musaiLogoLight from '@/assets/images/musai_logo_light.png';
-import { useTheme } from '@/contexts/ThemeContext';
+// Removed legacy static logo imports and theme hook; expanded view scales the glowing logo instead
 
 interface NavigationBarProps {
   currentTab: string;
@@ -35,7 +33,6 @@ export const NavigationBar = ({
   const { toggleDevConsole, setToolColor, isCareerMusaiActive } = useMusaiMood();
   const { isAvailable: curationsAvailable } = useCurationsAvailability();
   const { preferences, isToolVisible } = useUserPreferences();
-  const { isDark } = useTheme();
 
   // ROYGBIV color coding for tools
   const toolColors = MUSAI_COLORS;
@@ -200,25 +197,14 @@ export const NavigationBar = ({
           title="Open Musai Developer Console"
         >
           <DynamicProfileLogo 
-            size={isExpanded && !isMobile ? "lg" : "md"} 
+            size={isExpanded && !isMobile ? "xl" : "md"} 
             isDarkMode={true}
             noShimmer={true}
             userPhotoUrl={preferences.userPhotoUrl}
             showUserPhoto={preferences.showUserPhoto || false}
           />
         </div>
-        {isExpanded && !isMobile && (
-          <div className="ml-3 flex flex-col items-start">
-            <img
-              src={isDark ? musaiLogoDark : musaiLogoLight}
-              alt="Musai"
-              className="h-6 w-auto select-none pointer-events-none"
-            />
-            <div className="text-[10px] text-muted-foreground mt-1">
-              AI Assistant
-            </div>
-          </div>
-        )}
+        {/* On expand, we simply scale the glowing Musai logo. No extra text or legacy image. */}
       </div>
 
       {/* Theme Toggle */}

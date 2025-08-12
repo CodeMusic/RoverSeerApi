@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, Timer, Layers, ShieldCheck, FolderKanban, Mail, SlidersHorizontal, CircleHelp } from 'lucide-react';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
-import curationsHero from '@/assets/images/musai_curations_Card stack gliding into place — deep dive · spark · tool · thread.png';
+import curationsHero from '@/assets/images/musai_curations_Cardstack.png';
 
 const MusaiCurationsInfo: React.FC = () =>
 {

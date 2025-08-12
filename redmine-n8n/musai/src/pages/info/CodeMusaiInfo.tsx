@@ -9,7 +9,7 @@ import { APP_TERMS } from '@/config/constants';
 import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
 import { HybridControlsPanel } from '@/components/code/HybridControlsPanel';
 import codeHero from '@/assets/images/CodeMusai_hero.png';
-import codeSplitView from '@/assets/images/clean split‑view of an editor (dark theme) with code .png';
+import codeSplitView from '@/assets/images/Clean splitview.png';
 import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 
 const CodeMusaiInfo: React.FC = () =>

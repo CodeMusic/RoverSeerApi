@@ -10,14 +10,14 @@ import { InfoFooterNav } from '@/components/common/InfoFooterNav';
 import { InfoPageSurface } from '@/components/common/InfoPageSurface';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 // Aesthetic preview images
-import mobileMock from '@/assets/images/therapymusai_Mobile therapy interface mock- single column glass cards .png';
-import toolsGrid from '@/assets/images/therapy musai _Grid of therapy tools- 5-4-3-2-1, breathing, body scan, saf.png';
-import flowDiagram from '@/assets/images/therapy musai_Therapy flow diagram- Thought → Emotion → Behavior → Reframe, .png';
-import therapeuticDashboard from '@/assets/images/therapy musai_Therapeutic dashboard- mood ring, safety indicator, .png';
-import allianceThreads from '@/assets/images/therapymusai_ Two abstract figures (guide + client) made of flowing light .png';
-import iconsSet from '@/assets/images/therapymusai_  Minimal line icons on glass chips- breathing, journal, .png';
-import valuesGoals from '@/assets/images/therapy musai _  Values and goals cards floating- compass icon, mountain .png';
-import progressChart from '@/assets/images/therapymusai_Therapeutic progress visualization- soft curved line chart .png';
+import mobileMock from '@/assets/images/therapymusai_Mobile therapy interface mock.png';
+import toolsGrid from '@/assets/images/therapy musai _Grid of therapy tools.png';
+import flowDiagram from '@/assets/images/therapy musai_Therapy flow diagram.png';
+import therapeuticDashboard from '@/assets/images/therapy musai_Therapeutic dashboard- mood ring.png';
+import allianceThreads from '@/assets/images/therapymusai_ Two abstract figures.png';
+import iconsSet from '@/assets/images/therapymusai_  Minimal line icons.png';
+import valuesGoals from '@/assets/images/therapy musai _  Values and goals cards.png';
+import progressChart from '@/assets/images/therapymusai_Therapeutic progress visualization.png';
 import {
   Heart,
   Sparkles,
