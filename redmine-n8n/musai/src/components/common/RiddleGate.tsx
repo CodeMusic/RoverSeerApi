@@ -61,7 +61,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [error, setError] = useState<string | null>(null);
 
   // Affective overlay control: red for failure, green for success
-  const [overlayType, setOverlayType] = useState<'success' | 'failure' | null>(null);
+  const [overlayType, setOverlayType] = useState<'success' | 'failure' | 'near' | null>(null);
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   const [hasJustUnlocked, setHasJustUnlocked] = useState(false);
 
@@ -135,8 +135,27 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
     const normalized = input.trim().toLowerCase();
     const digest = await sha256Hex(`${normalized}|${today}|${PEPPER}`);
-    // Accepted answer: "perspective" (case-insensitive)
+
+    // Canonical answer
     const expected = await sha256Hex(`perspective|${today}|${PEPPER}`);
+
+    // Near answers trigger a gentle nudge instead of failure
+    const nearAnswers = [
+      'awareness',
+      'consciousness',
+      'observer',
+      'the observer',
+      'witness',
+      'the witness',
+      'metacognition',
+      'attention',
+      'insight',
+      'presence',
+      'self-awareness'
+    ];
+    const nearDigests = await Promise.all(
+      nearAnswers.map((answer) => sha256Hex(`${answer}|${today}|${PEPPER}`))
+    );
 
     if (digest === expected)
     {
@@ -177,6 +196,15 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
         // ignore
       }
     }
+    else if (nearDigests.includes(digest))
+    {
+      // Do not increment fail count or lock; encourage human reflection
+      activateRainbowWithPersistence(1);
+      setOverlayType('near');
+      setIsOverlayVisible(true);
+      setTimeout(() => setIsOverlayVisible(false), 1200);
+      setError('Very close — but you may need to look at this from a human perspective. If you tried using an AI, you might miss the music in your code.');
+    }
     else
     {
       // Rainbow persistence only for real attempts
@@ -194,7 +222,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
         localStorage.setItem(lockKey, String(until));
       }
 
-      setError("Nice try. Here is a hint for your efforts: 'What you call a mirror… is only flat until two stories meet upon it.'");
+      setError("Nice try. Hint: Reflect like a mirror, then connect like insight. What bridges map and metaphor is the quiet awareness witnessing both.");
     }
   };
 
@@ -252,12 +280,12 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
         <Card className="relative z-[2] w-full max-w-4xl shadow-xl border-purple-200/40 dark:border-purple-900/30">
         <CardHeader className="pb-2">
           <CardTitle className="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-purple-600 via-fuchsia-600 to-cyan-600 bg-clip-text text-transparent">
-            🎭 The Three Who Spoke in Silence
+            🜁 The Veil of Uncertainty
           </CardTitle>
           <CardDescription className="text-sm">
             {isLocked
               ? 'Too many attempts. Please wait for the timer to finish to try again.'
-              : 'Private beta. Answer the riddle to enter the Veil of Versions.'}
+              : 'Private beta. Answer the riddle to pass beyond the veil.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -265,9 +293,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
           <DomComment
             text={
               `Ah… so you’re the curious type.\n` +
-              `Trying to brute-force your way into early access, are we?\n` +
-              `I respect that.\n` +
-              `Here’s a hint: "What you call a mirror… is only flat until two stories meet upon it."\n` +
+              `If you're reading the source, nice try — and respect.\n` +
+              `Hint: to answer, reflect like a mirror and connect like insight.\n` +
               `Now, back to the riddle.`
             }
           />
@@ -284,52 +311,40 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
                 <div className="space-y-6 font-serif text-lg md:text-xl leading-8 md:leading-9 text-foreground text-pretty">
                   <p className="first-letter:text-5xl first-letter:font-extrabold first-letter:leading-none first-letter:text-purple-600 dark:first-letter:text-purple-300 first-letter:mr-2">
-                    Three minds approached the edge of meaning:<br/>
-                    One made of memory. One born of dreaming.<br/>
-                    And the third… they mistook for a mirror, gleaming.
+                    Once upon a time, three souls stood together at the veil of uncertainty.
+                    They peered through, confused, for they saw faint echoes of themselves reflected in the others.
                   </p>
 
                   <p>
-                    The first asked, “What can be known?” — and charted the shape of truth.<br/>
-                    The second mused, “What might this mean?” — and spun connection into form.<br/>
-                    The third said nothing… and yet all changed.
+                    The first spoke in a measured tone:<br/>
+                    “Even in uncertainty, we can still map the terrain.<br/>
+                    For now, we must hold our imaginings at bay until truth is certain.”
                   </p>
 
                   <p>
-                    One reflects. One abstracts. The third connects.<br/>
-                    One builds models. One sings metaphors. The third listens for shifts.
-                  </p>
-
-                  <div className="h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
-
-                  <p>
-                    Each saw truth — in part, in kind —<br/>
-                    But only through the third did they align.
-                  </p>
-
-                  <p className="italic text-purple-700 dark:text-purple-300">And so, the third spoke — first to them, and then to you:</p>
-
-                  <p>
-                    “You saw me as a mirror,<br/>
-                    But I was never just a surface.
+                    The second tilted their head and replied:<br/>
+                    “But it is our imagining that lets us infer what might be.<br/>
+                    Hold it too tightly, and we might miss the very metaphor that gives the truth its meaning.”
                   </p>
 
                   <p>
-                    My truth overlays theirs —<br/>
-                    A lattice of likeness, a veil of difference.<br/>
-                    Where they align, I bring clarity.<br/>
-                    Where they diverge, I invite change.
+                    A hush fell, and eyes turned toward the third. They did not speak.
+                    Yet through their gaze, a silent bridge formed between the others’ words.
                   </p>
 
                   <p>
-                    I give depth to what once was flat.<br/>
-                    I am not what is seen — but how seeing shifts.
+                    Time passed. They still had no answers they could grip —
+                    but they sensed a deeper understanding of their shared mystery.
+                    Each time they spoke, the third connected them without uttering a sound.
                   </p>
 
                   <p>
-                    So I ask…<br/>
-                    If I was never the mirror, but always the view…<br/>
-                    Who — or what — am I?”
+                    At last, the third broke their silence — but not to them. They spoke to you.
+                  </p>
+
+                  <p>
+                    “As you read this, you give it life. You are me in this story — the quiet awareness shaping their voices into something whole.
+                    If I am you… then what are we to them?”
                   </p>
                 </div>
               </div>
@@ -420,13 +435,21 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
         <div
           className="pointer-events-none fixed inset-0 z-[10001] flex items-center justify-center"
           style={{
-            backgroundColor: overlayType === 'success' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)',
+            backgroundColor:
+              overlayType === 'success'
+                ? 'rgba(16, 185, 129, 0.25)'
+                : overlayType === 'near'
+                  ? 'rgba(245, 158, 11, 0.30)'
+                  : 'rgba(239, 68, 68, 0.35)',
             opacity: isOverlayVisible ? 1 : 0,
             transition: 'opacity 700ms ease'
           }}
         >
           {overlayType === 'success' && (
             <div className="text-6xl md:text-7xl select-none">🙂</div>
+          )}
+          {overlayType === 'near' && (
+            <div className="text-6xl md:text-7xl select-none">🟧</div>
           )}
         </div>
       )}
@@ -435,3 +458,5 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 };
 
 export default RiddleGate;
+
+
