@@ -137,6 +137,7 @@ export const APP_TERMS = {
 export const CANONICAL_TOOL_ORDER: string[] = [
   APP_TERMS.TAB_CHAT,
   APP_TERMS.TAB_SEARCH,
+  APP_TERMS.TAB_EYE,
   APP_TERMS.TAB_CODE,
   APP_TERMS.TAB_UNIVERSITY,
   APP_TERMS.TAB_NARRATIVE,
@@ -165,31 +166,32 @@ export type MusaiTone = {
   hex: string;
 };
 
-// Primary 7-tone (ROYGBIV-like) sequence
+// Primary 7-tone sequence (true ROYGBIV)
 export const MUSAI_CHROMATIC_7: MusaiTone[] = [
   { note: 'C', label: 'Red', meaning: 'Root note, pure energy', hex: '#FF0000' },
-  { note: 'D', label: 'Orange', meaning: 'Vibrant, creative, forward-moving', hex: '#FF7F00' },
-  { note: 'E', label: 'Yellow', meaning: 'Illuminating, expressive clarity', hex: '#FFD400' },
-  { note: 'F', label: 'Yellow-Green', meaning: 'Fresh beginnings, natural growth', hex: '#9ACD32' },
-  { note: 'G', label: 'Teal/Cyan', meaning: 'Expansive, flowing, open', hex: '#06B6D4' },
-  { note: 'A', label: 'Indigo', meaning: 'Passionate, emotional depth', hex: '#4B0082' },
-  { note: 'B', label: 'Violet', meaning: 'Resolution, completion, transcendent', hex: '#9400D3' },
+  { note: 'D', label: 'Orange', meaning: 'Creative drive, forward motion', hex: '#FFA500' },
+  { note: 'E', label: 'Yellow', meaning: 'Illumination, expressive clarity', hex: '#FFFF00' },
+  { note: 'F', label: 'Green', meaning: 'Fresh growth, balance, restoration', hex: '#00FF00' },
+  { note: 'G', label: 'Blue', meaning: 'Expansive focus, calm precision', hex: '#0000FF' },
+  { note: 'A', label: 'Indigo', meaning: 'Intuitive depth, passionate inquiry', hex: '#4B0082' },
+  { note: 'B', label: 'Violet', meaning: 'Resolution, completion, transcendence', hex: '#9400D3' },
 ];
 
-// Extended 12-tone sequence (includes the sharps/flats between the primaries)
+// Extended 12-tone sequence aligned to musical chromatic steps
+// Sharps (C#, D#, F#, G#, A#) are dual-valence blends between primaries
 export const MUSAI_CHROMATIC_12: MusaiTone[] = [
-  { note: 'C', label: 'Red', meaning: 'Root note, pure energy', hex: '#FF0000' },
-  { note: 'C#', label: 'Red-Orange', meaning: 'Transitional, energized shift', hex: '#FF4D00' },
-  { note: 'D', label: 'Orange', meaning: 'Vibrant, creative, forward-moving', hex: '#FF7F00' },
-  { note: 'D#', label: 'Orange-Yellow', meaning: 'Bright anticipation, playful edge', hex: '#FFC000' },
-  { note: 'E', label: 'Yellow', meaning: 'Illuminating, expressive clarity', hex: '#FFD400' },
-  { note: 'F', label: 'Yellow-Green', meaning: 'Fresh beginnings, natural growth', hex: '#9ACD32' },
-  { note: 'F#', label: 'Green', meaning: 'Balanced, centered, heartful', hex: '#16A34A' },
-  { note: 'G', label: 'Teal/Cyan', meaning: 'Expansive, flowing, open', hex: '#06B6D4' },
-  { note: 'G#', label: 'Blue', meaning: 'Deep, introspective, wise', hex: '#2563EB' },
-  { note: 'A', label: 'Indigo', meaning: 'Passionate, emotional depth', hex: '#4B0082' },
-  { note: 'A#', label: 'Violet-Indigo', meaning: 'Shadow play, tension before resolution', hex: '#7C3AED' },
-  { note: 'B', label: 'Violet', meaning: 'Resolution, completion, transcendent', hex: '#9400D3' },
+  { note: 'C',  label: 'Red',            meaning: 'Root note, pure energy',                 hex: '#FF0000' },
+  { note: 'C#', label: 'Red-Orange',     meaning: 'Transitional activation between Red→Orange', hex: '#FF4500' },
+  { note: 'D',  label: 'Orange',         meaning: 'Creative drive, forward motion',         hex: '#FFA500' },
+  { note: 'D#', label: 'Orange-Yellow',  meaning: 'Bright anticipation, Orange→Yellow',     hex: '#FFC300' },
+  { note: 'E',  label: 'Yellow',         meaning: 'Illumination, expressive clarity',       hex: '#FFFF00' },
+  { note: 'F',  label: 'Green',          meaning: 'Fresh growth, balance, restoration',     hex: '#00FF00' },
+  { note: 'F#', label: 'Green-Blue',     meaning: 'Cooling transition, Green→Blue',         hex: '#00B2FF' },
+  { note: 'G',  label: 'Blue',           meaning: 'Expansive focus, calm precision',        hex: '#0000FF' },
+  { note: 'G#', label: 'Blue-Indigo',    meaning: 'Deepening focus, Blue→Indigo',           hex: '#3A32B8' },
+  { note: 'A',  label: 'Indigo',         meaning: 'Intuitive depth, passionate inquiry',    hex: '#4B0082' },
+  { note: 'A#', label: 'Indigo-Purple',  meaning: 'Tension before release, Indigo→Purple',  hex: '#6E2CA5' },
+  { note: 'B',  label: 'Purple',         meaning: 'Resolution, completion, transcendence',  hex: '#9400D3' },
 ];
 
 // Assign colors to a list of tool tab IDs using 7-tone if <=7 tools, otherwise 12-tone

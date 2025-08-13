@@ -68,7 +68,9 @@ export function getNeighborTones(index: number): { previous: MusaiTone; next: Mu
  */
 export function isDualValenceIndex(index: number): boolean
 {
-  const dualIndices = new Set([1, 3, 7, 10]);
+  // Dual tone indices correspond to musical sharps: C#, D#, F#, G#, A#
+  // In our 0-based palette: 1, 3, 6, 8, 10
+  const dualIndices = new Set([1, 3, 6, 8, 10]);
   return dualIndices.has(index);
 }
 

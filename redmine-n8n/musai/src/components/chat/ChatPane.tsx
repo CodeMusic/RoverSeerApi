@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
+import { MysticalTypingIndicator } from './MysticalTypingIndicator';
 import { ChatContextMenu } from './ChatContextMenu';
 import { Message } from '@/types/chat';
 import { useEmotionEffects } from '@/hooks/useEmotionEffects';
@@ -139,18 +140,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         
         {/* Typing Indicator */}
         {isTyping && (
-          <MessageBubble
-            message={{
-              id: 'typing',
-              role: 'assistant',
-              content: 'Thinking...',
-              timestamp: Date.now()
-            }}
-            roleConfig={roleConfig}
-            module={module}
-            isTyping={true}
-            theme={theme}
-          />
+          <div className="flex justify-start">
+            <MysticalTypingIndicator isDarkMode={false} />
+          </div>
         )}
       </div>
 

@@ -80,6 +80,12 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
 
   // Set initial sidebar state based on user preferences
   useEffect(() => {
+    // For Chat, keep the session list open by default
+    if (currentTab === APP_TERMS.TAB_CHAT) {
+      setIsSidebarCollapsed(false);
+      return;
+    }
+
     if (filteredSessions.length > 0) {
       if (!preferences.autoSelectFirstItem) {
         setIsSidebarCollapsed(true);

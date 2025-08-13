@@ -35,8 +35,9 @@
     <script>
       // Set the page title from environment variable with fallback
       window.addEventListener('load', function() {
-        const title = window.env && window.env.VITE_SITE_TITLE ? window.env.VITE_SITE_TITLE : 'MusaiChat - Reflective AI for Recursive Minds';
-        document.title = title;
+        const base = 'Musai';
+        const tagline = 'Reflective AI for Recursive Minds';
+        document.title = `${base} - ${tagline}`;
       });
     </script>
   </head>

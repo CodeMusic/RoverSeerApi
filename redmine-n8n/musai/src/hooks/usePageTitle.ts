@@ -5,34 +5,37 @@ export const usePageTitle = () => {
   const location = useLocation();
 
   useEffect(() => {
-    const baseTitle = window.env?.VITE_SITE_TITLE || 'MusaiChat';
-    
-    let pageTitle = baseTitle;
-    
-    // Set specific titles for different routes
-    switch (location.pathname) {
-      case '/':
-        pageTitle = `${baseTitle} - Reflective AI for Recursive Minds`;
-        break;
-      case '/chat':
-        pageTitle = `Chat - ${baseTitle}`;
-        break;
-      case '/playground':
-        pageTitle = `Code Playground - ${baseTitle}`;
-        break;
-      case '/roverbyte':
-        pageTitle = 'Musai x RoverByte - Creative Automation Stack';
-        break;
-      case '/meet-musai':
-        pageTitle = 'Meet Musai - The AI that Remembers';
-        break;
-      case '/neuroscience':
-        pageTitle = 'Musai: The Neuroscience - Cognitive Foundations';
-        break;
-      default:
-        pageTitle = baseTitle;
-    }
-    
-    document.title = pageTitle;
+    const base = 'Musai';
+    const tagline = 'Reflective AI for Recursive Minds';
+    const path = location.pathname;
+
+    // Home: Musai - {tagline}; other pages: Musai - {page}
+    const routeToName: Record<string, string> = {
+      '/': tagline,
+      '/musai': 'App',
+      '/playground': 'Code Playground',
+      '/code-musai': 'CodeMusai',
+      '/code-musai/info': 'CodeMusai',
+      '/university': 'Musai University',
+      '/university/info': 'Musai University',
+      '/emergent-narrative': 'MusaiTale',
+      '/therapy-musai': 'TherapyMusai',
+      '/medical-musai': 'MedicalMusai',
+      '/career-musai': 'CareerMusai',
+      '/eye-of-musai': 'The Eye of Musai',
+      '/find-your-muse': 'MusaiSearch',
+      '/local-ai': 'Local AI Architecture',
+      '/roverbyte': 'RoverByte Integration',
+      '/neuroscience': 'The Neuroscience',
+      '/musai-studio': 'MusaiStudio',
+      '/musai-studio/info': 'MusaiStudio',
+      '/curations': 'MusaiCurations',
+      '/curations/info': 'MusaiCurations',
+      '/roadmap': 'Roadmap',
+    };
+
+    const suffix = routeToName[path] ?? 'App';
+    const title = path === '/' ? `${base} - ${tagline}` : `${base} - ${suffix}`;
+    document.title = title;
   }, [location.pathname]);
 };

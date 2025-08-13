@@ -24,6 +24,8 @@ const Index = () => {
   const navigate = useNavigate();
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [portalPhase, setPortalPhase] = useState<'enter' | 'leave' | 'none'>('none');
+  // When true, bypasses PreMusai and shows Chat UI immediately while session is being prepared/sent
+  const [forceChatUI, setForceChatUI] = useState<boolean>(false);
   const [showVictory, setShowVictory] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<string>(
     location.state?.switchToTab || 
@@ -302,6 +304,9 @@ const Index = () => {
       return;
     }
 
+    // Ensure chat interface is shown immediately while session spins up and message is sent
+    setForceChatUI(true);
+
     const messageKey = `${currentTab}-${initialMessage}`;
     const wasAlreadySent = localStorage.getItem(`sent_initial_${messageKey}`) === 'true';
     if (wasAlreadySent) {
@@ -318,7 +323,7 @@ const Index = () => {
       handleNewSession();
       setTimeout(() => {
         sendInitialMessage(initialMessage);
-      }, 200);
+      }, 150);
     } else {
       sendInitialMessage(initialMessage);
     }
@@ -441,7 +446,7 @@ const Index = () => {
     };
 
     // Check if we should show PreMusai page (no session for this tab or empty session)
-    const shouldShowPreMusai = !currentSession || !('messages' in currentSession) || currentSession.messages.length === 0;
+    const shouldShowPreMusai = !forceChatUI && (!currentSession || !('messages' in currentSession) || currentSession.messages.length === 0);
 
     // All Musai features should work within the unified app - no redirects!
 
@@ -497,6 +502,33 @@ const Index = () => {
           module={module}
           roleConfig={{ user: 'You', assistant: 'Musai' }}
           messageList={currentSession.messages}
+          onMessageSend={sendMessage}
+          isTyping={isTyping}
+          isLoading={isLoading}
+        />
+      );
+    }
+
+    // If we are forcing chat UI but messages not yet present, show an empty chat pane (booting session)
+    if (forceChatUI) {
+      const moduleByTab: Record<string, 'therapy' | 'chat' | 'code' | 'university' | 'career' | 'search' | 'narrative' | 'task' | 'eye'> = {
+        [APP_TERMS.TAB_THERAPY]: 'therapy',
+        [APP_TERMS.TAB_CHAT]: 'chat',
+        [APP_TERMS.TAB_CODE]: 'code',
+        [APP_TERMS.TAB_UNIVERSITY]: 'university',
+        [APP_TERMS.TAB_CAREER]: 'career',
+        [APP_TERMS.TAB_SEARCH]: 'search',
+        [APP_TERMS.TAB_NARRATIVE]: 'narrative',
+        [APP_TERMS.TAB_TASK]: 'task',
+        [APP_TERMS.TAB_EYE]: 'eye',
+      };
+      const module = moduleByTab[currentTab] ?? 'chat';
+      return (
+        <ChatPane
+          sessionId={currentSession?.id || ''}
+          module={module}
+          roleConfig={{ user: 'You', assistant: 'Musai' }}
+          messageList={[]}
           onMessageSend={sendMessage}
           isTyping={isTyping}
           isLoading={isLoading}

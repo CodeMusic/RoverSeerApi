@@ -15,7 +15,7 @@ import {
   hexToRgba,
   isDualValenceIndex,
 } from "@/utils/chroma";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+// Carousel removed for now
 import { IconTileList } from "@/components/common/IconTileList";
 
 const Landing = () => {
@@ -24,7 +24,7 @@ const Landing = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedMode, setSelectedMode] = useState("auto");
-  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  // Carousel removed
   const siteMapRef = useRef<HTMLDivElement | null>(null);
   const [siteMapRevealed, setSiteMapRevealed] = useState(false);
 
@@ -51,10 +51,11 @@ const Landing = () => {
 
   // Chromatic accent system moved to IconTileList
 
-  // Canonical module order and labels for Explore (module names), omit Eye here
+  // Canonical module order and labels for Explore (module names)
   const canonicalModules = [
     { id: APP_TERMS.TAB_CHAT, label: 'MusaiChat', icon: MessageSquare, to: ROUTES.MEET_MUSAI },
     { id: APP_TERMS.TAB_SEARCH, label: 'MusaiSearch', icon: Search, to: ROUTES.FIND_YOUR_MUSE },
+    { id: APP_TERMS.TAB_EYE, label: 'Eye of Musai', icon: Eye, to: ROUTES.EYE_OF_MUSAI },
     { id: APP_TERMS.TAB_CODE, label: 'CodeMusai', icon: Code, to: ROUTES.CODE_MUSAI_INFO },
     { id: APP_TERMS.TAB_UNIVERSITY, label: 'MusaiUniversity', icon: GraduationCap, to: ROUTES.UNIVERSITY_INFO },
     { id: APP_TERMS.TAB_NARRATIVE, label: 'MusaiTale', icon: Theater, to: ROUTES.EMERGENT_NARRATIVE },
@@ -72,13 +73,22 @@ const Landing = () => {
   const supportingLinks = infoLinks.filter((l) => !moduleRouteSet.has(l.to as string));
 
   // Carousel: keep marketing labels but enforce canonical ordering
+  const carouselExclusions = new Set<string>([
+    ROUTES.CODE_MUSAI_INFO,
+    ROUTES.EMERGENT_NARRATIVE,
+    ROUTES.CURATIONS_INFO,
+    ROUTES.CAREER_MUSAI,
+  ]);
+
   const primaryCarouselLinks = moduleLinks
+    .filter(l => !carouselExclusions.has(l.to as string))
     .slice()
     .sort((a, b) => {
       const idFor = (to: string): string => {
         switch (to) {
           case ROUTES.MEET_MUSAI: return APP_TERMS.TAB_CHAT;
           case ROUTES.FIND_YOUR_MUSE: return APP_TERMS.TAB_SEARCH;
+          case ROUTES.EYE_OF_MUSAI: return APP_TERMS.TAB_EYE;
           case ROUTES.CODE_MUSAI_INFO: return APP_TERMS.TAB_CODE;
           case ROUTES.UNIVERSITY_INFO: return APP_TERMS.TAB_UNIVERSITY;
           case ROUTES.EMERGENT_NARRATIVE: return APP_TERMS.TAB_NARRATIVE;
@@ -385,20 +395,25 @@ const Landing = () => {
             {/* Enter App and History buttons removed per request. Sending with empty input now navigates into the app's module without starting chat. */}
         </div>
 
-        {/* Minimalist Info Carousel */}
+        {/* Featured quick links (replaces carousel) */}
         <div className="pt-8 slide-in-up" style={{ animationDelay: '0.6s' }}>
-          <div className="relative mx-auto max-w-5xl">
-            <Carousel
-              className="px-2 sm:px-4"
-              setApi={setCarouselApi}
-              opts={{ align: 'start', loop: true, slidesToScroll: 1, watchDrag: true, containScroll: 'trimSnaps' as any, duration: 10 }}
-              style={{ paddingLeft: "max(env(safe-area-inset-left), 16px)", paddingRight: "max(env(safe-area-inset-right), 16px)" }}
-            >
-              <CarouselContent className="gap-2 sm:gap-3">
-                {(() => {
-                  const links = primaryCarouselLinks;
-                  const toneIdx = computeToneIndices(links.length, MUSAI_CHROMATIC_12.length);
-                  return links.map((link, i) => { 
+          {(() => {
+            const middleOptions = [
+              { label: 'AgileMusai', to: ROUTES.TASK_MUSAI, Icon: Bot },
+              { label: 'MedicalMusai', to: ROUTES.MEDICAL_MUSAI, Icon: Stethoscope },
+              { label: 'TherapyMusai', to: ROUTES.THERAPY_MUSAI, Icon: Heart },
+            ];
+            const selectedMiddle = middleOptions[Math.floor(Math.random() * middleOptions.length)];
+            const featured = [
+              { label: 'Meet Musai', to: ROUTES.MEET_MUSAI, Icon: MessageSquare },
+              selectedMiddle,
+              { label: 'The Neuroscience', to: ROUTES.NEUROSCIENCE, Icon: Brain },
+            ];
+            const toneIdx = computeToneIndices(featured.length, MUSAI_CHROMATIC_12.length);
+            return (
+              <div className="mx-auto max-w-5xl px-2 sm:px-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                  {featured.map((item, i) => {
                     const idx = toneIdx[i] ?? 0;
                     const tone = getToneByIndex(idx);
                     const { previous, next } = getNeighborTones(idx);
@@ -406,29 +421,25 @@ const Landing = () => {
                     const border = isDual
                       ? `linear-gradient(90deg, ${hexToRgba(previous.hex, 0.12)}, ${hexToRgba(next.hex, 0.12)})`
                       : hexToRgba(tone.hex, 0.12);
-                    const IconComp = link.icon as any;
+                    const IconComp = item.Icon as any;
                     return (
-                      <CarouselItem key={link.label} className="basis-full sm:basis-1/2 md:basis-1/3 flex-none">
-                        <div className="rounded-lg p-px w-full overflow-hidden" style={{ background: border }}>
-                          <Button
-                            variant="outline"
-                            className="justify-start h-[48px] px-4 text-left whitespace-nowrap text-sm w-full rounded-lg border-0 bg-background/70 md:bg-background/60"
-                            onClick={() => navigate(link.to as string)}
-                            aria-label={link.label}
-                          >
-                            <IconComp className="w-4 h-4 mr-2 opacity-90" style={{ color: hexToRgba(tone.hex, 0.7) }} />
-                            <span className="font-medium leading-snug truncate">{link.label}</span>
-                          </Button>
-                        </div>
-                      </CarouselItem>
+                      <div key={item.label} className="rounded-lg p-px w-full overflow-hidden" style={{ background: border }}>
+                        <Button
+                          variant="outline"
+                          className="justify-start h-[48px] px-4 text-left whitespace-nowrap text-sm w-full rounded-lg border-0 bg-background/70 md:bg-background/60"
+                          onClick={() => navigate(item.to as string)}
+                          aria-label={item.label}
+                        >
+                          <IconComp className="w-4 h-4 mr-2 opacity-90" style={{ color: hexToRgba(tone.hex, 0.7) }} />
+                          <span className="font-medium leading-snug truncate">{item.label}</span>
+                        </Button>
+                      </div>
                     );
-                  });
-                })()}
-              </CarouselContent>
-              <CarouselPrevious className="-left-1 sm:left-0 border-0 bg-gradient-to-r from-background/90 to-transparent hover:from-background/95 text-muted-foreground" />
-              <CarouselNext className="-right-1 sm:right-0 border-0 bg-gradient-to-l from-background/90 to-transparent hover:from-background/95 text-muted-foreground" />
-            </Carousel>
-          </div>
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Reveal Section CTA: Roadmap + Explore */}
