@@ -449,8 +449,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
                     ROUTES.THERAPY_MUSAI,
                     ROUTES.MEDICAL_MUSAI,
                     ROUTES.CAREER_MUSAI,
-                    ROUTES.EMERGENT_NARRATIVE,
-                    ROUTES.ROVERBYTE
+                    ROUTES.EMERGENT_NARRATIVE
                   ];
                   const index = Math.floor(Math.random() * targets.length);
                   navigate(targets[index]);

@@ -69,11 +69,11 @@ const UniversityInfo = () =>
           </div>
           <div className="relative overflow-hidden">
             <div className="absolute -inset-2 sm:-inset-6 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-slate-400/10 to-transparent blur-2xl pointer-events-none" />
-            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden w-full flex items-center justify-center p-2 sm:p-4">
+            <div className="relative rounded-2xl border bg-card/70 backdrop-blur overflow-hidden w-full flex items-center justify-center p-0">
               <img
                 src={universityHero}
                 alt="Musai University hero"
-                className="block w-full h-auto max-h-[420px] md:max-h-[560px] object-contain"
+                className="block w-full h-auto max-h-[420px] md:max-h-[560px] object-contain rounded-2xl"
               />
             </div>
           </div>

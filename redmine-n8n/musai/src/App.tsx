@@ -52,7 +52,6 @@ import UniversityInfo from "@/pages/info/UniversityInfo";
 import LectureWizard from "@/pages/LectureWizard";
 import LectureView from "@/pages/LectureView";
 import CourseCreationPage from "@/pages/CourseCreationPage";
-import RoverByte from "@/pages/info/RoverByte";
 import { Curations } from "@/pages/Curations";
 import { CurationsLocked } from "@/pages/CurationsLocked";
 import MusaiCurationsInfo from "@/pages/info/MusaiCurationsInfo";
@@ -61,6 +60,7 @@ import MusaiStudio from "@/pages/MusaiStudio";
 import Roadmap from "@/pages/Roadmap";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import CFMInfo from "@/pages/info/CFMInfo";
 
 // Routes
 import { ROUTES } from "@/config/routes";
@@ -87,6 +87,7 @@ function App() {
                         <Route path={ROUTES.CODE_PLAYGROUND} element={<CodeMusaiPlayground />} />
                         <Route path={ROUTES.CODE_MUSAI_INFO} element={<CodeMusaiInfo />} />
                         <Route path={ROUTES.NEUROSCIENCE} element={<Neuroscience />} />
+                        <Route path={ROUTES.CFM_INFO} element={<CFMInfo />} />
                         <Route path={ROUTES.MEET_MUSAI} element={<MeetMusai />} />
                         <Route path={ROUTES.FIND_YOUR_MUSE} element={<FindYourMuse />} />
                         <Route path={ROUTES.EYE_OF_MUSAI} element={<EyeOfMusai />} />
@@ -97,7 +98,6 @@ function App() {
                         <Route path={ROUTES.EMERGENT_NARRATIVE} element={<EmergentNarrativeInfo />} />
                         <Route path={ROUTES.LOCAL_AI} element={<LocalAI />} />
                         <Route path={ROUTES.TASK_MUSAI} element={<AgileMusaiInfo />} />
-                        <Route path={ROUTES.ROVERBYTE} element={<RoverByte />} />
                         <Route path={ROUTES.UNIVERSITY} element={<University />} />
                         <Route path={ROUTES.UNIVERSITY_INFO} element={<UniversityInfo />} />
                         <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<LectureWizard />} />

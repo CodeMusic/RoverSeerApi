@@ -24,6 +24,7 @@ type IconTileListProps = {
   onItemClick?: (item: IconTileItem, index: number) => void;
   minItemHeight?: number; // px
   dense?: boolean; // slightly smaller paddings
+  gridClassName?: string; // override grid template classes
 };
 
 /**
@@ -32,7 +33,7 @@ type IconTileListProps = {
  */
 export function IconTileList(props: IconTileListProps)
 {
-  const { items, className, onItemClick, minItemHeight = 56, dense = false } = props;
+  const { items, className, onItemClick, minItemHeight = 56, dense = false, gridClassName } = props;
   const navigate = useNavigate();
 
   if (items.length === 0)
@@ -44,7 +45,7 @@ export function IconTileList(props: IconTileListProps)
 
   return (
     <div className={className || ''}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 w-full items-stretch">
+      <div className={`${gridClassName || 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'} gap-3 w-full items-stretch`}>
         {items.map(({ to, label, Icon }, i) =>
         {
           const paletteIndex = toneIndices[i] ?? 0;

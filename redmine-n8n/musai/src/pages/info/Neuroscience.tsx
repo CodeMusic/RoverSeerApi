@@ -12,6 +12,7 @@ import brainlobes from '@/assets/images/brainlobes.png';
 import flowsensereflect from '@/assets/images/flowsensereflect.png';
 import toolsmithfeedbackloop from '@/assets/images/toolsmithfeedbackloop.png';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ROUTES } from '@/config/routes';
 
 /**
  * Neuroscience & Cognitive Psychology — Musai
@@ -156,7 +157,7 @@ const Neuroscience = () => {
                     <div className="mt-3">These components form a cognitive feedback cycle:</div>
                     <ol className="list-decimal pl-5 space-y-1">
                       <li>Sense — Data capture from inputs (voice, APIs, sensors)</li>
-                      <li>Reflect — Contextual Feedback Model (CFM) updates priorities and tensions</li>
+             <li>Reflect — <a className="underline decoration-dotted" href={ROUTES.CFM_INFO}>Contextual Feedback Model (CFM)</a> updates priorities and tensions</li>
                       <li>Integrate — Redmine stores linked, tagged outcomes</li>
                       <li>Extend — Toolsmith Engine creates new workflows when existing tools are insufficient</li>
                     </ol>
@@ -198,10 +199,10 @@ const Neuroscience = () => {
                         ['CodeMusai','Hemispheric problem-solving loop','Logical & creative code generation'],
                         ['MedicalMusai','Clinical decision support network','Summarization, SBAR briefs'],
                         ['TherapyMusai','DMN–limbic integration','Emotional reframing, symbolic mapping'],
-                        ['CareerMusai','Executive planning network','Sprint-to-story conversion'],
+                        ['CareerMusai','Executive planning network','Career planning, skill roadmaps, job scouting'],
                         ['MusaiCurations','Hippocampal novelty detection','Adaptive content surfacing'],
                         ['MusaiStudio','Auditory–motor integration','AI-assisted music creation'],
-                        ['AgileMusai','Distributed team cognition','Agent role orchestration'],
+                        ['AgileMusai','Distributed team cognition','Team role orchestration (PO/SM/Dev/QA/Toolsmith)'],
                       ].map(([m,a,f]) => (
                         <tr key={m} className="border-t">
                           <td className="py-2 font-medium">{m}</td>
@@ -221,10 +222,10 @@ const Neuroscience = () => {
                     ['CodeMusai','Hemispheric problem-solving loop','Logical & creative code generation'],
                     ['MedicalMusai','Clinical decision support network','Summarization, SBAR briefs'],
                     ['TherapyMusai','DMN–limbic integration','Emotional reframing, symbolic mapping'],
-                    ['CareerMusai','Executive planning network','Sprint-to-story conversion'],
+                    ['CareerMusai','Executive planning network','Career planning, skill roadmaps, job scouting'],
                     ['MusaiCurations','Hippocampal novelty detection','Adaptive content surfacing'],
                     ['MusaiStudio','Auditory–motor integration','AI-assisted music creation'],
-                    ['AgileMusai','Distributed team cognition','Agent role orchestration'],
+                    ['AgileMusai','Distributed team cognition','Team role orchestration (PO/SM/Dev/QA/Toolsmith)'],
                   ].map(([m,a,f]) => (
                     <div key={m} className="rounded-md border p-3 bg-card">
                       <div className="font-medium">{m}</div>
@@ -234,15 +235,18 @@ const Neuroscience = () => {
                   ))}
                 </div>
 
-                {/* Example: RoverByte invocation */}
+                {/* Example: Other agents use Musai via MCP */}
                 <div className="rounded-md border p-4 bg-background/50">
-                  <div className="text-sm font-semibold mb-2">Example — RoverByte Invocation</div>
+                  <div className="text-sm font-semibold mb-2">Example — Other Agents Use Musai via MCP</div>
                   <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
-                    <li>A RoverByte loop detects a task requiring deep research.</li>
-                    <li>It calls MusaiSearch via n8n.</li>
-                    <li>MusaiSearch compiles parallel creative/logical findings.</li>
-                    <li>Output is routed to CareerMusai for integration into the current sprint.</li>
+                    <li>Using Musai’s MCP, another system (e.g., RoverByte) calls Musai tools.</li>
+                    <li>RoverByte hears a user express a dream job without a clear path.</li>
+                    <li>It invokes MusaiSearch and agent dialogue to map pathways and challenges.</li>
+                    <li>CareerMusai creates alerts and adjusts the CareerMusai Compass accordingly.</li>
+                    <li>Musai identifies skill gaps from the user’s current profile and recommends learning.</li>
+                    <li>Musai University generates targeted courses to close those gaps.</li>
                   </ul>
+                  <div className="text-xs text-muted-foreground mt-2">Power: AIs can use Musai — and through Musai, craft new tools.</div>
                 </div>
               </div>
             )}

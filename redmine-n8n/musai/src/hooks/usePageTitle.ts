@@ -25,7 +25,7 @@ export const usePageTitle = () => {
       '/eye-of-musai': 'The Eye of Musai',
       '/find-your-muse': 'MusaiSearch',
       '/local-ai': 'Local AI Architecture',
-      '/roverbyte': 'RoverByte Integration',
+      '/cfm': 'Contextual Feedback Model (CFM)',
       '/neuroscience': 'The Neuroscience',
       '/musai-studio': 'MusaiStudio',
       '/musai-studio/info': 'MusaiStudio',

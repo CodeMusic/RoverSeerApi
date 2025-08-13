@@ -168,10 +168,10 @@ const LocalAI = () => {
                     <li>TherapyMusai → symbolic reframes; Insight Timeline updates</li>
                   </ul>
                   <ul className="list-disc pl-5 space-y-1">
-                    <li>CareerMusai → sprint narrative, next-best-step suggestions</li>
+                    <li>CareerMusai → career planning, skill roadmaps, job scouting</li>
                     <li>MusaiCurations → daily deck; “why this” receipts; Notion/Readwise sync</li>
                     <li>MusaiStudio → loop generation/arrangement; stem export</li>
-                    <li>AgileMusai → PO/SM/Dev/QA/Toolsmith agents; demo evidence bundling</li>
+                    <li>AgileMusai → Scrum orchestration (PO/SM/Dev/QA/Toolsmith agents); demo evidence bundling</li>
                   </ul>
                 </div>
                 <SafeImage src={n8nCanvasMock} alt="n8n canvas mock" className="w-full rounded-md border" />
@@ -261,16 +261,19 @@ const LocalAI = () => {
 
           {/* Example Flow */}
           <section className="border rounded-lg overflow-hidden bg-card">
-            <SectionToggle id="example" icon={GitBranch} title="Example Flow: RoverByte Loop Invokes Musai" expanded={expanded.has('example')} onToggle={toggle} />
+            <SectionToggle id="example" icon={GitBranch} title="Example Flow: Other Agents Use Musai via MCP" expanded={expanded.has('example')} onToggle={toggle} />
             {expanded.has('example') && (
               <div className="px-4 pb-6 text-sm space-y-3">
                 <ol className="list-decimal pl-5 space-y-1 text-muted-foreground">
-                  <li>RoverByte detects “needs research.”</li>
-                  <li>Calls MusaiSearch (local) → fusion brief (sources, conflicts).</li>
-                  <li>Policy Gate: missing a current standard → cloud retrieval (scoped).</li>
-                  <li>Result + receipts → CareerMusai → next-best-step issue.</li>
-                  <li>Redmine updates sprint narrative; artifacts attached; demo auto-bundled.</li>
+                  <li>Another AI system uses Musai’s MCP to access tools (e.g., RoverByte).</li>
+                  <li>RoverByte hears a user say they want a certain job but don’t see a path.</li>
+                  <li>RoverByte invokes MusaiSearch and agent dialogue to research pathways and challenges.</li>
+                  <li>Findings are sent to CareerMusai to create alerts and adjust the CareerMusai Compass.</li>
+                  <li>Based on the user’s current profile, skill gaps are identified and recommended.</li>
+                  <li>Musai University generates targeted courses to close the gaps.</li>
+                  <li>Redmine updates the career roadmap, alerts, artifacts, and run receipts for audit.</li>
                 </ol>
+                <div className="text-muted-foreground">The real power: AIs can use Musai—and through Musai, craft new tools.</div>
                 <SafeImage src={historicalstarcase} alt="Historical staircase visualization" className="w-full md:w-3/4 mx-auto rounded-md border" />
               </div>
             )}

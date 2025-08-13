@@ -56,9 +56,9 @@ export function InfoFooterNav(props: InfoFooterNavProps)
     { route: ROUTES.TASK_MUSAI, label: 'AgileMusai', Icon: Bot },
   ];
   const supportingDestinations = [
-    { route: ROUTES.LOCAL_AI, label: 'Local AI Architecture', Icon: Cpu },
     { route: ROUTES.NEUROSCIENCE, label: 'The Neuroscience', Icon: Brain },
-    { route: ROUTES.ROVERBYTE, label: 'Musai x RoverByte Integration', Icon: Network },
+    { route: ROUTES.CFM_INFO, label: 'Contextual Feedback Model (CFM)', Icon: Brain },
+    { route: ROUTES.LOCAL_AI, label: 'Local AI Architecture', Icon: Cpu },
     { route: ROUTES.ROADMAP, label: 'Roadmap', Icon: Map },
   ];
 
@@ -137,7 +137,7 @@ export function InfoFooterNav(props: InfoFooterNavProps)
       <div className="text-center mb-2 mt-8">
         <div className="text-sm text-muted-foreground">Supporting</div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {supportingDestinations.map(({ route, label, Icon }, i) =>
         {
           const paletteIndex = toneIndicesSupporting[i] ?? 0;
@@ -181,7 +181,7 @@ export function InfoFooterNav(props: InfoFooterNavProps)
             <div key={route} className="rounded-md p-px overflow-hidden" style={{ background: border }}>
               <Button
                 variant="outline"
-                className="justify-start items-center h-14 px-4 border-0 text-left whitespace-nowrap w-full rounded-md"
+                className="justify-start items-center h-16 px-4 border-0 text-left whitespace-nowrap w-full rounded-md"
                 onClick={() => navigate(route)}
               >
                 <Icon

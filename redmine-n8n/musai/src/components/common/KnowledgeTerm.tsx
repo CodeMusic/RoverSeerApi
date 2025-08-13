@@ -5,17 +5,16 @@ type KnowledgeKey = 'cfm' | 'awareness-first';
 
 const KNOWLEDGE_CONTENT: Record<KnowledgeKey, { title: string; body: React.ReactNode; links: { label: string; href: string }[] }> = {
   'cfm': {
-    title: 'Contextual Feedback Model (CFM)',
+    title: '🧠 Contextual Feedback Model (CFM)',
     body: (
       <>
         <p>
-          A cognitive architecture framing cognition as a loop between content (inputs, thoughts) and context (memory, emotional tone).
-          Meaning and behavior emerge as context shapes content and—through feedback—content reshapes context.
+          A simple but powerful way to understand how minds — human or AI — turn input into insight. It’s a feedback loop where new information (content) interacts with what’s already inside (context), shaping meaning, emotion, and behavior.
         </p>
       </>
     ),
     links: [
-      { label: 'Read more (CFM – July 2025 Edition)', href: 'https://blog.codemusic.ca/2025/07/24/the-contextual-feedback-model-cfm-july-2025-edition' },
+      { label: 'Learn More', href: '/cfm' },
     ]
   },
   'awareness-first': {

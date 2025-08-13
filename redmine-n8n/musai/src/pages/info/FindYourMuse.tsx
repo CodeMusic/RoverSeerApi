@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Bot,
   Sparkles,
+  Music,
   Heart,
   Lightbulb,
   Target,
@@ -242,7 +243,7 @@ const FindYourMuse = () =>
             {/* Hub tiles (info pages) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
               {[
-                // Predefined cognitive order: Chat → Search → Eye → Code → University → Narrative → Medical → Therapy → Task → Career
+                // Canonical order: Chat → Search → Eye → Code → University → Narrative → Medical → Therapy → Curations → Career → Studio → Task
                 {
                   id: 'chat',
                   icon: MessageSquare,
@@ -301,6 +302,13 @@ const FindYourMuse = () =>
                   onClick: () => navigate(ROUTES.THERAPY_MUSAI),
                 },
                 {
+                  id: 'curations',
+                  icon: Sparkles,
+                  label: 'MusaiCurations',
+                  description: 'Curate and review AI outputs and evaluations',
+                  onClick: () => navigate(ROUTES.CURATIONS_INFO),
+                },
+                {
                   id: 'task',
                   icon: Bot,
                   label: 'AgileMusai',
@@ -313,6 +321,13 @@ const FindYourMuse = () =>
                   label: APP_TERMS.NAV_CAREER,
                   description: APP_TERMS.CAREER_DESCRIPTION,
                   onClick: () => navigate(ROUTES.CAREER_MUSAI),
+                },
+                {
+                  id: 'studio',
+                  icon: Music,
+                  label: 'MusaiStudio',
+                  description: 'Create, stage, and orchestrate content with Musai',
+                  onClick: () => navigate(ROUTES.MUSAI_STUDIO_INFO),
                 },
               ].map((tile) => (
                 <Button
@@ -558,21 +573,7 @@ const FindYourMuse = () =>
           </Button>
         </div>
 
-        {/* More Musai content (non‑main pages) */}
-        <div className="mt-10">
-          <h3 className="text-xl font-semibold mb-3">More Musai content</h3>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-            <Button variant="outline" className="justify-start h-auto py-4 px-4 border-2" onClick={() => navigate(ROUTES.LOCAL_AI)}>
-              Local AI Architecture
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-4 px-4 border-2" onClick={() => navigate(ROUTES.NEUROSCIENCE)}>
-              Neuroscience & Architecture Notes
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-4 px-4 border-2" onClick={() => navigate(ROUTES.ROVERBYTE)}>
-              Musai × RoverByte
-            </Button>
-          </div>
-        </div>
+        
         <InfoFooterNav currentRoute={ROUTES.FIND_YOUR_MUSE} />
       </div>
     </div>

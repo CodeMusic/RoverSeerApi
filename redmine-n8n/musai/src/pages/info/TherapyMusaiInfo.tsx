@@ -262,7 +262,7 @@ const TherapyMusaiInfo: React.FC = () =>
                   <li>Translate feelings into metaphors with Symbolic Integration</li>
                   <li>Identify distortions in self‑talk through Cognitive Reflection</li>
                   <li>Align thoughts and feelings with Emotional Debugging</li>
-                  <li>Hear contrasting perspectives from Dolphin (logical) and Penguin (intuitive) agents with PerspectiveSync</li>
+                  <li>Hear contrasting perspectives from Dolphin (Logical Agent) and Penguin (Creative Agent), synthesized by the Perspective Agent</li>
                 </ul>
               </CardContent>
             </Card>

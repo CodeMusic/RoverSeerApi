@@ -42,10 +42,10 @@ const Landing = () => {
     { label: "MusaiStudio", icon: Music, to: ROUTES.MUSAI_STUDIO_INFO },
     { label: "AgileMusai", icon: Bot, to: ROUTES.TASK_MUSAI },
     // Additional marketing/info links follow the core tool order
+    { label: "Contextual Feedback Model (CFM)", icon: Brain, to: ROUTES.CFM_INFO },
     { label: "Local AI Architecture", icon: Cpu, to: ROUTES.LOCAL_AI },
     { label: "CareerMusai", icon: Target, to: ROUTES.CAREER_MUSAI },
     { label: "The Neuroscience", icon: Brain, to: ROUTES.NEUROSCIENCE },
-    { label: "Musai x RoverByte Integration", icon: ExternalLink, to: ROUTES.ROVERBYTE },
     { label: "Roadmap", icon: Map, to: ROUTES.ROADMAP },
   ];
 
@@ -71,6 +71,13 @@ const Landing = () => {
   const moduleRouteSet = new Set<string>(canonicalModules.map(m => m.to as string));
   const moduleLinks = infoLinks.filter((l) => moduleRouteSet.has(l.to as string));
   const supportingLinks = infoLinks.filter((l) => !moduleRouteSet.has(l.to as string));
+  // Explicit supporting order: CFM → Local AI → Roadmap (trim others)
+  const supportingLinksOrdered = [
+    { to: ROUTES.NEUROSCIENCE, label: 'The Neuroscience', Icon: Brain },
+    { to: ROUTES.CFM_INFO, label: 'Contextual Feedback Model (CFM)', Icon: Brain },
+    { to: ROUTES.LOCAL_AI, label: 'Local AI Architecture', Icon: Cpu },
+    { to: ROUTES.ROADMAP, label: 'Roadmap', Icon: Map },
+  ].filter(item => supportingLinks.some(l => l.to === item.to));
 
   // Carousel: keep marketing labels but enforce canonical ordering
   const carouselExclusions = new Set<string>([
@@ -499,11 +506,15 @@ const Landing = () => {
               </div>
               <div className="mb-6 px-4">
                 <h3 className="text-lg font-semibold mb-3">Modules</h3>
-                <IconTileList items={moduleLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
+                <IconTileList items={moduleLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={64} />
               </div>
               <div className="px-4">
                 <h3 className="text-lg font-semibold mb-3">Supporting</h3>
-                <IconTileList items={supportingLinks.map(l => ({ to: l.to, label: l.label, Icon: l.icon as any }))} minItemHeight={60} />
+                <IconTileList
+                  items={supportingLinksOrdered}
+                  minItemHeight={72}
+                  gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                />
               </div>
             </div>
 
