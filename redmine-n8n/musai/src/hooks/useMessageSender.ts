@@ -58,8 +58,18 @@ export const useMessageSender = (
     const username = window.env?.VITE_N8N_WEBHOOK_USERNAME || import.meta.env.VITE_N8N_WEBHOOK_USERNAME;
     const secret = window.env?.VITE_N8N_WEBHOOK_SECRET || import.meta.env.VITE_N8N_WEBHOOK_SECRET;
 
-    // Always use the configured n8n base URL (hosted)
-    const chatPostUrl = effectiveWebhookUrl || `${N8N_ENDPOINTS.BASE_URL}${N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
+    // Resolve final chat endpoint:
+    // - If env provides a full endpoint ending with /chat/message, use it as-is
+    // - If env provides a base URL (e.g., https://n8n.codemusic.ca/webhook/), append the chat path
+    // - Otherwise, fall back to configured BASE_URL + path
+    const chatPostUrl = (() => {
+      if (effectiveWebhookUrl) {
+        const trimmed = String(effectiveWebhookUrl).replace(/\/$/, '');
+        if (/\/chat\//.test(trimmed)) return trimmed; // already full endpoint
+        return `${trimmed}${N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
+      }
+      return `${N8N_ENDPOINTS.BASE_URL}${N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
+    })();
 
     let retryCount = 0;
 
