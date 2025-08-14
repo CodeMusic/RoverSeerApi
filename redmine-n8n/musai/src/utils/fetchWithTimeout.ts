@@ -42,7 +42,12 @@ export const fetchWithTimeout = async (
         throw new Error('Request timed out');
       }
       // Handle network errors
-      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      if (
+        error.message.includes('Failed to fetch') ||
+        error.message.includes('NetworkError') ||
+        // Safari/WebKit commonly reports CORS/SSL/preflight failures as "Load failed"
+        error.message.includes('Load failed')
+      ) {
         throw new Error('Network error - please check your connection');
       }
       throw error;

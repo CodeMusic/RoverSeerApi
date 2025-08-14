@@ -95,15 +95,9 @@ export const useMessageSender = (
           'Content-Type': 'application/json',
         };
 
-        if (username && secret) {
-          const authString = `${username}:${secret}`;
-          const base64Auth = btoa(authString);
-          headers['Authorization'] = `Basic ${base64Auth}`;
-        }
-
         console.log('Sending message to webhook:', {
           url: chatPostUrl.includes('/webhook/') ? chatPostUrl.split('/webhook/')[0] + '/webhook/[WEBHOOK_ID]' : chatPostUrl,
-          hasAuth: !!username && !!secret,
+          hasAuth: true,
           hasFile: !!fileData
         });
 
