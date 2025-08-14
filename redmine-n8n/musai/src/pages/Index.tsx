@@ -1,18 +1,27 @@
 
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { useNarrativeSessions } from "@/hooks/useNarrativeSessions";
+import { narrativeApi } from "@/lib/narrativeApi";
 import { useTherapySessions } from "@/hooks/useTherapySessions";
 import { BaseLayout } from "@/components/common/BaseLayout";
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
+import { SearchLayout } from "@/components/search/SearchLayout";
 import { ChatPane } from "@/components/chat/ChatPane";
 import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { AllSessions } from "@/types/chat";
 import { APP_TERMS } from "@/config/constants";
+import { ROUTES } from "@/config/routes";
+import { prepareFileData } from '@/utils/fileOperations';
+import { eyeApi } from '@/lib/eyeApi';
+import { medicalApi } from '@/lib/medicalApi';
 import { PreMusaiPageType } from "@/components/common/PreMusaiPage";
 import NarrativePanel from "@/components/narrative/NarrativePanel";
+import TherapyPanel from "@/components/therapy/TherapyPanel";
+import { NarrativeSidebar, ConceptSeedingPanel, CharacterCreationPanel, ArcGenerationPanel, SceneRunner } from "@/components/narrative";
 import PortalEffect from "@/components/effects/PortalEffect";
 import VictoryModal from "@/components/common/VictoryModal";
+import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
 
 const Index = () => {
   const location = useLocation();
@@ -27,6 +36,8 @@ const Index = () => {
   // When true, bypasses PreMusai and shows Chat UI immediately while session is being prepared/sent
   const [forceChatUI, setForceChatUI] = useState<boolean>(false);
   const [showVictory, setShowVictory] = useState<boolean>(false);
+  const [isCreatingNarrative, setIsCreatingNarrative] = useState<boolean>(false);
+  const [isProcessingMedical, setIsProcessingMedical] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<string>(
     location.state?.switchToTab || 
     (searchParams.get('mode') === 'search' ? APP_TERMS.TAB_SEARCH :
@@ -71,6 +82,7 @@ const Index = () => {
     currentSessionId: narrativeCurrentSessionId,
     isLoading: narrativeIsLoading,
     createNewSession: createNewNarrative,
+    createNewSessionFromSummary,
     deleteSession: deleteNarrative,
     renameSession: renameNarrative,
     toggleFavorite: toggleNarrativeFavorite,
@@ -91,6 +103,7 @@ const Index = () => {
     sendMessage: sendTherapyMessage,
     setCurrentSessionId: setTherapyCurrentSessionId,
     getCurrentSession: getCurrentTherapySession,
+    updateTherapyContext,
   } = useTherapySessions();
 
 
@@ -134,6 +147,12 @@ const Index = () => {
         return narrativeSessions.find(s => s.id === narrativeCurrentSessionId);
       case APP_TERMS.TAB_THERAPY:
         return therapySessions.find(s => s.id === therapyCurrentSessionId);
+      case APP_TERMS.TAB_MEDICAL:
+        // Medical flows do not use chat sessions yet; force PreMusai
+        return null;
+      case APP_TERMS.TAB_EYE:
+        // Eye of Musai uses a specialized PreMusai panel with image tools
+        return null;
       case APP_TERMS.TAB_SEARCH:
         // For now, search uses chat-like sessions but we can distinguish them later
         return sessions.find(s => s.id === currentSessionId);
@@ -169,8 +188,13 @@ const Index = () => {
       return null;
     }
     // Therapy: show Narrative panel pop-in
-    if (currentTab === APP_TERMS.TAB_THERAPY && showNarrativePanel) {
-      return <NarrativePanel mode="therapy" />;
+    if (currentTab === APP_TERMS.TAB_THERAPY) {
+      if (showNarrativePanel) {
+        return <NarrativePanel mode="therapy" />;
+      }
+      if (currentSession.type === 'therapy') {
+        return <TherapyPanel session={currentSession} onUpdateContext={(id, ctx) => updateTherapyContext(id, ctx)} />;
+      }
     }
     if (currentTab === APP_TERMS.TAB_CAREER && currentSession.type === 'career') {
       // Simple properties panel for career context
@@ -219,20 +243,98 @@ const Index = () => {
     return null;
   };
 
+  // Narrative workspace: left sidebar override and main content for narrative tab
+  const [narrativeStep, setNarrativeStep] = useState<'concept' | 'characters' | 'arc' | 'scenes'>('concept');
+
+  useEffect(() => {
+    if (currentTab === APP_TERMS.TAB_NARRATIVE)
+    {
+      // Initialize step based on available storyData
+      const ns = getCurrentNarrativeSession();
+      if (ns?.storyData?.acts?.length > 0)
+      {
+        setNarrativeStep('scenes');
+      }
+      else if (ns?.storyData?.characters?.length > 1)
+      {
+        setNarrativeStep('arc');
+      }
+      else if (ns?.storyData?.concept)
+      {
+        setNarrativeStep('characters');
+      }
+      else
+      {
+        setNarrativeStep('concept');
+      }
+    }
+  }, [currentTab, narrativeCurrentSessionId]);
+
+  const renderLeftSidebarOverride = () => {
+    // Hide chat sidebar for curated search UI
+    if (currentTab === APP_TERMS.TAB_SEARCH) {
+      return <></>;
+    }
+    if (currentTab !== APP_TERMS.TAB_NARRATIVE) {
+      return null;
+    }
+    const hasNarrative = Boolean(getCurrentNarrativeSession());
+    if (!hasNarrative) {
+      // Hide sidebar until a narrative is created (PreMusai stage)
+      return null;
+    }
+    return (
+      <NarrativeSidebar
+        sessions={narrativeSessions}
+        currentSessionId={narrativeCurrentSessionId}
+        isSidebarOpen={true}
+        isCollapsed={false}
+        onNewNarrative={createNewNarrative}
+        onSessionSelect={(id) => setNarrativeCurrentSessionId(id)}
+        onDeleteSession={deleteNarrative}
+        onRenameSession={renameNarrative}
+        onToggleFavorite={toggleNarrativeFavorite}
+        onToggleCollapse={() => { /* noop for now */ }}
+        currentStep={narrativeStep}
+        onStepChange={setNarrativeStep}
+      />
+    );
+  };
+
   // Unified sendMessage function that handles different session types
   const sendMessage = useCallback(async (input: string, file?: File) => {
     switch (currentTab) {
       case APP_TERMS.TAB_THERAPY:
-        return await sendTherapyMessage(input, file);
+        await sendTherapyMessage(input, file);
+        return;
       case APP_TERMS.TAB_CAREER:
         // For now, career uses the same as chat
-        return await sendChatMessage(input, file);
+        await sendChatMessage(input, file);
+        return;
       case APP_TERMS.TAB_NARRATIVE:
         // Narrative sessions don't have direct message sending
         console.log('Narrative sessions use different message handling');
         return;
+      case APP_TERMS.TAB_EYE:
+        // Eye: route to confirmation pages with payload; those pages call n8n
+        if (file) {
+          const imageData = await prepareFileData(file);
+          if (input && input.startsWith('TRAIN:')) {
+            const prompt = input.substring('TRAIN:'.length).trim() || undefined;
+            navigate(ROUTES.EYE_TRAIN, { state: { payload: { prompt, images: [{ ...imageData }] }, preview: imageData } });
+          } else {
+            navigate(ROUTES.EYE_RECOGNIZE, { state: { payload: { image: imageData }, preview: imageData } });
+          }
+          return;
+        }
+        if (input && input.trim()) {
+          navigate(ROUTES.EYE_TRAIN, { state: { payload: { prompt: input.trim() } } });
+          return;
+        }
+        return;
       default:
-        return await sendChatMessage(input, file);
+        await sendChatMessage(input, file);
+        return;
     }
   }, [currentTab, sendTherapyMessage, sendChatMessage]);
 
@@ -246,6 +348,10 @@ const Index = () => {
 
   // Handle navigation state from landing page
   useEffect(() => {
+    // For MusaiSearch, handle initial query within SearchLayout; do not auto-send via chat
+    if (currentTab === APP_TERMS.TAB_SEARCH) {
+      return;
+    }
     // Show victory modal if arriving from RiddleGate success
     const victoryQuery = searchParams.get('victory') === '1';
     const justUnlocked = Boolean((location.state as any)?.justUnlocked);
@@ -304,9 +410,6 @@ const Index = () => {
       return;
     }
 
-    // Ensure chat interface is shown immediately while session spins up and message is sent
-    setForceChatUI(true);
-
     const messageKey = `${currentTab}-${initialMessage}`;
     const wasAlreadySent = localStorage.getItem(`sent_initial_${messageKey}`) === 'true';
     if (wasAlreadySent) {
@@ -317,7 +420,67 @@ const Index = () => {
     initialMessageKey.current = messageKey;
     localStorage.setItem(`sent_initial_${messageKey}`, 'true');
 
-    // Ensure a session exists for this tab before sending
+    if (currentTab === APP_TERMS.TAB_NARRATIVE)
+    {
+      // Directly bootstrap the narrative editor with spinner and call n8n in background
+      setIsCreatingNarrative(true);
+      createNewNarrative();
+      setTimeout(async () => {
+        const created = getCurrentNarrativeSession();
+        if (created) {
+          updateNarrative(created.id, {
+            concept: {
+              title: initialMessage,
+              description: '',
+              emotionalTone: 'neutral',
+              genre: 'drama'
+            },
+            externalIdPending: true
+          });
+          setNarrativeStep('concept');
+        }
+        try {
+          const summary = await narrativeApi.createNarrative({ seedText: initialMessage, mode: 'general' });
+          const current = getCurrentNarrativeSession();
+          if (current) {
+            renameNarrative(current.id, summary.title);
+            updateNarrative(current.id, { externalId: summary.id, externalMode: summary.mode });
+          }
+        } catch (e) {
+          console.warn('Failed to create narrative via n8n', e);
+        } finally {
+          setIsCreatingNarrative(false);
+        }
+      }, 0);
+      return;
+    }
+    if (currentTab === APP_TERMS.TAB_MEDICAL)
+    {
+      // Show processing screen, then call n8n in background
+      setIsProcessingMedical(true);
+      setTimeout(async () => {
+        try {
+          const trimmed = initialMessage;
+          if (trimmed) {
+            await medicalApi.startIntake({ concern: trimmed });
+          }
+        } catch (e) {
+          console.warn('Medical intake failed', e);
+        } finally {
+          setIsProcessingMedical(false);
+        }
+      }, 0);
+      return;
+    }
+    // Task/AgileMusai: go to dedicated console with spinner and n8n call
+    if (currentTab === APP_TERMS.TAB_TASK)
+    {
+      navigate(ROUTES.TASK_MUSAI_CONSOLE, { state: { initialRequest: initialMessage } });
+      return;
+    }
+
+    // Non-narrative/non-task: ensure chat UI while session spins and message is sent
+    setForceChatUI(true);
     const existingSession = getCurrentSessionForTab();
     if (!existingSession) {
       handleNewSession();
@@ -351,12 +514,15 @@ const Index = () => {
   };
 
   // Handle new session creation based on tab
-  const handleNewSession = () => {
+  const handleNewSession = async () => {
     switch (currentTab) {
       case APP_TERMS.TAB_CAREER:
         return createNewCareerSession();
-      case APP_TERMS.TAB_NARRATIVE:
+      case APP_TERMS.TAB_NARRATIVE: {
+        // Show PreMusai first; when user submits, we call n8n to create a narrative
+        // This path is handled via PreMusai onSubmit below
         return createNewNarrative();
+      }
       case APP_TERMS.TAB_THERAPY:
         return createNewTherapy();
       default:
@@ -429,6 +595,23 @@ const Index = () => {
 
   // Render main content based on current tab and session
   const renderMainContent = () => {
+    // Dedicated CodeMusai playground UI
+    if (currentTab === APP_TERMS.TAB_CODE) {
+      return (
+        <CodeMusaiLayout onClose={() => handleTabChange(APP_TERMS.TAB_CHAT)} />
+      );
+    }
+    // Dedicated curated search UI (non-chat)
+    if (currentTab === APP_TERMS.TAB_SEARCH) {
+      const stateAny = location.state as any;
+      const initialQuery = (stateAny?.initialQuery || searchParams.get('q') || '').trim();
+      return (
+        <SearchLayout 
+          onClose={() => handleTabChange(APP_TERMS.TAB_CHAT)} 
+          initialQuery={initialQuery || undefined}
+        />
+      );
+    }
     // Map tab to PreMusai type
     const getPreMusaiType = (): PreMusaiPageType => {
       switch (currentTab) {
@@ -439,6 +622,7 @@ const Index = () => {
         case APP_TERMS.TAB_NARRATIVE: return 'narrative';
         case APP_TERMS.TAB_CAREER: return 'career';
         case APP_TERMS.TAB_THERAPY: return 'therapy';
+        case APP_TERMS.TAB_MEDICAL: return 'medical';
         case APP_TERMS.TAB_EYE: return 'eye';
         case APP_TERMS.TAB_TASK: return 'task';
         default: return 'chat';
@@ -450,18 +634,53 @@ const Index = () => {
 
     // All Musai features should work within the unified app - no redirects!
 
-    // Show PreMusai page for any tab without a current session
-    if (shouldShowPreMusai) {
+    // Show PreMusai page for any tab without a current session (except narrative which uses its own flow)
+    if (shouldShowPreMusai && currentTab !== APP_TERMS.TAB_NARRATIVE) {
+      // Medical: show processing screen when active
+      if (currentTab === APP_TERMS.TAB_MEDICAL && isProcessingMedical) {
+        return (
+          <div className="flex items-center justify-center h-full" aria-live="polite" aria-busy="true">
+            <div className="flex items-center">
+              <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+              <span className="ml-3 text-sm text-muted-foreground">Preparing MedicalMusai via n8n…</span>
+            </div>
+          </div>
+        );
+      }
       return (
         <PreMusaiPage
           type={getPreMusaiType()}
-          onSubmit={(input) => {
+          onSubmit={(input, file) => {
+            // Special handling for Medical: go to UI and call n8n in background
+            if (currentTab === APP_TERMS.TAB_MEDICAL) {
+              setIsProcessingMedical(true);
+              setTimeout(async () => {
+                try {
+                  const trimmed = (input || '').trim();
+                  if (file) {
+                    const b64 = await file.arrayBuffer().then(buf =>
+                      `data:${file.type};base64,` + btoa(String.fromCharCode(...new Uint8Array(buf)))
+                    );
+                    await medicalApi.ingestDocuments({ files: [{ name: file.name, type: file.type, data: b64 }] });
+                  }
+                  if (trimmed) {
+                    await medicalApi.startIntake({ concern: trimmed });
+                  }
+                } catch (e) {
+                  console.warn('Medical intake/doc ingest failed', e);
+                } finally {
+                  setIsProcessingMedical(false);
+                }
+              }, 0);
+              return;
+            }
+
             if (!currentSession) {
               handleNewSession();
               // Wait for session creation then send message
-              setTimeout(() => sendMessage(input), 100);
+              setTimeout(() => sendMessage(input, file), 100);
             } else {
-              sendMessage(input);
+              sendMessage(input, file);
             }
           }}
           onQuickAction={(actionId, actionType, actionData) => {
@@ -480,7 +699,127 @@ const Index = () => {
       );
     }
 
-    // Show chat pane for sessions with messages (Chat, Career, Search, Narrative, Task, Therapy)
+    // Narrative workspace main content
+    if (currentTab === APP_TERMS.TAB_NARRATIVE)
+    {
+      const ns = getCurrentNarrativeSession();
+      if (!ns)
+      {
+        // No session yet: show PreMusai for narrative.
+        // On submit: immediately open the editor by creating a local session and show a spinner
+        // while we call n8n in the background to fetch the official summary/title/id.
+        return (
+          <div className="relative">
+            <PreMusaiPage
+              type="narrative"
+              onSubmit={async (seed: string) => {
+                try {
+                  setIsCreatingNarrative(true);
+                  // Create a local narrative session immediately so the editor opens
+                  createNewNarrative();
+                  // Allow state to update, then seed the concept and open editor
+                  setTimeout(async () => {
+                    const created = getCurrentNarrativeSession();
+                    if (created) {
+                      updateNarrative(created.id, {
+                        concept: {
+                          title: seed,
+                          description: '',
+                          emotionalTone: 'neutral',
+                          genre: 'drama'
+                        },
+                        // Track that we're bootstrapping from n8n
+                        externalIdPending: true
+                      });
+                      setNarrativeStep('concept');
+                    }
+                    // Kick off n8n create call in background
+                    try {
+                      const summary = await narrativeApi.createNarrative({ seedText: seed, mode: 'general' });
+                      const current = getCurrentNarrativeSession();
+                      if (current) {
+                        // Update the local session with title and external id from n8n
+                        renameNarrative(current.id, summary.title);
+                        updateNarrative(current.id, { externalId: summary.id, externalMode: summary.mode });
+                      }
+                    } catch (e) {
+                      console.warn('Failed to create narrative via n8n', e);
+                    } finally {
+                      setIsCreatingNarrative(false);
+                    }
+                  }, 0);
+                } catch (e) {
+                  console.warn('Failed narrative bootstrap', e);
+                  setIsCreatingNarrative(false);
+                }
+              }}
+              isLoading={isCreatingNarrative}
+            />
+            {isCreatingNarrative && (
+              <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20" aria-live="polite" aria-busy="true">
+                <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+                <span className="ml-3 text-sm text-muted-foreground">Creating tale via n8n…</span>
+              </div>
+            )}
+          </div>
+        );
+      }
+      const update = (data: any) => updateNarrative(ns.id, data);
+      const go = (step: typeof narrativeStep) => setNarrativeStep(step);
+      const withOverlay = (content: React.ReactNode) => (
+        <div className="relative">
+          {content}
+          {isCreatingNarrative && (
+            <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20" aria-live="polite" aria-busy="true">
+              <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+              <span className="ml-3 text-sm text-muted-foreground">Creating tale via n8n…</span>
+            </div>
+          )}
+        </div>
+      );
+
+      switch (narrativeStep)
+      {
+        case 'concept':
+          return withOverlay(
+            <ConceptSeedingPanel
+              session={ns}
+              onUpdate={update}
+              onNext={() => go('characters')}
+            />
+          );
+        case 'characters':
+          return withOverlay(
+            <CharacterCreationPanel
+              session={ns}
+              onBack={() => go('concept')}
+              onUpdate={update}
+              onNext={() => go('arc')}
+            />
+          );
+        case 'arc':
+          return withOverlay(
+            <ArcGenerationPanel
+              session={ns}
+              onBack={() => go('characters')}
+              onUpdate={update}
+              onNext={() => go('scenes')}
+            />
+          );
+        case 'scenes':
+          return withOverlay(
+            <SceneRunner
+              session={ns}
+              onBack={() => go('arc')}
+              onUpdate={update}
+            />
+          );
+        default:
+          return null;
+      }
+    }
+
+    // Show chat pane for sessions with messages (Chat, Career, Task, Therapy)
     if ('messages' in currentSession) {
       // Map tab to module for theming/behavior
       const tabToModule: Record<string, 'therapy' | 'chat' | 'code' | 'university' | 'career' | 'search' | 'narrative' | 'task' | 'eye'> = {
@@ -489,7 +828,6 @@ const Index = () => {
         [APP_TERMS.TAB_CODE]: 'code',
         [APP_TERMS.TAB_UNIVERSITY]: 'university',
         [APP_TERMS.TAB_CAREER]: 'career',
-        [APP_TERMS.TAB_SEARCH]: 'search',
         [APP_TERMS.TAB_NARRATIVE]: 'narrative',
         [APP_TERMS.TAB_TASK]: 'task',
         [APP_TERMS.TAB_EYE]: 'eye',
@@ -502,7 +840,7 @@ const Index = () => {
           module={module}
           roleConfig={{ user: 'You', assistant: 'Musai' }}
           messageList={currentSession.messages}
-          onMessageSend={sendMessage}
+          onMessageSend={async (text, file) => { await sendMessage(text, file); }}
           isTyping={isTyping}
           isLoading={isLoading}
         />
@@ -529,7 +867,7 @@ const Index = () => {
           module={module}
           roleConfig={{ user: 'You', assistant: 'Musai' }}
           messageList={[]}
-          onMessageSend={sendMessage}
+          onMessageSend={async (text, file) => { await sendMessage(text, file); }}
           isTyping={isTyping}
           isLoading={isLoading}
         />
@@ -561,9 +899,13 @@ const Index = () => {
       onToggleFavorite={handleToggleFavorite}
       renderMainContent={renderMainContent}
       renderRightSidebar={renderRightSidebar}
+      renderLeftSidebarOverride={renderLeftSidebarOverride}
       onTabChange={handleTabChange}
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}
+      
+      // Expand left sidebar once after narrative is created
+      expandLeftSidebarOnce={currentTab === APP_TERMS.TAB_NARRATIVE && Boolean(getCurrentNarrativeSession())}
       />
     </div>
   );

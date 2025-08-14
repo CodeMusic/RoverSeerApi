@@ -62,7 +62,11 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({ mode }) =>
                 <div className="font-medium">{item.title}</div>
                 <div className="text-xs text-muted-foreground">{new Date(item.updatedAt).toLocaleString()}</div>
               </div>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={() => {
+                // Dispatch a custom event to notify therapy pane to attach narrative
+                const evt = new CustomEvent('musai-open-narrative', { detail: { id: item.id } });
+                window.dispatchEvent(evt);
+              }}>
                 <BookOpen className="h-4 w-4 mr-1" /> Open
               </Button>
             </CardContent>

@@ -3,24 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Plus, ArrowLeft, ExternalLink, Clock, Brain, Link, Cog, Globe } from "lucide-react";
+import { Search, Download, Plus, ArrowLeft, ExternalLink, Clock, Brain, Link, Cog, Globe, ThumbsUp, ThumbsDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
+import type { SearchSessionModel, SearchResult } from "@/types/search";
 
 interface SearchResultsProps {
-  session: {
-    id: string;
-    query: string;
-    intent?: string; // 'search' | 'llm' | 'summarize' | 'tool'
-    results: any[];
-    followUps: Array<{
-      query: string;
-      result: any;
-      timestamp: number;
-    }>;
-    timestamp: number;
-  };
+  session: SearchSessionModel;
   onFollowUp: (query: string) => void;
   onNewSearch: () => void;
   onExport: () => void;
@@ -37,6 +27,11 @@ export const SearchResults = ({
   onClose 
 }: SearchResultsProps) => {
   const [followUpQuery, setFollowUpQuery] = useState("");
+  const [feedback, setFeedback] = useState<Record<number, 'up' | 'down' | undefined>>({});
+  const handleFeedback = (index: number, value: 'up' | 'down') => {
+    setFeedback(prev => ({ ...prev, [index]: prev[index] === value ? undefined : value }));
+    // TODO: send feedback to backend if needed
+  };
 
   const getIntentIcon = (intent?: string) => {
     switch (intent) {
@@ -106,10 +101,20 @@ export const SearchResults = ({
               <Badge className={cn("text-xs px-2 py-1", getIntentColor(session.intent))}>
                 {getIntentLabel(session.intent)}
               </Badge>
+              {session.mode === 'research' && (
+                <Badge variant="secondary" className="text-xs px-2 py-1">research</Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground">
               {format(session.timestamp, 'MMM d, h:mm a')} • {session.results.length} results
             </p>
+            {Array.isArray(session.sources) && session.sources.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {session.sources.map((s, i) => (
+                  <Badge key={i} variant="outline" className="text-[10px]">{s}</Badge>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -132,7 +137,7 @@ export const SearchResults = ({
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Main Results */}
         <div className="space-y-4">
-          {session.results.map((result, index) => (
+          {session.results.map((result: SearchResult, index) => (
             <Card key={index} className="hover:shadow-md transition-shadow duration-200">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-4">
@@ -147,9 +152,29 @@ export const SearchResults = ({
                       </CardDescription>
                     )}
                   </div>
-                  <Badge variant="secondary" className="flex-shrink-0">
-                    Result {index + 1}
-                  </Badge>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant="secondary">Result {index + 1}</Badge>
+                    <button
+                      className={cn(
+                        "p-1 rounded hover:bg-accent",
+                        feedback[index] === 'up' ? "text-green-600" : "text-muted-foreground"
+                      )}
+                      title="Helpful"
+                      onClick={() => handleFeedback(index, 'up')}
+                    >
+                      <ThumbsUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      className={cn(
+                        "p-1 rounded hover:bg-accent",
+                        feedback[index] === 'down' ? "text-red-600" : "text-muted-foreground"
+                      )}
+                      title="Not helpful"
+                      onClick={() => handleFeedback(index, 'down')}
+                    >
+                      <ThumbsDown className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -160,6 +185,58 @@ export const SearchResults = ({
                   <p className="text-xs text-muted-foreground mt-3 italic border-t pt-2">
                     {result.snippet}
                   </p>
+                )}
+                {/* Source chips */}
+                {Array.isArray(result.sourcesUsed) && result.sourcesUsed.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {result.sourcesUsed.map((src, i) => (
+                      <Badge key={i} variant="outline">{src}</Badge>
+                    ))}
+                  </div>
+                )}
+                {/* Bicameral evidence */}
+                {result.bicameral && (
+                  <div className="mt-4 grid md:grid-cols-3 gap-3 text-xs">
+                    <div className="p-2 rounded border bg-card">
+                      <div className="font-medium mb-1">Creative</div>
+                      <div className="text-muted-foreground">{result.bicameral.creative?.summary}</div>
+                    </div>
+                    <div className="p-2 rounded border bg-card">
+                      <div className="font-medium mb-1">Logical</div>
+                      <div className="text-muted-foreground">{result.bicameral.logical?.summary}</div>
+                    </div>
+                    <div className="p-2 rounded border bg-card">
+                      <div className="font-medium mb-1">Fusion</div>
+                      <div className="text-muted-foreground">{result.bicameral.fusion?.summary}</div>
+                    </div>
+                  </div>
+                )}
+                {/* Conflict cards */}
+                {Array.isArray(result.conflicts) && result.conflicts.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {result.conflicts.map((c, ci) => (
+                      <div key={ci} className="p-2 rounded border bg-amber-50 dark:bg-amber-950/20">
+                        <div className="text-xs font-medium mb-1">Conflict: {c.title || 'Perspective mismatch'}</div>
+                        <div className="text-xs text-muted-foreground">{c.description}</div>
+                        {(c.perspectiveA || c.perspectiveB) && (
+                          <div className="grid md:grid-cols-2 gap-2 mt-2 text-xs">
+                            <div className="p-2 rounded border bg-card"><span className="font-medium">A:</span> {c.perspectiveA}</div>
+                            <div className="p-2 rounded border bg-card"><span className="font-medium">B:</span> {c.perspectiveB}</div>
+                          </div>
+                        )}
+                        {c.resolutionHint && (
+                          <div className="mt-1 text-[11px] italic text-muted-foreground">Hint: {c.resolutionHint}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Personalization */}
+                {result.personalization && (
+                  <div className="mt-4 p-2 rounded border bg-card">
+                    <div className="text-xs font-medium mb-1">For you</div>
+                    <div className="text-xs text-muted-foreground">{result.personalization.summary}</div>
+                  </div>
                 )}
               </CardContent>
             </Card>

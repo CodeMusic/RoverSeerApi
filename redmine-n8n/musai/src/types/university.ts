@@ -90,6 +90,8 @@ export interface Course
   currentLectureIndex: number;
   overallProgress: number;
   completedLectures: number;
+  midtermExam?: CourseExam;
+  finalExam?: CourseExam;
 }
 
 export interface ProcessorFile 
@@ -167,4 +169,17 @@ export interface QuizGenerationRequest
   lectureId: string;
   lectureContent: string;
   processorFile?: ProcessorFile;
+}
+
+export type ExamType = 'midterm' | 'final';
+
+export interface CourseExam
+{
+  id: string;
+  type: ExamType;
+  title: string;
+  questions: QuizQuestion[];
+  attempts: QuizAttempt[];
+  createdAt: string;
+  updatedAt: string;
 }

@@ -275,95 +275,28 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     }
   };
 
-  // Show PreMusaiPage if no sessions exist
-  if (sessions.length === 0) {
-    return (
-      <div className="h-full flex flex-col">
-        <PreMusaiPage
-          type="code"
-          onSubmit={(input) => {
-            // Create a new dev session with the input as initial code
-            createNewSession();
-            // Set the code after a brief delay to ensure session is created
-            setTimeout(() => {
-              setCode(input);
-            }, 100);
-          }}
-          onQuickAction={(actionId, actionType, actionData) => {
-            switch (actionId) {
-              case 'code-chat':
-                createNewSession();
-                break;
-              case 'code-new':
-                createNewSession();
-                break;
-              case 'code-playground':
-                // Quick playground mode
-                createNewSession();
-                break;
-              case 'code-templates':
-                if (actionData) {
-                  createNewSession();
-                  setTimeout(() => {
-                    setCode(actionData);
-                  }, 100);
-                }
-                break;
-              default:
-                console.log('Code quick action:', actionId, actionType, actionData);
-            }
-          }}
-          isLoading={false}
-          className="h-full"
-        />
-      </div>
-    );
-  }
+  // PreMusai gating logic: show PreMusai inside main area while keeping sidebars accessible
+  const shouldShowPreMusai = sessions.length === 0 || !currentSession;
 
-  // Show CodeMusai PreMusai interface if no current session
-  if (!currentSession) {
-    return (
-      <div className="h-full flex flex-col">
-        <PreMusaiPage
-          type="code"
-          onSubmit={(input) => {
-            // Create a new dev session with the input as initial code or prompt
-            createNewSession();
-            // Set the code after a brief delay to ensure session is created
-            setTimeout(() => {
-              setCode(input);
-            }, 100);
-          }}
-          onQuickAction={(actionId, actionType, actionData) => {
-            switch (actionId) {
-              case 'code-chat':
-                createNewSession();
-                break;
-              case 'code-new':
-                createNewSession();
-                break;
-              case 'code-playground':
-                // Quick playground mode
-                createNewSession();
-                break;
-              case 'code-templates':
-                if (actionData) {
-                  createNewSession();
-                  setTimeout(() => {
-                    setCode(actionData);
-                  }, 100);
-                }
-                break;
-              default:
-                console.log('Code quick action:', actionId, actionType, actionData);
-            }
-          }}
-          isLoading={false}
-          className="h-full"
-        />
-      </div>
-    );
-  }
+  const handleQuickAction = (actionId: string, actionType: string, actionData?: any) => {
+    switch (actionId) {
+      case 'code-chat':
+      case 'code-new':
+      case 'code-playground':
+        createNewSession();
+        break;
+      case 'code-templates':
+        if (actionData) {
+          createNewSession();
+          setTimeout(() => {
+            setCode(actionData);
+          }, 100);
+        }
+        break;
+      default:
+        console.log('Code quick action:', actionId, actionType, actionData);
+    }
+  };
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
@@ -383,6 +316,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
       )}
 
       {/* Main Content Area */}
+      
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
@@ -409,8 +343,54 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           </div>
         </div>
 
-        {/* Side-by-Side Content */}
+        {/* Main Workspace */}
         <div className="flex-1 flex overflow-hidden">
+          {shouldShowPreMusai ? (
+            <div className="flex-1 flex flex-col">
+              <PreMusaiPage
+                type="code"
+                skipDynamicContent
+                onSubmit={(input) => {
+                  // Create session, then enter main interface with chat pre-seeded and loading
+                  const trimmed = (input || '').trim();
+                  createNewSession();
+                  setTimeout(async () => {
+                    // Ensure chat is visible
+                    setIsChatOpen(true);
+                    if (trimmed) {
+                      const userMessage: ChatMessage = {
+                        id: Date.now().toString(),
+                        role: 'user',
+                        content: trimmed,
+                        timestamp: new Date(),
+                      };
+                      setChatMessages(prev => [...prev, userMessage]);
+                      setIsChatLoading(true);
+                      try {
+                        const aiResponse = await simulateAIResponse(trimmed, code, output, language);
+                        const assistantMessage: ChatMessage = {
+                          id: (Date.now() + 1).toString(),
+                          role: 'assistant',
+                          content: aiResponse,
+                          timestamp: new Date(),
+                        };
+                        setChatMessages(prev => [...prev, assistantMessage]);
+                        saveCurrentSession();
+                      } catch (e) {
+                        // Keep loading state minimal; errors are non-blocking for editor
+                      } finally {
+                        setIsChatLoading(false);
+                      }
+                    }
+                  }, 100);
+                }}
+                onQuickAction={handleQuickAction}
+                isLoading={false}
+                className="h-full"
+              />
+            </div>
+          ) : (
+          <>
           {/* Code Editor Side */}
           <div className="flex-1 flex flex-col border-r">
             <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
@@ -624,6 +604,8 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                 <Menu className="w-4 h-4" />
               </Button>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

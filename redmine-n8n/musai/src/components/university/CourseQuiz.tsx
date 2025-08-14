@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 interface CourseQuizProps 
 {
   lecture: CourseLecture;
-  onQuizCompleted: (passed: boolean) => void;
+  onQuizCompleted: (passed: boolean, attempt: QuizAttempt) => void;
   onGenerateMoreQuestions: () => void;
 }
 
@@ -70,7 +70,7 @@ const CourseQuiz = ({ lecture, onQuizCompleted, onGenerateMoreQuestions }: Cours
       setShowResults(true);
       
       // Call the completion callback
-      onQuizCompleted(attempt.passed);
+      onQuizCompleted(attempt.passed, attempt);
     } 
     catch (error) 
     {

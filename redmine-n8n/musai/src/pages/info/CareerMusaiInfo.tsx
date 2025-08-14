@@ -48,10 +48,10 @@ const CareerMusaiInfo: React.FC = () =>
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 md:justify-start justify-center">
                 <Button
-                  onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_CAREER } })}
+                  onClick={() => navigate(ROUTES.CAREER_MUSAI_CONSOLE)}
                   className="rounded-xl"
                 >
-                  Open CareerMusai
+                  Open Career Console
                 </Button>
                 <Button
                   variant="outline"

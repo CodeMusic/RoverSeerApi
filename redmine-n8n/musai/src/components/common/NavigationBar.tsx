@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp, Heart, Eye, Stethoscope } from "lucide-react";
+import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp, Heart, Eye, Stethoscope, Music } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
@@ -157,7 +157,7 @@ export const NavigationBar = ({
     ...(careerItem && isToolVisible('career') ? [careerItem] : []),
     // Studio insertion
     {
-      id: 'studio', icon: Code, label: 'Musai Studio', available: true, comingSoon: false, color: '#FFD400'
+      id: 'studio', icon: Music, label: 'Musai Studio', available: true, comingSoon: false, color: '#FFD400'
     },
     // Narrative is already in base
     // Therapy, Medical in base

@@ -8,7 +8,7 @@ import { APP_TERMS } from '@/config/constants';
 import { MusaiShimmer } from '@/components/effects/MusaiEffects';
 import { preMusaiApi, PreMusaiContent, PreMusaiQuickAction } from '@/lib/preMusaiApi';
 
-export type PreMusaiPageType = 'home' | 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative' | 'career' | 'therapy' | 'eye';
+export type PreMusaiPageType = 'home' | 'chat' | 'search' | 'code' | 'university' | 'task' | 'narrative' | 'career' | 'therapy' | 'medical' | 'eye';
 
 interface PreMusaiPageProps {
   type: PreMusaiPageType;
@@ -18,6 +18,8 @@ interface PreMusaiPageProps {
   // For home page type dropdown
   selectedMode?: string;
   onModeChange?: (mode: string) => void;
+  // Skip fetching dynamic content from n8n for this instance
+  skipDynamicContent?: boolean;
   // For customization
   title?: string;
   subtitle?: string;
@@ -150,9 +152,16 @@ const getPageConfig = (type: PreMusaiPageType) => {
         ],
         quickActions: [
           { icon: MessageSquare, title: "Start Chat", description: "Begin a new conversation", id: "code-chat", actionType: "function" },
-          { icon: Code, title: "New Project", description: "Start coding session" },
-          { icon: Play, title: "Quick Playground", description: "Test code snippets" },
-          { icon: FileText, title: "Code Templates", description: "Common patterns" }
+          { icon: Code, title: "New Project", description: "Start coding session", id: "code-new", actionType: "function" },
+          { icon: Play, title: "Quick Playground", description: "Test code snippets", id: "code-playground", actionType: "function" },
+          { 
+            icon: FileText, 
+            title: "Code Templates", 
+            description: "Common patterns", 
+            id: "code-templates", 
+            actionType: "submit", 
+            actionData: `// Starter template\nfunction greet(name) {\n  console.log('Hello, ' + name + '!');\n}\n\ngreet('Musai');`
+          }
         ]
       };
     
@@ -255,6 +264,24 @@ const getPageConfig = (type: PreMusaiPageType) => {
         quickActions: [
           { icon: MessageSquare, title: 'Start Session', description: 'Begin a wellness chat', id: 'therapy-start', actionType: 'function' },
           { icon: Star, title: 'Set Goals', description: 'Define session goals', id: 'therapy-goals', actionType: 'function' },
+          { icon: FileText, title: 'Journal Entry', description: 'Quick journal with mood tags', id: 'therapy-journal', actionType: 'submit', actionData: 'Start a journal entry: ' },
+        ]
+      };
+    case 'medical':
+      return {
+        title: APP_TERMS.MEDICAL,
+        subtitle: APP_TERMS.MEDICAL_DESCRIPTION,
+        placeholder: 'What brings you here today? (briefly describe)',
+        showModeSelector: false,
+        suggestions: [
+          'Summarize my recent lab results',
+          'Help me prepare questions for my doctor',
+          'Compare treatment options for my condition',
+          'Create a clear action plan from my notes',
+        ],
+        quickActions: [
+          { icon: MessageSquare, title: 'Start Health Plan', description: 'Outline goals and concerns', id: 'medical-plan', actionType: 'submit', actionData: 'Create a concise health plan from these concerns: ' },
+          { icon: FileText, title: 'Summarize Labs', description: 'Paste labs for plain-language summary', id: 'medical-labs', actionType: 'submit', actionData: 'Summarize these labs and flag notable values: ' },
         ]
       };
     case 'eye':
@@ -287,6 +314,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   className,
   selectedMode = 'chat',
   onModeChange,
+  skipDynamicContent,
   title: customTitle,
   subtitle: customSubtitle,
   placeholder: customPlaceholder,
@@ -305,6 +333,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   useEffect(() => {
     const loadContent = async () => {
       if (type === 'home') return; // Skip for home page
+      if (skipDynamicContent) return; // Explicitly skip external calls when requested
       
       setIsLoadingContent(true);
       try {
@@ -319,7 +348,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
     };
 
     loadContent();
-  }, [type]);
+  }, [type, skipDynamicContent]);
 
   const config = getPageConfig(type);
   const useContent = dynamicContent || config;
@@ -389,7 +418,14 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
           if (type === 'eye' && action.id === 'eye-analyze') {
             openFilePicker();
           }
-          // For therapy goals, you might open a modal in future
+          if (type === 'therapy') {
+            if (action.id === 'therapy-start') {
+              onSubmit('Let us begin with intake. I want to talk about...');
+            }
+            if (action.id === 'therapy-goals') {
+              onSubmit('Session goals: ');
+            }
+          }
           break;
         default:
           break;
@@ -649,6 +685,9 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                     <Button onClick={() => onSubmit('Analyze this image', selectedImage!)} className="rounded-xl">
                       <Eye className="w-4 h-4 mr-2" /> Analyze
                     </Button>
+                    <Button variant="secondary" onClick={() => onSubmit(`TRAIN:${input || ''}`, selectedImage!)} className="rounded-xl">
+                      Train
+                    </Button>
                     <Button variant="outline" onClick={() => { setSelectedImage(null); setImagePreviewUrl(null); }} className="rounded-xl">
                       Clear
                     </Button>
@@ -663,7 +702,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
             </div>
           )}
 
-          {/* Default input form for other types */}
+          {/* Default input form for other types (with Medical upload option) */}
           {type !== 'eye' && (
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
               {showModeSelector && (
@@ -718,6 +757,24 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                   <Button type="submit" disabled={isLoading} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-6">{isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Send'}</Button>
                 )}
               </div>
+              {type === 'medical' && (
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" onClick={openFilePicker} className="rounded-xl" disabled={isLoading}>
+                    <Upload className="w-4 h-4 mr-2" /> Upload docs
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.txt,.md,.rtf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) handleImageSelect(file);
+                    }}
+                  />
+                </div>
+              )}
             </form>
           )}
 

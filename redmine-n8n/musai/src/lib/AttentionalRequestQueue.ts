@@ -8,6 +8,7 @@
 
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
+import { withN8nAuthHeaders } from '@/lib/n8nClient';
 
 export type QueuedRequestMeta =
 {
@@ -181,7 +182,7 @@ export async function queuedFetch(
   const mergedOptions: RequestInit = {
     ...options,
     headers: {
-      ...(existingHeaders || {}),
+      ...withN8nAuthHeaders(existingHeaders),
       ...identityHeaders,
     },
   };

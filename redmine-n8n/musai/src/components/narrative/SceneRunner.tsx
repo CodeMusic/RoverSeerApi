@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -486,10 +487,16 @@ export const SceneRunner = ({
                 )}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-medium">
-                          {turn.characterName.charAt(0)}
-                        </span>
+                      <div className="w-8 h-8 flex-shrink-0">
+                        <Avatar>
+                          {(() => {
+                            const ch = characters.find(c => c.id === turn.characterId);
+                            if (ch?.avatar) {
+                              return <AvatarImage src={ch.avatar} alt={turn.characterName} />;
+                            }
+                            return <AvatarFallback>{turn.characterName.charAt(0)}</AvatarFallback>;
+                          })()}
+                        </Avatar>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">

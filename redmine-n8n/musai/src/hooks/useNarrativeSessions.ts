@@ -1,19 +1,30 @@
 import { useState, useCallback, useEffect } from 'react';
 import { NarrativeSession } from '@/types/chat';
 import { v4 as uuidv4 } from 'uuid';
+import { computeAndStoreClientIpHash, getStoredClientIpHash } from '@/utils/ip';
 
 export const useNarrativeSessions = () => {
   const [sessions, setSessions] = useState<NarrativeSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [clientIpHash, setClientIpHash] = useState<string | null>(getStoredClientIpHash());
 
   // Load sessions from localStorage on mount
+  useEffect(() => {
+    computeAndStoreClientIpHash().then(hash => { if (hash) setClientIpHash(hash); });
+  }, []);
+
   useEffect(() => {
     const savedSessions = localStorage.getItem('narrative-sessions');
     if (savedSessions) {
       try {
         const parsedSessions = JSON.parse(savedSessions);
-        setSessions(parsedSessions);
+        if (clientIpHash) {
+          const filtered = parsedSessions.filter((s: any) => !s.clientIpHash || s.clientIpHash === clientIpHash);
+          setSessions(filtered);
+        } else {
+          setSessions(parsedSessions);
+        }
         
         // Set current session to the most recent one
         if (parsedSessions.length > 0) {
@@ -26,7 +37,7 @@ export const useNarrativeSessions = () => {
         console.error('Failed to load narrative sessions:', error);
       }
     }
-  }, []);
+  }, [clientIpHash]);
 
   // Save sessions to localStorage whenever they change
   useEffect(() => {
@@ -37,6 +48,27 @@ export const useNarrativeSessions = () => {
     const newSession: NarrativeSession = {
       id: uuidv4(),
       name: `Narrative ${new Date().toLocaleDateString()}`,
+      type: 'narrative',
+      createdAt: Date.now(),
+      lastUpdated: Date.now(),
+      favorite: false,
+      clientIpHash: clientIpHash || undefined,
+      storyData: {
+        concept: null,
+        characters: [],
+        acts: []
+      }
+    };
+
+    setSessions(prev => [newSession, ...prev]);
+    setCurrentSessionId(newSession.id);
+  }, [clientIpHash]);
+
+  // Create a new session using an externally provided summary (e.g., from n8n)
+  const createNewSessionFromSummary = useCallback((summary: { id: string; title?: string }) => {
+    const newSession: NarrativeSession = {
+      id: summary.id,
+      name: summary.title || `Narrative ${new Date().toLocaleDateString()}`,
       type: 'narrative',
       createdAt: Date.now(),
       lastUpdated: Date.now(),
@@ -111,6 +143,7 @@ export const useNarrativeSessions = () => {
     currentSessionId,
     isLoading,
     createNewSession,
+    createNewSessionFromSummary,
     deleteSession,
     renameSession,
     toggleFavorite,

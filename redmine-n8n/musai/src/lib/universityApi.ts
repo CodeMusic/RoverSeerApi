@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 import type { 
   Course, 
   CourseMetadata, 
@@ -10,11 +11,14 @@ import type {
   QuizGenerationRequest,
   StandaloneLecture,
   QuizQuestion,
-  ChatMessage
+  ChatMessage,
+  CourseExam,
+  ExamType
 } from '@/types/university';
+import { getRandomWittyError } from '@/config/messages';
 
-// Base URL for n8n endpoints - adjust as needed
-const N8N_BASE_URL = import.meta.env.VITE_N8N_BASE_URL || '/api/n8n';
+// Base URL for n8n endpoints - prefer Vite proxy in development to avoid CORS
+const N8N_BASE_URL = N8N_ENDPOINTS.BASE_URL;
 
 // Types for the university system
 export interface LectureStep 
@@ -298,6 +302,74 @@ class UniversityApiService
     }
   }
 
+  // Exam Generation (Midterm/Final)
+  async generateCourseExam(courseId: string, type: ExamType, lectureContents: string[]): Promise<CourseExam>
+  {
+    try 
+    {
+      const response = await this.axiosInstance.post('/exam/generate', {
+        courseId,
+        type,
+        lectureContents
+      });
+      return response.data;
+    }
+    catch (error)
+    {
+      console.error('Error generating exam:', error);
+      // Mock exam for development
+      const now = new Date().toISOString();
+      const questions: QuizQuestion[] = [
+        {
+          question: `Comprehensive question 1 (${type})`,
+          choices: ['A', 'B', 'C', 'D'],
+          correctIndex: 0
+        },
+        {
+          question: `Comprehensive question 2 (${type})`,
+          choices: ['A', 'B', 'C', 'D'],
+          correctIndex: 1
+        },
+        {
+          question: `Comprehensive question 3 (${type})`,
+          choices: ['A', 'B', 'C', 'D'],
+          correctIndex: 2
+        }
+      ];
+      return {
+        id: `${courseId}-${type}-${Date.now()}`,
+        type,
+        title: `${type === 'midterm' ? 'Midterm' : 'Final'} Exam`,
+        questions,
+        attempts: [],
+        createdAt: now,
+        updatedAt: now
+      };
+    }
+  }
+
+  async submitCourseExam(courseId: string, examId: string, answers: number[]): Promise<QuizAttempt>
+  {
+    try 
+    {
+      const response = await this.axiosInstance.post('/exam/submit', { courseId, examId, answers });
+      return response.data;
+    }
+    catch (error)
+    {
+      console.error('Error submitting exam:', error);
+      // Mock grading
+      const score = answers.reduce((acc, answer, index) => acc + (answer === index % 4 ? 1 : 0), 0) / (answers.length || 1);
+      return {
+        id: `attempt-${Date.now()}`,
+        answers,
+        score,
+        passed: score >= 0.6,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
   // Submit quiz answers
   async submitQuizAnswers(lectureId: string, answers: number[]): Promise<QuizAttempt> 
   {
@@ -488,9 +560,9 @@ class UniversityApiService
     catch (error) 
     {
       console.error('Error sending chat message:', error);
-      // Return mock data for development
+      // Return witty message so user knows it failed
       return {
-        reply: `Thank you for your question about "${question}". This is a sample response from the AI tutor. In a real implementation, this would provide contextual help based on the current lecture step.`
+        reply: getRandomWittyError(),
       };
     }
   }

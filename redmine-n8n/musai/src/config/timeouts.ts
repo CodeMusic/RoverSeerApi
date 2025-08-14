@@ -5,8 +5,8 @@
  * Minimum timeout is enforced to be 2 minutes (120,000ms) for all operations.
  */
 
-// Minimum timeout enforced across all operations (2 minutes)
-const MINIMUM_TIMEOUT_MS = 2 * 60 * 1000; // 120,000ms
+// Minimum timeout enforced across all operations (10 minutes)
+const MINIMUM_TIMEOUT_MS = 10 * 60 * 1000; // 600,000ms
 
 // Default timeout configurations
 const DEFAULT_TIMEOUTS = {
@@ -15,11 +15,11 @@ const DEFAULT_TIMEOUTS = {
   SEARCH_FOLLOWUP: 5 * 60 * 1000,       // 5 minutes for follow-up questions (increased)
   
   // Chat-related timeouts  
-  CHAT_MESSAGE: 4 * 60 * 1000,          // 4 minutes for chat messages
-  CHAT_STREAMING: 6 * 60 * 1000,        // 6 minutes for streaming responses
+  CHAT_MESSAGE: 10 * 60 * 1000,         // 10 minutes for chat messages
+  CHAT_STREAMING: 10 * 60 * 1000,       // 10 minutes for streaming responses
   
   // General API timeouts
-  API_REQUEST: 3 * 60 * 1000,           // 3 minutes for general API calls
+  API_REQUEST: 10 * 60 * 1000,          // 10 minutes for general API calls
   FILE_UPLOAD: 10 * 60 * 1000,          // 10 minutes for file uploads
 } as const;
 

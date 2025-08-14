@@ -65,6 +65,18 @@ export function useMedicalMusaiOrchestration(patientId: string)
     return res as DoctorStyle;
   }
 
+  async function transcribeLocal(audioDataUri: string)
+  {
+    const res = await invoke('/transcribe-local', { audio: audioDataUri });
+    return (res && res.text) as string;
+  }
+
+  async function getPatientSnapshot()
+  {
+    const res = await invoke('/patient-snapshot', {});
+    return res as { timeline: TimelineEvent[]; insights: Insight[] };
+  }
+
   return {
     timeline,
     insights,
@@ -75,6 +87,8 @@ export function useMedicalMusaiOrchestration(patientId: string)
     prepConversation,
     planChallenge,
     getDoctorStyle,
+    transcribeLocal,
+    getPatientSnapshot,
   };
 }
 

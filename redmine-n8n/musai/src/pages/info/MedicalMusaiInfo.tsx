@@ -183,6 +183,7 @@ const MedicalMusaiInfo: React.FC = () =>
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Button onClick={() => navigate(ROUTES.MEDICAL_MUSAI_DEMO)}>Start Your Pre‑Flight</Button>
+                <Button variant="secondary" onClick={() => navigate(ROUTES.MEDICAL_MUSAI_CONSOLE)}>Open Pilot Console</Button>
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline">Pre‑Flight preview</Button>

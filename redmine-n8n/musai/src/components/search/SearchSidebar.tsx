@@ -4,19 +4,9 @@ import { Search, Plus, Clock, ArrowLeft, Brain, Link, Cog, Globe, Trash2, MoreHo
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import type { SearchSessionModel } from "@/types/search";
 
-interface SearchSession {
-  id: string;
-  query: string;
-  intent?: string; // 'search' | 'llm' | 'summarize' | 'tool'
-  results: any[];
-  followUps: Array<{
-    query: string;
-    result: any;
-    timestamp: number;
-  }>;
-  timestamp: number;
-}
+type SearchSession = SearchSessionModel;
 
 interface SearchSidebarProps {
   sessions: SearchSession[];
@@ -144,12 +134,13 @@ export const SearchSidebar = ({
                           {format(session.timestamp, 'MMM d, h:mm a')}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {session.results.length} result{session.results.length !== 1 ? 's' : ''}
-                        {session.followUps.length > 0 && (
-                          <span> • {session.followUps.length} follow-up{session.followUps.length !== 1 ? 's' : ''}</span>
-                        )}
-                      </div>
+                       <div className="text-xs text-muted-foreground truncate">
+                         {session.results.length} result{session.results.length !== 1 ? 's' : ''}
+                         {session.followUps.length > 0 && (
+                           <span> • {session.followUps.length} follow-up{session.followUps.length !== 1 ? 's' : ''}</span>
+                         )}
+                         {session.mode === 'research' && <span> • research</span>}
+                       </div>
                     </div>
                   </div>
 

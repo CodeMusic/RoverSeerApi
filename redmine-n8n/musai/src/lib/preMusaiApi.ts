@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
+import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 
 // Clean object structures for PreMusai content
 export interface PreMusaiExample {
@@ -305,6 +306,59 @@ const defaultContent: Record<string, PreMusaiContent> = {
         actionData: 'Give me quick career advice and answers'
       }
     ]
+  },
+  
+  therapy: {
+    type: 'therapy',
+    title: 'TherapyMusai',
+    subtitle: 'Reflective dialogue focused on wellness and growth. Optionally set goals before you begin.',
+    placeholder: 'Share what you want to explore today... ',
+    examples: [
+      { id: 'therapy-1', text: 'I want to practice a calming technique', category: 'skills' },
+      { id: 'therapy-2', text: 'Help me reflect on a recent experience', category: 'reflection' },
+      { id: 'therapy-3', text: 'Guide me through reframing a thought', category: 'cognitive' },
+      { id: 'therapy-4', text: 'Walk me through a grounding exercise', category: 'grounding' }
+    ],
+    quickActions: [
+      { id: 'therapy-start', icon: 'MessageSquare', title: 'Start Session', description: 'Begin a wellness chat', actionType: 'function' },
+      { id: 'therapy-goals', icon: 'Star', title: 'Set Goals', description: 'Define session goals', actionType: 'function' },
+      { id: 'therapy-journal', icon: 'FileText', title: 'Journal Entry', description: 'Quick journal with mood tags', actionType: 'submit', actionData: 'Start a journal entry: ' },
+    ]
+  },
+
+  medical: {
+    type: 'medical',
+    title: 'MedicalMusai',
+    subtitle: 'A meta-copilot that integrates specialists, GP insights, therapy context, and research into one clear flight plan for your health.',
+    placeholder: 'Describe your health question or what you want to plan…',
+    examples: [
+      { id: 'medical-1', text: 'Summarize my recent lab results', category: 'labs' },
+      { id: 'medical-2', text: 'Help me prepare questions for my doctor', category: 'visit' },
+      { id: 'medical-3', text: 'Compare treatment options for my condition', category: 'decisions' },
+      { id: 'medical-4', text: 'Create a clear action plan from my notes', category: 'planning' }
+    ],
+    quickActions: [
+      { id: 'medical-plan', icon: 'MessageSquare', title: 'Start Health Plan', description: 'Outline goals and concerns', actionType: 'submit', actionData: 'Create a concise health plan from these concerns: ' },
+      { id: 'medical-labs', icon: 'FileText', title: 'Summarize Labs', description: 'Paste labs for plain-language summary', actionType: 'submit', actionData: 'Summarize these labs and flag notable values: ' }
+    ]
+  },
+  
+  eye: {
+    type: 'eye',
+    title: 'The Eye of Musai',
+    subtitle: 'A contextual vision engine with MusaiDex—index anything, blend YOLO-style vision with language to understand form and meaning.',
+    placeholder: 'What do you want to index or generate?',
+    examples: [
+      { id: 'eye-1', text: 'Index my design components', category: 'design' },
+      { id: 'eye-2', text: 'Catalog my hardware inventory', category: 'inventory' },
+      { id: 'eye-3', text: 'Track bird species in my area', category: 'biology' },
+      { id: 'eye-4', text: 'Build a dataset for recipes', category: 'food' },
+      { id: 'eye-5', text: 'Create a MusaiDex for tools', category: 'tools' }
+    ],
+    quickActions: [
+      { id: 'eye-analyze', icon: 'Eye', title: 'Analyze Image', description: 'Upload and classify', actionType: 'function' },
+      { id: 'eye-generate', icon: 'Zap', title: 'Generate from Text', description: 'Create an image from a prompt', actionType: 'submit', actionData: 'Generate an image: ' }
+    ]
   }
 };
 
@@ -312,7 +366,7 @@ class PreMusaiApiService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_N8N_BASE_URL || '/api/n8n';
+    this.baseUrl = N8N_ENDPOINTS.BASE_URL;
   }
 
   async getPreMusaiContent(type: string): Promise<PreMusaiContent> {

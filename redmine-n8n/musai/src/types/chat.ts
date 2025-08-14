@@ -18,6 +18,8 @@ export interface BaseSession {
   lastUpdated: number;
   favorite: boolean;
   createdAt: number;
+  // Hash of client IP for lightweight multi-user separation pre-accounts
+  clientIpHash?: string;
   type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative' | 'career' | 'therapy';
 }
 
@@ -55,7 +57,7 @@ export interface TaskSession extends BaseSession {
 
 export interface NarrativeSession extends BaseSession {
   type: 'narrative';
-  storyData: any[];
+  storyData: any;
   currentChapter?: number;
 }
 
@@ -81,6 +83,10 @@ export interface TherapySession extends BaseSession {
     moodTags?: string[];
     currentMood?: string;
     sessionType?: 'reflection' | 'problem-solving' | 'general' | 'crisis';
+    // Session mode is the high-level container for how the user would like to work in this session
+    sessionMode?: 'standard' | 'journal' | 'shadow' | 'metaphor';
+    // Session arc refers to the current act of the therapeutic flow
+    sessionArc?: 'intake' | 'exploration' | 'synthesis';
     privacyLevel?: 'private' | 'exportable';
     narrativeExports?: string[]; // IDs of exported tales
   };

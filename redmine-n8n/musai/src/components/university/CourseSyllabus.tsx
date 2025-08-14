@@ -14,7 +14,9 @@ import {
   Brain,
   Clock,
   User,
-  Settings
+  Settings,
+  FileText,
+  GraduationCap
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
@@ -302,6 +304,52 @@ const CourseSyllabus = () =>
 
         {/* Lectures Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Exam Actions */}
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-purple-600" />
+                <div>
+                  <div className="font-semibold">Course Exams</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Generate midterm or final covering prior material</div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!course) return;
+                    const contents = course.lectures
+                      .filter((l) => l.content)
+                      .map((l) => l.content as string);
+                    const exam = await universityApi.generateCourseExam(course.metadata.id, 'midterm', contents.slice(0, Math.ceil(contents.length / 2)));
+                    const updatedCourse = { ...course, midtermExam: exam } as Course;
+                    await universityApi.saveCourse(updatedCourse);
+                    setCourse(updatedCourse);
+                    alert('Midterm generated');
+                  }}
+                >
+                  <FileText className="mr-2 h-4 w-4" /> Generate Midterm
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!course) return;
+                    const contents = course.lectures
+                      .filter((l) => l.content)
+                      .map((l) => l.content as string);
+                    const exam = await universityApi.generateCourseExam(course.metadata.id, 'final', contents);
+                    const updatedCourse = { ...course, finalExam: exam } as Course;
+                    await universityApi.saveCourse(updatedCourse);
+                    setCourse(updatedCourse);
+                    alert('Final exam generated');
+                  }}
+                >
+                  <GraduationCap className="mr-2 h-4 w-4" /> Generate Final
+                </Button>
+              </div>
+            </CardHeader>
+          </Card>
+
           {course.lectures.map((lecture, index) => (
             <Card 
               key={lecture.id} 

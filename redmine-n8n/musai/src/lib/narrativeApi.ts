@@ -1,4 +1,5 @@
 import { queuedFetch } from '@/lib/AttentionalRequestQueue';
+import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 
 export type NarrativeMode = 'general' | 'therapy' | 'career' | 'code' | 'university';
 
@@ -23,7 +24,7 @@ class NarrativeApiService
 
   public constructor()
   {
-    this.baseUrl = import.meta.env.VITE_N8N_BASE_URL || '/api/n8n';
+    this.baseUrl = N8N_ENDPOINTS.BASE_URL;
   }
 
   public async createNarrative(payload: CreateNarrativeRequest): Promise<NarrativeSummary>

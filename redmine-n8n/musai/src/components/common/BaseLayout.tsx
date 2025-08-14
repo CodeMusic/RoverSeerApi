@@ -8,6 +8,7 @@ import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { AllSessions, ChatSession, CareerSession, TherapySession } from '@/types/chat';
 import { APP_TERMS } from '@/config/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getStoredClientIpHash } from '@/utils/ip';
 
 interface BaseLayoutProps {
   // Layout structure
@@ -25,11 +26,15 @@ interface BaseLayoutProps {
   // Content rendering
   renderMainContent: () => React.ReactNode;
   renderRightSidebar?: () => React.ReactNode;
+  renderLeftSidebarOverride?: () => React.ReactNode | null;
   
   // Navigation
   onTabChange: (tab: string) => void;
   isNavigationExpanded: boolean;
   onToggleNavigation: () => void;
+  hideTopAppBar?: boolean;
+  // When true, expands the left sidebar once (used after creating a new narrative)
+  expandLeftSidebarOnce?: boolean;
 }
 
 export const BaseLayout: React.FC<BaseLayoutProps> = ({
@@ -43,9 +48,12 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   onToggleFavorite,
   renderMainContent,
   renderRightSidebar,
+  renderLeftSidebarOverride,
   onTabChange,
   isNavigationExpanded,
-  onToggleNavigation
+  onToggleNavigation,
+  hideTopAppBar,
+  expandLeftSidebarOnce
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -53,7 +61,9 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   const { preferences } = useUserPreferences();
   const isMobile = useIsMobile();
   const rightContent = renderRightSidebar ? renderRightSidebar() : null;
+  const leftOverride = renderLeftSidebarOverride ? renderLeftSidebarOverride() : null;
   const hasRightContent = Boolean(rightContent);
+  const clientIpHash = getStoredClientIpHash();
 
   // Filter sessions based on current tab and type compatibility
   const filteredSessions = sessions.filter(session => {
@@ -66,11 +76,16 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       [APP_TERMS.TAB_SEARCH]: 'search',
       [APP_TERMS.TAB_TASK]: 'task',
       [APP_TERMS.TAB_THERAPY]: 'therapy',
+      // Medical and Eye currently do not use traditional sessions
+      // Include mapping only when session types exist
       [APP_TERMS.TAB_EYE]: 'chat', // Eye reuses chat-like sessions initially
     };
     
     const expectedType = tabToSessionType[currentTab];
-    return expectedType ? session.type === expectedType : true;
+    const typeMatches = expectedType ? session.type === expectedType : true;
+    // Filter by IP hash if present; allow untagged sessions for back-compat
+    const ipMatches = clientIpHash ? (!session.clientIpHash || session.clientIpHash === clientIpHash) : true;
+    return typeMatches && ipMatches;
   });
 
   // Filter for sessions that have messages (compatible with ChatSidebar)
@@ -87,26 +102,39 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     }
 
     if (filteredSessions.length > 0) {
-      if (!preferences.autoSelectFirstItem) {
-        setIsSidebarCollapsed(true);
-      } else {
-        setIsSidebarCollapsed(false);
-      }
+      // If user prefers auto-select, collapse the sidebar; otherwise keep it open
+      setIsSidebarCollapsed(preferences.autoSelectFirstItem);
     } else {
       setIsSidebarCollapsed(true);
     }
   }, [currentTab, filteredSessions.length, preferences.autoSelectFirstItem]);
 
+  // Allow parent to force-expand the left sidebar once (e.g., after creating a narrative)
+  useEffect(() => {
+    if (expandLeftSidebarOnce) {
+      setIsSidebarCollapsed(false);
+    }
+  }, [expandLeftSidebarOnce]);
+
   return (
     <div className="h-full flex flex-col">
+      <NavigationBar
+        currentTab={currentTab}
+        onTabChange={onTabChange}
+        isExpanded={isNavigationExpanded}
+        onToggleExpanded={onToggleNavigation}
+      />
       {/* Top App Bar replaces vertical toolbar for now */}
-      <TopAppBar />
+      {!hideTopAppBar && <TopAppBar />}
 
       {/* Main Layout below top bar */}
       <div className={cn(
         "flex-1 transition-all duration-300 relative z-10",
-        // No left offset when using a top app bar
-        "pt-14"
+        // Top app bar height
+        hideTopAppBar ? undefined : "pt-14",
+        // Offset for fixed left navigation bar
+        "ml-12",
+        isNavigationExpanded ? "md:ml-48" : "md:ml-16"
       )}>
         <div className="h-[100dvh] md:h-[100svh] flex">
           {/* Left Sidebar */}
@@ -116,18 +144,20 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               "transition-all duration-300 ease-in-out",
               isMobile && !isSidebarOpen && "-translate-x-full"
             )}>
-              <ChatSidebar
-                sessions={chatCompatibleSessions}
-                currentSessionId={currentSessionId}
-                onNewChat={onNewSession}
-                onSessionSelect={onSessionSelect}
-                onDeleteSession={onDeleteSession}
-                onRenameSession={onRenameSession}
-                onToggleFavorite={onToggleFavorite}
-                isSidebarOpen={isSidebarOpen}
-                isCollapsed={isSidebarCollapsed}
-                onToggleCollapse={() => setIsSidebarCollapsed(true)}
-              />
+              {leftOverride ?? (
+                <ChatSidebar
+                  sessions={chatCompatibleSessions}
+                  currentSessionId={currentSessionId}
+                  onNewChat={onNewSession}
+                  onSessionSelect={onSessionSelect}
+                  onDeleteSession={onDeleteSession}
+                  onRenameSession={onRenameSession}
+                  onToggleFavorite={onToggleFavorite}
+                  isSidebarOpen={isSidebarOpen}
+                  isCollapsed={isSidebarCollapsed}
+                  onToggleCollapse={() => setIsSidebarCollapsed(true)}
+                />
+              )}
             </div>
           )}
 

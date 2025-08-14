@@ -14,10 +14,11 @@ export default defineConfig(({ mode }) => ({
     },
     allowedHosts: ["musai.codemusic.ca","m2cbook.local", "localhost", "127.0.0.1", "0.0.0.0"],
     proxy: {
-      '/api/n8n': {
-        target: 'http://localhost:5678',
+      '/n8n': {
+        target: 'https://n8n.codemusic.ca',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/n8n/, '/webhook'),
+        secure: true,
+        rewrite: (path) => path.replace(/^\/n8n/, '/webhook'),
         configure: (proxy, _options) => {
           proxy.on('error', (err, _req, _res) => {
             console.log('proxy error', err);

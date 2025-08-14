@@ -21,10 +21,11 @@ export const useCurationsAvailability = (checkInterval: number = 5 * 60 * 1000) 
 
   const checkCurationsAvailability = async (): Promise<boolean> => {
     try {
-      const baseUrl = import.meta.env.VITE_N8N_BASE_URL || '/api/n8n';
+      const baseUrl = N8N_ENDPOINTS.BASE_URL;
       const response = await fetchWithTimeout(
         `${baseUrl}${N8N_ENDPOINTS.CURATIONS.GET_CURRENT_CURATIONS}`,
-        { timeout: 5000 }
+        {},
+        5000
       );
 
       if (!response.ok) {

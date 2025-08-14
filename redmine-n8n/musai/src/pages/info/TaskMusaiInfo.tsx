@@ -32,12 +32,12 @@ const TaskMusaiInfo: React.FC = () =>
 
   const handleStartSprint = (): void =>
   {
-    navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_TASK } });
+    navigate(ROUTES.TASK_MUSAI_CONSOLE);
   };
 
   const handleViewSampleBacklog = (): void =>
   {
-    navigate(ROUTES.MAIN_APP, { state: { switchToTab: APP_TERMS.TAB_TASK, initialQuery: 'show sample backlog' } });
+    navigate(ROUTES.TASK_MUSAI_CONSOLE);
   };
 
   return (

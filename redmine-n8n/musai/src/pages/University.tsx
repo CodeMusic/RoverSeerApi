@@ -194,12 +194,7 @@ const University = () => {
               type="university"
               onSubmit={(input) => {
                 // Navigate to course creation with the topic
-                navigate('/university/course/new', { 
-                  state: { 
-                    initialTopic: input,
-                    fromPreMusai: true 
-                  }
-                });
+                navigate(`/university/course/new?topic=${encodeURIComponent(input)}`);
               }}
               isLoading={false}
               quickActions={[

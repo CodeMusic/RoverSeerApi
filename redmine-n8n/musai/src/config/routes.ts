@@ -20,15 +20,24 @@ export const ROUTES = {
   LOCAL_AI: '/local-ai',
   EYE_OF_MUSAI: '/eye-of-musai',
   CAREER_MUSAI: '/career-musai',
+  CAREER_MUSAI_CONSOLE: '/career-musai/console',
   THERAPY_MUSAI: '/therapy-musai',
   MEDICAL_MUSAI: '/medical-musai',
   MEDICAL_MUSAI_DEMO: '/medical-musai/demo',
+  MEDICAL_MUSAI_CONSOLE: '/medical-musai/console',
   EMERGENT_NARRATIVE: '/emergent-narrative',
   TASK_MUSAI: '/agile-musai',
+  TASK_MUSAI_CONSOLE: '/agile-musai/console',
   CURATIONS_INFO: '/curations/info',
   MUSAI_STUDIO_INFO: '/musai-studio/info',
   MUSAI_STUDIO: '/musai-studio',
   ROADMAP: '/roadmap',
+  
+  // Eye operation pages
+  EYE_TRAIN: '/eye/train',
+  EYE_RECOGNIZE: '/eye/recognize',
+
+  
   
   // University routes
   UNIVERSITY: '/university',
@@ -36,6 +45,8 @@ export const ROUTES = {
   UNIVERSITY_LECTURE_VIEW: '/university/lecture/:id',
   UNIVERSITY_COURSE_NEW: '/university/course/new',
   UNIVERSITY_COURSE_VIEW: '/university/course/:courseId',
+  UNIVERSITY_COURSE_LECTURE_VIEW: '/university/course/:courseId/lecture/:lectureId',
+  UNIVERSITY_COURSE_EXAM_VIEW: '/university/course/:courseId/exam/:examType',
   
   // AI-generated content
   CURATIONS: '/curations',
@@ -89,6 +100,8 @@ export const RouteUtils = {
   // University routes
   universityLecture: (id: string) => createRouteWithParams(ROUTES.UNIVERSITY_LECTURE_VIEW, { id }),
   universityCourse: (courseId: string) => createRouteWithParams(ROUTES.UNIVERSITY_COURSE_VIEW, { courseId }),
+  universityCourseLecture: (courseId: string, lectureId: string) => createRouteWithParams(ROUTES.UNIVERSITY_COURSE_LECTURE_VIEW, { courseId, lectureId }),
+  universityCourseExam: (courseId: string, examType: 'midterm' | 'final') => createRouteWithParams(ROUTES.UNIVERSITY_COURSE_EXAM_VIEW, { courseId, examType }),
   
   // Check if current path is main app
   isMainApp: (pathname: string) => pathname === ROUTES.MAIN_APP,

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 import { TrendingUp, Sparkles, Calendar, AlertCircle, Mail, Bell } from 'lucide-react';
 import { ToolHeader } from '@/components/common/ToolHeader';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
@@ -57,13 +58,13 @@ export const CareerMusaiLayout: React.FC<CareerMusaiLayoutProps> = ({
     }, 100);
   }, [onNewChat, onSendMessage, recordLastSession]);
 
-  const handleScheduleSearch = useCallback((searchConfig: {
+    const handleScheduleSearch = useCallback((searchConfig: {
     query: string;
     presentation: string;
     email?: string;
     frequency: 'daily' | 'weekly' | 'monthly';
     time?: string;
-  }) => {
+    }) => {
     // Send to n8n to schedule the search
     const scheduleData = {
       type: 'career_search_schedule',
@@ -73,7 +74,8 @@ export const CareerMusaiLayout: React.FC<CareerMusaiLayoutProps> = ({
     };
 
     // Call n8n endpoint to schedule the search
-    fetch('/api/n8n/career/schedule', {
+      const baseUrl = N8N_ENDPOINTS.BASE_URL;
+    fetch(`${baseUrl}/career/schedule`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -147,7 +149,7 @@ export const CareerMusaiLayout: React.FC<CareerMusaiLayoutProps> = ({
           <div className="flex-1 overflow-hidden">
             <PreMusaiPage
               type="career"
-              onSubmit={handleCareerSubmit}
+              onSubmit={(input, _file, mode) => handleCareerSubmit(input, mode)}
               onQuickAction={handleQuickAction}
               isLoading={isTyping}
               className="h-full"

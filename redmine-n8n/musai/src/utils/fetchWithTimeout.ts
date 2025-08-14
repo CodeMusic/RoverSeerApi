@@ -1,4 +1,6 @@
 import { TIMEOUTS, createTimeoutController, formatTimeout } from '@/config/timeouts';
+import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
+import { withN8nAuthHeaders } from '@/lib/n8nClient';
 
 // Legacy exports for backward compatibility (now use configured values)
 export const FETCH_TIMEOUT = TIMEOUTS.CHAT_MESSAGE;
@@ -14,8 +16,12 @@ export const fetchWithTimeout = async (
   console.log(`Starting request with ${formatTimeout(timeout)} timeout`);
 
   try {
+    // If the request targets n8n, enforce Basic Auth headers
+    const isN8n = typeof url === 'string' && (url.startsWith(N8N_ENDPOINTS.BASE_URL) || url.includes('/webhook/'));
+    const nextHeaders = isN8n ? withN8nAuthHeaders(options.headers) : options.headers;
     const response = await fetch(url, {
       ...options,
+      headers: nextHeaders,
       signal
     });
     cleanup();

@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useMessageSender } from "./useMessageSender";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { computeAndStoreClientIpHash, getStoredClientIpHash } from "@/utils/ip";
 
 const STORAGE_VERSION = "v1";
 const STORAGE_KEY = `chat_sessions_${STORAGE_VERSION}`;
@@ -41,6 +42,7 @@ console.log('Selected WELCOME_MESSAGE:', WELCOME_MESSAGE);
 export const useChatSessions = () => {
   const [sessions, setSessions] = useState<(ChatSession | CareerSession)[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [clientIpHash, setClientIpHash] = useState<string | null>(getStoredClientIpHash());
   const queryClient = useQueryClient();
 
 
@@ -92,6 +94,13 @@ export const useChatSessions = () => {
   };
 
   useEffect(() => {
+    // Resolve client IP hash once (best-effort)
+    computeAndStoreClientIpHash().then(hash => {
+      if (hash) setClientIpHash(hash);
+    });
+  }, []);
+
+  useEffect(() => {
     try {
       console.log('Loading sessions from localStorage');
       const savedSessions = localStorage.getItem(STORAGE_KEY);
@@ -99,7 +108,13 @@ export const useChatSessions = () => {
         const parsed = JSON.parse(savedSessions);
         console.log('Parsed sessions:', parsed);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessions(parsed);
+          // If we have a clientIpHash, only show sessions that match or are untagged (backfill later)
+          if (clientIpHash) {
+            const filtered = parsed.filter((s: any) => !s.clientIpHash || s.clientIpHash === clientIpHash);
+            setSessions(filtered);
+          } else {
+            setSessions(parsed);
+          }
           // Don't auto-select any session - let user choose
           setCurrentSessionId("");
           console.log('Loaded existing sessions:', parsed.length);
@@ -118,7 +133,7 @@ export const useChatSessions = () => {
       setSessions([]);
       setCurrentSessionId("");
     }
-  }, []); // Load sessions once on mount
+  }, [clientIpHash]); // Reload when IP hash becomes available to filter
 
   const createNewSession = (sessionType: 'chat' | 'career' = 'chat') => {
     console.log('Creating new session of type:', sessionType);
@@ -131,6 +146,7 @@ export const useChatSessions = () => {
         createdAt: Date.now(),
         lastUpdated: Date.now(),
         favorite: false,
+        clientIpHash: clientIpHash || undefined,
         careerContext: {
           currentRole: '',
           targetRole: '',
@@ -156,7 +172,8 @@ export const useChatSessions = () => {
         messages: [], // Start with empty messages to show PreMusaiPage
         createdAt: Date.now(),
         lastUpdated: Date.now(),
-        favorite: false
+        favorite: false,
+        clientIpHash: clientIpHash || undefined,
       };
       setSessions(prev => {
         const updatedSessions = [newSession, ...prev];

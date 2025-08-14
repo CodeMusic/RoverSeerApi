@@ -300,9 +300,50 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
           updateMoodPhrase(phrase);
           return `Mood phrase set to: "${phrase}". This will be processed by n8n to determine the actual mood.`;
         }
-        return `Unknown command: ${command}. Type 'help' for available commands.`;
+        // Fall through: forward unknown command to n8n
+        forwardUnknownCommandToN8n(command);
+        return `Forwarded to Musai n8n: ${command}`;
     }
   };
+
+  // Forward unknown commands to n8n webhook with basic auth and metadata
+  async function forwardUnknownCommandToN8n(rawCommand: string)
+  {
+    try
+    {
+      // Get client IP for sessionId via a public IP endpoint
+      let sessionId = '';
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        if (ipRes.ok) {
+          const data = await ipRes.json();
+          sessionId = data?.ip || '';
+        }
+      } catch {}
+
+      const baseUrl = (await import('@/config/n8nEndpoints')).N8N_ENDPOINTS.BASE_URL;
+      const url = `${baseUrl}/codemusicca`;
+      const body = new URLSearchParams();
+      body.set('type', 'musai');
+      if (sessionId) body.set('sessionId', sessionId);
+      body.set('command', rawCommand);
+
+      const credentials = btoa('siteuser:codemusai');
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+        mode: 'cors',
+      });
+    }
+    catch
+    {
+      // Swallow network errors in UI; console remains responsive
+    }
+  }
 
   // Automatically set mood based on current month if no saved mood
   const getCurrentMonthMood = () => {

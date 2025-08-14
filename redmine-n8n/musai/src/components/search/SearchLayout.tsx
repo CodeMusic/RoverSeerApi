@@ -10,19 +10,14 @@ import { Menu, Search, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_TERMS } from "@/config/constants";
 import { TIMEOUTS, createTimeoutController, formatTimeout } from "@/config/timeouts";
+import { getRandomWittyError } from "@/config/messages";
+import type { SearchMode, SearchSource, SearchSessionModel, SearchResult } from "@/types/search";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
-interface SearchSession {
-  id: string;
-  query: string;
-  intent?: string; // 'search' | 'llm' | 'summarize' | 'tool'
-  results: any[];
-  followUps: Array<{
-    query: string;
-    result: any;
-    timestamp: number;
-  }>;
-  timestamp: number;
-}
+interface SearchSession extends SearchSessionModel {}
 
 interface SearchLayoutProps {
   onClose: () => void;
@@ -39,6 +34,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const isMobile = useIsMobile();
+
+  // MuseEyeSearch parameters
+  const [mode, setMode] = useState<SearchMode>('standard');
+  const [sources, setSources] = useState<SearchSource[]>(['web']);
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
   const hasSearched = currentSessionId !== null;
@@ -57,9 +56,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
     try {
       const startTime = Date.now();
-      // Create timeout controller with configured search timeout
-      // Temporarily increase timeout for debugging and try without signal
-      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST * 2); // Double the timeout for testing
+      // Create timeout controller with configured search timeout (10 minutes minimum)
+      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST);
       
       console.log(`Starting search with ${formatTimeout(timeout)} timeout`);
       console.log(`Search query: "${query}"`);
@@ -72,7 +70,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       // Use the actual n8n musai_search webhook
       // Try without signal first to see if that's the issue
       // Route through queue to respect concurrency limits and attach identity headers
-      const response = await (await import('@/lib/AttentionalRequestQueue')).queuedFetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
+      const effectiveSources: SearchSource[] = (sources && sources.length > 0) ? sources : (['web'] as SearchSource[]);
+      const baseUrl = (await import('@/config/n8nEndpoints')).N8N_ENDPOINTS.BASE_URL;
+      const response = await (await import('@/lib/AttentionalRequestQueue')).queuedFetch(`${baseUrl}/musai_search/c0d3musai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,10 +80,12 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         body: JSON.stringify({
           query: query,
           sessionId: Date.now().toString(),
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          mode,
+          sources: effectiveSources
         }),
-        // signal, // Temporarily removed to test if this is causing the issue
-      }, TIMEOUTS.SEARCH_REQUEST * 2);
+        // signal,
+      }, TIMEOUTS.SEARCH_REQUEST);
       
       console.log(`Fetch completed, status: ${response.status}`);
       
@@ -127,16 +129,24 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         id: sessionId,
         query,
         intent, // Add intent to session
+        mode,
+        sources: effectiveSources,
         results: results.map((result, index) => {
           const content = result.text || result.content || result.response || result.answer || "No content available";
           console.log(`Mapping result ${index} content:`, content.substring(0, 100) + "...");
-          return {
+          const mapped: SearchResult = {
             title: result.title || `AI Response for: ${query}`,
             content,
             url: result.url || result.source || "",
             snippet: result.snippet || result.summary || "",
-            type: intent
+            type: intent,
+            sourcesUsed: result.sourcesUsed || result.sources || effectiveSources,
+            bicameral: result.bicameral,
+            conflicts: result.conflicts,
+            personalization: result.personalization,
+            raw: result,
           };
+          return mapped;
         }),
         followUps: [],
         timestamp: Date.now()
@@ -148,7 +158,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       console.error("Search error:", error);
       
       // Handle different types of errors
-      let errorMessage = `Sorry, there was an error processing your search for "${query}". Please try again.`;
+      let errorMessage = getRandomWittyError();
       let errorTitle = "Search Error";
       
       if (error instanceof Error) {
@@ -207,7 +217,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       console.log(`Starting follow-up search with ${formatTimeout(timeout)} timeout`);
       
       // Use the same n8n endpoint for follow-up queries
-      const response = await fetch('https://n8n.codemusic.ca/webhook/musai_search/c0d3musai', {
+      const effectiveSources: SearchSource[] = (sources && sources.length > 0) ? sources : (['web'] as SearchSource[]);
+      const baseUrl2 = (await import('@/config/n8nEndpoints')).N8N_ENDPOINTS.BASE_URL;
+      const response = await (await import('@/lib/AttentionalRequestQueue')).queuedFetch(`${baseUrl2}/musai_search/c0d3musai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -217,10 +229,11 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           sessionId: currentSessionId,
           isFollowUp: true,
           originalQuery: currentSession.query,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          mode,
+          sources: effectiveSources
         }),
-        signal,
-      });
+      }, TIMEOUTS.SEARCH_FOLLOWUP);
       
       cleanup(); // Clear timeout if request completes
 
@@ -320,6 +333,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           id: "demo-1",
           query: "TypeScript best practices",
           intent: "search",
+          mode: 'standard',
+          sources: ['web'],
           results: [
             {
               title: "TypeScript Best Practices Guide",
@@ -344,6 +359,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           id: "demo-2", 
           query: "Explain machine learning basics",
           intent: "llm",
+          mode: 'standard',
+          sources: ['web'],
           results: [
             {
               title: "AI Response: Machine Learning Basics",
@@ -360,6 +377,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           id: "demo-3",
           query: "Summarize https://example.com/ai-article",
           intent: "summarize", 
+          mode: 'standard',
+          sources: ['web'],
           results: [
             {
               title: "Article Summary: The Future of AI",
@@ -376,6 +395,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           id: "demo-4",
           query: "Create a weekly reminder for team meeting",
           intent: "tool",
+          mode: 'standard',
+          sources: ['web'],
           results: [
             {
               title: "Tool Action: Reminder Created",
@@ -465,6 +486,36 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           badgeIcon={Zap}
           description={APP_TERMS.SEARCH_DESCRIPTION}
         />
+        {/* Search controls */}
+        <div className="px-6 pt-2 pb-1 border-b bg-background/60">
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
+              <Switch id="mode-switch" checked={mode === 'research'} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} disabled={isLoading} aria-label="Toggle research mode" />
+              <Badge variant="secondary">{mode}</Badge>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-muted-foreground">Sources:</span>
+              {(['web','news','academic','github','docs','redmine','social'] as SearchSource[]).map((s) => (
+                <label key={s} className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <Checkbox
+                    checked={sources.includes(s)}
+                    onCheckedChange={(v) => {
+                      setSources((prev) => {
+                        const isChecked = Boolean(v);
+                        if (isChecked) return prev.includes(s) ? prev : [...prev, s];
+                        return prev.filter((x) => x !== s);
+                      });
+                    }}
+                    disabled={isLoading}
+                    aria-label={`Toggle source ${s}`}
+                  />
+                  <span className="text-xs text-muted-foreground">{s}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
         
         {!hasSearched ? (
           <PreSearchView 

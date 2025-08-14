@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,17 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
   const [editedData, setEditedData] = useState<GeneratedCourseData | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
+
+  // Auto-generate when an initial topic is provided and nothing has been generated yet
+  useEffect(() => 
+  {
+    const shouldAutoGenerate = Boolean(initialTopic && topic.trim() && !generatedData && !isGenerating);
+    if (shouldAutoGenerate) 
+    {
+      handleGenerateCourse();
+    }
+  // We intentionally depend on these to re-evaluate when topic/prop changes
+  }, [initialTopic, topic, generatedData, isGenerating]);
 
   const handleGenerateCourse = async () => 
   {
@@ -177,7 +188,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g., Quantum Physics, Machine Learning, Ancient History..."
                   className="flex-1"
-                  onKeyPress={(e) => e.key === 'Enter' && handleGenerateCourse()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateCourse()}
                 />
                 <Button
                   onClick={handleGenerateCourse}
@@ -200,6 +211,16 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
             </div>
           </CardContent>
         </Card>
+
+        {/* Global generating indicator for auto-start flow */}
+        {isGenerating && !generatedData && (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto mb-3"></div>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">Preparing your course syllabus...</p>
+            </div>
+          </div>
+        )}
 
         {/* Generated Course Preview */}
         {generatedData && (

@@ -216,9 +216,9 @@ const Landing = () => {
           });
           break;
         case "task":
-          // Add URL parameter as backup for refresh handling
-          navigate(RouteUtils.mainAppWithMode("task", messageText), { 
-            state: { switchToTab: "task-musai", initialQuery: messageText } 
+          // Go directly to AgileMusai Console; pass initial request
+          navigate(ROUTES.TASK_MUSAI_CONSOLE, { 
+            state: { initialRequest: messageText }
           });
           break;
         default:

@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react';
 import { Message } from '@/types/chat';
 import { fetchWithTimeout, FETCH_TIMEOUT } from '@/utils/fetchWithTimeout';
 import { queuedFetch } from '@/lib/AttentionalRequestQueue';
+import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 import { extractResponseContent, extractResponseThoughts } from '@/utils/responseHandler';
 import { QueryClient } from '@tanstack/react-query';
 import { handleApiResponse, handleApiError } from '@/utils/apiResponseHandler';
 import { prepareFileData } from '@/utils/fileOperations';
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
+import { getRandomWittyError } from '@/config/messages';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 2000; // 2 seconds
@@ -56,22 +58,8 @@ export const useMessageSender = (
     const username = window.env?.VITE_N8N_WEBHOOK_USERNAME || import.meta.env.VITE_N8N_WEBHOOK_USERNAME;
     const secret = window.env?.VITE_N8N_WEBHOOK_SECRET || import.meta.env.VITE_N8N_WEBHOOK_SECRET;
 
-    if (!effectiveWebhookUrl) {
-      // If no webhook URL is configured, add a helpful assistant message for development
-      const fallbackMessage: Message = {
-        id: uuidv4(),
-        content: "Hello! I'm Musai, your AI companion. It looks like I'm running in development mode without a webhook URL configured. In production, I would connect to an n8n workflow to provide intelligent responses.\n\nFor now, I can help you explore the interface and see how the chat system works. Try sending me a message and I'll show you how the conversation flow works!",
-        role: "assistant",
-        timestamp: Date.now()
-      };
-      
-      const finalMessages = [...newMessages, fallbackMessage];
-      updateSession(sessionId, finalMessages);
-      queryClient.setQueryData(['chatSessions', sessionId], finalMessages);
-      
-      console.log('Running in development mode without webhook URL');
-      return true;
-    }
+    // Always use the configured n8n base URL (hosted)
+    const chatPostUrl = effectiveWebhookUrl || `${N8N_ENDPOINTS.BASE_URL}${N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
 
     let retryCount = 0;
 
@@ -114,13 +102,13 @@ export const useMessageSender = (
         }
 
         console.log('Sending message to webhook:', {
-          url: effectiveWebhookUrl.split('/webhook/')[0] + '/webhook/[WEBHOOK_ID]',
+          url: chatPostUrl.includes('/webhook/') ? chatPostUrl.split('/webhook/')[0] + '/webhook/[WEBHOOK_ID]' : chatPostUrl,
           hasAuth: !!username && !!secret,
           hasFile: !!fileData
         });
 
         const response = await queuedFetch(
-          effectiveWebhookUrl,
+          chatPostUrl,
           {
             method: "POST",
             headers,
@@ -211,7 +199,18 @@ export const useMessageSender = (
         } else {
           toast.error("An unexpected error occurred. Please try again.");
         }
-        
+
+        // Append witty assistant reply to let the user know it didn't work
+        const wittyAssistant: Message = {
+          id: uuidv4(),
+          content: getRandomWittyError(),
+          role: 'assistant',
+          timestamp: Date.now(),
+        };
+        const finalMessages = [...newMessages, wittyAssistant];
+        updateSession(sessionId, finalMessages);
+        queryClient.setQueryData(['chatSessions', sessionId], finalMessages);
+
         return false;
       } finally {
         setIsLoading(false);

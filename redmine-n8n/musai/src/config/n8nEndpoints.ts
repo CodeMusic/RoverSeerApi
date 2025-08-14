@@ -6,13 +6,8 @@ import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import { TIMEOUTS } from '@/config/timeouts';
 
 const resolveBaseUrl = (): string => {
-  const winEnv = (typeof window !== 'undefined' && (window as any).env) ? (window as any).env : undefined;
-  return (
-    import.meta.env.VITE_N8N_BASE_URL ||
-    import.meta.env.VITE_N8N_WEBHOOK_URL ||
-    (winEnv && (winEnv.VITE_N8N_BASE_URL || winEnv.VITE_N8N_WEBHOOK_URL)) ||
-    'http://localhost:5678/webhook'
-  );
+  // Always use the hosted n8n instance
+  return 'https://n8n.codemusic.ca/webhook';
 };
 
 export const N8N_ENDPOINTS = {
@@ -33,6 +28,8 @@ export const N8N_ENDPOINTS = {
     GET_CONVERSATION_STARTERS: '/chat/starters',
     GET_POPULAR_TOPICS: '/chat/topics/popular',
     GET_TEMPLATES: '/chat/templates',
+    // Generic chat message endpoint (dev-friendly fallback)
+    SEND_MESSAGE: '/chat/message',
     SUBMIT_CONVERSATION_FEEDBACK: '/chat/feedback',
     
     // Context and personalization
@@ -64,6 +61,14 @@ export const N8N_ENDPOINTS = {
     UPDATE_SEARCH_WEIGHTS: '/search/weights/update',
   },
 
+  // Eye of Musai Endpoints (vision)
+  EYE: {
+    // Train a model/class from prompt and/or images
+    TRAIN: '/eye/train',
+    // Recognize/detect objects in an image
+    RECOGNIZE: '/eye/recognize',
+  },
+
   // CodeMusai Endpoints
   CODE: {
     // Code generation and assistance
@@ -80,6 +85,14 @@ export const N8N_ENDPOINTS = {
     TRACK_CODING_STYLE: '/code/style/track',
     UPDATE_CODE_PREFERENCES: '/code/preferences/update',
     GET_SKILL_RECOMMENDATIONS: '/code/skills/recommend',
+  },
+
+  // MedicalMusai Endpoints
+  MEDICAL: {
+    // Begin intake with free text
+    START_INTAKE: '/medical/intake/start',
+    // Upload and ingest documents (pdf/images/text)
+    INGEST_DOCUMENTS: '/medical/documents/ingest',
   },
 
   // MusaiUniversity Endpoints
@@ -117,6 +130,24 @@ export const N8N_ENDPOINTS = {
     GET_ALTERNATIVE_PATHS: '/narrative/paths/alternatives',
   },
 
+  // TherapyMusai Endpoints
+  THERAPY: {
+    // Journaling
+    SAVE_JOURNAL_ENTRY: '/therapy/journal/save',
+    LIST_JOURNAL_ENTRIES: '/therapy/journal/list',
+    TAG_JOURNAL_ENTRY: '/therapy/journal/tag',
+    
+    // Sessions
+    START_SESSION: '/therapy/session/start',
+    UPDATE_SESSION_CONTEXT: '/therapy/session/context/update',
+    ADVANCE_ARC: '/therapy/session/arc/advance',
+    EXPORT_TO_NARRATIVE: '/therapy/session/export/narrative',
+    
+    // Metaphor & imagery
+    GENERATE_SYMBOLIC_IMAGE: '/therapy/metaphor/image',
+    GENERATE_PARTNER_PERSPECTIVE_IMAGE: '/therapy/metaphor/partner-image',
+  },
+
   // AgileMusai (formerly TaskMusai) Endpoints
   TASK: {
     // Workflow automation
@@ -138,6 +169,19 @@ export const N8N_ENDPOINTS = {
     GET_SPRINT_STATUS: '/task/sprint/status', // expects { sprintId }
     SUBMIT_SPRINT_FEEDBACK: '/task/sprint/feedback',
     STREAM_SPRINT_EVENTS: '/task/sprint/events', // optional: SSE or long-poll via n8n
+  },
+
+  // CareerMusai Endpoints
+  CAREER: {
+    // Scouts (scheduled searches)
+    SCHEDULE_SCOUT: '/career/scout/schedule',
+    CANCEL_SCOUT: '/career/scout/cancel',
+    LIST_SCOUTS: '/career/scout/list',
+
+    // Alerts & materials produced by n8n runs
+    LIST_ALERTS: '/career/alerts',
+    ACK_ALERT: '/career/alerts/ack',
+    GET_MATERIALS: '/career/materials',
   },
 
   // 🌟 MUSAI'S CURATIONS - The Emergent AI Content System
@@ -199,6 +243,14 @@ export const N8N_ENDPOINTS = {
     SEMANTIC_SEARCH: '/integrations/semantic/search',
   },
 
+  // MusaiStudio (Audio generation & TTS)
+  STUDIO: {
+    GENERATE_MUSIC_LOOP: '/studio/generate/music-loop',
+    GENERATE_SFX_LOOP: '/studio/generate/sfx-loop',
+    TTS_PIPER: '/studio/tts/piper',
+    VOICE_TRAIN: '/studio/voice/train',
+  },
+
   // Analytics and Learning
   ANALYTICS: {
     // User behavior tracking
@@ -228,6 +280,68 @@ class N8NApiHelper {
 
   constructor() {
     this.baseUrl = N8N_ENDPOINTS.BASE_URL;
+  }
+
+  // === CareerMusai helpers ===
+  async scheduleCareerScout(config: {
+    query: string;
+    presentation: string;
+    email?: string;
+    frequency: 'daily' | 'weekly' | 'monthly';
+    time?: string;
+    userId?: string;
+  }): Promise<{ id: string } | null> {
+    try {
+      const response = await fetchWithTimeout(
+        this.getEndpointUrl(N8N_ENDPOINTS.CAREER.SCHEDULE_SCOUT),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...config, timestamp: Date.now() })
+        },
+        TIMEOUTS.API_REQUEST
+      );
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.warn('Failed to schedule career scout:', error);
+      return null;
+    }
+  }
+
+  async listCareerAlerts(userId?: string): Promise<Array<{ id: string; type: string; title: string; description: string; timestamp: number; priority?: string; actionUrl?: string; isRead?: boolean }>> {
+    try {
+      const url = new URL(this.getEndpointUrl(N8N_ENDPOINTS.CAREER.LIST_ALERTS));
+      if (userId) url.searchParams.set('userId', userId);
+      const response = await fetchWithTimeout(
+        url.toString(),
+        { method: 'GET' },
+        TIMEOUTS.API_REQUEST
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      console.warn('Failed to list career alerts:', error);
+      return [];
+    }
+  }
+
+  async acknowledgeCareerAlert(alertId: string): Promise<boolean> {
+    try {
+      const response = await fetchWithTimeout(
+        this.getEndpointUrl(N8N_ENDPOINTS.CAREER.ACK_ALERT),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alertId, timestamp: Date.now() })
+        },
+        TIMEOUTS.API_REQUEST
+      );
+      return response.ok;
+    } catch (error) {
+      console.warn('Failed to acknowledge career alert:', error);
+      return false;
+    }
   }
 
   // Get full URL for any endpoint
@@ -307,6 +421,45 @@ class N8NApiHelper {
       console.error('Failed to submit curation feedback:', error);
       return false;
     }
+  }
+
+  // === MusaiStudio helpers ===
+  private async postJsonForBlob(endpoint: string, body: any): Promise<Blob | null>
+  {
+    try
+    {
+      const response = await fetchWithTimeout(
+        this.getEndpointUrl(endpoint),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, timestamp: Date.now() })
+        },
+        TIMEOUTS.API_REQUEST
+      );
+      if (!response.ok) return null;
+      return await response.blob();
+    }
+    catch (error)
+    {
+      console.warn('Studio request failed:', error);
+      return null;
+    }
+  }
+
+  async generateMusicLoop(prompt: string, seconds: number, style?: string): Promise<Blob | null>
+  {
+    return this.postJsonForBlob(N8N_ENDPOINTS.STUDIO.GENERATE_MUSIC_LOOP, { prompt, seconds, style });
+  }
+
+  async generateSfxLoop(prompt: string, seconds: number): Promise<Blob | null>
+  {
+    return this.postJsonForBlob(N8N_ENDPOINTS.STUDIO.GENERATE_SFX_LOOP, { prompt, seconds });
+  }
+
+  async ttsPiper(text: string, voice?: string, speed?: number): Promise<Blob | null>
+  {
+    return this.postJsonForBlob(N8N_ENDPOINTS.STUDIO.TTS_PIPER, { text, voice, speed });
   }
 }
 

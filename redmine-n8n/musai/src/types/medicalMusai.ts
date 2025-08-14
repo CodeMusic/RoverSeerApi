@@ -26,7 +26,7 @@ export interface Patient
 export interface Artifact
 {
   id: string;
-  kind: 'pdf' | 'image' | 'fhirBundle' | 'note';
+  kind: 'pdf' | 'image' | 'fhirBundle' | 'note' | 'audio';
   uri: string;
 }
 

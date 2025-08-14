@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useMessageSender } from './useMessageSender';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { computeAndStoreClientIpHash, getStoredClientIpHash } from '@/utils/ip';
 
 const STORAGE_VERSION = "v1";
 const STORAGE_KEY = `therapy_sessions_${STORAGE_VERSION}`;
@@ -11,6 +12,7 @@ const STORAGE_KEY = `therapy_sessions_${STORAGE_VERSION}`;
 export const useTherapySessions = () => {
   const [sessions, setSessions] = useState<TherapySession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [clientIpHash, setClientIpHash] = useState<string | null>(getStoredClientIpHash());
   const queryClient = useQueryClient();
 
   const updateSession = (sessionId: string, messages: any[]) => {
@@ -31,7 +33,11 @@ export const useTherapySessions = () => {
     queryClient
   );
 
-  // Load sessions from localStorage on mount
+  useEffect(() => {
+    computeAndStoreClientIpHash().then(hash => { if (hash) setClientIpHash(hash); });
+  }, []);
+
+  // Load sessions from localStorage on mount and when IP hash resolves
   useEffect(() => {
     try {
       console.log('Loading therapy sessions from localStorage');
@@ -40,7 +46,12 @@ export const useTherapySessions = () => {
         const parsed = JSON.parse(savedSessions);
         console.log('Parsed therapy sessions:', parsed);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setSessions(parsed);
+          if (clientIpHash) {
+            const filtered = parsed.filter((s: any) => !s.clientIpHash || s.clientIpHash === clientIpHash);
+            setSessions(filtered);
+          } else {
+            setSessions(parsed);
+          }
           setCurrentSessionId("");
           console.log('Loaded existing therapy sessions:', parsed.length);
         } else {
@@ -57,7 +68,7 @@ export const useTherapySessions = () => {
       setSessions([]);
       setCurrentSessionId("");
     }
-  }, []);
+  }, [clientIpHash]);
 
   const createNewSession = () => {
     console.log('Creating new therapy session');
@@ -69,11 +80,14 @@ export const useTherapySessions = () => {
       createdAt: Date.now(),
       lastUpdated: Date.now(),
       favorite: false,
+      clientIpHash: clientIpHash || undefined,
       therapyContext: {
         sessionGoals: [],
         moodTags: [],
         currentMood: '',
         sessionType: 'general',
+        sessionMode: 'standard',
+        sessionArc: 'intake',
         privacyLevel: 'private',
         narrativeExports: []
       }

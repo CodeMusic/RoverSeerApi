@@ -40,18 +40,20 @@ export const useCurationsApproval = () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const baseUrl = import.meta.env.VITE_N8N_BASE_URL || '/api/n8n';
+      const baseUrl = N8N_ENDPOINTS.BASE_URL;
       
       // Check if curations are public
       const publicResponse = await fetchWithTimeout(
         `${baseUrl}${N8N_ENDPOINTS.CURATIONS.GET_CURRENT_CURATIONS}?type=public`,
-        { timeout: 5000 }
+        {},
+        5000
       );
       
       // Check if there are pending curations
       const pendingResponse = await fetchWithTimeout(
         `${baseUrl}${N8N_ENDPOINTS.CURATIONS.GET_CURRENT_CURATIONS}?type=pending`,
-        { timeout: 5000 }
+        {},
+        5000
       );
 
       const publicData = publicResponse.ok ? await publicResponse.json() : [];
@@ -83,7 +85,7 @@ export const useCurationsApproval = () => {
     setState(prev => ({ ...prev, isLoading: true }));
     
     try {
-      const baseUrl = import.meta.env.VITE_N8N_BASE_URL || '/api/n8n';
+      const baseUrl = N8N_ENDPOINTS.BASE_URL;
       const response = await fetchWithTimeout(
         `${baseUrl}${N8N_ENDPOINTS.CURATIONS.APPROVE_FOR_PUBLIC}`,
         {
@@ -92,9 +94,9 @@ export const useCurationsApproval = () => {
           body: JSON.stringify({ 
             approvedBy: 'user', // Could be enhanced with actual user ID
             timestamp: Date.now() 
-          }),
-          timeout: 10000
-        }
+          })
+        },
+        10000
       );
 
       if (response.ok) {

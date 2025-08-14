@@ -1,4 +1,6 @@
 import { PreMusaiPage } from "@/components/common/PreMusaiPage";
+import { useState } from "react";
+import type { SearchMode, SearchSource } from "@/types/search";
 
 interface PreSearchViewProps {
   onSearch: (query: string) => void;
@@ -17,7 +19,9 @@ export const PreSearchView = ({
   onShowTrendingTopics,
   onQuickAnswers 
 }: PreSearchViewProps) => {
-  
+  const [mode, setMode] = useState<SearchMode>('standard');
+  const [sources, setSources] = useState<SearchSource[]>(['web']);
+
   const handleQuickAction = (actionId: string, actionType: string, actionData?: any) => {
     switch (actionId) {
       case 'search-chat':

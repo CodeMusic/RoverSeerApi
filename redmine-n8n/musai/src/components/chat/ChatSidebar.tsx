@@ -129,7 +129,7 @@ export const ChatSidebar = ({
           {sessions.map((session) => {
             const isActive = session.id === currentSessionId;
             const isHovered = hoveredSessionId === session.id;
-            const showActions = isActive || isHovered || isMobile;
+            const showActions = true;
             
             // Debug logging (remove in production)
             if (isHovered && import.meta.env.DEV) {

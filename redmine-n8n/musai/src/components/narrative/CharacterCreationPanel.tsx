@@ -38,6 +38,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { prepareFileData } from "@/utils/fileOperations";
 
 interface Character {
   id: string;
@@ -126,6 +128,15 @@ export const CharacterCreationPanel = ({
     setEditingCharacter(character);
     setIsDialogOpen(true);
   }, []);
+
+  const handleAvatarUpload = useCallback(async (file: File) => {
+    if (!editingCharacter) return;
+    const payload = await prepareFileData(file);
+    if (!payload) return;
+    // store as data URL for immediate render
+    const dataUrl = `data:${payload.mimeType};base64,${payload.data}`;
+    setEditingCharacter({ ...editingCharacter, avatar: dataUrl });
+  }, [editingCharacter]);
 
   const handleNext = useCallback(() => {
     if (characters.length >= 2) {
@@ -261,6 +272,22 @@ export const CharacterCreationPanel = ({
                   <div className="space-y-6">
                     {/* Basic Info */}
                     <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          {editingCharacter.avatar ? (
+                            <AvatarImage src={editingCharacter.avatar} alt={editingCharacter.name} />
+                          ) : (
+                            <AvatarFallback>{(editingCharacter.name || '?').slice(0,1).toUpperCase()}</AvatarFallback>
+                          )}
+                        </Avatar>
+                        <label className="text-xs">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => e.target.files?.[0] && handleAvatarUpload(e.target.files[0])}
+                          />
+                        </label>
+                      </div>
                       <div>
                         <Label htmlFor="name">Name</Label>
                         <Input
