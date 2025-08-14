@@ -97,7 +97,7 @@ services:
       - "5680:80"  # Only for internal routing; Apache will reverse-proxy
     environment:
       - VITE_BASE_PATH=/
-      - VITE_N8N_WEBHOOK_URL=https://n8n.codemusic.ca/webhook/codemusai/R0V3RBY73
+      - VITE_N8N_WEBHOOK_URL=https://n8n.codemusic.ca/webhook/
       - VITE_WELCOME_MESSAGE=Welcome to Musai
       - VITE_SITE_TITLE=Musai
       - VITE_N8N_WEBHOOK_USERNAME=codemusai
