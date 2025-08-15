@@ -36,6 +36,34 @@ export function MusaiAlertsProvider({ children }: { children: React.ReactNode })
         console.error('Failed to load alerts from localStorage:', error);
       }
     }
+    // Seed a one-time beta announcement if none exists yet
+    try {
+      const hasSeeded = localStorage.getItem('musai-alerts-seeded-beta-0814');
+      if (!hasSeeded) {
+        const base = {
+          description: 'Core chat and search experiences are live in beta. Expect occasional rough edges while we stabilize long-running requests and polish UX.',
+          isRead: false,
+          priority: 'medium' as const,
+          source: 'system'
+        };
+        const seedChat: MusaiAlert = {
+          id: `seed-chat-${Date.now()}`,
+          type: 'chat',
+          title: 'MusaiChat beta is now working',
+          timestamp: new Date(),
+          ...base
+        } as MusaiAlert;
+        const seedSearch: MusaiAlert = {
+          id: `seed-search-${Date.now() + 1}`,
+          type: 'search',
+          title: 'MusaiSearch beta is now working',
+          timestamp: new Date(),
+          ...base
+        } as MusaiAlert;
+        setAlerts(prev => [seedChat, seedSearch, ...prev]);
+        localStorage.setItem('musai-alerts-seeded-beta-0814', '1');
+      }
+    } catch {}
   }, []);
 
   // Save alerts to localStorage whenever they change

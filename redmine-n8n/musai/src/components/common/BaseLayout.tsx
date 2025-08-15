@@ -131,12 +131,16 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       <div className={cn(
         "flex-1 transition-all duration-300 relative z-10",
         // Top app bar height
-        hideTopAppBar ? undefined : "pt-14",
+        hideTopAppBar ? undefined : "pt-16",
         // Offset for fixed left navigation bar
         "ml-12",
         isNavigationExpanded ? "md:ml-48" : "md:ml-16"
       )}>
-        <div className="h-[100dvh] md:h-[100svh] flex">
+        <div className={cn(
+          // Ensure main content fits viewport. If top bar is visible (pt-14 = 3.5rem), subtract it.
+          hideTopAppBar ? "h-[100dvh] md:h-[100svh]" : "h-[calc(100dvh-4rem)] md:h-[calc(100svh-4rem)]",
+          "flex"
+        )}>
           {/* Left Sidebar */}
           {!isSidebarCollapsed && (
             <div className={cn(
@@ -175,7 +179,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           )}
 
           {/* Main Content Area */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0">
             {renderMainContent()}
           </div>
 

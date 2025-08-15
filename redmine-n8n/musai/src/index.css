@@ -104,7 +104,20 @@ body,
 #root {
   width: 100%;
   max-width: 100vw;
+  /* Lock the app to viewport height so only internal panes scroll */
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
   overflow-x: hidden;
+}
+
+@supports (height: 100svh) {
+  html,
+  body,
+  #root {
+    height: 100svh;
+    max-height: 100svh;
+  }
 }
 
 /* iOS 100dvh fix for chrome/safari address bar collapse */
@@ -430,6 +443,113 @@ textarea, input, button {
 .mystical-dots {
   animation: mysticalDots 1.4s ease-in-out infinite;
   transition: all var(--transition-duration, 0.5s) ease-in-out;
+}
+
+/* POV panel visual effects */
+@keyframes povBlueShimmer {
+  0% {
+    background-position: 0% 50%;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+  }
+  50% {
+    background-position: 100% 50%;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
+  }
+  100% {
+    background-position: 0% 50%;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+  }
+}
+
+.pov-shimmer-blue {
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(
+    120deg,
+    rgba(125, 211, 252, 0.35) 0%,
+    rgba(59, 130, 246, 0.25) 50%,
+    rgba(125, 211, 252, 0.35) 100%
+  );
+  background-size: 200% 200%;
+  animation: povBlueShimmer 3.2s ease-in-out infinite;
+  border-color: rgb(125 211 252 / 0.6);
+}
+
+@keyframes povBlueSweep {
+  0% { background-position: -150% 0; }
+  100% { background-position: 150% 0; }
+}
+
+.pov-shimmer-blue::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(125, 211, 252, 0.0) 35%,
+    rgba(59, 130, 246, 0.35) 50%,
+    rgba(125, 211, 252, 0.0) 65%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: povBlueSweep 2.8s linear infinite;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+@keyframes povElectricRed {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0.0));
+    box-shadow: inset 0 0 0 0 rgba(244, 63, 94, 0.2);
+  }
+  40% {
+    filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.35));
+    box-shadow: inset 0 0 18px 0 rgba(244, 63, 94, 0.25);
+  }
+  60% {
+    filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.45));
+    box-shadow: inset 0 0 10px 0 rgba(244, 63, 94, 0.35);
+  }
+  100% {
+    filter: drop-shadow(0 0 0 rgba(244, 63, 94, 0.0));
+    box-shadow: inset 0 0 0 0 rgba(244, 63, 94, 0.2);
+  }
+}
+
+.pov-electric-red {
+  position: relative;
+  animation: povElectricRed 1.8s ease-in-out infinite;
+  border-color: rgb(248 113 113 / 0.65);
+}
+
+@keyframes povRedFlicker {
+  0%, 100% { opacity: 0.0; }
+  10% { opacity: 0.25; }
+  20% { opacity: 0.05; }
+  35% { opacity: 0.3; }
+  55% { opacity: 0.1; }
+  70% { opacity: 0.35; }
+  85% { opacity: 0.08; }
+}
+
+/* Ensure pov panel creates a new stacking context and isn't obscured */
+.pov-panel {
+  position: relative;
+  isolation: isolate;
+  will-change: transform, opacity, background-position, filter;
+}
+
+.pov-electric-red::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120px 40px at 20% 10%, rgba(244, 63, 94, 0.35), transparent 60%),
+              radial-gradient(80px 30px at 80% 70%, rgba(244, 63, 94, 0.28), transparent 60%),
+              linear-gradient(120deg, transparent 20%, rgba(244, 63, 94, 0.25) 50%, transparent 80%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+  animation: povRedFlicker 1.6s steps(6, end) infinite;
 }
 
 /* Logo-specific animation classes */

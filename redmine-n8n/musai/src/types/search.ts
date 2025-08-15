@@ -71,6 +71,10 @@ export interface SearchSessionModel
     timestamp: number;
   }>;
   timestamp: number;
+  // Temporary user scoping before auth: store hashed client IP
+  clientIpHash?: string;
+  // Identifier sent to backend for grouping; often same as clientIpHash
+  serverSessionId?: string;
 }
 
 

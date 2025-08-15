@@ -436,7 +436,12 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   return (
     <div className={cn("flex-1 flex flex-col", className)}>
       {/* Hero Section */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-8 max-w-4xl mx-auto w-full">
+      <div className={cn(
+        // For search, place hero slightly higher on screen to match other tools
+        type === 'search'
+          ? "flex-1 flex flex-col items-center justify-start pt-10 md:pt-16 p-6 space-y-8 max-w-4xl mx-auto w-full"
+          : "flex-1 flex flex-col items-center justify-center p-6 space-y-8 max-w-4xl mx-auto w-full"
+      )}>
         <MusaiShimmer className="text-center space-y-4 p-6 rounded-lg">
           <div className="relative">
             {/* Dynamic glyphs based on Musai type */}

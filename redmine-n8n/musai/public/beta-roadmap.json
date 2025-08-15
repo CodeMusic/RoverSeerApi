@@ -1,5 +1,6 @@
 {
   "items": [
+    { "title": "MusaiChat + MusaiSearch beta is now working", "note": "Baseline chat and search experiences are live for testers." },
     { "title": "Stability passes on ChatMusai", "note": "Tighten message flow, retries, and partial failover." },
     { "title": "Activity Monitor (Local)", "note": "Prevent runaway parallel tasks and protect system resources." },
     { "title": "Agent Flow Debug Toggle", "note": "Reveal bicamera intermediates during beta only." },

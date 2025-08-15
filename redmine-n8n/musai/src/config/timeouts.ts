@@ -11,8 +11,8 @@ const MINIMUM_TIMEOUT_MS = 10 * 60 * 1000; // 600,000ms
 // Default timeout configurations
 const DEFAULT_TIMEOUTS = {
   // Search-related timeouts
-  SEARCH_REQUEST: 10 * 60 * 1000,       // 10 minutes for search requests (increased for complex queries)
-  SEARCH_FOLLOWUP: 5 * 60 * 1000,       // 5 minutes for follow-up questions (increased)
+  SEARCH_REQUEST: 20 * 60 * 1000,       // 20 minutes for primary search requests (very long-running allowed)
+  SEARCH_FOLLOWUP: 10 * 60 * 1000,      // 10 minutes for follow-up questions
   
   // Chat-related timeouts  
   CHAT_MESSAGE: 10 * 60 * 1000,         // 10 minutes for chat messages

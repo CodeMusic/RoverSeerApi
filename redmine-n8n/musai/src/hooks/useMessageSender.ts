@@ -4,7 +4,7 @@ import { Message } from '@/types/chat';
 import { fetchWithTimeout, FETCH_TIMEOUT } from '@/utils/fetchWithTimeout';
 import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
-import { extractResponseContent, extractResponseThoughts } from '@/utils/responseHandler';
+import { extractResponseContent, extractResponseThoughts, extractResponsePov } from '@/utils/responseHandler';
 import { QueryClient } from '@tanstack/react-query';
 import { handleApiResponse, handleApiError } from '@/utils/apiResponseHandler';
 import { prepareFileData } from '@/utils/fileOperations';
@@ -14,6 +14,7 @@ import { getRandomWittyError } from '@/config/messages';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 2000; // 2 seconds
+const HISTORY_LIMIT = 9; // keep history payload manageable
 
 export const useMessageSender = (
   updateSession: (sessionId: string, messages: Message[]) => void,
@@ -53,6 +54,11 @@ export const useMessageSender = (
     const newMessages = [...currentMessages, userMessage];
     updateSession(sessionId, newMessages);
     queryClient.setQueryData(['chatSessions', sessionId], newMessages);
+    
+    // Build sanitized history: only role/content, strip any internal fields like pov/thoughts
+    const history = newMessages
+      .map(m => ({ role: m.role, content: m.content }))
+      .slice(-HISTORY_LIMIT);
     // Now check webhook configuration for the API call
     const effectiveWebhookUrl = window.env?.VITE_N8N_WEBHOOK_URL || import.meta.env.VITE_N8N_WEBHOOK_URL;
     const username = window.env?.VITE_N8N_WEBHOOK_USERNAME || import.meta.env.VITE_N8N_WEBHOOK_USERNAME;
@@ -119,6 +125,7 @@ export const useMessageSender = (
             body: JSON.stringify({
               chatInput: input,
               sessionId: sessionId,
+              history,
               ...(fileData && {
                 data: fileData.data,
                 mimeType: fileData.mimeType,
@@ -146,13 +153,29 @@ export const useMessageSender = (
 
         const responseContent = extractResponseContent(responseData);
         const responseThoughts = extractResponseThoughts(responseData);
+        const responsePov = extractResponsePov(responseData);
+
+        // Derive logical/creative thoughts when available
+        let logicalThought: string | undefined;
+        let creativeThought: string | undefined;
+        if (Array.isArray(responsePov)) {
+          for (const pov of responsePov) {
+            if (!pov || typeof pov.thought !== 'string') continue;
+            const type = String(pov.type || '').toLowerCase();
+            if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
+            if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
+          }
+        }
 
         const assistantMessage: Message = {
           id: uuidv4(),
           content: responseContent,
           role: "assistant",
           timestamp: Date.now(),
-          ...(responseThoughts && { thoughts: responseThoughts })
+          ...(responseThoughts && { thoughts: responseThoughts }),
+          ...(responsePov && { pov: responsePov }),
+          ...(logicalThought && { logicalThought }),
+          ...(creativeThought && { creativeThought })
         };
 
         const finalMessages = [...newMessages, assistantMessage];

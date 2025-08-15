@@ -55,7 +55,10 @@ export const ChatSidebar = ({
       toast.error("Cannot delete a favorite chat");
       return;
     }
-    
+    // Confirm delete to prevent accidental removal
+    const confirmed = window.confirm("Delete this chat? This cannot be undone.");
+    if (!confirmed) return;
+
     onDeleteSession(sessionId);
     toast.success("Chat deleted successfully");
   };
@@ -82,15 +85,15 @@ export const ChatSidebar = ({
     }
   };
 
-  const cancelEditing = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const cancelEditing = (e?: React.SyntheticEvent) => {
+    if (e) e.stopPropagation();
     setEditingSessionId(null);
   };
 
   return (
     <div
       className={cn(
-        "w-64 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out",
+        "w-64 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out overflow-hidden",
         !isSidebarOpen && "-translate-x-full md:translate-x-0"
       )}
     >
@@ -142,8 +145,14 @@ export const ChatSidebar = ({
                 onClick={() => onSessionSelect(session.id)}
                 onMouseEnter={() => setHoveredSessionId(session.id)}
                 onMouseLeave={() => setHoveredSessionId(null)}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    onSessionSelect(session.id);
+                  }
+                }}
                 className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
+                  "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer chat-session-item",
                   "flex items-center gap-3 text-sm",
                   isActive 
                     ? "bg-sidebar-accent border border-border/50 shadow-sm" 
@@ -164,7 +173,12 @@ export const ChatSidebar = ({
                   )} />
                   <div className="truncate flex-1">
                     {editingSessionId === session.id ? (
-                      <form onSubmit={handleRename} onClick={e => e.stopPropagation()} className="flex items-center gap-2">
+                      <form 
+                        onSubmit={handleRename} 
+                        onClick={e => e.stopPropagation()} 
+                        onKeyDown={(ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); cancelEditing(); } }}
+                        className="flex items-center gap-2"
+                      >
                         <Input
                           value={editingName}
                           onChange={e => setEditingName(e.target.value)}
@@ -193,7 +207,7 @@ export const ChatSidebar = ({
 
                 {/* Action Buttons */}
                 {editingSessionId !== session.id && showActions && (
-                  <div className="flex gap-1 opacity-100 transition-all duration-200 transform translate-x-0">
+                  <div className="flex gap-1 ml-2 flex-shrink-0 opacity-100 transition-all duration-200 transform translate-x-0 chat-actions-visible">
                     <Button
                       variant="ghost"
                       size="icon"

@@ -83,3 +83,21 @@ export const extractResponseThoughts = (data: any): string | undefined => {
   
   return undefined;
 };
+
+// Extracts array of POV entries when present in response like:
+// { pov: [{ name, type: 'logical'|'creative'|..., thought }], response: string }
+export const extractResponsePov = (data: any): Array<{ name?: string; type?: string; thought: string }> | undefined => {
+  try {
+    if (data && typeof data === 'object') {
+      const pov = (data as any).pov;
+      if (Array.isArray(pov)) {
+        return pov
+          .filter((p) => p && typeof p === 'object' && typeof p.thought === 'string')
+          .map((p) => ({ name: p.name, type: p.type, thought: p.thought }));
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to extract POV from response:', e);
+  }
+  return undefined;
+};

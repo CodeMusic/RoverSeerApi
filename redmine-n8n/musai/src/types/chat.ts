@@ -4,11 +4,21 @@ export interface Message {
   role: 'user' | 'assistant';
   timestamp: number;
   thoughts?: string; // AI internal thoughts for think tags
+  // Optional structured POV thoughts from multi-agent responses
+  pov?: AgentPov[];
+  logicalThought?: string;
+  creativeThought?: string;
   imageData?: {
     data: string;
     mimeType: string;
     fileName: string;
   };
+}
+
+export interface AgentPov {
+  name?: string;
+  type?: 'logical' | 'creative' | string;
+  thought: string;
 }
 
 // Base interface for all session types

@@ -3,13 +3,16 @@ import { cn } from "@/lib/utils";
 
 interface MysticalTypingIndicatorProps {
   isDarkMode?: boolean;
+  label?: string;
+  size?: "default" | "compact";
 }
 
-export const MysticalTypingIndicator = ({ isDarkMode = false }: MysticalTypingIndicatorProps) => {
+export const MysticalTypingIndicator = ({ isDarkMode = false, label = "Musai is thinking", size = "default" }: MysticalTypingIndicatorProps) => {
   return (
     <div className="flex w-full justify-start animate-fade-in">
       <div className={cn(
-        "max-w-[85%] rounded-2xl px-4 py-3 backdrop-blur-sm relative overflow-hidden mystical-glow",
+        size === "compact" ? "max-w-[260px] rounded-xl px-3 py-2" : "max-w-[85%] rounded-2xl px-4 py-3",
+        "backdrop-blur-sm relative overflow-hidden mystical-glow",
         isDarkMode
           ? "bg-gradient-to-br from-slate-900/80 to-blue-900/80 border border-blue-800/30"
           : "bg-gradient-to-br from-slate-50/80 to-blue-50/80 border border-blue-200/50"
@@ -19,27 +22,30 @@ export const MysticalTypingIndicator = ({ isDarkMode = false }: MysticalTypingIn
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 via-transparent to-orange-600/5" />
         
         {/* Content */}
-        <div className="relative flex items-center gap-3">
+        <div className={cn("relative flex items-center", size === "compact" ? "gap-2" : "gap-3") }>
           {/* AI Icon with mystical glow */}
           <div className="relative mystical-float">
             <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center mystical-glow",
+              size === "compact" ? "w-6 h-6" : "w-8 h-8",
+              "rounded-full flex items-center justify-center mystical-glow",
               isDarkMode
                 ? "bg-gradient-to-br from-purple-500 to-blue-500 shadow-lg shadow-purple-500/25"
                 : "bg-gradient-to-br from-purple-400 to-blue-400 shadow-lg shadow-purple-400/25"
             )}>
-              <Brain className="w-4 h-4 text-white" />
+              <Brain className={cn("text-white", size === "compact" ? "w-3.5 h-3.5" : "w-4 h-4")} />
             </div>
             {/* Animated sparkles */}
             <div className="absolute -top-1 -right-1">
               <Sparkles className={cn(
-                "w-3 h-3 mystical-sparkle",
+                size === "compact" ? "w-2.5 h-2.5" : "w-3 h-3",
+                "mystical-sparkle",
                 isDarkMode ? "text-yellow-400" : "text-yellow-500"
               )} />
             </div>
             <div className="absolute -bottom-1 -left-1">
               <Sparkles className={cn(
-                "w-2 h-2 mystical-sparkle",
+                size === "compact" ? "w-1.5 h-1.5" : "w-2 h-2",
+                "mystical-sparkle",
                 isDarkMode ? "text-cyan-400" : "text-cyan-500"
               )} style={{ animationDelay: '1s' }} />
             </div>
@@ -48,24 +54,27 @@ export const MysticalTypingIndicator = ({ isDarkMode = false }: MysticalTypingIn
           {/* Typing text and dots */}
           <div className="flex items-center gap-2">
             <span className={cn(
-              "text-sm font-medium",
+              size === "compact" ? "text-xs font-medium" : "text-sm font-medium",
               isDarkMode ? "text-gray-200" : "text-gray-700"
             )}>
-              Musai is thinking
+              {label}
             </span>
             
             {/* Animated dots */}
             <div className="flex items-center gap-1">
               <div className={cn(
-                "w-1.5 h-1.5 rounded-full mystical-dots",
+                size === "compact" ? "w-1.5 h-1.5" : "w-1.5 h-1.5",
+                "rounded-full mystical-dots",
                 isDarkMode ? "bg-purple-400" : "bg-purple-500"
               )} style={{ animationDelay: '0ms' }} />
               <div className={cn(
-                "w-1.5 h-1.5 rounded-full mystical-dots",
+                size === "compact" ? "w-1.5 h-1.5" : "w-1.5 h-1.5",
+                "rounded-full mystical-dots",
                 isDarkMode ? "bg-blue-400" : "bg-blue-500"
               )} style={{ animationDelay: '200ms' }} />
               <div className={cn(
-                "w-1.5 h-1.5 rounded-full mystical-dots",
+                size === "compact" ? "w-1.5 h-1.5" : "w-1.5 h-1.5",
+                "rounded-full mystical-dots",
                 isDarkMode ? "bg-cyan-400" : "bg-cyan-500"
               )} style={{ animationDelay: '400ms' }} />
             </div>

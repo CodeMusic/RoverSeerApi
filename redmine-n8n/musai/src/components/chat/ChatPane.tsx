@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { MysticalTypingIndicator } from './MysticalTypingIndicator';
@@ -93,6 +93,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   const theme = getChatTheme(module);
   const { processAIResponse } = useEmotionEffects();
+  const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Trigger Musai effects on new assistant messages
   useEffect(() => {
@@ -102,6 +104,24 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       processAIResponse(last.content);
     }
   }, [messageList, processAIResponse]);
+
+  // Auto-scroll to bottom when messages update or typing indicator appears
+  useEffect(() => {
+    const scrollToBottom = () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      } else {
+        endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    };
+    // use rAF and short timeout to ensure layout is committed
+    const raf = requestAnimationFrame(() => {
+      const id = window.setTimeout(scrollToBottom, 0);
+      return () => window.clearTimeout(id);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [messageList.length, isTyping]);
 
   const handleMessageContext = (messageId: string, event: React.MouseEvent) => {
     event.preventDefault();
@@ -124,9 +144,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   };
 
   return (
-    <div className={`chat-pane h-full flex flex-col ${theme.container} ${className}`}>
+    <div className={`chat-pane h-full flex flex-col min-h-0 ${theme.container} ${className}`}>
       {/* Messages Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-20 md:pb-24">
         {messageList.map((message) => (
           <MessageBubble
             key={message.id}
@@ -140,15 +160,17 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         
         {/* Typing Indicator */}
         {isTyping && (
-          <div className="flex justify-start">
+          <div className="flex justify-start mb-5 md:mb-6">
             <MysticalTypingIndicator isDarkMode={false} />
           </div>
         )}
+        {/* Scroll Sentinel */}
+        <div ref={endOfMessagesRef} />
       </div>
 
       {/* Input Area */}
       {!readOnly && (
-        <div className={`border-t ${theme.border} bg-background/50`}>
+        <div className={`border-t ${theme.border} bg-background/50 pb-4 md:pb-6`}>
           <ChatInput
             module={module}
             onMessageSend={onMessageSend}

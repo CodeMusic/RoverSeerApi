@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, X, ExternalLink, Clock, TrendingUp, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import { Bell, X, ExternalLink, Clock, TrendingUp, Sparkles, AlertCircle, CheckCircle, MessageSquare, Search as SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 export interface MusaiAlert {
   id: string;
-  type: 'career' | 'curations' | 'university' | 'narrative' | 'code' | 'search' | 'task';
+  type: 'career' | 'curations' | 'university' | 'narrative' | 'code' | 'search' | 'task' | 'chat';
   title: string;
   description: string;
   timestamp: Date;
@@ -53,7 +53,8 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
       case 'university': return <AlertCircle className="h-4 w-4" />;
       case 'narrative': return <AlertCircle className="h-4 w-4" />;
       case 'code': return <AlertCircle className="h-4 w-4" />;
-      case 'search': return <AlertCircle className="h-4 w-4" />;
+      case 'chat': return <MessageSquare className="h-4 w-4" />;
+      case 'search': return <SearchIcon className="h-4 w-4" />;
       case 'task': return <AlertCircle className="h-4 w-4" />;
       default: return <Bell className="h-4 w-4" />;
     }
@@ -72,6 +73,8 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
       case 'curations': return 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950';
       case 'university': return 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950';
       case 'narrative': return 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950';
+      case 'chat': return 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950';
+      case 'search': return 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950';
       default: return 'border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950';
     }
   };
@@ -138,7 +141,7 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
                 <p className="text-sm">No alerts</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {alerts.map((alert) => (
                   <Card 
                     key={alert.id} 
@@ -156,7 +159,9 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
                           alert.type === 'career' && "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400",
                           alert.type === 'curations' && "bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400",
                           alert.type === 'university' && "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400",
-                          alert.type === 'narrative' && "bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400"
+                          alert.type === 'narrative' && "bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400",
+                          alert.type === 'chat' && "bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400",
+                          alert.type === 'search' && "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400"
                         )}>
                           {getAlertIcon(alert.type)}
                         </div>

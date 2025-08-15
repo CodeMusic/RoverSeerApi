@@ -1,6 +1,6 @@
 import React from 'react';
 import { Message } from '@/types/chat';
-import { User, Bot, Clock } from 'lucide-react';
+import { User, Bot, Clock, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MessageBubbleProps {
@@ -79,6 +79,69 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const styling = getModuleSpecificStyling();
 
+  const PovPanels: React.FC<{ message: Message }> = ({ message }) => {
+    const logical = (message as any).logicalThought as string | undefined
+      || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
+    const creative = (message as any).creativeThought as string | undefined
+      || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('creativ'))?.thought : undefined);
+    const hasAnyPov = Boolean(logical || creative);
+    const [active, setActive] = React.useState<'logical' | 'creative' | null>(null);
+
+    if (!hasAnyPov) return null;
+    return (
+      <div className="w-full mb-2">
+        <div className="flex items-center gap-2 mb-2">
+          {logical && (
+            <button
+              type="button"
+              onClick={() => setActive(prev => prev === 'logical' ? null : 'logical')}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-colors",
+                active === 'logical' ? "bg-sky-100 dark:bg-sky-900/40 border-sky-300 dark:border-sky-700 text-sky-900 dark:text-sky-200" : "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300"
+              )}
+              aria-pressed={active === 'logical'}
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Logical</span>
+            </button>
+          )}
+          {creative && (
+            <button
+              type="button"
+              onClick={() => setActive(prev => prev === 'creative' ? null : 'creative')}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-colors",
+                active === 'creative' ? "bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200" : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+              )}
+              aria-pressed={active === 'creative'}
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Creative</span>
+            </button>
+          )}
+        </div>
+        {active === 'logical' && logical && (
+          <div className="rounded-md border p-3 text-sm bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-900 dark:text-sky-200 pov-panel pov-shimmer-blue">
+            <div className="flex items-center gap-2 mb-1">
+              <Brain className="w-3.5 h-3.5" />
+              <span className="font-medium">Logical</span>
+            </div>
+            <div className="whitespace-pre-wrap">{logical}</div>
+          </div>
+        )}
+        {active === 'creative' && creative && (
+          <div className="rounded-md border p-3 text-sm bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 pov-panel pov-electric-red">
+            <div className="flex items-center gap-2 mb-1">
+              <Brain className="w-3.5 h-3.5" />
+              <span className="font-medium">Creative</span>
+            </div>
+            <div className="whitespace-pre-wrap">{creative}</div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div 
       className={cn(
@@ -109,6 +172,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <Clock className="w-3 h-3" />
           <span>{formatTime(message.timestamp)}</span>
         </div>
+
+        {/* Assistant POV toggles and panels (logical/creative) */}
+        {!isUser && <PovPanels message={message} />}
 
         {/* Message Bubble */}
         <div className={cn(

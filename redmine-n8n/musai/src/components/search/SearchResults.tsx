@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
 import type { SearchSessionModel, SearchResult } from "@/types/search";
+import { MysticalTypingIndicator } from "@/components/chat/MysticalTypingIndicator";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SearchResultsProps {
   session: SearchSessionModel;
@@ -27,7 +29,35 @@ export const SearchResults = ({
   onClose 
 }: SearchResultsProps) => {
   const [followUpQuery, setFollowUpQuery] = useState("");
+  const followUpInputRef = useRef<HTMLInputElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll results container to bottom when results or follow-ups change
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    // Smooth scroll to bottom; guard for layout
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    });
+  }, [session.results.length, session.followUps.length]);
+
+  // After a follow-up completes, keep the input visible and focused so the user can add more
+  useEffect(() => {
+    if (!isLoading) {
+      const el = scrollContainerRef.current;
+      if (el) {
+        requestAnimationFrame(() => {
+          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        });
+      }
+      followUpInputRef.current?.focus();
+    }
+  }, [isLoading]);
   const [feedback, setFeedback] = useState<Record<number, 'up' | 'down' | undefined>>({});
+  const { isDark } = useTheme();
+  const isInitialLoading = isLoading && session.results.length === 0 && session.followUps.length === 0;
+  const isFollowUpLoading = isLoading && !isInitialLoading;
   const handleFeedback = (index: number, value: 'up' | 'down') => {
     setFeedback(prev => ({ ...prev, [index]: prev[index] === value ? undefined : value }));
     // TODO: send feedback to backend if needed
@@ -87,9 +117,9 @@ export const SearchResults = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {(() => {
             const IconComponent = getIntentIcon(session.intent);
@@ -133,8 +163,24 @@ export const SearchResults = ({
         </div>
       </div>
 
+      {/* Loading indicator moved near the follow-up input (not shown at the top) */}
+
       {/* Results Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div
+        className="relative flex-1 min-h-0 p-6 space-y-6 pb-40"
+        style={{ WebkitOverflowScrolling: 'touch', scrollPaddingTop: '80px' }}
+      >
+        {/* Initial Loading Indicator (overlayed near bottom without shifting layout) */}
+        {isInitialLoading && (
+          <div className="absolute left-6 bottom-28 pointer-events-none">
+            <MysticalTypingIndicator 
+              isDarkMode={isDark}
+              label={session.mode === 'research' ? 'Musai is researching' : 'Musai is searching'}
+              size="default"
+            />
+          </div>
+        )}
+
         {/* Main Results */}
         <div className="space-y-4">
           {session.results.map((result: SearchResult, index) => (
@@ -268,37 +314,44 @@ export const SearchResults = ({
           </div>
         )}
 
-        {/* Follow-up Input */}
-        <Card className="border-dashed">
-          <CardContent className="pt-6">
-            <form onSubmit={handleFollowUpSubmit} className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Plus className="w-4 h-4" />
-                Ask a follow-up question
+        {/* Spacer only; sticky follow-up bar is below */}
+      </div>
+
+      {/* Sticky Follow-up Input at Bottom */}
+      <div className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="mx-auto max-w-5xl w-full p-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
+          <form onSubmit={handleFollowUpSubmit} className="w-full">
+            <div className="flex items-center gap-3 w-full">
+              <Plus className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+              <span className="text-sm font-medium whitespace-nowrap text-muted-foreground" onClick={() => followUpInputRef.current?.focus()}>Ask a follow-up</span>
+              <Input
+                ref={followUpInputRef}
+                value={followUpQuery}
+                onChange={(e) => setFollowUpQuery(e.target.value)}
+                placeholder="What would you like to know more about?"
+                className="flex-1 min-w-0"
+                disabled={isInitialLoading || isFollowUpLoading}
+              />
+              <div className="flex items-center gap-2">
+                {isFollowUpLoading ? (
+                  <MysticalTypingIndicator 
+                    isDarkMode={isDark}
+                    label={session.mode === 'research' ? 'Musai is researching' : 'Musai is searching'}
+                    size="compact"
+                  />
+                ) : (
+                  <Button 
+                    type="submit" 
+                    disabled={isInitialLoading || !followUpQuery.trim()}
+                    className="px-5"
+                  >
+                    Ask
+                  </Button>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Input
-                  value={followUpQuery}
-                  onChange={(e) => setFollowUpQuery(e.target.value)}
-                  placeholder="What would you like to know more about?"
-                  className="flex-1"
-                  disabled={isLoading}
-                />
-                <Button 
-                  type="submit" 
-                  disabled={!followUpQuery.trim() || isLoading}
-                  className="px-6"
-                >
-                  {isLoading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    "Ask"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

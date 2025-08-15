@@ -55,7 +55,7 @@ export const SearchSidebar = ({
   return (
     <div
       className={cn(
-        "w-64 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out",
+        "w-64 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full min-h-0 transition-transform duration-200 ease-in-out",
         !isSidebarOpen && "-translate-x-full md:translate-x-0"
       )}
     >
@@ -163,32 +163,31 @@ export const SearchSidebar = ({
               );
             })
           )}
+
+          {/* Search Topics / Categories (moved inside ScrollArea so it never gets cut off) */}
+          <div className="pt-4 mt-2 border-t">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Topics</h3>
+            <div className="space-y-1 pb-2">
+              {[
+                "Technology",
+                "Science",
+                "Programming",
+                "AI & ML"
+              ].map((topic) => (
+                <Button
+                  key={topic}
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs"
+                >
+                  <Search className="w-3 h-3 mr-2" />
+                  {topic}
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
       </ScrollArea>
-
-      {/* Search Topics / Categories */}
-      <div className="p-4 border-t">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Topics</h3>
-        <div className="space-y-1">
-          {[
-            "Technology",
-            "Science",
-            "Programming",
-            "AI & ML",
-            "Business"
-          ].map((topic) => (
-            <Button
-              key={topic}
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-xs"
-            >
-              <Search className="w-3 h-3 mr-2" />
-              {topic}
-            </Button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

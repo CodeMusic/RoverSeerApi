@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search/SearchInput";
 import { SearchResults } from "@/components/search/SearchResults";
@@ -6,6 +6,7 @@ import { SearchSidebar } from "@/components/search/SearchSidebar";
 import { PreSearchView } from "@/components/search/PreSearchView";
 import { ToolHeader } from "@/components/common/ToolHeader";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { computeAndStoreClientIpHash, getStoredClientIpHash } from "@/utils/ip";
 import { Menu, Search, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_TERMS } from "@/config/constants";
@@ -30,6 +31,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
 
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [clientIpHash, setClientIpHash] = useState<string | null>(getStoredClientIpHash());
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -44,6 +46,41 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   
   // Track if we've processed the initial query to prevent re-execution
   const [hasProcessedInitialQuery, setHasProcessedInitialQuery] = useState(false);
+  // Ensure we only initialize selection from storage once to avoid overriding "New Search" state
+  const [hasInitializedFromStorage, setHasInitializedFromStorage] = useState(false);
+
+  // Load sessions from localStorage filtered by client IP hash
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('search_sessions_v1');
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        const filtered = clientIpHash ? parsed.filter((s: any) => !s.clientIpHash || s.clientIpHash === clientIpHash) : parsed;
+        // Only initialize from storage if we don't already have sessions in memory
+        setSearchSessions(prev => (prev && prev.length > 0) ? prev : filtered);
+        // Only set a default current session on the very first hydration
+        if (!hasInitializedFromStorage) {
+          setCurrentSessionId(prevId => prevId !== null ? prevId : (filtered.length > 0 ? filtered[0].id : null));
+          setHasInitializedFromStorage(true);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load search sessions from storage', e);
+    }
+  }, [clientIpHash, hasInitializedFromStorage]);
+
+  // Resolve client IP hash once and store
+  useEffect(() => {
+    computeAndStoreClientIpHash().then(hash => { if (hash) setClientIpHash(hash); });
+  }, []);
+
+  const persistSessions = (updater: (prev: SearchSession[]) => SearchSession[]) => {
+    setSearchSessions(prev => {
+      const next = updater(prev);
+      localStorage.setItem('search_sessions_v1', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) return;
@@ -54,7 +91,26 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     // Manual timeout check as backup - declare at function level
     let manualTimeoutId: NodeJS.Timeout;
 
+    // Prepare a new session immediately so UI navigates to results screen
+    const provisionalSessionId = `${Date.now()}`;
+    const effectiveSources: SearchSource[] = (sources && sources.length > 0) ? sources : (['web'] as SearchSource[]);
+    const provisional: SearchSession = {
+      id: provisionalSessionId,
+      query,
+      intent: 'llm',
+      mode,
+      sources: effectiveSources,
+      clientIpHash: clientIpHash || undefined,
+      serverSessionId: clientIpHash || provisionalSessionId,
+      results: [],
+      followUps: [],
+      timestamp: Date.now(),
+    };
+    persistSessions(prev => [provisional, ...prev]);
+    setCurrentSessionId(provisionalSessionId);
+
     try {
+
       const startTime = Date.now();
       // Create timeout controller with configured search timeout (10 minutes minimum)
       const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST);
@@ -67,24 +123,33 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         console.log(`Manual timeout check: ${Date.now() - startTime}ms elapsed`);
       }, 60000); // Log at 1 minute
       
-      // Use the actual n8n musai_search webhook
-      // Try without signal first to see if that's the issue
-      // Route through queue to respect concurrency limits and attach identity headers
-      const effectiveSources: SearchSource[] = (sources && sources.length > 0) ? sources : (['web'] as SearchSource[]);
-      const baseUrl = (await import('@/config/n8nEndpoints')).N8N_ENDPOINTS.BASE_URL;
-      const response = await (await import('@/lib/AttentionalRequestQueue')).queuedFetch(`${baseUrl}/musai_search/c0d3musai`, {
+      // Use the configured Musai Search endpoint with Basic Auth
+      const { N8N_ENDPOINTS } = await import('@/config/n8nEndpoints');
+      const { withN8nAuthHeaders } = await import('@/lib/n8nClient');
+      const { queuedFetch } = await import('@/lib/AttentionalRequestQueue');
+      const url = `${N8N_ENDPOINTS.BASE_URL}${N8N_ENDPOINTS.SEARCH.ENHANCE_QUERY}`;
+      const headers = withN8nAuthHeaders({ 'Content-Type': 'application/json' });
+      // Format query with explicit tags for mode/sources without altering the stored UI query
+      const formattedQuery = [
+        query,
+        mode === 'research' ? '[mode: research]' : '[mode: search]',
+        effectiveSources && effectiveSources.length > 0
+          ? `[sources: ${effectiveSources.join(', ')}]`
+          : undefined,
+      ].filter(Boolean).join(' ');
+
+      // Single-shot request (no retries)
+      const response = await queuedFetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
+        cache: 'no-store',
         body: JSON.stringify({
-          query: query,
-          sessionId: Date.now().toString(),
+          query: formattedQuery,
+          sessionId: clientIpHash || provisionalSessionId,
           timestamp: Date.now(),
           mode,
           sources: effectiveSources
         }),
-        // signal,
       }, TIMEOUTS.SEARCH_REQUEST);
       
       console.log(`Fetch completed, status: ${response.status}`);
@@ -124,14 +189,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         });
       });
       
-      const sessionId = Date.now().toString();
-      const newSession: SearchSession = {
-        id: sessionId,
-        query,
-        intent, // Add intent to session
-        mode,
-        sources: effectiveSources,
-        results: results.map((result, index) => {
+      // Update the provisional session with final results
+      persistSessions(prev => prev.map((s) => {
+        if (s.id !== provisionalSessionId) return s;
+        const mappedResults = results.map((result, index) => {
           const content = result.text || result.content || result.response || result.answer || "No content available";
           console.log(`Mapping result ${index} content:`, content.substring(0, 100) + "...");
           const mapped: SearchResult = {
@@ -147,13 +208,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             raw: result,
           };
           return mapped;
-        }),
-        followUps: [],
-        timestamp: Date.now()
-      };
-
-      setSearchSessions(prev => [newSession, ...prev]);
-      setCurrentSessionId(sessionId);
+        });
+        return { ...s, intent, results: mappedResults, timestamp: Date.now() };
+      }));
     } catch (error) {
       console.error("Search error:", error);
       
@@ -171,30 +228,27 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         }
       }
       
-      // Fallback to a simple error result
-      const sessionId = Date.now().toString();
-      const errorSession: SearchSession = {
-        id: sessionId,
-        query,
-        intent: 'search',
-        results: [{
-          title: errorTitle,
-          content: errorMessage,
-          url: "",
-          snippet: "Error occurred during search",
-          type: 'search'
-        }],
-        followUps: [],
-        timestamp: Date.now()
-      };
-
-      setSearchSessions(prev => [errorSession, ...prev]);
-      setCurrentSessionId(sessionId);
+      // Update the provisional session with error result
+      persistSessions(prev => prev.map((s) => {
+        if (s.id !== provisionalSessionId) return s;
+        return {
+          ...s,
+          intent: 'search',
+          results: [{
+            title: errorTitle,
+            content: errorMessage,
+            url: "",
+            snippet: "Error occurred during search",
+            type: 'search'
+          }],
+          timestamp: Date.now(),
+        };
+      }));
     } finally {
       clearTimeout(manualTimeoutId); // Ensure manual timeout is cleared
       setIsLoading(false);
     }
-  }, []);
+  }, [clientIpHash]);
 
   // Handle initial query from navigation - placed after handleSearch declaration
   useEffect(() => {
@@ -218,17 +272,35 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       
       // Use the same n8n endpoint for follow-up queries
       const effectiveSources: SearchSource[] = (sources && sources.length > 0) ? sources : (['web'] as SearchSource[]);
-      const baseUrl2 = (await import('@/config/n8nEndpoints')).N8N_ENDPOINTS.BASE_URL;
-      const response = await (await import('@/lib/AttentionalRequestQueue')).queuedFetch(`${baseUrl2}/musai_search/c0d3musai`, {
+      const { N8N_ENDPOINTS: ENDPOINTS2 } = await import('@/config/n8nEndpoints');
+      const { withN8nAuthHeaders: authHeaders2 } = await import('@/lib/n8nClient');
+      const { queuedFetch: qf2 } = await import('@/lib/AttentionalRequestQueue');
+      const url2 = `${ENDPOINTS2.BASE_URL}${ENDPOINTS2.SEARCH.ENHANCE_QUERY}`;
+      // Build a combined query that includes prior response context so the agent can reference it
+      const priorResultsText = (currentSession.results || [])
+        .map((r, i) => `Result ${i + 1}: ${r.title}\n${r.content}`)
+        .join('\n\n')
+        .slice(0, 6000); // keep payload reasonable
+
+      // Keep follow-up format consistent with initial: plain query augmented with square-bracket tags
+      const tags = [
+        `mode: ${mode === 'research' ? 'research' : 'search'}`,
+        effectiveSources && effectiveSources.length > 0 ? `sources: ${effectiveSources.join(', ')}` : undefined,
+      ].filter(Boolean).map(t => `[${t}]`).join(' ');
+
+      const combinedQuery = [followUpQuery, tags].filter(Boolean).join(' ');
+
+      const response = await qf2(url2, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders2({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          query: followUpQuery,
+          // Send a simple query string with same tagging format as initial
+          query: combinedQuery,
           sessionId: currentSessionId,
           isFollowUp: true,
           originalQuery: currentSession.query,
+          // Also pass structured context fields for backends that can use them
+          previousResults: (currentSession.results || []).map(r => ({ title: r.title, content: r.content, url: r.url })),
           timestamp: Date.now(),
           mode,
           sources: effectiveSources
@@ -255,13 +327,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         timestamp: Date.now()
       };
 
-      setSearchSessions(prev => 
-        prev.map(session => 
-          session.id === currentSessionId
-            ? { ...session, followUps: [...session.followUps, followUpResult] }
-            : session
-        )
-      );
+      persistSessions(prev => prev.map(session => session.id === currentSessionId
+        ? { ...session, followUps: [...session.followUps, followUpResult] }
+        : session
+      ));
     } catch (error) {
       console.error("Follow-up error:", error);
       
@@ -285,13 +354,10 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         timestamp: Date.now()
       };
 
-      setSearchSessions(prev => 
-        prev.map(session => 
-          session.id === currentSessionId
-            ? { ...session, followUps: [...session.followUps, errorResult] }
-            : session
-        )
-      );
+      persistSessions(prev => prev.map(session => session.id === currentSessionId
+        ? { ...session, followUps: [...session.followUps, errorResult] }
+        : session
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -417,7 +483,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   }, [searchSessions]);
 
   const handleDeleteSession = useCallback((sessionId: string) => {
-    setSearchSessions(prev => prev.filter(session => session.id !== sessionId));
+    persistSessions(prev => prev.filter(session => session.id !== sessionId));
     // If we're deleting the current session, reset to no selection
     if (currentSessionId === sessionId) {
       setCurrentSessionId(null);
@@ -430,6 +496,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     // TODO: Implement HTML export functionality
     console.log("Exporting session:", currentSession);
   }, [currentSession]);
+
+  // Scroll container for keeping controls visible and scrolling results
+  const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <div className="flex h-[100dvh] relative bg-background">
@@ -457,7 +526,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {/* Search Sidebar - only show when there are search sessions */}
       {hasSearched && !isSidebarCollapsed && (
         <div className={cn(
-          "transition-all duration-300",
+          "transition-all duration-300 h-[100dvh] min-h-0 overflow-hidden",
           isMobile ? "ml-12" : "ml-0"
         )}>
           <SearchSidebar
@@ -474,8 +543,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       )}
 
       {/* Main Content Area */}
-      <div className={cn(
-        "flex-1 flex flex-col bg-background h-[100dvh] overflow-auto transition-all duration-300",
+      <div ref={mainScrollRef} className={cn(
+        "flex-1 min-h-0 flex flex-col bg-background h-[100dvh] overflow-y-auto transition-all duration-300",
         hasSearched && !isMobile && !isSidebarCollapsed ? "ml-0" : "ml-0"
       )}>
         {/* Always show header */}
@@ -485,37 +554,40 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           badge={APP_TERMS.SEARCH_BADGE}
           badgeIcon={Zap}
           description={APP_TERMS.SEARCH_DESCRIPTION}
+          size="compact"
         />
-        {/* Search controls */}
-        <div className="px-6 pt-2 pb-1 border-b bg-background/60">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
-              <Switch id="mode-switch" checked={mode === 'research'} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} disabled={isLoading} aria-label="Toggle research mode" />
-              <Badge variant="secondary">{mode}</Badge>
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs text-muted-foreground">Sources:</span>
-              {(['web','news','academic','github','docs','redmine','social'] as SearchSource[]).map((s) => (
-                <label key={s} className="inline-flex items-center gap-2 cursor-pointer select-none">
-                  <Checkbox
-                    checked={sources.includes(s)}
-                    onCheckedChange={(v) => {
-                      setSources((prev) => {
-                        const isChecked = Boolean(v);
-                        if (isChecked) return prev.includes(s) ? prev : [...prev, s];
-                        return prev.filter((x) => x !== s);
-                      });
-                    }}
-                    disabled={isLoading}
-                    aria-label={`Toggle source ${s}`}
-                  />
-                  <span className="text-xs text-muted-foreground">{s}</span>
-                </label>
-              ))}
+        {/* Search controls: show after first search so PreMusai sits higher initially */}
+        {hasSearched && (
+          <div className="sticky top-0 z-30 px-6 pt-2 pb-1 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
+                <Switch id="mode-switch" checked={mode === 'research'} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} disabled={isLoading} aria-label="Toggle research mode" />
+                <Badge variant="secondary">{mode}</Badge>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-muted-foreground">Sources:</span>
+                {(['web','news','academic','github','docs','redmine','social'] as SearchSource[]).map((s) => (
+                  <label key={s} className="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <Checkbox
+                      checked={sources.includes(s)}
+                      onCheckedChange={(v) => {
+                        setSources((prev) => {
+                          const isChecked = Boolean(v);
+                          if (isChecked) return prev.includes(s) ? prev : [...prev, s];
+                          return prev.filter((x) => x !== s);
+                        });
+                      }}
+                      disabled={isLoading}
+                      aria-label={`Toggle source ${s}`}
+                    />
+                    <span className="text-xs text-muted-foreground">{s}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
         
         {!hasSearched ? (
           <PreSearchView 
@@ -527,7 +599,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             onQuickAnswers={handleQuickAnswers}
           />
         ) : currentSession ? (
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <SearchResults
               session={currentSession}
               onFollowUp={handleFollowUp}

@@ -3,6 +3,11 @@
   "summary": "High‑level status across Musai. This JSON is the single source of truth for the public roadmap until the DB is wired.",
   "latestUpdates": [
     {
+      "date": "2025-08-14",
+      "title": "MusaiChat and MusaiSearch beta is now working",
+      "details": "Core chat and intelligent discovery experiences are live in beta. Expect occasional rough edges while we stabilize long-running requests and polish UX." 
+    },
+    {
       "date": "2025-08-12",
       "title": "TaskMusai renamed to AgileMusai",
       "details": "Routes, tabs, labels, and placeholders updated across the app."
