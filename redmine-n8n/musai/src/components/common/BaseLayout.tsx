@@ -139,14 +139,17 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
         <div className={cn(
           // Ensure main content fits viewport. If top bar is visible (pt-14 = 3.5rem), subtract it.
           hideTopAppBar ? "h-[100dvh] md:h-[100svh]" : "h-[calc(100dvh-4rem)] md:h-[calc(100svh-4rem)]",
-          "flex"
+          "flex overflow-x-hidden"
         )}>
           {/* Left Sidebar */}
           {!isSidebarCollapsed && (
             <div className={cn(
               "w-80 border-r border-border bg-background",
               "transition-all duration-300 ease-in-out",
-              isMobile && !isSidebarOpen && "-translate-x-full"
+              // On mobile, render as overlay to avoid affecting layout width
+              isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg" : undefined,
+              // Slide it offscreen when closed on mobile; fixed/absolute avoids layout shift
+              isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
             )}>
               {leftOverride ?? (
                 <ChatSidebar
@@ -183,8 +186,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
             {renderMainContent()}
           </div>
 
-          {/* Right Sidebar (render only if content exists) */}
-          {hasRightContent && (
+          {/* Right Sidebar (render only if content exists and not on mobile) */}
+          {hasRightContent && !isMobile && (
             <>
               {!isRightSidebarCollapsed && (
                 <div className="w-80 border-l border-border bg-background relative">

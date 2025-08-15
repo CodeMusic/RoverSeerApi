@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { VeilOfMemoryManager, localFileMemoryStore } from "@/lib/memory";
+import { narrativeApi } from "@/lib/narrativeApi";
 
 interface Character {
   id: string;
@@ -311,6 +312,34 @@ export const SceneRunner = ({
             <Button variant="outline" onClick={onBack}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  const story: any = session.storyData || {};
+                  const payload = {
+                    title: story?.concept?.title || session.name || 'Untitled Tale',
+                    description: story?.concept?.description || '',
+                    mode: (story?.concept?.mode || 'general') as any,
+                    acts: (story?.acts || []).map((a: any) => ({
+                      id: a.id,
+                      title: a.title,
+                      description: a.description,
+                      progression: a.progression || [],
+                      scenes: a.scenes || []
+                    })),
+                    characters: (story?.characters || []),
+                  };
+                  const summary = await narrativeApi.createWithScenes(payload as any);
+                  onUpdate({ externalId: summary.id, externalMode: summary.mode });
+                  alert('Narrative created!');
+                } catch (e) {
+                  console.warn('Create narrative failed', e);
+                  alert('Failed to create narrative');
+                }
+              }}
+            >
+              Create Narrative
             </Button>
           </div>
         </div>

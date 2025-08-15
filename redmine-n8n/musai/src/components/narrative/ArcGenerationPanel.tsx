@@ -87,6 +87,7 @@ export const ArcGenerationPanel = ({
   const [isGenerating, setIsGenerating] = useState(false);
 
   const characters = (session.storyData as any)?.characters || [];
+  const frameworkActs = (session.storyData as any)?.acts || [];
 
   const generateArc = useCallback(async () => {
     if (characters.length < 2) return;
@@ -213,10 +214,13 @@ export const ArcGenerationPanel = ({
   }, [characters]);
 
   useEffect(() => {
-    if (acts.length === 0 && characters.length >= 2) {
-      generateArc();
+    // Default to framework acts if present; do NOT auto-generate here —
+    // characters come from concept/acts; scenes come after character creation.
+    if (acts.length === 0 && frameworkActs.length > 0) {
+      setActs(frameworkActs);
+      onUpdate({ acts: frameworkActs });
     }
-  }, [acts.length, characters.length, generateArc]);
+  }, [acts.length, frameworkActs, onUpdate]);
 
   return (
     <div className="h-full flex flex-col">

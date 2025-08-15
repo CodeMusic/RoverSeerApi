@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { NarrativeSession } from "@/types/chat";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { prepareFileData } from "@/utils/fileOperations";
+import { narrativeApi } from "@/lib/narrativeApi";
 
 interface Character {
   id: string;
@@ -139,10 +140,42 @@ export const CharacterCreationPanel = ({
   }, [editingCharacter]);
 
   const handleNext = useCallback(() => {
-    if (characters.length >= 2) {
-      onNext();
+    onNext();
+  }, [onNext]);
+
+  const hasFetchedRef = useRef(false);
+
+  // Fetch suggested characters from framework on first advance into this panel
+  const fetchSuggestedCharacters = useCallback(async () => {
+    if (hasFetchedRef.current) return;
+    try {
+      const story: any = session.storyData || {};
+      if (!story?.concept?.title || !story?.concept?.description || !Array.isArray(story?.acts)) return;
+      const res = await narrativeApi.suggestCharacters({
+        title: story.concept.title,
+        description: story.concept.description,
+        acts: (story.acts || []).map((a: any) => ({ id: a.id, title: a.title, description: a.description, progression: a.progression || [] })),
+      });
+      if (Array.isArray(res.characters) && res.characters.length > 0) {
+        setCharacters(res.characters as any);
+        onUpdate({ characters: res.characters });
+      }
+    } catch (e) {
+      console.warn('Failed to fetch suggested characters', e);
+    } finally {
+      hasFetchedRef.current = true;
     }
-  }, [characters.length, onNext]);
+  }, [session.storyData, onUpdate]);
+
+  // Kick off suggestions when the panel mounts and there are no characters yet
+  useState(() => {
+    // Only auto-fetch when concept+acts exist (ensures correct flow: concept → characters)
+    const story: any = session.storyData || {};
+    const hasFramework = Array.isArray(story.acts) && story.acts.length > 0 && story.concept?.title;
+    if (hasFramework && characters.length === 0) {
+      void fetchSuggestedCharacters();
+    }
+  });
 
   const generateSystemMessage = useCallback((character: Character) => {
     const traits = [];

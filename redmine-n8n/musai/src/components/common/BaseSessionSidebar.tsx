@@ -126,7 +126,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
           {sessions.map((session) => {
             const isActive = session.id === currentSessionId;
             const isHovered = hoveredSessionId === session.id;
-            const showActions = isActive || isHovered || isMobile;
+            const showActions = true;
 
             return (
               <div
@@ -136,7 +136,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
                 onMouseLeave={() => setHoveredSessionId(null)}
                 className={cn(
                   "group relative cursor-pointer rounded-lg transition-all duration-200",
-                  "border text-sm",
+                  "border text-sm pl-3 pr-12",
                   isActive 
                     ? "bg-sidebar-accent border-border/50 shadow-sm" 
                     : isHovered
@@ -190,7 +190,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
 
                   {/* Action Buttons */}
                   {editingSessionId !== session.id && showActions && (
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
                       <Button
                         variant="ghost"
                         size="icon"

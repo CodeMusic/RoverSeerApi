@@ -18,6 +18,7 @@ interface SearchResultsProps {
   onExport: () => void;
   isLoading: boolean;
   onClose: () => void;
+  onRetryInitial?: () => void;
 }
 
 export const SearchResults = ({ 
@@ -26,7 +27,8 @@ export const SearchResults = ({
   onNewSearch, 
   onExport, 
   isLoading,
-  onClose 
+  onClose,
+  onRetryInitial
 }: SearchResultsProps) => {
   const [followUpQuery, setFollowUpQuery] = useState("");
   const followUpInputRef = useRef<HTMLInputElement | null>(null);
@@ -58,6 +60,7 @@ export const SearchResults = ({
   const { isDark } = useTheme();
   const isInitialLoading = isLoading && session.results.length === 0 && session.followUps.length === 0;
   const isFollowUpLoading = isLoading && !isInitialLoading;
+  const initialError = !isLoading && session.results.length === 1 && session.results[0]?.type === 'search' && /error/i.test(session.results[0]?.snippet || '');
   const handleFeedback = (index: number, value: 'up' | 'down') => {
     setFeedback(prev => ({ ...prev, [index]: prev[index] === value ? undefined : value }));
     // TODO: send feedback to backend if needed
@@ -179,6 +182,21 @@ export const SearchResults = ({
               size="default"
             />
           </div>
+        )}
+
+        {/* Initial error state with Retry */}
+        {!isInitialLoading && initialError && (
+          <Card className="border-destructive/40">
+            <CardHeader>
+              <CardTitle>Search Error</CardTitle>
+              <CardDescription>I'm playing 4D chess with the server—currently in check. Try again?</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" size="sm" onClick={() => (onRetryInitial ? onRetryInitial() : onFollowUp(session.query))}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Main Results */}
@@ -305,9 +323,22 @@ export const SearchResults = ({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                    <MarkdownRenderer content={followUp.result.content} />
-                  </div>
+                  {(() => {
+                    const isErr = /error/i.test(followUp.result.content || '');
+                    if (isErr) {
+                      return (
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm text-muted-foreground flex-1">{followUp.result.content}</div>
+                          <Button size="sm" variant="outline" onClick={() => onFollowUp(followUp.query)}>Retry</Button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
+                        <MarkdownRenderer content={followUp.result.content} />
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}

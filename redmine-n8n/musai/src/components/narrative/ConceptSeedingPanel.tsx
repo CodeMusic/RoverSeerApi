@@ -20,6 +20,8 @@ interface ConceptSeedingPanelProps {
   session: NarrativeSession;
   onNext: () => void;
   onUpdate: (data: any) => void;
+  // When user clicks Next, call backend to suggest characters, then advance
+  onGenerateCharacters?: () => Promise<void>;
 }
 
 const SUGGESTED_CONCEPTS = [
@@ -59,6 +61,7 @@ export const ConceptSeedingPanel = ({
   session,
   onNext,
   onUpdate,
+  onGenerateCharacters,
 }: ConceptSeedingPanelProps) => {
   const [concept, setConcept] = useState({
     title: (session.storyData as any)?.concept?.title || "",
@@ -66,6 +69,9 @@ export const ConceptSeedingPanel = ({
     emotionalTone: (session.storyData as any)?.concept?.emotionalTone || "neutral",
     genre: (session.storyData as any)?.concept?.genre || "drama"
   });
+  const seedText = (session.storyData as any)?.seedText || "";
+  const acts: Array<{ id: string; title: string; description: string; progression?: string[] }> =
+    (session.storyData as any)?.acts || [];
 
   const handleConceptChange = useCallback((field: string, value: string) => {
     const updatedConcept = { ...concept, [field]: value };
@@ -84,11 +90,12 @@ export const ConceptSeedingPanel = ({
     onUpdate({ concept: updatedConcept });
   }, [onUpdate]);
 
-  const handleNext = useCallback(() => {
-    if (concept.title.trim() && concept.description.trim()) {
-      onNext();
+  const handleNext = useCallback(async () => {
+    if (onGenerateCharacters) {
+      await onGenerateCharacters();
     }
-  }, [concept, onNext]);
+    onNext();
+  }, [onGenerateCharacters, onNext]);
 
   const getEmotionalToneIcon = (tone: string) => {
     switch (tone) {
@@ -129,24 +136,52 @@ export const ConceptSeedingPanel = ({
           {/* Concept Editor */}
           <div className="w-1/2 p-6 border-r border-border/20">
             <div className="space-y-6">
+              {seedText && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4" />
+                      Original Seed
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{seedText}</p>
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm('Regenerate framework from this seed? This will overwrite current title/description/acts.')) {
+                            const evt = new CustomEvent('musai-regenerate-framework');
+                            window.dispatchEvent(evt);
+                          }
+                        }}
+                      >
+                        Regenerate
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {/* Title/Description are now populated from n8n and editable but not required to proceed */}
               <div>
-                <Label htmlFor="conceptTitle">Concept Title</Label>
+                <Label htmlFor="conceptTitle">Concept Title (editable)</Label>
                 <Input
                   id="conceptTitle"
                   value={concept.title}
                   onChange={(e) => handleConceptChange('title', e.target.value)}
-                  placeholder="Enter your concept or theme..."
+                  placeholder="Auto-filled by Musai"
                   className="mt-2"
                 />
               </div>
 
               <div>
-                <Label htmlFor="conceptDescription">Description</Label>
+                <Label htmlFor="conceptDescription">Description (editable)</Label>
                 <Textarea
                   id="conceptDescription"
                   value={concept.description}
                   onChange={(e) => handleConceptChange('description', e.target.value)}
-                  placeholder="Describe your concept in detail. What emotional or philosophical questions does it explore?"
+                  placeholder="Auto-filled by Musai"
                   rows={4}
                   className="mt-2"
                 />
@@ -209,6 +244,38 @@ export const ConceptSeedingPanel = ({
                           {concept.genre}
                         </Badge>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Story Arc Preview (read-only) */}
+              {acts && acts.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      Story Arc (Preview)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {acts.map((a, idx) => (
+                        <div key={a.id} className="border rounded-md p-3 bg-muted/20">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="secondary" className="text-xs">Act {idx + 1}</Badge>
+                            <span className="font-medium text-sm">{a.title}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">{a.description}</p>
+                          {a.progression && a.progression.length > 0 && (
+                            <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                              {a.progression.map((p, i) => (
+                                <li key={i}>{p}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>

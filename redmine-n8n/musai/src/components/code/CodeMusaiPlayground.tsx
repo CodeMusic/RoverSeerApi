@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
+import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 
 interface ChatMessage {
   id: string;
@@ -526,7 +527,9 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                                 : 'bg-muted text-foreground'
                             )}
                           >
-                            <div className="whitespace-pre-wrap">{message.content}</div>
+                            <div className="prose prose-slate dark:prose-invert max-w-none break-words">
+                              <MarkdownRenderer content={message.content} />
+                            </div>
                             <div className="text-xs opacity-70 mt-1">
                               {message.timestamp.toLocaleTimeString()}
                             </div>

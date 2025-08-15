@@ -112,22 +112,28 @@ export const N8N_ENDPOINTS = {
     UPDATE_COURSE_DIFFICULTY: '/university/courses/difficulty',
   },
 
-  // MusaiTale (Narrative) Endpoints
+  // MusaiTale (Narrative) Creation Flow — canonical endpoints
   NARRATIVE: {
-    // Story generation
-    GET_STORY_SEEDS: '/narrative/seeds',
-    GET_CHARACTER_TEMPLATES: '/narrative/characters/templates',
-    GENERATE_PLOT_POINTS: '/narrative/plot/generate',
-    
-    // Emergent narrative
+    // 1) Seed → Framework (title, description, acts with progression)
+    FRAMEWORK: '/narrative/framework',
+    // 2) Framework → Characters (suggested characters to edit)
+    CHARACTERS_FROM_FRAMEWORK: '/narrative/characters/from-framework',
+    // 3) Create with scenes (finalize tale)
+    CREATE_WITH_SCENES: '/narratives/create',
+  },
+
+  // Narrative Runtime (playing the tale) — keep these available for scene/choice UX
+  NARRATIVE_RUNTIME: {
+    // Interactive choices surfaced to user during play
+    GET_CHOICE_POINTS: '/narrative/choices',
+    // Alternate path suggestions for current context
+    GET_ALTERNATIVE_PATHS: '/narrative/paths/alternatives',
+    // Log decisions to update state/telemetry
+    TRACK_NARRATIVE_DECISIONS: '/narrative/decisions/track',
+    // Optional adaptive helpers (may evolve later)
     ANALYZE_USER_THEMES: '/narrative/analysis/themes',
     GET_PERSONALIZED_ARCS: '/narrative/arcs/personalized',
     EVOLVE_CHARACTERS: '/narrative/characters/evolve',
-    
-    // Interactive elements
-    GET_CHOICE_POINTS: '/narrative/choices',
-    TRACK_NARRATIVE_DECISIONS: '/narrative/decisions/track',
-    GET_ALTERNATIVE_PATHS: '/narrative/paths/alternatives',
   },
 
   // TherapyMusai Endpoints

@@ -26,16 +26,9 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({ mode }) =>
 
   const handleCreate = async () =>
   {
-    if (!seed.trim() && !title.trim()) return;
-    try {
-      setIsCreating(true);
-      await narrativeApi.createNarrative({ title: title || undefined, seedText: seed, mode });
-      setSeed('');
-      setTitle('');
-      await load();
-    } finally {
-      setIsCreating(false);
-    }
+    // This panel no longer creates directly; it lists narratives and provides an open hook.
+    // Keeping the UI button for compatibility; disable action.
+    return;
   };
 
   return (
@@ -50,7 +43,7 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({ mode }) =>
         <CardContent className="space-y-2">
           <Input placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
           <Textarea placeholder="Seed text or idea..." value={seed} onChange={(e) => setSeed(e.target.value)} />
-          <Button onClick={handleCreate} disabled={isCreating}>Create</Button>
+          <Button onClick={handleCreate} disabled title="Creation is handled in MusaiTale flow">Create</Button>
         </CardContent>
       </Card>
 

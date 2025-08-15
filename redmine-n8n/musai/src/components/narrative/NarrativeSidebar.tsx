@@ -60,11 +60,34 @@ export const NarrativeSidebar = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
 
   const filteredSessions = sessions.filter(session =>
     session.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     session.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Compute wizard gating from the current session
+  const currentSession = sessions.find(s => s.id === currentSessionId);
+  const storyData: any = (currentSession as any)?.storyData || {};
+  const hasFramework = Boolean(storyData?.concept?.title) && Array.isArray(storyData?.acts) && storyData.acts.length > 0;
+  const hasCharacters = Array.isArray(storyData?.characters) && storyData.characters.length >= 2;
+  const hasScenes = Array.isArray(storyData?.acts) && storyData.acts.some((a: any) => Array.isArray(a.scenes) && a.scenes.length > 0);
+
+  const isStepEnabled = (step: typeof currentStep): boolean => {
+    switch (step) {
+      case 'concept':
+        return true; // Always reachable after seed
+      case 'characters':
+        return hasFramework; // Require framework from n8n
+      case 'arc':
+        return hasFramework; // Arc preview exists only after framework
+      case 'scenes':
+        return hasCharacters; // Require at least two characters
+      default:
+        return false;
+    }
+  };
 
   const handleEditStart = (session: NarrativeSession) => {
     setEditingSessionId(session.id);
@@ -157,21 +180,27 @@ export const NarrativeSidebar = ({
       <div className="p-4 border-b border-border/20">
         <h3 className="text-sm font-medium mb-3 text-muted-foreground">Current Step</h3>
         <div className="space-y-1">
-          {(['concept', 'characters', 'arc', 'scenes'] as const).map((step) => (
-            <button
-              key={step}
-              onClick={() => onStepChange(step)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                currentStep === step
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {getStepIcon(step)}
-              {getStepLabel(step)}
-            </button>
-          ))}
+          {(['concept', 'characters', 'arc', 'scenes'] as const).map((step) => {
+            const enabled = isStepEnabled(step);
+            return (
+              <button
+                key={step}
+                onClick={() => enabled && onStepChange(step)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                  currentStep === step
+                    ? "bg-primary text-primary-foreground"
+                    : enabled
+                      ? "hover:bg-accent text-muted-foreground hover:text-foreground"
+                      : "opacity-50 cursor-not-allowed text-muted-foreground"
+                )}
+                disabled={!enabled}
+              >
+                {getStepIcon(step)}
+                {getStepLabel(step)}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -185,17 +214,25 @@ export const NarrativeSidebar = ({
                 <p className="text-sm">No narratives found</p>
               </div>
             ) : (
-              filteredSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className={cn(
-                    "group relative p-3 rounded-lg border transition-all cursor-pointer",
-                    currentSessionId === session.id
-                      ? "bg-primary/10 border-primary/20"
-                      : "hover:bg-accent/50 border-border/20"
-                  )}
-                  onClick={() => onSessionSelect(session.id)}
-                >
+              filteredSessions.map((session) => {
+                const isActive = currentSessionId === session.id;
+                const isHovered = hoveredSessionId === session.id;
+                return (
+                  <div
+                    key={session.id}
+                    className={cn(
+                      "group relative cursor-pointer rounded-lg transition-all duration-200",
+                      "border text-sm p-3",
+                      isActive 
+                        ? "bg-sidebar-accent border-border/50 shadow-sm" 
+                        : isHovered
+                          ? "bg-sidebar-accent/70 border-border/40 shadow-sm"
+                          : "hover:bg-sidebar-accent/50 border-transparent hover:border-border/30"
+                    )}
+                    onClick={() => onSessionSelect(session.id)}
+                    onMouseEnter={() => setHoveredSessionId(session.id)}
+                    onMouseLeave={() => setHoveredSessionId(null)}
+                  >
                   {/* Session Content */}
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -278,7 +315,8 @@ export const NarrativeSidebar = ({
                     )}
                   </div>
                 </div>
-              ))
+              );
+            })
             )}
           </div>
         </ScrollArea>

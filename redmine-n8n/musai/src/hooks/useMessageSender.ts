@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Message } from '@/types/chat';
 import { fetchWithTimeout, FETCH_TIMEOUT } from '@/utils/fetchWithTimeout';
+import { MUSAI_MODULES } from '@/config/constants';
 import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 import { extractResponseContent, extractResponseThoughts, extractResponsePov } from '@/utils/responseHandler';
@@ -14,7 +15,6 @@ import { getRandomWittyError } from '@/config/messages';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 2000; // 2 seconds
-const HISTORY_LIMIT = 9; // keep history payload manageable
 
 export const useMessageSender = (
   updateSession: (sessionId: string, messages: Message[]) => void,
@@ -55,10 +55,7 @@ export const useMessageSender = (
     updateSession(sessionId, newMessages);
     queryClient.setQueryData(['chatSessions', sessionId], newMessages);
     
-    // Build sanitized history: only role/content, strip any internal fields like pov/thoughts
-    const history = newMessages
-      .map(m => ({ role: m.role, content: m.content }))
-      .slice(-HISTORY_LIMIT);
+    // Agent-managed memory: do not send history; sessionId is sufficient for recall
     // Now check webhook configuration for the API call
     const effectiveWebhookUrl = window.env?.VITE_N8N_WEBHOOK_URL || import.meta.env.VITE_N8N_WEBHOOK_URL;
     const username = window.env?.VITE_N8N_WEBHOOK_USERNAME || import.meta.env.VITE_N8N_WEBHOOK_USERNAME;
@@ -123,14 +120,17 @@ export const useMessageSender = (
             method: "POST",
             headers,
             body: JSON.stringify({
-              chatInput: input,
-              sessionId: sessionId,
-              history,
-              ...(fileData && {
-                data: fileData.data,
-                mimeType: fileData.mimeType,
-                fileName: fileData.fileName
-              })
+              sessionId,
+              query: input,
+              params: {
+                module: MUSAI_MODULES.CHAT,
+                debug: true,
+                ...(fileData && {
+                  data: fileData.data,
+                  mimeType: fileData.mimeType,
+                  fileName: fileData.fileName
+                })
+              }
             }),
           },
           FETCH_TIMEOUT

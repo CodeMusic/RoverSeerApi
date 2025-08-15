@@ -1,4 +1,5 @@
 import { N8N_ENDPOINTS, n8nApi } from '@/config/n8nEndpoints';
+import { MUSAI_MODULES } from '@/config/constants';
 import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import { TIMEOUTS } from '@/config/timeouts';
@@ -37,7 +38,15 @@ class EyeApiService {
     const res = await fetchWithTimeout(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        sessionId: undefined,
+        query: payload?.prompt || 'Train Eye model',
+        params: {
+          module: MUSAI_MODULES.EYE,
+          debug: true,
+          ...payload,
+        }
+      }),
     }, TIMEOUTS.API_REQUEST);
     if (!res.ok) throw new Error(`Eye train failed: ${res.status}`);
     return res.json();
@@ -48,7 +57,15 @@ class EyeApiService {
     const res = await queuedFetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        sessionId: undefined,
+        query: 'Recognize image',
+        params: {
+          module: MUSAI_MODULES.EYE,
+          debug: true,
+          ...payload,
+        }
+      }),
     });
     if (!res.ok) throw new Error(`Eye recognize failed: ${res.status}`);
     return res.json();

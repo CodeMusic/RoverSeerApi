@@ -49,13 +49,30 @@ const Index = () => {
      searchParams.get('mode') === 'eye' ? APP_TERMS.TAB_EYE :
      APP_TERMS.TAB_CHAT)
   );
-  // Animate leave/enter when tab changes
+  // Animate leave/enter when tab changes and sync URL ?mode=...
   const handleTabChange = (nextTab: string) => {
     if (nextTab === currentTab) return setPortalPhase('none');
+    // Map tab id → mode query param for deep-linking and content loaders
+    const tabToMode: Record<string, string> = {
+      [APP_TERMS.TAB_CHAT]: 'chat',
+      [APP_TERMS.TAB_SEARCH]: 'search',
+      [APP_TERMS.TAB_CODE]: 'code',
+      [APP_TERMS.TAB_UNIVERSITY]: 'university',
+      [APP_TERMS.TAB_NARRATIVE]: 'narrative',
+      [APP_TERMS.TAB_CAREER]: 'career',
+      [APP_TERMS.TAB_THERAPY]: 'therapy',
+      [APP_TERMS.TAB_EYE]: 'eye',
+      [APP_TERMS.TAB_TASK]: 'task',
+    };
+    const mode = tabToMode[nextTab] || 'chat';
     setPortalPhase('leave');
     setTimeout(() => {
       setPortalPhase('enter');
       setCurrentTab(nextTab);
+      // Replace URL mode to keep PreMusai/content loaders in sync
+      const params = new URLSearchParams(location.search);
+      params.set('mode', mode);
+      navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
       setTimeout(() => setPortalPhase('none'), 700);
     }, 250);
   };
@@ -183,6 +200,41 @@ const Index = () => {
     return () => window.removeEventListener('musai-export-to-narrative', handler as EventListener);
   }, []);
 
+  // Regenerate framework on demand (from ConceptSeedingPanel Regenerate button)
+  useEffect(() => {
+    const onRegen = async () => {
+      try {
+        const ns = getCurrentNarrativeSession();
+        if (!ns) return;
+        const seed = (ns as any)?.storyData?.seedText as string | undefined;
+        const mode = (ns as any)?.storyData?.concept?.mode || 'general';
+        if (!seed || !seed.trim()) {
+          alert('No seed text available to regenerate.');
+          return;
+        }
+        setIsCreatingNarrative(true);
+        const framework = await narrativeApi.getFramework({ seedText: seed, mode });
+        updateNarrative(ns.id, {
+          concept: {
+            title: framework.title,
+            description: framework.description,
+            emotionalTone: 'neutral',
+            genre: 'drama'
+          },
+          acts: framework.acts.map(a => ({ ...a, scenes: (a as any).scenes || [] })),
+        });
+        renameNarrative(ns.id, framework.title);
+      } catch (e) {
+        console.warn('Regenerate framework failed', e);
+        alert('Failed to regenerate framework.');
+      } finally {
+        setIsCreatingNarrative(false);
+      }
+    };
+    window.addEventListener('musai-regenerate-framework', onRegen as EventListener);
+    return () => window.removeEventListener('musai-regenerate-framework', onRegen as EventListener);
+  }, [getCurrentNarrativeSession, updateNarrative, renameNarrative]);
+
   const renderRightSidebar = () => {
     if (!currentSession) {
       return null;
@@ -245,6 +297,34 @@ const Index = () => {
 
   // Narrative workspace: left sidebar override and main content for narrative tab
   const [narrativeStep, setNarrativeStep] = useState<'concept' | 'characters' | 'arc' | 'scenes'>('concept');
+  const [showNarrativeWizard, setShowNarrativeWizard] = useState(false);
+  const [lastFrameworkSeed, setLastFrameworkSeed] = useState<string | null>(null);
+  const [frameworkError, setFrameworkError] = useState<string | null>(null);
+
+  // helper to fetch framework from n8n
+  const fetchFramework = useCallback(async (seed: string) => {
+    try {
+      console.log('[Narrative] Fetching framework from n8n with payload:', { seedText: seed, mode: 'general' });
+      const framework = await narrativeApi.getFramework({ seedText: seed, mode: 'general' });
+      console.log('[Narrative] Framework received');
+      const created = getCurrentNarrativeSession();
+      if (!created) return;
+      updateNarrative(created.id, {
+        concept: {
+          title: framework.title,
+          description: framework.description,
+          emotionalTone: 'neutral',
+          genre: 'drama'
+        },
+        acts: framework.acts.map((a: any) => ({ ...a, scenes: a.scenes || [] })),
+      });
+      renameNarrative(created.id, framework.title);
+      setFrameworkError(null);
+    } catch (err: any) {
+      console.warn('[Narrative] Framework fetch failed', err);
+      setFrameworkError(err?.message || 'Failed to fetch framework');
+    }
+  }, [getCurrentNarrativeSession, updateNarrative, renameNarrative]);
 
   useEffect(() => {
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
@@ -289,7 +369,11 @@ const Index = () => {
         currentSessionId={narrativeCurrentSessionId}
         isSidebarOpen={true}
         isCollapsed={false}
-        onNewNarrative={createNewNarrative}
+        onNewNarrative={() => {
+          // Open the PreMusai wizard instead of creating immediately
+          setNarrativeCurrentSessionId('');
+          setShowNarrativeWizard(true);
+        }}
         onSessionSelect={(id) => setNarrativeCurrentSessionId(id)}
         onDeleteSession={deleteNarrative}
         onRenameSession={renameNarrative}
@@ -422,32 +506,45 @@ const Index = () => {
 
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
     {
-      // Directly bootstrap the narrative editor with spinner and call n8n in background
+      // New flow: Seed → Framework; do NOT create yet
       setIsCreatingNarrative(true);
       createNewNarrative();
+      // Navigate to Concept immediately; show composing overlay while fetching
+      setNarrativeStep('concept');
       setTimeout(async () => {
-        const created = getCurrentNarrativeSession();
-        if (created) {
+        try {
+          const created = getCurrentNarrativeSession();
+          if (!created) return;
+          // Fetch framework from n8n
+          const framework = await narrativeApi.getFramework({ seedText: initialMessage, mode: 'general' });
+          // Populate local session with editable framework
           updateNarrative(created.id, {
+            seedText: initialMessage,
             concept: {
-              title: initialMessage,
-              description: '',
+              title: framework.title,
+              description: framework.description,
               emotionalTone: 'neutral',
               genre: 'drama'
             },
-            externalIdPending: true
+            acts: framework.acts.map(a => ({ ...a, scenes: (a as any).scenes || [] })),
+            characters: []
           });
-          setNarrativeStep('concept');
-        }
-        try {
-          const summary = await narrativeApi.createNarrative({ seedText: initialMessage, mode: 'general' });
-          const current = getCurrentNarrativeSession();
-          if (current) {
-            renameNarrative(current.id, summary.title);
-            updateNarrative(current.id, { externalId: summary.id, externalMode: summary.mode });
-          }
+          renameNarrative(created.id, framework.title);
         } catch (e) {
-          console.warn('Failed to create narrative via n8n', e);
+          console.warn('Failed to get framework via n8n', e);
+          // Fall back to concept step for manual editing
+          const created = getCurrentNarrativeSession();
+          if (created) {
+            updateNarrative(created.id, {
+              concept: {
+                title: initialMessage,
+                description: '',
+                emotionalTone: 'neutral',
+                genre: 'drama'
+              }
+            });
+            setNarrativeStep('concept');
+          }
         } finally {
           setIsCreatingNarrative(false);
         }
@@ -714,42 +811,34 @@ const Index = () => {
               type="narrative"
               onSubmit={async (seed: string) => {
                 try {
+                  console.log('[Narrative] PreMusai submit received, seed length=', (seed || '').length);
                   setIsCreatingNarrative(true);
-                  // Create a local narrative session immediately so the editor opens
                   createNewNarrative();
-                  // Allow state to update, then seed the concept and open editor
-                  setTimeout(async () => {
-                    const created = getCurrentNarrativeSession();
-                    if (created) {
-                      updateNarrative(created.id, {
-                        concept: {
-                          title: seed,
-                          description: '',
-                          emotionalTone: 'neutral',
-                          genre: 'drama'
-                        },
-                        // Track that we're bootstrapping from n8n
-                        externalIdPending: true
-                      });
-                      setNarrativeStep('concept');
-                    }
-                    // Kick off n8n create call in background
-                    try {
-                      const summary = await narrativeApi.createNarrative({ seedText: seed, mode: 'general' });
-                      const current = getCurrentNarrativeSession();
-                      if (current) {
-                        // Update the local session with title and external id from n8n
-                        renameNarrative(current.id, summary.title);
-                        updateNarrative(current.id, { externalId: summary.id, externalMode: summary.mode });
-                      }
-                    } catch (e) {
-                      console.warn('Failed to create narrative via n8n', e);
-                    } finally {
-                      setIsCreatingNarrative(false);
-                    }
-                  }, 0);
+
+                  // Poll for newly created session (state updates are async)
+                  const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
+                  let created = getCurrentNarrativeSession();
+                  for (let attempt = 0; attempt < 15 && !created; attempt++) {
+                    await wait(50);
+                    created = getCurrentNarrativeSession();
+                  }
+
+                  if (!created) {
+                    console.warn('[Narrative] Failed to locate newly created session');
+                    setIsCreatingNarrative(false);
+                    return;
+                  }
+
+                  // Navigate to Concept immediately and store the seed
+                  const effectiveSeed = (seed || '').trim();
+                  setNarrativeStep('concept');
+                  updateNarrative(created.id, { seedText: effectiveSeed });
+                  setLastFrameworkSeed(effectiveSeed);
+
+                  await fetchFramework(effectiveSeed);
                 } catch (e) {
                   console.warn('Failed narrative bootstrap', e);
+                } finally {
                   setIsCreatingNarrative(false);
                 }
               }}
@@ -758,7 +847,26 @@ const Index = () => {
             {isCreatingNarrative && (
               <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20" aria-live="polite" aria-busy="true">
                 <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-muted-foreground">Creating tale via n8n…</span>
+                <span className="ml-3 text-sm text-muted-foreground">Musai is composing…</span>
+              </div>
+            )}
+            {frameworkError && (
+              <div className="absolute inset-x-0 bottom-6 z-20 flex items-center justify-center">
+                <div className="px-4 py-2 rounded-md border bg-card shadow-sm flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">{frameworkError}</span>
+                  <button
+                    className="px-3 py-1 rounded bg-primary text-primary-foreground text-xs"
+                    onClick={async () => {
+                      if (lastFrameworkSeed) {
+                        setIsCreatingNarrative(true);
+                        await fetchFramework(lastFrameworkSeed);
+                        setIsCreatingNarrative(false);
+                      }
+                    }}
+                  >
+                    Retry
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -772,7 +880,7 @@ const Index = () => {
           {isCreatingNarrative && (
             <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20" aria-live="polite" aria-busy="true">
               <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-              <span className="ml-3 text-sm text-muted-foreground">Creating tale via n8n…</span>
+              <span className="ml-3 text-sm text-muted-foreground">Musai is composing…</span>
             </div>
           )}
         </div>

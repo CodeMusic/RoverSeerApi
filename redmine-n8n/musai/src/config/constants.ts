@@ -132,6 +132,20 @@ export const APP_TERMS = {
   SUCCESS_UPDATED: "Updated successfully",
 } as const;
 
+// Canonical module identifiers for n8n payloads
+export const MUSAI_MODULES = {
+  CHAT: 'ChatMusai',
+  SEARCH: 'SearchMusai',
+  CODE: 'CodeMusai',
+  UNIVERSITY: 'UniversityMusai',
+  NARRATIVE: 'NarrativeMusai',
+  TASK: 'TaskMusai',
+  CAREER: 'CareerMusai',
+  THERAPY: 'TherapyMusai',
+  MEDICAL: 'MedicalMusai',
+  EYE: 'EyeOfMusai',
+} as const;
+
 // Canonical tool order (tab IDs and special pseudo-ids)
 // Keep Agile (Task) last. Include Studio and Curations before Agile.
 export const CANONICAL_TOOL_ORDER: string[] = [

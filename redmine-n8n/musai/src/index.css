@@ -98,6 +98,12 @@
   }
 }
 
+/* Ensure media doesn't overflow on small screens */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* Prevent unintended horizontal scrolling/zoom-out on iOS by ensuring the layout never exceeds the viewport width */
 html,
 body,

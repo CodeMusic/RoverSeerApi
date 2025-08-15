@@ -64,7 +64,7 @@ const EmergentNarrativeInfo: React.FC = () =>
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-[100dvh] overflow-y-auto bg-background">
       <AttentionalGatewayHeader defaultTabId={APP_TERMS.TAB_NARRATIVE} />
 
       {/* Hero */}

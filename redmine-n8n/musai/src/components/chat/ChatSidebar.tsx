@@ -152,7 +152,7 @@ export const ChatSidebar = ({
                   }
                 }}
                 className={cn(
-                  "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer chat-session-item",
+                  "w-full text-left pl-3 pr-12 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer chat-session-item",
                   "flex items-center gap-3 text-sm",
                   isActive 
                     ? "bg-sidebar-accent border border-border/50 shadow-sm" 
@@ -207,7 +207,7 @@ export const ChatSidebar = ({
 
                 {/* Action Buttons */}
                 {editingSessionId !== session.id && showActions && (
-                  <div className="flex gap-1 ml-2 flex-shrink-0 opacity-100 transition-all duration-200 transform translate-x-0 chat-actions-visible">
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 ml-2 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 chat-actions-visible">
                     <Button
                       variant="ghost"
                       size="icon"

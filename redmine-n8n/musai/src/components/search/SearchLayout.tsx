@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { computeAndStoreClientIpHash, getStoredClientIpHash } from "@/utils/ip";
 import { Menu, Search, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { APP_TERMS } from "@/config/constants";
+import { APP_TERMS, MUSAI_MODULES } from "@/config/constants";
 import { TIMEOUTS, createTimeoutController, formatTimeout } from "@/config/timeouts";
 import { getRandomWittyError } from "@/config/messages";
 import type { SearchMode, SearchSource, SearchSessionModel, SearchResult } from "@/types/search";
@@ -144,11 +144,15 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         headers,
         cache: 'no-store',
         body: JSON.stringify({
-          query: formattedQuery,
           sessionId: clientIpHash || provisionalSessionId,
-          timestamp: Date.now(),
-          mode,
-          sources: effectiveSources
+          query: formattedQuery,
+          params: {
+            module: MUSAI_MODULES.SEARCH,
+            debug: true,
+            timestamp: Date.now(),
+            mode,
+            sources: effectiveSources,
+          }
         }),
       }, TIMEOUTS.SEARCH_REQUEST);
       
@@ -276,12 +280,6 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       const { withN8nAuthHeaders: authHeaders2 } = await import('@/lib/n8nClient');
       const { queuedFetch: qf2 } = await import('@/lib/AttentionalRequestQueue');
       const url2 = `${ENDPOINTS2.BASE_URL}${ENDPOINTS2.SEARCH.ENHANCE_QUERY}`;
-      // Build a combined query that includes prior response context so the agent can reference it
-      const priorResultsText = (currentSession.results || [])
-        .map((r, i) => `Result ${i + 1}: ${r.title}\n${r.content}`)
-        .join('\n\n')
-        .slice(0, 6000); // keep payload reasonable
-
       // Keep follow-up format consistent with initial: plain query augmented with square-bracket tags
       const tags = [
         `mode: ${mode === 'research' ? 'research' : 'search'}`,
@@ -294,16 +292,17 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         method: 'POST',
         headers: authHeaders2({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          // Send a simple query string with same tagging format as initial
-          query: combinedQuery,
           sessionId: currentSessionId,
-          isFollowUp: true,
-          originalQuery: currentSession.query,
-          // Also pass structured context fields for backends that can use them
-          previousResults: (currentSession.results || []).map(r => ({ title: r.title, content: r.content, url: r.url })),
-          timestamp: Date.now(),
-          mode,
-          sources: effectiveSources
+          query: combinedQuery,
+          params: {
+            module: MUSAI_MODULES.SEARCH,
+            debug: true,
+            isFollowUp: true,
+            originalQuery: currentSession.query,
+            timestamp: Date.now(),
+            mode,
+            sources: effectiveSources,
+          }
         }),
       }, TIMEOUTS.SEARCH_FOLLOWUP);
       
@@ -362,6 +361,105 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       setIsLoading(false);
     }
   }, [currentSession, currentSessionId]);
+
+  // Retry the initial search in-place: clear previous error/results, show initial loader, and replace on success/fail
+  const handleRetryInitial = useCallback(async () => {
+    if (!currentSession) return;
+
+    // Clear previous results to trigger initial loading indicator placement
+    persistSessions(prev => prev.map(s => s.id === currentSession.id
+      ? { ...s, results: [], followUps: [] }
+      : s
+    ));
+
+    setIsLoading(true);
+
+    try {
+      const { controller, timeoutId, timeout, signal, cleanup } = createTimeoutController(TIMEOUTS.SEARCH_REQUEST);
+
+      const effectiveSources: SearchSource[] = (sources && sources.length > 0) ? sources : (['web'] as SearchSource[]);
+      const { N8N_ENDPOINTS } = await import('@/config/n8nEndpoints');
+      const { withN8nAuthHeaders } = await import('@/lib/n8nClient');
+      const { queuedFetch } = await import('@/lib/AttentionalRequestQueue');
+      const url = `${N8N_ENDPOINTS.BASE_URL}${N8N_ENDPOINTS.SEARCH.ENHANCE_QUERY}`;
+      const headers = withN8nAuthHeaders({ 'Content-Type': 'application/json' });
+
+      const tags = [
+        `mode: ${mode === 'research' ? 'research' : 'search'}`,
+        effectiveSources && effectiveSources.length > 0 ? `sources: ${effectiveSources.join(', ')}` : undefined,
+      ].filter(Boolean).map(t => `[${t}]`).join(' ');
+
+      const formattedQuery = [currentSession.query, tags].filter(Boolean).join(' ');
+
+      const response = await queuedFetch(url, {
+        method: 'POST',
+        headers,
+        cache: 'no-store',
+        body: JSON.stringify({
+          sessionId: currentSession.serverSessionId || currentSessionId,
+          query: formattedQuery,
+          params: {
+            module: MUSAI_MODULES.SEARCH,
+            debug: true,
+            timestamp: Date.now(),
+            mode,
+            sources: effectiveSources,
+          }
+        }),
+      }, TIMEOUTS.SEARCH_REQUEST);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      const results = Array.isArray(responseData) ? responseData : [responseData];
+      const intent = responseData.intent || responseData.category || 'llm';
+
+      persistSessions(prev => prev.map((s) => {
+        if (s.id !== currentSession.id) return s;
+        const mappedResults = results.map((result, index) => {
+          const content = result.text || result.content || result.response || result.answer || "No content available";
+          const mapped: SearchResult = {
+            title: result.title || `AI Response for: ${currentSession.query}`,
+            content,
+            url: result.url || result.source || "",
+            snippet: result.snippet || result.summary || "",
+            type: intent,
+            sourcesUsed: result.sourcesUsed || result.sources || effectiveSources,
+            bicameral: result.bicameral,
+            conflicts: result.conflicts,
+            personalization: result.personalization,
+            raw: result,
+          } as any;
+          return mapped;
+        });
+        return { ...s, intent, results: mappedResults, timestamp: Date.now() } as any;
+      }));
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Retry initial search failed:', error);
+      // Replace with a single error panel (do not stack)
+      persistSessions(prev => prev.map((s) => {
+        if (!currentSession || s.id !== currentSession.id) return s;
+        return {
+          ...s,
+          intent: 'search',
+          results: [{
+            title: 'Search Error',
+            content: getRandomWittyError(),
+            url: '',
+            snippet: 'Error occurred during search',
+            type: 'search'
+          } as any],
+          followUps: [],
+          timestamp: Date.now(),
+        } as any;
+      }));
+      setIsLoading(false);
+    }
+  }, [currentSession, currentSessionId, sources, mode]);
 
   const handleSessionSelect = useCallback((sessionId: string) => {
     setCurrentSessionId(sessionId);
@@ -501,7 +599,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    <div className="flex h-[100dvh] relative bg-background">
+    <div className="flex h-[100dvh] relative bg-background overflow-x-hidden">
       {/* Mobile menu button */}
       {isMobile && hasSearched && (
         <button
@@ -527,7 +625,11 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {hasSearched && !isSidebarCollapsed && (
         <div className={cn(
           "transition-all duration-300 h-[100dvh] min-h-0 overflow-hidden",
-          isMobile ? "ml-12" : "ml-0"
+          // On mobile, render as overlay so it doesn't push content width
+          // Use higher z-index than the backdrop overlay to keep it clickable
+          isMobile ? "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg" : "ml-0",
+          // Hide when mobile sidebar is not open
+          isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
         )}>
           <SearchSidebar
             sessions={searchSessions}
@@ -558,7 +660,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         />
         {/* Search controls: show after first search so PreMusai sits higher initially */}
         {hasSearched && (
-          <div className="sticky top-0 z-30 px-6 pt-2 pb-1 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="sticky top-0 z-30 px-6 pt-2 pb-1 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
                 <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
@@ -607,6 +709,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
               onExport={handleExportSession}
               isLoading={isLoading}
               onClose={onClose}
+              onRetryInitial={handleRetryInitial}
             />
           </div>
         ) : (
