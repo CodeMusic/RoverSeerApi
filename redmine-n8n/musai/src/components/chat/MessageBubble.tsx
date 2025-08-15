@@ -2,6 +2,7 @@ import React from 'react';
 import { Message } from '@/types/chat';
 import { User, Bot, Clock, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 
 interface MessageBubbleProps {
   message: Message;
@@ -183,7 +184,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           isTyping && "animate-pulse"
         )}>
           <div className={cn(
-            "whitespace-pre-wrap",
             isUser ? styling.userText : styling.assistantText
           )}>
             {isTyping ? (
@@ -193,7 +193,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             ) : (
-              message.content
+              <div className="prose prose-slate dark:prose-invert max-w-none break-words">
+                <MarkdownRenderer content={message.content} />
+              </div>
             )}
           </div>
 
