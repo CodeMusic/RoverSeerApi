@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
-import { MysticalTypingIndicator } from './MysticalTypingIndicator';
 import { ChatContextMenu } from './ChatContextMenu';
 import { Message } from '@/types/chat';
 import { useEmotionEffects } from '@/hooks/useEmotionEffects';
@@ -147,23 +146,26 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     <div className={`chat-pane h-full flex flex-col min-h-0 ${theme.container} ${className}`}>
       {/* Messages Area */}
       <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-20 md:pb-24">
-        {messageList.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            roleConfig={roleConfig}
-            module={module}
-            onContextMenu={(event) => handleMessageContext(message.id, event)}
-            theme={theme}
-          />
-        ))}
-        
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex justify-start mb-5 md:mb-6">
-            <MysticalTypingIndicator isDarkMode={false} />
-          </div>
-        )}
+        {messageList.map((message, index) => {
+          const isLast = index === messageList.length - 1;
+          const showTypingInThisBubble = Boolean(
+            isTyping &&
+            isLast &&
+            message.role === 'assistant' &&
+            (!message.content || message.content.trim().length === 0)
+          );
+          return (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              roleConfig={roleConfig}
+              module={module}
+              onContextMenu={(event) => handleMessageContext(message.id, event)}
+              theme={theme}
+              isTyping={showTypingInThisBubble}
+            />
+          );
+        })}
         {/* Scroll Sentinel */}
         <div ref={endOfMessagesRef} />
       </div>

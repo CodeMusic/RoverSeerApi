@@ -6,6 +6,7 @@ import { MUSAI_MODULES } from '@/config/constants';
 import { queuedFetch } from '@/lib/AttentionalRequestQueue';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
 import { extractResponseContent, extractResponseThoughts, extractResponsePov } from '@/utils/responseHandler';
+import { shouldTreatAsStream, readNdjsonOrSse } from '@/utils/streaming';
 import { QueryClient } from '@tanstack/react-query';
 import { handleApiResponse, handleApiError } from '@/utils/apiResponseHandler';
 import { prepareFileData } from '@/utils/fileOperations';
@@ -141,11 +142,137 @@ export const useMessageSender = (
         clearTimeout(longRequestWarning);
         clearTimeout(veryLongRequestWarning);
 
-        const responseData = await handleApiResponse(response);
-
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        let didStream = false;
+        let assistantMessageId: string | null = null;
+        let workingMessages = [...newMessages];
+
+        const ensureAssistantPlaceholder = (): void => {
+          if (assistantMessageId) return;
+          const placeholderId = uuidv4();
+          const placeholder: Message = {
+            id: placeholderId,
+            content: '',
+            role: 'assistant',
+            timestamp: Date.now()
+          };
+          assistantMessageId = placeholderId;
+          workingMessages = [...workingMessages, placeholder];
+          updateSession(sessionId, workingMessages);
+          queryClient.setQueryData(['chatSessions', sessionId], workingMessages);
+        };
+
+        const updateAssistantMessage = (partial: Partial<Message>): void => {
+          if (!assistantMessageId) return;
+          workingMessages = workingMessages.map(m => m.id === assistantMessageId ? { ...m, ...partial } : m);
+          updateSession(sessionId, workingMessages);
+          queryClient.setQueryData(['chatSessions', sessionId], workingMessages);
+        };
+
+        const tryParseFinalRaw = (raw: string): void => {
+          try {
+            const data = JSON.parse(raw);
+            const responseContent = extractResponseContent(data);
+            const responseThoughts = extractResponseThoughts(data);
+            const responsePov = extractResponsePov(data);
+
+            let logicalThought: string | undefined;
+            let creativeThought: string | undefined;
+            if (Array.isArray(responsePov)) {
+              for (const pov of responsePov) {
+                if (!pov || typeof pov.thought !== 'string') continue;
+                const type = String(pov.type || '').toLowerCase();
+                if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
+                if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
+              }
+            }
+
+            updateAssistantMessage({
+              ...(responseContent ? { content: workingMessages.find(m => m.id === assistantMessageId)?.content || responseContent } : {}),
+              ...(responseThoughts ? { thoughts: responseThoughts } : {}),
+              ...(responsePov ? { pov: responsePov } : {}),
+              ...(logicalThought ? { logicalThought } : {}),
+              ...(creativeThought ? { creativeThought } : {})
+            });
+          } catch {
+            // ignore
+          }
+        };
+
+        // Always attempt streaming when body exists; fallback below if no tokens seen
+        if (response.body) {
+          didStream = true;
+          ensureAssistantPlaceholder();
+          const { sawStreamToken, raw } = await readNdjsonOrSse(response, {
+            onFirstToken: () => setIsTyping(false),
+            onToken: (chunk) => {
+              const current = workingMessages.find(m => m.id === assistantMessageId)?.content || '';
+              updateAssistantMessage({ content: current + chunk });
+            },
+            onFinalJson: (obj) => {
+              try {
+                const responseContent = extractResponseContent(obj);
+                const responseThoughts = extractResponseThoughts(obj);
+                const responsePov = extractResponsePov(obj);
+                let logicalThought: string | undefined;
+                let creativeThought: string | undefined;
+                if (Array.isArray(responsePov)) {
+                  for (const pov of responsePov) {
+                    if (!pov || typeof pov.thought !== 'string') continue;
+                    const type = String(pov.type || '').toLowerCase();
+                    if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
+                    if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
+                  }
+                }
+                updateAssistantMessage({
+                  ...(responseThoughts ? { thoughts: responseThoughts } : {}),
+                  ...(responsePov ? { pov: responsePov } : {}),
+                  ...(logicalThought ? { logicalThought } : {}),
+                  ...(creativeThought ? { creativeThought } : {}),
+                  // keep streamed content; don't overwrite
+                  ...(responseContent && !(workingMessages.find(m => m.id === assistantMessageId)?.content)?.trim() ? { content: responseContent } : {})
+                });
+              } catch {}
+            }
+          });
+          if (!sawStreamToken) {
+            // Fallback: parse the accumulated raw response (non-streamy servers)
+            try {
+              const data = JSON.parse(raw);
+              const responseContent = extractResponseContent(data);
+              const responseThoughts = extractResponseThoughts(data);
+              const responsePov = extractResponsePov(data);
+              let logicalThought: string | undefined;
+              let creativeThought: string | undefined;
+              if (Array.isArray(responsePov)) {
+                for (const pov of responsePov) {
+                  if (!pov || typeof pov.thought !== 'string') continue;
+                  const type = String(pov.type || '').toLowerCase();
+                  if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
+                  if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
+                }
+              }
+              updateAssistantMessage({
+                content: responseContent,
+                ...(responseThoughts ? { thoughts: responseThoughts } : {}),
+                ...(responsePov ? { pov: responsePov } : {}),
+                ...(logicalThought ? { logicalThought } : {}),
+                ...(creativeThought ? { creativeThought } : {})
+              });
+            } catch {
+              // Raw text fallback
+              const current = workingMessages.find(m => m.id === assistantMessageId)?.content || '';
+              updateAssistantMessage({ content: current + raw });
+            }
+            setIsTyping(false);
+          }
+          return true;
+        }
+
+        const responseData = await handleApiResponse(response);
 
         if (!responseData) {
           throw new Error('Empty response from server');
@@ -155,7 +282,6 @@ export const useMessageSender = (
         const responseThoughts = extractResponseThoughts(responseData);
         const responsePov = extractResponsePov(responseData);
 
-        // Derive logical/creative thoughts when available
         let logicalThought: string | undefined;
         let creativeThought: string | undefined;
         if (Array.isArray(responsePov)) {

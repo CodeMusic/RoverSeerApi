@@ -3,6 +3,8 @@ import { Message } from '@/types/chat';
 import { User, Bot, Clock, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
+import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface MessageBubbleProps {
   message: Message;
@@ -30,6 +32,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 }) => {
   const isUser = message.role === 'user';
   const displayName = isUser ? roleConfig.user : roleConfig.assistant;
+  const { isDark } = useTheme();
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString('en-US', {
@@ -85,44 +88,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
     const creative = (message as any).creativeThought as string | undefined
       || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('creativ'))?.thought : undefined);
-    const hasAnyPov = Boolean(logical || creative);
     const [active, setActive] = React.useState<'logical' | 'creative' | null>(null);
-
-    if (!hasAnyPov) return null;
+    const hasLogical = Boolean(logical);
+    const hasCreative = Boolean(creative);
     return (
       <div className="w-full mb-2">
         <div className="flex items-center gap-2 mb-2">
-          {logical && (
-            <button
-              type="button"
-              onClick={() => setActive(prev => prev === 'logical' ? null : 'logical')}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-colors",
-                active === 'logical' ? "bg-sky-100 dark:bg-sky-900/40 border-sky-300 dark:border-sky-700 text-sky-900 dark:text-sky-200" : "bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300"
-              )}
-              aria-pressed={active === 'logical'}
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span>Logical</span>
-            </button>
-          )}
-          {creative && (
-            <button
-              type="button"
-              onClick={() => setActive(prev => prev === 'creative' ? null : 'creative')}
-              className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-colors",
-                active === 'creative' ? "bg-rose-100 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700 text-rose-900 dark:text-rose-200" : "bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-              )}
-              aria-pressed={active === 'creative'}
-            >
-              <Brain className="w-3.5 h-3.5" />
-              <span>Creative</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => hasLogical && setActive(prev => prev === 'logical' ? null : 'logical')}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-colors",
+              hasLogical ? (active === 'logical' ? "bg-red-100 dark:bg-red-900/40 border-red-300 dark:border-red-700 text-red-900 dark:text-red-200" : "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300") : "opacity-50 cursor-not-allowed bg-red-50 dark:bg-red-950/20 border-red-200/50 dark:border-red-800/40 text-red-800/50 dark:text-red-300/50"
+            )}
+            aria-pressed={active === 'logical'}
+            aria-disabled={!hasLogical}
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>Logical</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => hasCreative && setActive(prev => prev === 'creative' ? null : 'creative')}
+            className={cn(
+              "flex items-center gap-1 px-2 py-1 rounded-full text-xs border transition-colors",
+              hasCreative ? (active === 'creative' ? "bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200" : "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300") : "opacity-50 cursor-not-allowed bg-blue-50 dark:bg-blue-950/20 border-blue-200/50 dark:border-blue-800/40 text-blue-800/50 dark:text-blue-300/50"
+            )}
+            aria-pressed={active === 'creative'}
+            aria-disabled={!hasCreative}
+          >
+            <Brain className="w-3.5 h-3.5" />
+            <span>Creative</span>
+          </button>
         </div>
         {active === 'logical' && logical && (
-          <div className="rounded-md border p-3 text-sm bg-sky-50 dark:bg-sky-950/40 border-sky-200 dark:border-sky-800 text-sky-900 dark:text-sky-200 pov-panel pov-shimmer-blue">
+          <div className="rounded-md border p-3 text-sm bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-900 dark:text-red-200 pov-panel pov-electric-red">
             <div className="flex items-center gap-2 mb-1">
               <Brain className="w-3.5 h-3.5" />
               <span className="font-medium">Logical</span>
@@ -131,7 +131,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
         {active === 'creative' && creative && (
-          <div className="rounded-md border p-3 text-sm bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 pov-panel pov-electric-red">
+          <div className="rounded-md border p-3 text-sm bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 pov-panel pov-shimmer-blue">
             <div className="flex items-center gap-2 mb-1">
               <Brain className="w-3.5 h-3.5" />
               <span className="font-medium">Creative</span>
@@ -186,11 +186,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <div className={cn(
             isUser ? styling.userText : styling.assistantText
           )}>
-            {isTyping ? (
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            {isTyping && !isUser ? (
+              <div className="flex items-center gap-2" aria-label="Musai is thinking">
+                <MysticalTypingIndicator isDarkMode={isDark} />
               </div>
             ) : (
               <div className="prose prose-slate dark:prose-invert max-w-none break-words">
