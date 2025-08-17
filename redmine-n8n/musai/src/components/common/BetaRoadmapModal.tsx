@@ -17,7 +17,7 @@ type BetaRoadmapModalProps =
 export function BetaRoadmapModal(props: BetaRoadmapModalProps)
 {
   const { isOpen, onOpenChange } = props;
-  const [items, setItems] = useState<Array<{ title: string; note?: string }>>([]);
+  const [items, setItems] = useState<Array<{ title: string; note?: string; date?: string }>>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() =>
@@ -62,7 +62,7 @@ export function BetaRoadmapModal(props: BetaRoadmapModalProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl overflow-hidden">
+      <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-hidden">
         <div className="pointer-events-none absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-fuchsia-500/20 via-purple-500/20 to-cyan-500/20 blur" />
         <div className="relative">
           <DialogHeader>
@@ -73,14 +73,19 @@ export function BetaRoadmapModal(props: BetaRoadmapModalProps)
               What testers can expect as the private beta evolves.
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
             {error && (
               <div className="text-xs text-muted-foreground">{error}</div>
             )}
             <ul className="space-y-2">
               {items.map((it, idx) => (
                 <li key={idx} className="rounded-md border p-3 bg-background/70">
-                  <div className="text-sm font-medium">{it.title}</div>
+                  <div className="text-sm font-medium flex items-center justify-between gap-2">
+                    <span>{it.title}</span>
+                    {it.date && (
+                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">{it.date}</span>
+                    )}
+                  </div>
                   {it.note && (
                     <div className="text-xs text-muted-foreground mt-1">{it.note}</div>
                   )}

@@ -27,7 +27,7 @@ class MedicalApiService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // No explicit thread id; wrapper will inject base session id
         query: payload.concern,
         params: {
           module: MUSAI_MODULES.MEDICAL,
@@ -45,7 +45,7 @@ class MedicalApiService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // No explicit thread id
         query: 'Ingest medical documents',
         params: {
           module: MUSAI_MODULES.MEDICAL,

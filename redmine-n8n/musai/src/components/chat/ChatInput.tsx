@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Paperclip, Smile, Heart, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -8,6 +9,10 @@ interface ChatInputProps {
   module: string;
   onMessageSend: (text: string, file?: File) => Promise<void>;
   isLoading?: boolean;
+  streamEnabled?: boolean;
+  onToggleStream?: (enabled: boolean) => void;
+  effectsEnabled?: boolean;
+  onToggleEffects?: (enabled: boolean) => void;
   placeholder?: string;
   theme: {
     container: string;
@@ -20,6 +25,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   module,
   onMessageSend,
   isLoading = false,
+  streamEnabled = true,
+  onToggleStream,
+  effectsEnabled = true,
+  onToggleEffects,
   placeholder,
   theme
 }) => {
@@ -107,6 +116,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           ))}
         </div>
       )}
+
+      {/* Controls Row */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
+        <div className="hidden sm:block" />
+        <div className="inline-flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-end">
+          <label className="inline-flex items-center gap-2 whitespace-nowrap">
+            <span>Stream responses</span>
+            <Switch
+              checked={streamEnabled}
+              onCheckedChange={(v) => onToggleStream && onToggleStream(Boolean(v))}
+              aria-label="Toggle streaming responses"
+            />
+          </label>
+          <label className="inline-flex items-center gap-2 whitespace-nowrap">
+            <span>Visual effects</span>
+            <Switch
+              checked={effectsEnabled}
+              onCheckedChange={(v) => onToggleEffects && onToggleEffects(Boolean(v))}
+              aria-label="Toggle visual effects"
+            />
+          </label>
+        </div>
+      </div>
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="flex gap-2">

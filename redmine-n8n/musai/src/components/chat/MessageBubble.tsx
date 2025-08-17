@@ -4,7 +4,10 @@ import { User, Bot, Clock, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
+import { StreamingText } from '@/components/chat/StreamingText';
 import { useTheme } from '@/contexts/ThemeContext';
+import { APP_TERMS, MUSAI_COLORS } from '@/config/constants';
+import { hexToRgba } from '@/utils/chroma';
 
 interface MessageBubbleProps {
   message: Message;
@@ -34,61 +37,95 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const displayName = isUser ? roleConfig.user : roleConfig.assistant;
   const { isDark } = useTheme();
 
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatNaturalTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+
+    const sameDay = (
+      date.getFullYear() === now.getFullYear() &&
+      date.getMonth() === now.getMonth() &&
+      date.getDate() === now.getDate()
+    );
+
+    const yesterdayRef = new Date(now);
+    yesterdayRef.setDate(now.getDate() - 1);
+    const yesterday = (
+      date.getFullYear() === yesterdayRef.getFullYear() &&
+      date.getMonth() === yesterdayRef.getMonth() &&
+      date.getDate() === yesterdayRef.getDate()
+    );
+
+    const to12Hour = (d: Date): string => {
+      let h = d.getHours();
+      const m = d.getMinutes().toString().padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${h}:${m} ${ampm}`;
+    };
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = date.getDate();
+    const ordinal = (n: number) => {
+      const s = ['th', 'st', 'nd', 'rd'];
+      const v = n % 100;
+      return s[(v - 20) % 10] || s[v] || s[0];
+    };
+
+    const time = to12Hour(date);
+    if (sameDay) return `Today at ${time}`;
+    if (yesterday) return `Yesterday at ${time}`;
+    return `${monthNames[date.getMonth()]} ${day}${ordinal(day)}, ${date.getFullYear()} at ${time}`;
   };
 
   const getModuleSpecificStyling = () => {
     switch (module) {
       case 'therapy':
         return {
-          userBubble: 'bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-700',
-          assistantBubble: 'bg-pink-50 dark:bg-pink-950/50 border-pink-100 dark:border-pink-800',
+          userBubble: 'bg-pink-100 dark:bg-pink-900/35 border-pink-200 dark:border-pink-500',
+          assistantBubble: 'bg-neutral-100 dark:bg-neutral-800/90 border-neutral-200 dark:border-neutral-500',
           userText: 'text-pink-900 dark:text-pink-100',
-          assistantText: 'text-pink-800 dark:text-pink-200'
+          assistantText: 'text-neutral-800 dark:text-neutral-100'
         };
       case 'code':
         return {
-          userBubble: 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700',
-          assistantBubble: 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800',
-          userText: 'text-slate-900 dark:text-slate-100',
-          assistantText: 'text-green-600 dark:text-green-400'
+          userBubble: 'bg-slate-100 dark:bg-slate-800/90 border-slate-200 dark:border-slate-500',
+          assistantBubble: 'bg-neutral-100 dark:bg-neutral-800/90 border-neutral-200 dark:border-neutral-500',
+          userText: 'text-slate-900 dark:text-slate-50',
+          assistantText: 'text-neutral-800 dark:text-neutral-100'
         };
       case 'career':
         return {
-          userBubble: 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700',
-          assistantBubble: 'bg-indigo-50 dark:bg-indigo-950/50 border-indigo-100 dark:border-indigo-800',
+          userBubble: 'bg-indigo-100 dark:bg-indigo-900/35 border-indigo-200 dark:border-indigo-500',
+          assistantBubble: 'bg-neutral-100 dark:bg-neutral-800/90 border-neutral-200 dark:border-neutral-500',
           userText: 'text-indigo-900 dark:text-indigo-100',
-          assistantText: 'text-indigo-800 dark:text-indigo-200'
+          assistantText: 'text-neutral-800 dark:text-neutral-100'
         };
       case 'narrative':
         return {
-          userBubble: 'bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700',
-          assistantBubble: 'bg-blue-50 dark:bg-blue-950/50 border-blue-100 dark:border-blue-800',
+          userBubble: 'bg-blue-100 dark:bg-blue-900/35 border-blue-200 dark:border-blue-500',
+          assistantBubble: 'bg-neutral-100 dark:bg-neutral-800/90 border-neutral-200 dark:border-neutral-500',
           userText: 'text-blue-900 dark:text-blue-100',
-          assistantText: 'text-blue-800 dark:text-blue-200'
+          assistantText: 'text-neutral-800 dark:text-neutral-100'
         };
       default:
         return {
-          userBubble: 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
-          assistantBubble: 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800',
+          userBubble: 'bg-gray-100 dark:bg-gray-800/90 border-gray-200 dark:border-gray-500',
+          assistantBubble: 'bg-neutral-100 dark:bg-neutral-800/90 border-neutral-200 dark:border-neutral-500',
           userText: 'text-gray-900 dark:text-gray-100',
-          assistantText: 'text-gray-800 dark:text-gray-200'
+          assistantText: 'text-neutral-800 dark:text-neutral-100'
         };
     }
   };
 
   const styling = getModuleSpecificStyling();
+  const [activePov, setActivePov] = React.useState<'logical' | 'creative' | null>(null);
 
-  const PovPanels: React.FC<{ message: Message }> = ({ message }) => {
+  const PovPanels: React.FC<{ message: Message; active: 'logical' | 'creative' | null; setActive: React.Dispatch<React.SetStateAction<'logical' | 'creative' | null>> }> = ({ message, active, setActive }) => {
     const logical = (message as any).logicalThought as string | undefined
       || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
     const creative = (message as any).creativeThought as string | undefined
       || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('creativ'))?.thought : undefined);
-    const [active, setActive] = React.useState<'logical' | 'creative' | null>(null);
     const hasLogical = Boolean(logical);
     const hasCreative = Boolean(creative);
     return (
@@ -143,6 +180,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   };
 
+  // Map current module to tab key → chroma color
+  const moduleToTab: Record<string, string> = {
+    therapy: APP_TERMS.TAB_THERAPY,
+    chat: APP_TERMS.TAB_CHAT,
+    code: APP_TERMS.TAB_CODE,
+    university: APP_TERMS.TAB_UNIVERSITY,
+    career: APP_TERMS.TAB_CAREER,
+    narrative: APP_TERMS.TAB_NARRATIVE,
+    task: APP_TERMS.TAB_TASK,
+    eye: APP_TERMS.TAB_EYE,
+  };
+  const userBubbleStyle: React.CSSProperties | undefined = (() => {
+    const tab = moduleToTab[module];
+    const hex = tab ? MUSAI_COLORS[tab] : undefined;
+    if (!hex) return undefined;
+    return {
+      backgroundColor: hexToRgba(hex, 0.06),
+      borderColor: hexToRgba(hex, 0.32),
+    };
+  })();
+
+  const isLikelyMarkdown = (text: string): boolean => {
+    if (!text) return false;
+    return (
+      /(^|\n)```/.test(text) || // code block
+      /`[^`]+`/.test(text) || // inline code
+      /\[[^\]]+\]\([^\)]+\)/.test(text) || // links
+      /(^|\n)#{1,6}\s+/.test(text) || // headings
+      /(^|\n)(-|\*|\+)\s+/.test(text) || // bullet lists
+      /(^|\n)\d+\.\s+/.test(text) || // numbered lists
+      /!\[[^\]]*\]\([^\)]+\)/.test(text) || // images
+      /\|[^\n]*\|/.test(text) // tables
+    );
+  };
+
   return (
     <div 
       className={cn(
@@ -171,28 +243,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <div className="flex items-center gap-2 mb-1 text-xs text-muted-foreground">
           <span>{displayName}</span>
           <Clock className="w-3 h-3" />
-          <span>{formatTime(message.timestamp)}</span>
+          <span>{formatNaturalTimestamp(message.timestamp)}</span>
         </div>
 
-        {/* Assistant POV toggles and panels (logical/creative) */}
-        {!isUser && <PovPanels message={message} />}
+        {/* Assistant POV toggles and panels (logical/creative). Controlled state to prevent auto-close. */}
+        {!isUser && <PovPanels message={message} active={activePov} setActive={setActivePov} />}
 
         {/* Message Bubble */}
         <div className={cn(
-          "rounded-lg px-4 py-2 border",
-          isUser ? styling.userBubble : styling.assistantBubble,
-          isTyping && "animate-pulse"
-        )}>
+          "rounded-lg px-4 py-2 border-2 imsg-bubble",
+          isUser ? cn(styling.userBubble, "imsg-user") : cn(styling.assistantBubble, "imsg-ai"),
+          isTyping && "animate-pulse",
+          isTyping && !isUser && "flex items-center justify-center"
+        )} style={isUser ? userBubbleStyle : undefined}>
           <div className={cn(
-            isUser ? styling.userText : styling.assistantText
+            isUser 
+              ? cn(styling.userText, "text-[1.2rem] md:text-[1.28rem] leading-8 font-user-sans") 
+              : cn(styling.assistantText, "text-[1rem] md:text-[1.06rem] leading-7 font-ai-mono")
           )}>
             {isTyping && !isUser ? (
-              <div className="flex items-center gap-2" aria-label="Musai is thinking">
-                <MysticalTypingIndicator isDarkMode={isDark} />
+              <div className="w-full flex items-center justify-center py-1" aria-label="Musai is thinking">
+                <MysticalTypingIndicator isDarkMode={isDark} align="center" />
               </div>
             ) : (
               <div className="prose prose-slate dark:prose-invert max-w-none break-words">
-                <MarkdownRenderer content={message.content} />
+                {isLikelyMarkdown(message.content)
+                  ? <MarkdownRenderer content={message.content} />
+                  : <StreamingText content={message.content} />}
               </div>
             )}
           </div>

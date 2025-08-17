@@ -144,7 +144,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           {/* Left Sidebar */}
           {!isSidebarCollapsed && (
             <div className={cn(
-              "w-80 border-r border-border bg-background",
+              "w-96 border-r border-border bg-background",
               "transition-all duration-300 ease-in-out",
               // On mobile, render as overlay to avoid affecting layout width
               isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg" : undefined,

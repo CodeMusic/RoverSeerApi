@@ -30,6 +30,7 @@ export const N8N_ENDPOINTS = {
     GET_TEMPLATES: '/chat/templates',
     // Generic chat message endpoint (dev-friendly fallback)
     SEND_MESSAGE: '/chat/message',
+    SEND_MESSAGE_STREAM: '/chat/message/stream',
     SUBMIT_CONVERSATION_FEEDBACK: '/chat/feedback',
     
     // Context and personalization

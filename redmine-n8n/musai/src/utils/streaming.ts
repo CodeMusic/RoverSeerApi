@@ -3,6 +3,7 @@ export interface StreamingHandlers
   onToken: (textChunk: string) => void;
   onFinalJson?: (obj: any, raw: string) => void;
   onFirstToken?: () => void;
+  onError?: (message?: string, payload?: any) => void;
 }
 
 export interface StreamingResult
@@ -20,7 +21,7 @@ export const shouldTreatAsStream = (contentTypeHeader: string | null): boolean =
 };
 
 // Parse either NDJSON lines or SSE `data: {...}` lines
-function extractEvent(line: string): { type: string; content?: string } | null
+function extractEvent(line: string): { type: string; content?: string; obj?: any } | null
 {
   let payload = line.trim();
   if (!payload) return null;
@@ -37,7 +38,7 @@ function extractEvent(line: string): { type: string; content?: string } | null
       (typeof (obj as any).delta === 'string' && (obj as any).delta) ||
       (typeof (obj as any).text === 'string' && (obj as any).text) ||
       '';
-    return { type, content };
+    return { type, content, obj };
   }
   catch
   {
@@ -123,27 +124,31 @@ export async function readNdjsonOrSse(
     rawAccumulator += tailFlush;
   }
   const tailEvt = extractEvent(buffer.trim());
-  if (tailEvt && tailEvt.type === 'item' && tailEvt.content)
+  if (tailEvt)
   {
-    if (/^\s*\{/.test(tailEvt.content))
-    {
-      try
+    if (tailEvt.type === 'error') {
+      handlers.onError?.(typeof tailEvt.obj?.message === 'string' ? tailEvt.obj.message : undefined, tailEvt.obj);
+    } else if (tailEvt.type === 'item' && tailEvt.content) {
+      if (/^\s*\{/.test(tailEvt.content))
       {
-        const obj = JSON.parse(tailEvt.content);
-        handlers.onFinalJson?.(obj, tailEvt.content);
+        try
+        {
+          const obj = JSON.parse(tailEvt.content);
+          handlers.onFinalJson?.(obj, tailEvt.content);
+        }
+        catch {}
       }
-      catch {}
-    }
-    else
-    {
-      sawStreamToken = true;
-      if (!firstTokenEmitted)
+      else
       {
-        firstTokenEmitted = true;
-        handlers.onFirstToken?.();
+        sawStreamToken = true;
+        if (!firstTokenEmitted)
+        {
+          firstTokenEmitted = true;
+          handlers.onFirstToken?.();
+        }
+        finalText += tailEvt.content;
+        handlers.onToken(tailEvt.content);
       }
-      finalText += tailEvt.content;
-      handlers.onToken(tailEvt.content);
     }
   }
 

@@ -13,6 +13,7 @@ import { prepareFileData } from '@/utils/fileOperations';
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
 import { getRandomWittyError } from '@/config/messages';
+import { buildThreadSessionId } from '@/lib/n8nClient';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 2000; // 2 seconds
@@ -70,9 +71,12 @@ export const useMessageSender = (
       if (effectiveWebhookUrl) {
         const trimmed = String(effectiveWebhookUrl).replace(/\/$/, '');
         if (/\/chat\//.test(trimmed)) return trimmed; // already full endpoint
-        return `${trimmed}${N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
+        // Default to stream endpoint; allow query param to force non-stream
+        const wantStream = (window as any).__musai_stream_enabled !== false;
+        return `${trimmed}${wantStream ? N8N_ENDPOINTS.CHAT.SEND_MESSAGE_STREAM : N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
       }
-      return `${N8N_ENDPOINTS.BASE_URL}${N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
+      const wantStream = (window as any).__musai_stream_enabled !== false;
+      return `${N8N_ENDPOINTS.BASE_URL}${wantStream ? N8N_ENDPOINTS.CHAT.SEND_MESSAGE_STREAM : N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
     })();
 
     let retryCount = 0;
@@ -121,7 +125,8 @@ export const useMessageSender = (
             method: "POST",
             headers,
             body: JSON.stringify({
-              sessionId,
+              // Compose sessionId as {threadId_systemId}
+              sessionId: buildThreadSessionId(sessionId),
               query: input,
               params: {
                 module: MUSAI_MODULES.CHAT,
@@ -207,7 +212,9 @@ export const useMessageSender = (
           didStream = true;
           ensureAssistantPlaceholder();
           const { sawStreamToken, raw } = await readNdjsonOrSse(response, {
-            onFirstToken: () => setIsTyping(false),
+            onFirstToken: () => {
+              // Keep typing true during streaming; we'll turn it off when the stream completes
+            },
             onToken: (chunk) => {
               const current = workingMessages.find(m => m.id === assistantMessageId)?.content || '';
               updateAssistantMessage({ content: current + chunk });
@@ -236,6 +243,10 @@ export const useMessageSender = (
                   ...(responseContent && !(workingMessages.find(m => m.id === assistantMessageId)?.content)?.trim() ? { content: responseContent } : {})
                 });
               } catch {}
+            },
+            onError: (msg, payload) => {
+              console.warn('[Stream Error]', msg || 'Unknown streaming error', payload);
+              toast.error(msg || 'We hit a hiccup while streaming the reply. Musai will try to summarize the response.');
             }
           });
           if (!sawStreamToken) {
@@ -267,6 +278,10 @@ export const useMessageSender = (
               const current = workingMessages.find(m => m.id === assistantMessageId)?.content || '';
               updateAssistantMessage({ content: current + raw });
             }
+            setIsTyping(false);
+          }
+          else {
+            // Stream ended successfully; turn off typing now
             setIsTyping(false);
           }
           return true;

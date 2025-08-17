@@ -6,6 +6,10 @@ export function useEmotionEffects() {
   const { toggleMatrix, toggleRainbow, toggleParty, setMood } = useMusaiMood();
 
   const processAIResponse = useCallback((response: string) => {
+    // Respect global effects toggle
+    if ((window as any).__musai_effects_enabled === false) {
+      return { triggered: false, emotion: null, effects: null } as const;
+    }
     const { emotion, shouldTrigger } = analyzeAIResponse(response);
     
     if (emotion && shouldTrigger) {

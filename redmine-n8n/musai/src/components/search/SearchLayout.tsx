@@ -10,6 +10,7 @@ import { computeAndStoreClientIpHash, getStoredClientIpHash } from "@/utils/ip";
 import { Menu, Search, Plus, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_TERMS, MUSAI_MODULES } from "@/config/constants";
+import { buildThreadSessionId } from "@/lib/n8nClient";
 import { TIMEOUTS, createTimeoutController, formatTimeout } from "@/config/timeouts";
 import { getRandomWittyError } from "@/config/messages";
 import type { SearchMode, SearchSource, SearchSessionModel, SearchResult } from "@/types/search";
@@ -144,7 +145,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         headers,
         cache: 'no-store',
         body: JSON.stringify({
-          sessionId: clientIpHash || provisionalSessionId,
+          sessionId: buildThreadSessionId(provisionalSessionId),
           query: formattedQuery,
           params: {
             module: MUSAI_MODULES.SEARCH,
@@ -164,6 +165,15 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
       console.log(`Starting to parse response JSON...`);
       const responseData = await response.json();
+      // Normalize any session id echo returned by backend
+      try {
+        const { normalizeServerSessionId } = await import('@/lib/n8nClient');
+        const echoed = (responseData && (responseData.sessionId || responseData.serverSessionId)) as string | undefined;
+        if (echoed) {
+          const { base } = normalizeServerSessionId(echoed);
+          persistSessions(prev => prev.map(s => s.id === provisionalSessionId ? { ...s, serverSessionId: base } : s));
+        }
+      } catch {}
       console.log(`JSON parsing completed`);
       
       cleanup(); // Clear timeout after response is fully processed
@@ -292,7 +302,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         method: 'POST',
         headers: authHeaders2({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          sessionId: currentSessionId,
+          sessionId: buildThreadSessionId(String(currentSessionId || '')),
           query: combinedQuery,
           params: {
             module: MUSAI_MODULES.SEARCH,
@@ -313,6 +323,14 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       }
 
       const responseData = await response.json();
+      try {
+        const { normalizeServerSessionId } = await import('@/lib/n8nClient');
+        const echoed = (responseData && (responseData.sessionId || responseData.serverSessionId)) as string | undefined;
+        if (echoed) {
+          const { base } = normalizeServerSessionId(echoed);
+          persistSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, serverSessionId: base } : s));
+        }
+      } catch {}
       
       // Handle the same response format for follow-ups
       const results = Array.isArray(responseData) ? responseData : [responseData];
@@ -396,7 +414,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         headers,
         cache: 'no-store',
         body: JSON.stringify({
-          sessionId: currentSession.serverSessionId || currentSessionId,
+          sessionId: buildThreadSessionId(String(currentSessionId || '')),
           query: formattedQuery,
           params: {
             module: MUSAI_MODULES.SEARCH,
@@ -413,6 +431,14 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       }
 
       const responseData = await response.json();
+      try {
+        const { normalizeServerSessionId } = await import('@/lib/n8nClient');
+        const echoed = (responseData && (responseData.sessionId || responseData.serverSessionId)) as string | undefined;
+        if (echoed) {
+          const { base } = normalizeServerSessionId(echoed);
+          persistSessions(prev => prev.map(s => s.id === currentSessionId ? { ...s, serverSessionId: base } : s));
+        }
+      } catch {}
       const results = Array.isArray(responseData) ? responseData : [responseData];
       const intent = responseData.intent || responseData.category || 'llm';
 

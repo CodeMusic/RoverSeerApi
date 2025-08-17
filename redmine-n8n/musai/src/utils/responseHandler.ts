@@ -88,7 +88,20 @@ export const extractResponseThoughts = (data: any): string | undefined => {
 // { pov: [{ name, type: 'logical'|'creative'|..., thought }], response: string }
 export const extractResponsePov = (data: any): Array<{ name?: string; type?: string; thought: string }> | undefined => {
   try {
-    if (data && typeof data === 'object') {
+    if (!data) return undefined;
+
+    // Handle array-wrapped payloads: [{ pov: [...], response: "..." }]
+    if (Array.isArray(data)) {
+      const first = data[0];
+      if (first && typeof first === 'object' && Array.isArray((first as any).pov)) {
+        return (first as any).pov
+          .filter((p: any) => p && typeof p === 'object' && typeof p.thought === 'string')
+          .map((p: any) => ({ name: p.name, type: p.type, thought: p.thought }));
+      }
+    }
+
+    // Handle plain object payloads
+    if (typeof data === 'object') {
       const pov = (data as any).pov;
       if (Array.isArray(pov)) {
         return pov

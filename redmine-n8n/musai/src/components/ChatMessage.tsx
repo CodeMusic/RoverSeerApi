@@ -30,7 +30,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
   // Check if dark mode is enabled
   const isDarkMode = document.documentElement.classList.contains('dark');
 
-  // Process AI response for emotion effects
+  // Process AI response for emotion effects (this component renders finalized messages, not streaming)
   useEffect(() => {
     if (isAssistant && message.content) {
       const result = processAIResponse(message.content);

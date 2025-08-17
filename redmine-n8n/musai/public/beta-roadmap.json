@@ -1,12 +1,17 @@
 {
   "items": [
-    { "title": "MusaiChat + MusaiSearch beta is now working", "note": "Baseline chat and search experiences are live for testers." },
-    { "title": "Stability passes on ChatMusai", "note": "Tighten message flow, retries, and partial failover." },
-    { "title": "Activity Monitor (Local)", "note": "Prevent runaway parallel tasks and protect system resources." },
-    { "title": "Agent Flow Debug Toggle", "note": "Reveal bicamera intermediates during beta only." },
-    { "title": "Frontier Support via OpenAI Key", "note": "Let testers attach their own key for larger models." },
-    { "title": "Hybrid Mode", "note": "Blend local + remote for cost/perf flexibility (later)." },
-    { "title": "Top Bar Musai Status Area", "note": "Header, progress, symbol, achievements, and inline quick actions from modules." }
+    { "title": "Stream toggle (Chat)", "note": "New iOS-style switch to choose streaming vs. non-streaming endpoint (/chat/message/stream vs /chat/message). On by default.", "date": "2025-08-17" },
+    { "title": "Visual effects toggle (Chat)", "note": "Enable/disable celebratory and mood effects (party/rainbow/matrix). When off, effects won't trigger and any active effects stop immediately.", "date": "2025-08-17" },
+    { "title": "MusaiChat: streaming replies + logical/creative POV", "note": "Live token streaming UI. Final JSON parsed to show reasoning toggles.", "date": "2025-08-16" },
+    { "title": "MusaiChat + MusaiSearch beta is now working", "note": "Baseline chat and search experiences are live for testers.", "date": "2025-08-15" },
+    { "title": "Stability passes on ChatMusai", "note": "Tighten message flow, retries, and partial failover.", "date": "2025-08-14" },
+    { "title": "Add LLM chat streaming (cross-provider)", "note": "Support NDJSON/SSE across providers with a shared stream reader.", "date": "2025-08-12" },
+    { "title": "Isolate hemispheres (logic/creative)", "note": "Surface bicameral processing distinctly and safely.", "date": "2025-08-11" },
+    { "title": "Activity Monitor (Local)", "note": "Prevent runaway parallel tasks and protect system resources.", "date": "2025-08-09" },
+    { "title": "Agent Flow Debug Toggle", "note": "Reveal bicamera intermediates during beta only.", "date": "2025-08-08" },
+    { "title": "Frontier Support via OpenAI Key", "note": "Let testers attach their own key for larger models.", "date": "2025-08-05" },
+    { "title": "Hybrid Mode", "note": "Blend local + remote for cost/perf flexibility (later).", "date": "2025-08-03" },
+    { "title": "Top Bar Musai Status Area", "note": "Header, progress, symbol, achievements, and inline quick actions from modules.", "date": "2025-08-02" }
   ]
 }
 

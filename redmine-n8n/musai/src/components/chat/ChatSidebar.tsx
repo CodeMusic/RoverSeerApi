@@ -93,7 +93,7 @@ export const ChatSidebar = ({
   return (
     <div
       className={cn(
-        "w-64 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out overflow-hidden",
+        "w-full bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out overflow-hidden",
         !isSidebarOpen && "-translate-x-full md:translate-x-0"
       )}
     >

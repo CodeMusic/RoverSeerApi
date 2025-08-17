@@ -94,3 +94,82 @@ export function withN8nAuthHeaders(existing?: HeadersInit): HeadersInit
 }
 
 
+/**
+ * Build a composite thread session id using the per-thread identifier and the base session id.
+ * Format: "{threadId}_{baseSessionId}".
+ */
+export function buildThreadSessionId(threadId: string): string
+{
+  try
+  {
+    const cleanThread = String(threadId || '').trim();
+    const baseSessionId = getN8nSessionId();
+    if (!cleanThread)
+    {
+      return baseSessionId;
+    }
+    // Avoid double-joining if already composite
+    if (cleanThread.includes('_') && (cleanThread.endsWith(baseSessionId)))
+    {
+      return cleanThread;
+    }
+    return `${cleanThread}_${baseSessionId}`;
+  }
+  catch
+  {
+    return `${String(threadId || '').trim()}_${getN8nSessionId()}`;
+  }
+}
+
+/**
+ * Normalize a session id returned by n8n that may include a module prefix.
+ * Accepts forms like "module_threadId_systemId" or "threadId_systemId".
+ * Returns the normalized base id (without module prefix) and the optional prefix.
+ */
+export function normalizeServerSessionId(raw: string): { base: string; modulePrefix?: string }
+{
+  const value = String(raw || '').trim();
+  if (!value) return { base: '' };
+  const parts = value.split('_');
+  if (parts.length >= 3 && /musai$/i.test(parts[0]))
+  {
+    const prefix = parts[0];
+    const base = parts.slice(1).join('_');
+    return { base, modulePrefix: prefix };
+  }
+  return { base: value };
+}
+
+/**
+ * Ensure a sessionId is present in an outgoing n8n JSON body and compute the header session id.
+ * - If body has `threadId`/`thread`, compose sessionId as `{threadId_systemId}`
+ * - If body already has `sessionId`, prefer it unless a `threadId` is present (then override)
+ */
+export function ensureN8nSessionInBody(body: string, contentType?: string): { updatedBody: string; headerSessionId: string }
+{
+  const isJson = typeof contentType === 'string' && contentType.includes('application/json');
+  if (!isJson) {
+    return { updatedBody: body, headerSessionId: getN8nSessionId() };
+  }
+  try
+  {
+    const parsed = JSON.parse(body);
+    if (!parsed || typeof parsed !== 'object') {
+      return { updatedBody: body, headerSessionId: getN8nSessionId() };
+    }
+    const providedSessionId = (parsed as any).sessionId as string | undefined;
+    const providedThreadId = ((parsed as any).threadId ?? (parsed as any).thread) as string | undefined;
+    const composite = providedThreadId ? buildThreadSessionId(String(providedThreadId)) : getN8nSessionId();
+    let finalSessionId = providedSessionId ?? composite;
+    if (typeof providedSessionId === 'string' && providedThreadId) {
+      finalSessionId = composite; // enforce composite when both provided
+    }
+    const nextBody = JSON.stringify({ ...(parsed as any), sessionId: finalSessionId });
+    return { updatedBody: nextBody, headerSessionId: finalSessionId };
+  }
+  catch
+  {
+    return { updatedBody: body, headerSessionId: getN8nSessionId() };
+  }
+}
+

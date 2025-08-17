@@ -70,7 +70,7 @@ class NarrativeApiService
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // No explicit thread id here; callers may pass it via payload in future if needed
         query: payload.seedText,
         params: {
           module: MUSAI_MODULES.NARRATIVE,
@@ -89,7 +89,7 @@ class NarrativeApiService
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // No explicit thread id
         query: `Suggest characters for ${payload.title}`,
         params: {
           module: MUSAI_MODULES.NARRATIVE,
@@ -108,7 +108,7 @@ class NarrativeApiService
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // No explicit thread id
         query: `Create narrative ${payload.title}`,
         params: {
           module: MUSAI_MODULES.NARRATIVE,

@@ -39,7 +39,7 @@ class EyeApiService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // Let wrapper inject composite sessionId; no thread id for global training unless supplied by caller
         query: payload?.prompt || 'Train Eye model',
         params: {
           module: MUSAI_MODULES.EYE,
@@ -58,7 +58,7 @@ class EyeApiService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sessionId: undefined,
+        // No explicit thread id; recognition can be bound to current chat thread if called from chat context
         query: 'Recognize image',
         params: {
           module: MUSAI_MODULES.EYE,

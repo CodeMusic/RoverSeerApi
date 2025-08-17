@@ -21,6 +21,7 @@ interface MusaiMoodContextType {
   activateRainbowWithPersistence: (pagesRemaining: number) => void;
   decrementRainbowPersistence: () => void;
   toggleParty: () => void;
+  disableEffects: () => void;
   executeCommand: (command: string) => string;
 }
 
@@ -217,6 +218,16 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
     setIsPartyActive(prev => !prev);
   };
 
+  // Force-disable all active visual effects
+  const disableEffects = () => {
+    setIsMatrixActive(false);
+    setIsRainbowActive(false);
+    setIsPartyActive(false);
+    try {
+      document.documentElement.style.removeProperty('--musai-rainbow-intensity');
+    } catch {}
+  };
+
   const toggleCareerMusai = () => {
     const newState = !isCareerMusaiActive;
     setIsCareerMusaiActive(newState);
@@ -400,6 +411,7 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       activateRainbowWithPersistence,
       decrementRainbowPersistence,
       toggleParty,
+      disableEffects,
       executeCommand
     }}>
       {children}

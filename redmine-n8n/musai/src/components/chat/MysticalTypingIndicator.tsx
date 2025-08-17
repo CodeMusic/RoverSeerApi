@@ -5,11 +5,12 @@ interface MysticalTypingIndicatorProps {
   isDarkMode?: boolean;
   label?: string;
   size?: "default" | "compact";
+  align?: "start" | "center";
 }
 
-export const MysticalTypingIndicator = ({ isDarkMode = false, label = "Musai is thinking", size = "default" }: MysticalTypingIndicatorProps) => {
+export const MysticalTypingIndicator = ({ isDarkMode = false, label = "Musai is thinking", size = "default", align = "start" }: MysticalTypingIndicatorProps) => {
   return (
-    <div className="flex w-full justify-start animate-fade-in">
+    <div className={cn("flex w-full animate-fade-in", align === "center" ? "justify-center" : "justify-start") }>
       <div className={cn(
         size === "compact" ? "max-w-[260px] rounded-xl px-3 py-2" : "max-w-[85%] rounded-2xl px-4 py-3",
         "backdrop-blur-sm relative overflow-hidden mystical-glow",

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Send, NotebookText, Brain, ArrowRight, Tag, Image as ImageIcon } from 'lucide-react';
 import { TherapySession } from '@/types/chat';
 import { n8nApi, N8N_ENDPOINTS } from '@/config/n8nEndpoints';
+import { buildThreadSessionId } from '@/lib/n8nClient';
 
 interface TherapyPanelProps {
   session: TherapySession | null;
@@ -45,7 +46,7 @@ export const TherapyPanel: React.FC<TherapyPanelProps> = ({ session, onUpdateCon
       await fetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.THERAPY.ADVANCE_ARC), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, nextArc })
+        body: JSON.stringify({ sessionId: buildThreadSessionId(session.id), nextArc })
       });
     } catch {}
   };
@@ -58,7 +59,7 @@ export const TherapyPanel: React.FC<TherapyPanelProps> = ({ session, onUpdateCon
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          sessionId: session.id, 
+          sessionId: buildThreadSessionId(session.id), 
           text: journalText, 
           mood: mood || session.therapyContext?.currentMood, 
           tags: tags.split(',').map(t => t.trim()).filter(Boolean)
@@ -76,7 +77,7 @@ export const TherapyPanel: React.FC<TherapyPanelProps> = ({ session, onUpdateCon
       await fetch(n8nApi.getEndpointUrl(N8N_ENDPOINTS.THERAPY.GENERATE_SYMBOLIC_IMAGE), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: session.id, prompt: `Create a gentle symbolic image for: ${journalText.slice(0, 120)}` })
+        body: JSON.stringify({ sessionId: buildThreadSessionId(session.id), prompt: `Create a gentle symbolic image for: ${journalText.slice(0, 120)}` })
       });
     } catch {}
   };

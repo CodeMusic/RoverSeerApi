@@ -4,6 +4,7 @@ import { ChatInput } from './ChatInput';
 import { ChatContextMenu } from './ChatContextMenu';
 import { Message } from '@/types/chat';
 import { useEmotionEffects } from '@/hooks/useEmotionEffects';
+import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 
 interface ChatPaneProps {
   sessionId: string;
@@ -89,20 +90,26 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     x: number;
     y: number;
   } | null>(null);
+  const [streamEnabled, setStreamEnabled] = useState<boolean>(true);
+  const [effectsEnabled, setEffectsEnabled] = useState<boolean>(true);
 
   const theme = getChatTheme(module);
   const { processAIResponse } = useEmotionEffects();
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const { disableEffects } = useMusaiMood();
 
-  // Trigger Musai effects on new assistant messages
+  // Trigger Musai effects after streaming completes and content is finalized
   useEffect(() => {
     if (!messageList || messageList.length === 0) return;
     const last = messageList[messageList.length - 1];
-    if (last.role === 'assistant' && last.content) {
-      processAIResponse(last.content);
+    // Only fire when not typing and we have assistant content
+    if (!isTyping && last.role === 'assistant' && last.content && last.content.trim().length > 0) {
+      if ((window as any).__musai_effects_enabled !== false && effectsEnabled) {
+        processAIResponse(last.content);
+      }
     }
-  }, [messageList, processAIResponse]);
+  }, [messageList.length, isTyping, effectsEnabled, processAIResponse]);
 
   // Auto-scroll to bottom when messages update or typing indicator appears
   useEffect(() => {
@@ -166,6 +173,27 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             />
           );
         })}
+
+        {/* Fallback: if typing but no assistant placeholder yet, render a single mystical bubble */}
+        {isTyping && (
+          (() => {
+            const last = messageList[messageList.length - 1];
+            // Show standalone indicator only if there is no assistant placeholder yet
+            // i.e., when there are no messages or the last message is from the user
+            const shouldShowStandalone = !last || last.role === 'user';
+            if (!shouldShowStandalone) return null;
+            return (
+              <MessageBubble
+                key="typing-standalone"
+                message={{ id: 'typing-standalone', content: '', role: 'assistant', timestamp: Date.now() }}
+                roleConfig={roleConfig}
+                module={module}
+                isTyping={true}
+                theme={theme}
+              />
+            );
+          })()
+        )}
         {/* Scroll Sentinel */}
         <div ref={endOfMessagesRef} />
       </div>
@@ -177,6 +205,19 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             module={module}
             onMessageSend={onMessageSend}
             isLoading={isLoading}
+            streamEnabled={streamEnabled}
+            onToggleStream={(enabled) => {
+              setStreamEnabled(enabled);
+              try { (window as any).__musai_stream_enabled = enabled; } catch {}
+            }}
+            effectsEnabled={effectsEnabled}
+            onToggleEffects={(enabled) => {
+              setEffectsEnabled(enabled);
+              try { (window as any).__musai_effects_enabled = enabled; } catch {}
+              if (!enabled) {
+                try { disableEffects(); } catch {}
+              }
+            }}
             theme={theme}
           />
         </div>

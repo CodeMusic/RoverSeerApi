@@ -1,6 +1,6 @@
 import { TIMEOUTS, createTimeoutController, formatTimeout } from '@/config/timeouts';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
-import { withN8nAuthHeaders, getN8nSessionId } from '@/lib/n8nClient';
+import { withN8nAuthHeaders, getN8nSessionId, ensureN8nSessionInBody } from '@/lib/n8nClient';
 
 // Legacy exports for backward compatibility (now use configured values)
 export const FETCH_TIMEOUT = TIMEOUTS.CHAT_MESSAGE;
@@ -22,19 +22,14 @@ export const fetchWithTimeout = async (
     // Ensure a sessionId is provided for memory tracking, either in headers or body
     let nextHeaders = baseHeaders;
     if (isN8n) {
-      const sessionId = getN8nSessionId();
-      // Add session headers if missing
-      if (baseHeaders && !(baseHeaders as any)['X-Musai-Session-Id']) {
-        nextHeaders = { ...(baseHeaders as any), 'X-Musai-Session-Id': sessionId } as any;
-      }
-      // If body is JSON, inject sessionId field when not present
-      if (options.body && typeof options.body === 'string' && (options.headers as any)?.['Content-Type']?.includes('application/json')) {
-        try {
-          const parsed = JSON.parse(options.body as string);
-          if (parsed && typeof parsed === 'object' && parsed.sessionId == null) {
-            (options as any).body = JSON.stringify({ ...parsed, sessionId });
-          }
-        } catch {}
+      const contentType = (options.headers as any)?.['Content-Type'];
+      if (options.body && typeof options.body === 'string' && typeof contentType === 'string' && contentType.includes('application/json')) {
+        const { updatedBody, headerSessionId } = ensureN8nSessionInBody(options.body as string, contentType);
+        (options as any).body = updatedBody;
+        nextHeaders = { ...(baseHeaders as any), 'X-Musai-Session-Id': headerSessionId } as any;
+      } else {
+        const fallbackId = getN8nSessionId();
+        nextHeaders = { ...(baseHeaders as any), 'X-Musai-Session-Id': fallbackId } as any;
       }
     }
     const response = await fetch(url, {
