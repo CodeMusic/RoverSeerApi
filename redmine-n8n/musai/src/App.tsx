@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusaiMoodProvider, useMusaiMood } from "@/contexts/MusaiMoodContext";
@@ -72,7 +72,8 @@ import EyeTrain from "@/pages/eye/EyeTrain";
 import EyeRecognize from "@/pages/eye/EyeRecognize";
 
 // Routes
-import { ROUTES } from "@/config/routes";
+import { ROUTES, RouteUtils } from "@/config/routes";
+import { SystemStatusBar } from "@/components/common/SystemStatusBar";
 
 function App() {
   return (
@@ -138,6 +139,7 @@ function App() {
                   <RainbowEffectWrapper />
                   <PartyEffectWrapper />
                   <KnowledgePopin />
+                  <StatusBarGate />
                 </SmartRouter>
               </Router>
               </KnowledgePopinProvider>
@@ -198,16 +200,21 @@ function BootMetrics()
   useEffect(() =>
   {
     presenceService.startHeartbeat(30000);
+    let activeStreams = 0;
 
     const onMetrics = (ev: Event) =>
     {
       const detail = (ev as CustomEvent<any>).detail;
       setStatus({
-        activeRequests: detail.activeCount,
+        activeRequests: detail.activeCount + activeStreams,
         queuedRequests: detail.queuedCount,
         maxConcurrentRequests: detail.maxConcurrent,
         totalRequestsStarted: detail.totalStarted,
         totalRequestsCompleted: detail.totalCompleted,
+        averageRequestDurationMs: detail.averageDurationMs,
+        emaRequestDurationMs: detail.emaDurationMs,
+        lastRequestDurationMs: detail.lastDurationMs,
+        averageRequestDurationByLabelMs: detail.averageDurationByLabelMs,
       });
     };
     const onPresence = (ev: Event) =>
@@ -219,13 +226,29 @@ function BootMetrics()
       }
     };
 
+    const onStreamStart = () =>
+    {
+      activeStreams += 1;
+      // Nudge activeRequests display; actual value will be refreshed on next metrics event
+      setStatus({});
+    };
+    const onStreamEnd = () =>
+    {
+      activeStreams = Math.max(0, activeStreams - 1);
+      setStatus({});
+    };
+
     attentionalRequestQueue.addEventListener('metrics', onMetrics as EventListener);
     presenceService.addEventListener('presence', onPresence as EventListener);
+    window.addEventListener('musai-stream-start', onStreamStart as EventListener);
+    window.addEventListener('musai-stream-end', onStreamEnd as EventListener);
     return () =>
     {
       attentionalRequestQueue.removeEventListener('metrics', onMetrics as EventListener);
       presenceService.removeEventListener('presence', onPresence as EventListener);
       presenceService.stopHeartbeat();
+      window.removeEventListener('musai-stream-start', onStreamStart as EventListener);
+      window.removeEventListener('musai-stream-end', onStreamEnd as EventListener);
     };
   }, [setStatus]);
   return null;
@@ -256,4 +279,38 @@ function DevConsoleHotkey()
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [toggleDevConsole]);
   return null;
+}
+
+// Only show the status bar within the core app experience (not on home/info pages)
+function StatusBarGate()
+{
+  const location = useLocation();
+  const isInCoreApp = RouteUtils.isMainApp(location.pathname);
+
+  // Mirror the RiddleGate auth flag for the current day
+  const yyyymmdd = (date = new Date()) =>
+  {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}${m}${d}`;
+  };
+  const isRiddleAuthorizedToday = () =>
+  {
+    try
+    {
+      const key = `musai_riddle_access_${yyyymmdd()}`;
+      return localStorage.getItem(key) === 'ok';
+    }
+    catch
+    {
+      return false;
+    }
+  };
+
+  if (!isInCoreApp || !isRiddleAuthorizedToday())
+  {
+    return null;
+  }
+  return <SystemStatusBar />;
 }

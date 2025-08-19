@@ -29,6 +29,11 @@ export type MusaiStatus =
   queuedRequests?: number;
   totalRequestsStarted?: number;
   totalRequestsCompleted?: number;
+  // Timing metrics (ms)
+  averageRequestDurationMs?: number;
+  emaRequestDurationMs?: number;
+  lastRequestDurationMs?: number;
+  averageRequestDurationByLabelMs?: Record<string, number>;
   // Social presence metrics
   activeUsers?: number;
 };

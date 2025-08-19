@@ -18,16 +18,17 @@ export function useEmotionEffects() {
         setMood(emotion.effects.mood);
       }
       
-      // Trigger effects based on intensity
-      if (emotion.intensity === 'intense') {
-        if (emotion.effects.party) toggleParty();
-        if (emotion.effects.rainbow) toggleRainbow();
-        if (emotion.effects.matrix) toggleMatrix();
-      } else if (emotion.intensity === 'moderate') {
-        // 50% chance for moderate effects
-        if (emotion.effects.party && Math.random() > 0.5) toggleParty();
-        if (emotion.effects.rainbow && Math.random() > 0.5) toggleRainbow();
-        if (emotion.effects.matrix && Math.random() > 0.5) toggleMatrix();
+      // Trigger effects once per response: trigger distinct set without loops/repeats
+      const toTrigger: Array<'party' | 'rainbow' | 'matrix'> = [];
+      if (emotion.effects.party) toTrigger.push('party');
+      if (emotion.effects.rainbow) toTrigger.push('rainbow');
+      if (emotion.effects.matrix) toTrigger.push('matrix');
+      // Shuffle lightly to avoid the same ordering pattern
+      toTrigger.sort((a, b) => (a > b ? 1 : -1));
+      for (const eff of toTrigger) {
+        if (eff === 'party') toggleParty();
+        if (eff === 'rainbow') toggleRainbow();
+        if (eff === 'matrix') toggleMatrix();
       }
       // Subtle effects only change mood, no visual effects
       

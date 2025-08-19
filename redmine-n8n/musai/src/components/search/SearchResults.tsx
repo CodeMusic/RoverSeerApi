@@ -7,9 +7,11 @@ import { Search, Download, Plus, ArrowLeft, ExternalLink, Clock, Brain, Link, Co
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
-import type { SearchSessionModel, SearchResult } from "@/types/search";
+import AgentArticle from "@/components/search/AgentArticle";
+import type { SearchSessionModel, SearchResult, ConflictCard } from "@/types/search";
 import { MysticalTypingIndicator } from "@/components/chat/MysticalTypingIndicator";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface SearchResultsProps {
   session: SearchSessionModel;
@@ -58,6 +60,9 @@ export const SearchResults = ({
   }, [isLoading]);
   const [feedback, setFeedback] = useState<Record<number, 'up' | 'down' | undefined>>({});
   const { isDark } = useTheme();
+  const [isConflictDialogOpen, setIsConflictDialogOpen] = useState(false);
+  const [selectedConflict, setSelectedConflict] = useState<ConflictCard | null>(null);
+  const [selectedConflictHtml, setSelectedConflictHtml] = useState<string | null>(null);
   const isInitialLoading = isLoading && session.results.length === 0 && session.followUps.length === 0;
   const isFollowUpLoading = isLoading && !isInitialLoading;
   const initialError = !isLoading && session.results.length === 1 && session.results[0]?.type === 'search' && /error/i.test(session.results[0]?.snippet || '');
@@ -65,6 +70,51 @@ export const SearchResults = ({
     setFeedback(prev => ({ ...prev, [index]: prev[index] === value ? undefined : value }));
     // TODO: send feedback to backend if needed
   };
+
+  const openConflictDialog = (conflict: ConflictCard) =>
+  {
+    setSelectedConflict(conflict);
+    setSelectedConflictHtml(null);
+    setIsConflictDialogOpen(true);
+  };
+
+  const closeConflictDialog = () =>
+  {
+    setIsConflictDialogOpen(false);
+    setSelectedConflict(null);
+    setSelectedConflictHtml(null);
+  };
+
+  const openConflictHtmlDialog = (html: string) =>
+  {
+    setSelectedConflict(null);
+    setSelectedConflictHtml(html);
+    setIsConflictDialogOpen(true);
+  };
+
+  // Delegate clicks from agent-rendered HTML conflict cards
+  useEffect(() =>
+  {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const handleClick = (e: MouseEvent) =>
+    {
+      const target = e.target as Element | null;
+      if (!target) return;
+      const conflictEl = target.closest('.conflict-card') as HTMLElement | null;
+      if (conflictEl)
+      {
+        e.preventDefault();
+        e.stopPropagation();
+        openConflictHtmlDialog(conflictEl.innerHTML);
+      }
+    };
+    container.addEventListener('click', handleClick);
+    return () =>
+    {
+      container.removeEventListener('click', handleClick);
+    };
+  }, []);
 
   const getIntentIcon = (intent?: string) => {
     switch (intent) {
@@ -243,7 +293,11 @@ export const SearchResults = ({
               </CardHeader>
               <CardContent>
                 <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
-                  <MarkdownRenderer content={result.content} />
+                  {typeof result.content === 'string' && /<article[\s>]/i.test(result.content.trim()) ? (
+                    <AgentArticle html={result.content} />
+                  ) : (
+                    <MarkdownRenderer content={result.content} />
+                  )}
                 </div>
                 {result.snippet && (
                   <p className="text-xs text-muted-foreground mt-3 italic border-t pt-2">
@@ -279,7 +333,12 @@ export const SearchResults = ({
                 {Array.isArray(result.conflicts) && result.conflicts.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {result.conflicts.map((c, ci) => (
-                      <div key={ci} className="p-2 rounded border bg-amber-50 dark:bg-amber-950/20">
+                      <div
+                        key={ci}
+                        className="p-2 rounded border bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100/80 dark:hover:bg-amber-900/30 cursor-pointer transition-colors"
+                        onClick={() => openConflictDialog(c)}
+                        role="button"
+                      >
                         <div className="text-xs font-medium mb-1">Conflict: {c.title || 'Perspective mismatch'}</div>
                         <div className="text-xs text-muted-foreground">{c.description}</div>
                         {(c.perspectiveA || c.perspectiveB) && (
@@ -344,6 +403,43 @@ export const SearchResults = ({
             ))}
           </div>
         )}
+
+        {/* Conflict Detail Dialog */}
+        <Dialog open={isConflictDialogOpen} onOpenChange={(open) => { if (!open) closeConflictDialog(); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{selectedConflict ? (selectedConflict.title || 'Perspective mismatch') : 'Conflict'}</DialogTitle>
+              {selectedConflict?.description && (
+                <DialogDescription>{selectedConflict.description}</DialogDescription>
+              )}
+            </DialogHeader>
+            {selectedConflictHtml ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div className="agent-article">
+                  <div dangerouslySetInnerHTML={{ __html: selectedConflictHtml }} />
+                </div>
+              </div>
+            ) : (
+              <>
+                {(selectedConflict?.perspectiveA || selectedConflict?.perspectiveB) && (
+                  <div className="grid md:grid-cols-2 gap-3 text-sm">
+                    <div className="p-3 rounded border bg-card">
+                      <div className="font-medium mb-1">A</div>
+                      <div className="text-muted-foreground">{selectedConflict?.perspectiveA}</div>
+                    </div>
+                    <div className="p-3 rounded border bg-card">
+                      <div className="font-medium mb-1">B</div>
+                      <div className="text-muted-foreground">{selectedConflict?.perspectiveB}</div>
+                    </div>
+                  </div>
+                )}
+                {selectedConflict?.resolutionHint && (
+                  <div className="mt-3 text-sm italic text-muted-foreground">Hint: {selectedConflict.resolutionHint}</div>
+                )}
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Spacer only; sticky follow-up bar is below */}
       </div>

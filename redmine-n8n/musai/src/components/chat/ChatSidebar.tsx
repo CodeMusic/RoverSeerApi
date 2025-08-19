@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { ChatSession, CareerSession, TherapySession } from "@/types/chat";
-import { MessageSquare, PlusCircle, Trash2, Pencil, Check, X, Star, Code, Lock, ArrowLeft } from "lucide-react";
+import { MessageSquare, PlusCircle, Check, X, Code, Lock, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SessionActions } from "@/components/common/SessionActions";
 
 interface ChatSidebarProps {
   sessions: (ChatSession | CareerSession | TherapySession)[];
@@ -93,7 +94,7 @@ export const ChatSidebar = ({
   return (
     <div
       className={cn(
-        "w-full bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out overflow-hidden",
+        "w-96 bg-sidebar flex flex-col absolute md:relative z-40 h-full transition-transform duration-200 ease-in-out overflow-hidden",
         !isSidebarOpen && "-translate-x-full md:translate-x-0"
       )}
     >
@@ -205,43 +206,14 @@ export const ChatSidebar = ({
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons (inline, always visible) */}
                 {editingSessionId !== session.id && showActions && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 ml-2 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 chat-actions-visible">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "h-6 w-6 hover:bg-sidebar-accent hover:shadow-sm",
-                        session.favorite && "text-yellow-500"
-                      )}
-                      onClick={(e) => handleToggleFavorite(e, session.id)}
-                      title="Toggle favorite"
-                      aria-label="Toggle favorite"
-                    >
-                      <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-sidebar-accent hover:shadow-sm"
-                      onClick={(e) => startEditing(e, session)}
-                      title="Rename chat"
-                      aria-label="Rename chat"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive hover:shadow-sm focus:bg-destructive/20 focus:text-destructive"
-                      onClick={(e) => handleDelete(e, session.id)}
-                      title="Delete chat"
-                      aria-label="Delete chat"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  <SessionActions
+                    isFavorite={Boolean(session.favorite)}
+                    onToggleFavorite={(e) => handleToggleFavorite(e, session.id)}
+                    onStartEdit={(e) => startEditing(e, session)}
+                    onDelete={(e) => handleDelete(e, session.id)}
+                  />
                 )}
               </div>
             );

@@ -60,6 +60,8 @@ export interface SearchResult
 export interface SearchSessionModel
 {
   id: string;
+  // Optional user-facing name; falls back to query when absent
+  name?: string;
   query: string;
   intent?: string;
   mode?: SearchMode;
@@ -71,6 +73,7 @@ export interface SearchSessionModel
     timestamp: number;
   }>;
   timestamp: number;
+  favorite?: boolean;
   // Temporary user scoping before auth: store hashed client IP
   clientIpHash?: string;
   // Identifier sent to backend for grouping; often same as clientIpHash

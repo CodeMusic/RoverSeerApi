@@ -111,6 +111,8 @@ export const useMessageSender = (
 
         const headers: HeadersInit = {
           'Content-Type': 'application/json',
+          // Default chat mode uses POV (logic + creative + fusion)
+          'X-Musai-Task-Label': 'chat-bicameral-pov'
         };
 
         console.log('Sending message to webhook:', {
@@ -119,11 +121,15 @@ export const useMessageSender = (
           hasFile: !!fileData
         });
 
+        const streamToken = `stream-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const response = await queuedFetch(
           chatPostUrl,
           {
             method: "POST",
-            headers,
+            headers: {
+              ...headers,
+              'X-Musai-Stream-Token': streamToken,
+            },
             body: JSON.stringify({
               // Compose sessionId as {threadId_systemId}
               sessionId: buildThreadSessionId(sessionId),
@@ -211,6 +217,7 @@ export const useMessageSender = (
         if (response.body) {
           didStream = true;
           ensureAssistantPlaceholder();
+          try { window.dispatchEvent(new CustomEvent('musai-stream-start', { detail: { token: streamToken } })); } catch {}
           const { sawStreamToken, raw } = await readNdjsonOrSse(response, {
             onFirstToken: () => {
               // Keep typing true during streaming; we'll turn it off when the stream completes
@@ -284,6 +291,7 @@ export const useMessageSender = (
             // Stream ended successfully; turn off typing now
             setIsTyping(false);
           }
+          try { window.dispatchEvent(new CustomEvent('musai-stream-end', { detail: { token: streamToken } })); } catch {}
           return true;
         }
 

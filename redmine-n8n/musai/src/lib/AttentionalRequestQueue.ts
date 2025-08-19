@@ -16,6 +16,11 @@ export type QueuedRequestMeta =
   method?: string;
   label?: string;
   isN8n?: boolean;
+  // If provided, the queue will retain the concurrency slot until the named
+  // browser event fires. If retainKey is provided, the event's detail.token
+  // must match to release the slot.
+  retainUntilEvent?: string;
+  retainKey?: string;
 };
 
 export type QueueMetrics =
@@ -25,6 +30,12 @@ export type QueueMetrics =
   maxConcurrent: number;
   totalStarted: number;
   totalCompleted: number;
+  lastLabel?: string;
+  // Rolling timing metrics (ms)
+  averageDurationMs?: number;
+  emaDurationMs?: number;
+  lastDurationMs?: number;
+  averageDurationByLabelMs?: Record<string, number>;
 };
 
 type QueueTask<T> =
@@ -33,6 +44,8 @@ type QueueTask<T> =
   resolve: (value: T | PromiseLike<T>) => void;
   reject: (reason?: unknown) => void;
   meta: QueuedRequestMeta;
+  id: number;
+  startedAt?: number;
 };
 
 export function getServerMaxConcurrent(): number
@@ -61,6 +74,16 @@ class AttentionalRequestQueue extends EventTarget
   private queued: Array<QueueTask<unknown>>;
   private totalStarted: number;
   private totalCompleted: number;
+  private lastStartedLabel?: string;
+  private taskIdSeq: number;
+
+  // Timing metrics
+  private overallDurationSumMs: number;
+  private overallDurationCount: number;
+  private overallEmaMs?: number;
+  private readonly emaAlpha: number;
+  private lastDurationMs?: number;
+  private labelDurations: Map<string, { sumMs: number; count: number; emaMs?: number }>; 
 
   public constructor(maxConcurrent: number = getServerMaxConcurrent())
   {
@@ -70,6 +93,14 @@ class AttentionalRequestQueue extends EventTarget
     this.queued = [];
     this.totalStarted = 0;
     this.totalCompleted = 0;
+    this.taskIdSeq = 0;
+
+    this.overallDurationSumMs = 0;
+    this.overallDurationCount = 0;
+    this.overallEmaMs = undefined;
+    this.emaAlpha = 0.3;
+    this.lastDurationMs = undefined;
+    this.labelDurations = new Map();
   }
 
   public setMaxConcurrent(nextMax: number): void
@@ -87,6 +118,21 @@ class AttentionalRequestQueue extends EventTarget
       maxConcurrent: this.maxConcurrent,
       totalStarted: this.totalStarted,
       totalCompleted: this.totalCompleted,
+      lastLabel: this.lastStartedLabel,
+      averageDurationMs: this.overallDurationCount > 0 ? this.overallDurationSumMs / this.overallDurationCount : undefined,
+      emaDurationMs: this.overallEmaMs,
+      lastDurationMs: this.lastDurationMs,
+      averageDurationByLabelMs: (() => {
+        const out: Record<string, number> = {};
+        for (const [label, stat] of this.labelDurations.entries())
+        {
+          if (stat.count > 0)
+          {
+            out[label] = stat.sumMs / stat.count;
+          }
+        }
+        return out;
+      })(),
     };
   }
 
@@ -94,7 +140,7 @@ class AttentionalRequestQueue extends EventTarget
   {
     return new Promise<T>((resolve, reject) =>
     {
-      const task: QueueTask<T> = { run: runner, resolve, reject, meta } as QueueTask<T>;
+      const task: QueueTask<T> = { run: runner, resolve, reject, meta, id: ++this.taskIdSeq } as QueueTask<T>;
       this.queued.push(task as QueueTask<unknown>);
       this.pump();
       this.emitMetrics();
@@ -113,6 +159,8 @@ class AttentionalRequestQueue extends EventTarget
 
       this.activeCount += 1;
       this.totalStarted += 1;
+      this.lastStartedLabel = next.meta?.label;
+      next.startedAt = Date.now();
       this.emitMetrics();
 
       next.run()
@@ -128,9 +176,68 @@ class AttentionalRequestQueue extends EventTarget
         })
         .finally(() =>
         {
-          this.activeCount -= 1;
-          this.emitMetrics();
-          this.pump();
+          const release = () =>
+          {
+            this.activeCount -= 1;
+            if (typeof next.startedAt === 'number')
+            {
+              const durationMs = Math.max(0, Date.now() - next.startedAt);
+              this.lastDurationMs = durationMs;
+              // overall
+              this.overallDurationSumMs += durationMs;
+              this.overallDurationCount += 1;
+              this.overallEmaMs = typeof this.overallEmaMs === 'number'
+                ? (this.emaAlpha * durationMs) + ((1 - this.emaAlpha) * this.overallEmaMs)
+                : durationMs;
+              // per label
+              const label = next.meta?.label || 'unlabeled';
+              const prev = this.labelDurations.get(label) || { sumMs: 0, count: 0, emaMs: undefined };
+              const nextEma = typeof prev.emaMs === 'number'
+                ? (this.emaAlpha * durationMs) + ((1 - this.emaAlpha) * (prev.emaMs as number))
+                : durationMs;
+              this.labelDurations.set(label, {
+                sumMs: prev.sumMs + durationMs,
+                count: prev.count + 1,
+                emaMs: nextEma,
+              });
+            }
+            this.emitMetrics();
+            this.pump();
+          };
+
+          const eventName = next.meta?.retainUntilEvent;
+          if (eventName)
+          {
+            const key = next.meta?.retainKey;
+            let released = false;
+            const onEvent = (ev: Event) =>
+            {
+              const token = (ev as CustomEvent<any>).detail?.token;
+              if (!key || key === token)
+              {
+                if (!released)
+                {
+                  released = true;
+                  window.removeEventListener(eventName, onEvent as EventListener);
+                  release();
+                }
+              }
+            };
+            window.addEventListener(eventName, onEvent as EventListener);
+            // Safety timeout in case the consumer forgets to emit the event
+            window.setTimeout(() =>
+            {
+              if (!released)
+              {
+                window.removeEventListener(eventName, onEvent as EventListener);
+                release();
+              }
+            }, 30 * 60 * 1000); // 30 minutes
+          }
+          else
+          {
+            release();
+          }
         });
     }
   }
@@ -187,6 +294,33 @@ export async function queuedFetch(
     },
   };
 
+  // Heuristic label for UI expectations
+  const inferLabel = (): string =>
+  {
+    const explicit = (existingHeaders['X-Musai-Task-Label'] || existingHeaders['x-musai-task-label']);
+    if (explicit && typeof explicit === 'string')
+    {
+      return explicit;
+    }
+    try
+    {
+      const path = new URL(url, window.location.origin).pathname.toLowerCase();
+      if (path.includes('/chat/')) return 'chat-regular';
+      if (path.includes('/eye/')) return 'vision';
+      if (path.includes('/code/')) return 'code';
+      if (path.includes('/medical/')) return 'medical';
+      if (path.includes('/narrative/')) return 'narrative';
+    }
+    catch
+    {
+      // ignore
+    }
+    return 'n8n-webhook';
+  };
+
+  // Optional stream retention token lets the queue hold the concurrency slot
+  const streamToken = (existingHeaders['X-Musai-Stream-Token'] || existingHeaders['x-musai-stream-token']) as string | undefined;
+
   return attentionalRequestQueue.enqueue<Response>(
     async () =>
     {
@@ -195,8 +329,10 @@ export async function queuedFetch(
     {
       url,
       method: mergedOptions.method,
-      label: 'n8n-webhook',
+      label: inferLabel(),
       isN8n: true,
+      retainUntilEvent: streamToken ? 'musai-stream-end' : undefined,
+      retainKey: streamToken || undefined,
     }
   );
 }

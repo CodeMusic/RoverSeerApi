@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BaseSession } from "@/types/chat";
-import { PlusCircle, Trash2, Pencil, Check, X, Star, ChevronLeft } from "lucide-react";
+import { PlusCircle, Check, X, ChevronLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { SessionActions } from "@/components/common/SessionActions";
 
 interface BaseSessionSidebarProps<T extends BaseSession> {
   sessions: T[];
@@ -95,7 +96,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
   if (!isSidebarOpen) return null;
 
   return (
-    <div className="w-80 bg-sidebar border-r border-border flex flex-col h-full">
+    <div className="w-96 bg-sidebar border-r border-border flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-border/20">
         <div className="flex items-center justify-between mb-3">
@@ -145,7 +146,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
                 )}
                 tabIndex={0}
               >
-                <div className="flex items-center p-3 min-w-0">
+                <div className="flex items-center justify-between p-3 min-w-0 gap-2">
                   {/* Icon and Dot */}
                   <div className="flex items-center gap-2 flex-shrink-0 mr-3">
                     {getSessionIcon(session)}
@@ -188,43 +189,14 @@ export function BaseSessionSidebar<T extends BaseSession>({
                     )}
                   </div>
 
-                  {/* Action Buttons */}
+                  {/* Action Buttons (inline, always visible) */}
                   {editingSessionId !== session.id && showActions && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={cn(
-                          "h-6 w-6 hover:bg-sidebar-accent hover:shadow-sm",
-                          session.favorite && "text-yellow-500"
-                        )}
-                        onClick={(e) => handleToggleFavorite(e, session.id)}
-                        title="Toggle favorite"
-                        aria-label="Toggle favorite"
-                      >
-                        <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:bg-sidebar-accent hover:shadow-sm"
-                        onClick={(e) => startEditing(e, session)}
-                        title="Rename session"
-                        aria-label="Rename session"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive hover:shadow-sm focus:bg-destructive/20 focus:text-destructive"
-                        onClick={(e) => handleDelete(e, session.id)}
-                        title="Delete session"
-                        aria-label="Delete session"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                    <SessionActions
+                      isFavorite={Boolean((session as any).favorite)}
+                      onToggleFavorite={(e) => handleToggleFavorite(e, session.id)}
+                      onStartEdit={(e) => startEditing(e, session)}
+                      onDelete={(e) => handleDelete(e, session.id)}
+                    />
                   )}
                 </div>
               </div>

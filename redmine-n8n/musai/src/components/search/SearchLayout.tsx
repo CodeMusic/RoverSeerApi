@@ -298,6 +298,21 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
       const combinedQuery = [followUpQuery, tags].filter(Boolean).join(' ');
 
+      // Build lightweight conversation history for follow-ups so references like "more" work
+      const previousQueries = (currentSession.followUps || []).map(f => f.query).slice(-3);
+      const lastResultSnippet = (() => {
+        try {
+          if (currentSession.followUps && currentSession.followUps.length > 0) {
+            const last = currentSession.followUps[currentSession.followUps.length - 1];
+            return String(last?.result?.content || '').slice(0, 600);
+          }
+          if (currentSession.results && currentSession.results.length > 0) {
+            return String(currentSession.results[0]?.content || '').slice(0, 600);
+          }
+        } catch {}
+        return undefined;
+      })();
+
       const response = await qf2(url2, {
         method: 'POST',
         headers: authHeaders2({ 'Content-Type': 'application/json' }),
@@ -309,6 +324,11 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             debug: true,
             isFollowUp: true,
             originalQuery: currentSession.query,
+            conversation: {
+              initialQuery: currentSession.query,
+              previousQueries,
+              lastResultSnippet,
+            },
             timestamp: Date.now(),
             mode,
             sources: effectiveSources,
@@ -614,6 +634,14 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     }
   }, [currentSessionId]);
 
+  const handleRenameSession = useCallback((sessionId: string, newName: string) => {
+    persistSessions(prev => prev.map(s => s.id === sessionId ? { ...s, name: newName } : s));
+  }, []);
+
+  const handleToggleFavorite = useCallback((sessionId: string) => {
+    persistSessions(prev => prev.map(s => s.id === sessionId ? { ...s, favorite: !s.favorite } : s));
+  }, []);
+
   const handleExportSession = useCallback(() => {
     if (!currentSession) return;
 
@@ -666,6 +694,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
             onNewSearch={handleNewSearch}
             onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             onDeleteSession={handleDeleteSession}
+            onRenameSession={handleRenameSession}
+            onToggleFavorite={handleToggleFavorite}
           />
         </div>
       )}

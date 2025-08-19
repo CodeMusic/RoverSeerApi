@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Clock, ArrowLeft, Brain, Link, Cog, Globe, Trash2, MoreHorizontal } from "lucide-react";
+import { Search, Plus, Clock, ArrowLeft, Brain, Link, Cog, Globe, Trash2, Star, Edit3 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -17,6 +17,8 @@ interface SearchSidebarProps {
   onNewSearch: () => void;
   onToggleCollapse: () => void;
   onDeleteSession?: (sessionId: string) => void;
+  onRenameSession?: (sessionId: string, newName: string) => void;
+  onToggleFavorite?: (sessionId: string) => void;
 }
 
 export const SearchSidebar = ({
@@ -28,8 +30,12 @@ export const SearchSidebar = ({
   onNewSearch,
   onToggleCollapse,
   onDeleteSession,
+  onRenameSession,
+  onToggleFavorite,
 }: SearchSidebarProps) => {
   const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>("");
 
   const getIntentIcon = (intent?: string) => {
     switch (intent) {
@@ -52,10 +58,29 @@ export const SearchSidebar = ({
       onDeleteSession(sessionId);
     }
   };
+
+  const handleToggleFavorite = (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    onToggleFavorite?.(sessionId);
+  };
+
+  const startEditing = (e: React.MouseEvent, session: SearchSession) => {
+    e.stopPropagation();
+    setEditingSessionId(session.id);
+    setEditingName(session.name || session.query);
+  };
+
+  const handleRenameSubmit = (e: React.FormEvent, sessionId: string) => {
+    e.preventDefault();
+    if (!editingName.trim()) return;
+    onRenameSession?.(sessionId, editingName.trim());
+    setEditingSessionId(null);
+    setEditingName("");
+  };
   return (
     <div
       className={cn(
-        "w-64 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full min-h-0 transition-transform duration-200 ease-in-out",
+        "w-96 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full min-h-0 transition-transform duration-200 ease-in-out",
         !isSidebarOpen && "-translate-x-full md:translate-x-0"
       )}
     >
@@ -93,7 +118,7 @@ export const SearchSidebar = ({
             sessions.map((session) => {
               const isActive = session.id === currentSessionId;
               const isHovered = hoveredSessionId === session.id;
-              const showActions = isActive || isHovered;
+              const showActions = true;
 
               return (
                 <div
@@ -102,7 +127,7 @@ export const SearchSidebar = ({
                   onMouseEnter={() => setHoveredSessionId(session.id)}
                   onMouseLeave={() => setHoveredSessionId(null)}
                   className={cn(
-                    "w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
+                    "w-full text-left pl-3 pr-12 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
                     "flex items-center gap-3 text-sm",
                     isActive 
                       ? "bg-sidebar-accent border border-border/50 shadow-sm" 
@@ -125,9 +150,15 @@ export const SearchSidebar = ({
                       );
                     })()}
                     <div className="truncate flex-1 min-w-0 pr-2">
-                      <div className="font-medium truncate">
-                        {session.query}
-                      </div>
+                      {editingSessionId === session.id ? (
+                        <form onSubmit={(e) => handleRenameSubmit(e, session.id)} className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          <input className="h-6 text-sm w-full bg-background border rounded px-2" value={editingName} onChange={(e) => setEditingName(e.target.value)} autoFocus />
+                        </form>
+                      ) : (
+                        <div className="font-medium truncate">
+                          {session.name || session.query}
+                        </div>
+                      )}
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3 flex-shrink-0" />
                         <span className="truncate">
@@ -144,19 +175,47 @@ export const SearchSidebar = ({
                     </div>
                   </div>
 
-                  {/* Action Buttons - Always reserve space */}
-                  <div className="flex gap-1 flex-shrink-0 w-8 justify-end">
-                    {showActions && onDeleteSession && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/20 focus:text-destructive transition-all duration-200"
-                        onClick={(e) => handleDelete(e, session.id)}
-                        title="Delete search"
-                        aria-label="Delete search"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                  {/* Action Buttons */}
+                  <div className="flex gap-1 flex-shrink-0 w-24 justify-end">
+                    {showActions && (
+                      <>
+                        {onToggleFavorite && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={"h-6 w-6 hover:bg-sidebar-accent " + (session.favorite ? "text-yellow-500" : "")}
+                            onClick={(e) => handleToggleFavorite(e, session.id)}
+                            title="Toggle favorite"
+                            aria-label="Toggle favorite"
+                          >
+                            <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
+                          </Button>
+                        )}
+                        {onRenameSession && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-sidebar-accent"
+                            onClick={(e) => startEditing(e, session)}
+                            title="Rename search"
+                            aria-label="Rename search"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {onDeleteSession && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/20 focus:text-destructive transition-all duration-200"
+                            onClick={(e) => handleDelete(e, session.id)}
+                            title="Delete search"
+                            aria-label="Delete search"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

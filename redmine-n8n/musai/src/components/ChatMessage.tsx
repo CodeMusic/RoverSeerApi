@@ -30,15 +30,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
   // Check if dark mode is enabled
   const isDarkMode = document.documentElement.classList.contains('dark');
 
-  // Process AI response for emotion effects (this component renders finalized messages, not streaming)
-  useEffect(() => {
-    if (isAssistant && message.content) {
-      const result = processAIResponse(message.content);
-      if (result.triggered) {
-        console.log('Emotion effect triggered:', result.emotion?.intensity, result.effects);
-      }
-    }
-  }, [isAssistant, message.content, processAIResponse]);
+  // Effect triggers are handled centrally in ChatPane after streaming completes
 
   const handleCopy = async () => {
     try {

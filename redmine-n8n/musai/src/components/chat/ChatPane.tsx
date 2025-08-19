@@ -1,10 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { ChatContextMenu } from './ChatContextMenu';
 import { Message } from '@/types/chat';
 import { useEmotionEffects } from '@/hooks/useEmotionEffects';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
+import { attentionalRequestQueue } from '@/lib/AttentionalRequestQueue';
+import type { QueueMetrics } from '@/lib/AttentionalRequestQueue';
 
 interface ChatPaneProps {
   sessionId: string;
@@ -98,6 +100,24 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const endOfMessagesRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const { disableEffects } = useMusaiMood();
+  const [queueMetrics, setQueueMetrics] = useState<QueueMetrics | null>(null);
+
+  useEffect(() =>
+  {
+    const onMetrics = (ev: Event) =>
+    {
+      const detail = (ev as CustomEvent<QueueMetrics>).detail;
+      setQueueMetrics(detail);
+    };
+    attentionalRequestQueue.addEventListener('metrics', onMetrics as EventListener);
+    return () => attentionalRequestQueue.removeEventListener('metrics', onMetrics as EventListener);
+  }, []);
+
+  const isAtCapacity = useMemo(() =>
+  {
+    if (!queueMetrics) return false;
+    return queueMetrics.activeCount >= queueMetrics.maxConcurrent;
+  }, [queueMetrics]);
 
   // Trigger Musai effects after streaming completes and content is finalized
   useEffect(() => {
@@ -204,7 +224,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <ChatInput
             module={module}
             onMessageSend={onMessageSend}
-            isLoading={isLoading}
+            // Do not block input for a single in-flight request; only disable when queue is at capacity
+            isLoading={isAtCapacity}
             streamEnabled={streamEnabled}
             onToggleStream={(enabled) => {
               setStreamEnabled(enabled);
