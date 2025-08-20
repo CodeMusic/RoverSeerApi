@@ -31,12 +31,12 @@
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
   <style>
     :root {
-      --musai-primary: #6b5b95;
-      --musai-accent: #8e9aaf;
-      --musai-bg: #1f2230;
-      --musai-bg-2: #2a2e3f;
-      --musai-text: #e6e6f0;
-      --musai-muted: #a7a9be;
+      --musai-primary: #6e62a6; /* deeper purple-steel */
+      --musai-accent: #9aa3c7;  /* cooler steel accent */
+      --musai-bg: #1e2030;      /* slightly cooler base */
+      --musai-bg-2: #2a2e42;    /* purple-steel surface */
+      --musai-text: #ececf4;
+      --musai-muted: #aab0c8;
     }
     /* Light mode palette and surfaces */
     html.theme-light {
@@ -88,7 +88,6 @@
       box-shadow: 0 4px 24px rgba(0,0,0,.35);
       border-radius: 14px;
     }
-    html.theme-light .search_box,
     @media (prefers-color-scheme: light) { html.theme-auto .search_box { background: rgba(255,255,255,.9); } }
     html.theme-light .search_box { background: rgba(255,255,255,.9); }
     #q { color: var(--musai-text); }
@@ -106,74 +105,63 @@
     }
     /* AI chat area */
     #ai_chat {
-      background: rgba(46,50,66,.6);
+      background: rgba(46,50,74,.55);
       border: 1px solid var(--musai-primary);
       box-shadow: 0 4px 24px rgba(0,0,0,.35);
-      border-radius: 14px;
-      padding: 12px;
-      margin: 12px 0 20px 0;
-      /* Float to the right of the search input area on wide viewports */
-      position: fixed;
-      top: 150px;
-      right: clamp(12px, 5vw, 48px);
-      width: min(420px, 42vw);
-      z-index: 50;
+      border-radius: 12px;
+      padding: 8px;
+      margin: 8px 0 16px 0;
+      /* Inline between the search image and results on wide viewports */
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     /* Fallback for small screens: place it inline */
     @media (max-width: 1024px) {
-      #ai_chat {
-        position: static;
-        width: auto;
-        right: auto;
-        top: auto;
-      }
+      #ai_chat { position: static; width: auto; right: auto; top: auto; }
     }
-    html.theme-light #ai_chat,
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
     html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
-    #ai_chat h3 {
-      margin: 0 0 8px 0;
-      color: var(--musai-text);
-      font-size: 1.05rem;
-    }
-    #ai_chat textarea {
-      width: 100%;
-      min-height: 72px;
-      resize: vertical;
-      padding: 8px;
+    #ai_chat form { flex: 1; display: flex; align-items: center; gap: 8px; margin: 0; }
+    #ai_chat input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      height: 40px;
+      padding: 0 10px;
       border-radius: 10px;
       border: 1px solid var(--musai-primary);
       background: rgba(0,0,0,0.15);
       color: var(--musai-text);
-    }
-    #ai_chat .ai-chat-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 8px;
     }
     #ai_chat button[type="submit"] {
       background: var(--musai-primary);
       color: #fff;
       border-radius: 10px;
       border: 0;
-      padding: 8px 14px;
+      height: 40px;
+      width: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
       cursor: pointer;
     }
     #ai_chat button[type="submit"]:hover {
       filter: brightness(1.1);
     }
-    #ai_chat textarea[disabled],
+    #ai_chat input[type="text"][disabled],
     #ai_chat button[disabled] {
       opacity: .6;
       cursor: not-allowed;
       filter: none;
     }
     #ai_chat_output {
-      margin-top: 10px;
+      margin-top: 8px;
       padding: 10px;
       border-radius: 10px;
-      background: rgba(0,0,0,0.15);
+      background: rgba(40,34,68,0.25);
       border: 1px solid rgba(255,255,255,0.08);
       white-space: pre-wrap;
     }
@@ -227,8 +215,8 @@
     }
     /* Main response bubble (purplish) */
     .ai-main-bubble {
-      background: rgba(107,91,149,.14);
-      border: 1px solid rgba(107,91,149,.45);
+      background: rgba(110,98,166,.18);
+      border: 1px solid rgba(110,98,166,.55);
       color: var(--musai-text);
       border-radius: 10px;
       padding: 10px;
