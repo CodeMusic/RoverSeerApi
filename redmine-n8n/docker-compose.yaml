@@ -107,6 +107,38 @@ services:
     networks:
       - ai_net
 
+    searxng:
+      image: searxng/searxng:latest
+      container_name: searxng
+      restart: unless-stopped
+      ports:
+        - "8080:8080"                    # expose to LAN so Mac mini Apache can reach iMac:8080
+      environment:
+        - BASE_URL=https://search.codemusic.ca
+        - SECRET_KEY=b618b27c029ee157f5e30a12d1067d8566d715009b3873d1e5ca634ceea1dfd6
+        - INSTANCE_NAME=CodeMusic SearXNG
+        - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
+        - AUTOCOMPLETE=duckduckgo
+        - MORTY_URL=http://morty:3000/    # container-to-container (DO NOT map Morty to host 3000)
+        - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+      depends_on:
+        - morty
+      networks:
+        - ai_net
+      # volumes:   # (commented out for now, use baked-in defaults)
+      #   - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      #   - ./searxng/engines.yml:/etc/searxng/engines.yml:ro
+
+    morty:
+      image: searxng/morty:latest
+      container_name: morty
+      restart: unless-stopped
+      environment:
+        - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+      networks:
+        - ai_net
+      # NOTE: no ports: section → stays internal at 3000, only visible to searxng
+
   wyoming-whisper:
     image: rhasspy/wyoming-whisper
     container_name: wyoming-whisper
