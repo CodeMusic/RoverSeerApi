@@ -8,7 +8,8 @@
   <meta name="generator" content="searxng/{{ searx_version }}">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noarchive">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
   <meta name="theme-color" content="#1e2030">
   <style>
     /* Paint-safe fallback to avoid white flash before CSS loads */
@@ -133,6 +134,11 @@
       left: -10px; /* shift left by 10px */
       top: -2px;  /* shift up by ~2px */
     }
+    /* Results page only: add extra breathing room below the logo/header */
+    #main_results #search_header
+    {
+      padding-bottom: 16px;
+    }
     .search_box {
       background: rgba(46,50,66,.6);
       border: 1px solid var(--musai-primary);
@@ -142,6 +148,10 @@
     @media (prefers-color-scheme: light) { html.theme-auto .search_box { background: rgba(255,255,255,.9); } }
     html.theme-light .search_box { background: rgba(255,255,255,.9); }
     #q { color: var(--musai-text); }
+    /* Prevent iOS Safari auto-zoom on focus */
+    @media (max-width: 640px) {
+      #q { font-size: 16px; }
+    }
     #send_search {
       background: var(--musai-primary);
       color: #fff;
@@ -153,6 +163,20 @@
     /* Add breathing room below the categories (General, Images, Videos, etc.) */
     #categories {
       padding-bottom: 12px;
+    }
+    /* Mobile: swap categories row for a compact dropdown */
+    #categories_mobile { display: none; }
+    @media (max-width: 640px) {
+      #categories { display: none; }
+      #categories_mobile { display: block; padding: 6px 0 12px; }
+      #categories_mobile select {
+        width: 100%;
+        padding: 10px 12px;
+        background: rgba(46,50,66,.6);
+        border: 1px solid var(--musai-primary);
+        color: var(--musai-text);
+        border-radius: 10px;
+      }
     }
     /* Keep categories/search types away from the top-right utility links */
     @media (min-width: 1025px) {
@@ -169,7 +193,7 @@
     }
     /* AI chat area — docked at the bottom as a floating bar */
     #ai_chat {
-      background: rgba(46,50,74,.55);
+      background: rgba(46,50,74,.9);
       border: 1px solid var(--musai-primary);
       box-shadow: 0 4px 24px rgba(0,0,0,.35);
       border-radius: 12px;
@@ -197,7 +221,7 @@
       }
     }
     @media (max-width: 1024px) {
-      #ai_chat { bottom: 8px; width: calc(100vw - 16px); }
+      #ai_chat { bottom: 8px; width: calc(100% - 16px); }
     }
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
     html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
@@ -242,12 +266,12 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
       border-radius: 999px;
       background: var(--musai-primary);
       color: #ffffff;
-      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      box-shadow: 0 3px 12px rgba(0,0,0,.28);
       border: 0;
     }
     #backToTop a:hover { filter: brightness(1.1); }
@@ -265,10 +289,13 @@
       margin-top: 0;
       padding: 10px;
       border-radius: 10px;
-      background: rgba(40,34,68,0.25);
+      background: rgba(40,34,68,0.92);
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 6px 28px rgba(0,0,0,.35);
       max-width: min(420px, 60vw);
+      max-height: 70vh;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       white-space: pre-wrap;
     }
     /* Typing indicator bubble (Musai-style) */
@@ -390,6 +417,22 @@
       border-color: #1d4ed8;
       color: #ffffff;
     }
+    /* Mobile refinements for iPhone widths */
+    @media (max-width: 640px) {
+      /* So header elements don’t overflow */
+      #search_header { flex-wrap: wrap; row-gap: 8px; }
+      #search_logo img, #search_logo picture { height: 56px; }
+
+      /* Larger touch targets and readable text to avoid auto-zoom */
+      #ai_chat input[type="text"] { height: 44px; font-size: 16px; }
+      #ai_chat #ai_chat_send { height: 44px; width: 48px; font-size: 18px; }
+
+      /* Ensure output bubble fits and breathes on small screens */
+      #ai_chat_output { max-width: min(92vw, 560px); right: 8px; }
+
+      /* Keep the back-to-top button clear of the AI bar */
+      #backToTop { bottom: calc(88px + env(safe-area-inset-bottom)); }
+    }
   </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
@@ -418,6 +461,9 @@
       {%- block linkto_preferences -%}
         <a href="{{ url_for('preferences') }}" class="link_on_top_preferences">{{ icon_big('settings') }}<span>{{ _('Preferences') }}</span></a>
       {%- endblock -%}
+      {%- block linkto_musai -%}
+        <a href="https://musai.codemusic.ca" class="link_on_top_musai">{{ icon_big('musical-notes') }}<span>{{ _('Musai') }}</span></a>
+      {%- endblock -%}
     </nav>
     {% block header %}
     {% endblock %}
@@ -443,6 +489,7 @@
         {% for title, link in get_setting('brand.custom.links').items() %}
         | <a href="{{ link }}">{{ _(title) }}</a>
         {% endfor %}
+        | <a href="https://musai.codemusic.ca">{{ _('Back to Musai') }}</a>
     </p>
   </footer>
   <script type="module" src="{{ url_for('static', filename='js/searxng.core.min.js') }}" client_settings="{{ client_settings }}"></script>

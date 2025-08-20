@@ -12,7 +12,7 @@
     </a>
     <div id="search_view">
       <div class="search_box">
-        <input id="q" name="q" type="text" placeholder="{{ _('Search for...') }}" tabindex="1" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" dir="auto" value="{{ q or '' }}">
+        <input id="q" name="q" type="text" placeholder="{{ _('Search for...') }}" tabindex="1" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" dir="auto" value="{{ q or '' }}" inputmode="search" enterkeyhint="search" aria-label="{{ _('Search for...') }}">
         <button id="clear_search" type="reset" aria-label="{{ _('clear') }}" class="hide_if_nojs"><span>{{ icon_big('close') }}</span><span class="show_if_nojs">{{ _('clear') }}</span></button>
         <button id="send_search" type="submit" {%- if search_on_category_select -%}name="category_{{ selected_categories[0]|replace(' ', '_') }}"{%- endif -%} aria-label="{{ _('search') }}"><span class="hide_if_nojs">{{ icon_big('search') }}</span><span class="show_if_nojs">{{ _('search') }}</span></button>
         <div class="autocomplete hide_if_nojs"><ul></ul></div>
@@ -29,3 +29,34 @@
   <input type="hidden" name="theme" value="{{ theme }}" >
   {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
 </form>
+<script>
+  (function ensureEnterSubmitsSearch()
+  {
+    try
+    {
+      var searchForm = document.getElementById('search');
+      var queryInput = document.getElementById('q');
+      if (!searchForm || !queryInput) { return; }
+
+      queryInput.addEventListener('keydown', function (ev)
+      {
+        if (ev && (ev.isComposing || ev.keyCode === 229)) { return; }
+        var isEnter = (ev && (ev.key === 'Enter' || ev.keyCode === 13));
+        if (isEnter && !ev.shiftKey)
+        {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (typeof searchForm.requestSubmit === 'function')
+          {
+            searchForm.requestSubmit();
+          }
+          else
+          {
+            searchForm.submit();
+          }
+        }
+      });
+    }
+    catch (e) { /* no-op */ }
+  })();
+  </script>

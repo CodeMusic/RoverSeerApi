@@ -13,8 +13,8 @@
 {% include 'simple/search.html' %}
 
 <section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}">
-  <form id="ai_chat_form" aria-label="Ask Musai AI" onsubmit="return false" action="#">
-    <input id="ai_chat_input" type="text" autocomplete="off" placeholder="Ask Musai AI about these results…">
+  <form id="ai_chat_form" aria-label="Ask Musai..." onsubmit="return false" action="#">
+    <input id="ai_chat_input" type="text" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai">
     <button id="ai_chat_send" type="button" title="Send" aria-label="Send">↵</button>
     <small id="ai_chat_status" aria-live="polite"></small>
   </form>

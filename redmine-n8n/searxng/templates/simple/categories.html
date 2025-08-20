@@ -40,3 +40,54 @@
         {%- endif -%}
     </div>{{- '' -}}
 </div>
+<div id="categories_mobile" class="hide_if_nojs">{{- '' -}}
+  <select id="categories_select" aria-label="{{ _('Search type') }}">{{- '' -}}
+    <option value="">{{ _('Choose type') }}</option>
+    {%- for category in categories -%}
+      <option value="{{ category }}"{% if category in selected_categories %} selected{% endif %}>{{ _(category) }}</option>
+    {%- endfor -%}
+  </select>{{- '' -}}
+</div>
+<script>
+(function initMobileCategorySelect()
+{
+  try
+  {
+    var selectEl = document.getElementById('categories_select');
+    var formEl = document.getElementById('search');
+    if (!selectEl || !formEl) { return; }
+
+    selectEl.addEventListener('change', function ()
+    {
+      // Remove any prior category inputs (checkbox or hidden) so only one category is submitted
+      var allCategoryInputs = formEl.querySelectorAll('input[name^="category_"]');
+      for (var i = 0; i < allCategoryInputs.length; i++)
+      {
+        var inp = allCategoryInputs[i];
+        if (inp.type === 'checkbox') { inp.checked = false; }
+        if (inp.type === 'hidden') { inp.parentNode && inp.parentNode.removeChild(inp); }
+      }
+
+      var category = selectEl.value;
+      if (!category) { return; }
+
+      // Create a hidden input as if a category button/checkbox was selected
+      var hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'category_' + category;
+      hidden.value = '1';
+      formEl.appendChild(hidden);
+
+      if (typeof formEl.requestSubmit === 'function')
+      {
+        formEl.requestSubmit();
+      }
+      else
+      {
+        formEl.submit();
+      }
+    });
+  }
+  catch (e) { /* no-op */ }
+})();
+</script>

@@ -1,9 +1,53 @@
 {% extends "simple/base.html" %}
+
+{% block title %}{{ _('404 — Musai time warp — ') }}{% endblock %}
+
+{% block head %}
+<style>
+    .time-warp-wrap
+    {
+        position: relative;
+        overflow: hidden;
+        padding: 20px 0;
+    }
+    .time-warp
+    {
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 16px;
+        border-radius: 999px;
+        background: conic-gradient(from 0deg,
+            color-mix(in oklab, var(--musai-primary) 80%, black 10%) 0deg,
+            color-mix(in oklab, var(--musai-accent) 80%, black 10%) 120deg,
+            color-mix(in oklab, var(--musai-primary) 80%, white 10%) 240deg,
+            color-mix(in oklab, var(--musai-accent) 80%, white 10%) 360deg
+        );
+        animation: warpSpin 6s linear infinite;
+        filter: blur(0.6px) drop-shadow(0 6px 18px rgba(0,0,0,.35));
+        opacity: .28;
+    }
+    @keyframes warpSpin
+    {
+        to { transform: rotate(360deg); }
+    }
+    .time-warp-wrap .muted
+    {
+        color: var(--musai-muted);
+        font-size: .95rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="center">
-    <h1>{{ _('Page not found') }}</h1>
+<div class="center time-warp-wrap">
+    <div class="time-warp" aria-hidden="true"></div>
+    <h1>{{ _('You slipped into a Musai time warp') }}</h1>
+    <p>{{ _('This page might exist in another timeline, but not this one.') }}</p>
     {% autoescape false %}
-    <p>{{ _('Go to %(search_page)s.', search_page='<a href="{}">{}</a>'.format(url_for('index'), _('search page'))) }}</p>
+    <p>{{ _('Try jumping back to %(search_page)s.', search_page='<a href="{}">{}</a>'.format(url_for('index'), _('the search page'))) }}</p>
     {% endautoescape %}
+    {% if get_setting('brand.issue_url') %}
+    <p class="muted">{{ _('Think this is a glitch in the timeline?') }} <a href="{{ get_setting('brand.issue_url') }}">{{ _('Report a ripple') }}</a></p>
+    {% endif %}
 </div>
 {% endblock %}
