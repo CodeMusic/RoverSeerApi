@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="endpoint" content="{{ endpoint }}">
-  <meta name="description" content="SearXNG — a privacy-respecting, open metasearch engine">
-  <meta name="keywords" content="SearXNG, search, search engine, metasearch, meta search">
+  <meta name="description" content="MusaiSearch — a privacy-respecting, purple-steel metasearch experience">
+  <meta name="keywords" content="MusaiSearch, search, search engine, metasearch, music, code, purple steel">
   <meta name="generator" content="searxng/{{ searx_version }}">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noarchive">
@@ -30,6 +30,42 @@
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" sizes="any">
   <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.png') }}">
+  <style>
+    :root {
+      --musai-primary: #6b5b95;
+      --musai-accent: #8e9aaf;
+      --musai-bg: #1f2230;
+      --musai-bg-2: #2a2e3f;
+      --musai-text: #e6e6f0;
+      --musai-muted: #a7a9be;
+    }
+    body {
+      background: radial-gradient(1000px 400px at 50% -10%, var(--musai-bg-2), var(--musai-bg));
+      color: var(--musai-text);
+    }
+    a { color: var(--musai-muted); }
+    a:hover { color: var(--musai-accent); }
+    /* Do not recolor custom logo assets */
+    #search_logo svg circle,
+    #search_logo svg path,
+    #search_logo svg rect { stroke: inherit; fill: inherit; }
+    #search_logo img, #search_logo picture { display: block; height: 64px; width: auto; }
+    .search_box {
+      background: rgba(46,50,66,.6);
+      border: 1px solid var(--musai-primary);
+      box-shadow: 0 4px 24px rgba(0,0,0,.35);
+      border-radius: 14px;
+    }
+    #q { color: var(--musai-text); }
+    #send_search {
+      background: var(--musai-primary);
+      color: #fff;
+      border-radius: 12px;
+      border: 0;
+    }
+    #send_search:hover { filter: brightness(1.1); }
+    footer { color: var(--musai-muted); }
+  </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
   <main id="main_{{  self._TemplateReference__context.name|replace("simple/", "")|replace(".html", "") }}" class="{{body_class}}">
@@ -65,7 +101,7 @@
   </main>
   <footer>
     <p>
-    {{ _('Powered by') }} <a href="{{ url_for('info', pagename='about') }}">SearXNG</a> - {{ searx_version }} — {{ _('a privacy-respecting, open metasearch engine') }}<br>
+    <strong>MusaiSearch</strong> — {{ _('powered by') }} <a href="{{ url_for('info', pagename='about') }}">SearXNG</a> ({{ searx_version }}) — {{ _('a privacy-respecting, open metasearch engine') }}<br>
         <a href="{{ searx_git_url }}">{{ _('Source code') }}</a>
         | <a href="{{ get_setting('brand.issue_url') }}">{{ _('Issue tracker') }}</a>
         {% if enable_metrics %}| <a href="{{ url_for('stats') }}">{{ _('Engine stats') }}</a>{% endif %}
