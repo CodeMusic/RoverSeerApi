@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="no-js theme-{{ preferences.get_value('simple_style') or 'auto' }} center-alignment-{{ preferences.get_value('center_alignment') and 'yes' or 'no' }}" lang="{{ locale_rfc5646 }}" {% if rtl %} dir="rtl"{% endif %}>
+<html class="no-js theme-{{ preferences.get_value('simple_style') or get_setting('ui.theme_args.simple_style') or 'auto' }} center-alignment-{{ preferences.get_value('center_alignment') and 'yes' or 'no' }}" lang="{{ locale_rfc5646 }}" {% if rtl %} dir="rtl"{% endif %}>
 <head>
   <meta charset="UTF-8">
   <meta name="endpoint" content="{{ endpoint }}">
@@ -9,6 +9,53 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noarchive">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1e2030">
+  <style>
+    /* Paint-safe fallback to avoid white flash before CSS loads */
+    html,
+    body {
+      background: #1e2030;
+      color: #ececf4;
+    }
+    html.theme-light,
+    html.theme-light body {
+      background: #eafaf7;
+      color: #222222;
+    }
+    html.theme-black,
+    html.theme-black body {
+      background: #000000;
+      color: #e5e7eb;
+    }
+  </style>
+  <script>
+    (function setThemeColorImmediate()
+    {
+      try
+      {
+        var cls = document.documentElement.className || '';
+        var isAuto = /(^|\s)theme-auto(\s|$)/.test(cls);
+        var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        var light = '#eafaf7';
+        var dark = '#1e2030';
+        var black = '#000000';
+        var color = dark;
+        if ((/(^|\s)theme-light(\s|$)/.test(cls)) || (isAuto && prefersLight))
+        {
+          color = light;
+        }
+        if (/(^|\s)theme-black(\s|$)/.test(cls))
+        {
+          color = black;
+        }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) { meta.setAttribute('content', color); }
+        document.documentElement.style.backgroundColor = color;
+        if (document.body) { document.body.style.backgroundColor = color; }
+      }
+      catch (e) { /* no-op */ }
+    })();
+  </script>
   <title>{% block title %}{% endblock %}{{ instance_name }}</title>
   {% block meta %}{% endblock %}
   {% if rtl %}
@@ -103,6 +150,19 @@
     #categories {
       padding-bottom: 12px;
     }
+    /* Keep categories/search types away from the top-right utility links */
+    @media (min-width: 1025px) {
+      #search_header,
+      #categories {
+        padding-right: 160px; /* space for About / Preferences */
+      }
+    }
+    @media (min-width: 768px) and (max-width: 1024px) {
+      #search_header,
+      #categories {
+        padding-right: 110px;
+      }
+    }
     /* AI chat area */
     #ai_chat {
       background: rgba(46,50,74,.55);
@@ -116,6 +176,22 @@
       display: flex;
       align-items: center;
       gap: 8px;
+    }
+    /* On wide viewports, tuck the AI bar closer to the filters (up and to the right) and widen */
+    @media (min-width: 1025px) {
+      #ai_chat {
+        top: -22px;       /* move up */
+        left: 28px;       /* nudge right */
+        width: clamp(520px, 56vw, 760px); /* a bit wider, responsive */
+        margin-top: 0;
+      }
+      #ai_chat input[type="text"] {
+        height: 44px;
+      }
+      #ai_chat button {
+        height: 44px;
+        width: 48px;
+      }
     }
     /* Fallback for small screens: place it inline */
     @media (max-width: 1024px) {
@@ -134,7 +210,8 @@
       background: rgba(0,0,0,0.15);
       color: var(--musai-text);
     }
-    #ai_chat button[type="submit"] {
+    #ai_chat button[type="submit"],
+    #ai_chat button[type="button"] {
       background: var(--musai-primary);
       color: #fff;
       border-radius: 10px;
@@ -148,7 +225,8 @@
       line-height: 1;
       cursor: pointer;
     }
-    #ai_chat button[type="submit"]:hover {
+    #ai_chat button[type="submit"]:hover,
+    #ai_chat button[type="button"]:hover {
       filter: brightness(1.1);
     }
     #ai_chat input[type="text"][disabled],
