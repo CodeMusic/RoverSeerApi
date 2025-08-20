@@ -189,7 +189,6 @@
         const main = document.createElement('div');
         main.className = 'ai-main-bubble';
         main.textContent = responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : '');
-        aiOut.appendChild(main);
 
         // Extract logical/creative thoughts if present
         let logicalThought = '';
@@ -233,26 +232,35 @@
           function setActive(which) {
             const isRed = which === 'red';
             const isBlue = which === 'blue';
+            // Only one visible at a time: when a POV is active, hide the main response
+            main.hidden = !!which;
             redPanel.hidden = !isRed;
             bluePanel.hidden = !isBlue;
             redBtn.classList.toggle('active', isRed);
             blueBtn.classList.toggle('active', isBlue);
           }
 
-          redBtn.addEventListener('click', () => {
+          redBtn.addEventListener('click', function () {
             if (redBtn.disabled) return;
-            setActive(redPanel.hidden ? 'red' : null);
+            setActive(!redBtn.classList.contains('active') ? 'red' : null);
           });
-          blueBtn.addEventListener('click', () => {
+          blueBtn.addEventListener('click', function () {
             if (blueBtn.disabled) return;
-            setActive(bluePanel.hidden ? 'blue' : null);
+            setActive(!blueBtn.classList.contains('active') ? 'blue' : null);
           });
 
+          // Render header first, then the single visible content beneath it
           aiOut.appendChild(toggles);
           toggles.appendChild(redBtn);
           toggles.appendChild(blueBtn);
+          aiOut.appendChild(main);
           aiOut.appendChild(redPanel);
           aiOut.appendChild(bluePanel);
+          // default: show only main response
+          setActive(null);
+        } else {
+          // No POVs: just show main response
+          aiOut.appendChild(main);
         }
 
         aiOut.hidden = false;

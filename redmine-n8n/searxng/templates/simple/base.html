@@ -108,6 +108,10 @@
       background: var(--musai-bg);
       color: var(--musai-text);
     }
+    /* Keep content clear of the docked AI bar */
+    main {
+      padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    }
     a { color: var(--musai-muted); }
     a:hover { color: var(--musai-accent); }
     /* Do not recolor custom logo assets */
@@ -163,28 +167,26 @@
         padding-right: 110px;
       }
     }
-    /* AI chat area */
+    /* AI chat area — docked at the bottom as a floating bar */
     #ai_chat {
       background: rgba(46,50,74,.55);
       border: 1px solid var(--musai-primary);
       box-shadow: 0 4px 24px rgba(0,0,0,.35);
       border-radius: 12px;
       padding: 8px;
-      margin: 8px 0 16px 0;
-      /* Inline between the search image and results on wide viewports */
-      position: relative;
+      /* Docked, centered */
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      width: min(900px, calc(100vw - 28px));
+      z-index: 999;
+      margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    /* On wide viewports, tuck the AI bar closer to the filters (up and to the right) and widen */
     @media (min-width: 1025px) {
-      #ai_chat {
-        top: -22px;       /* move up */
-        left: 28px;       /* nudge right */
-        width: clamp(520px, 56vw, 760px); /* a bit wider, responsive */
-        margin-top: 0;
-      }
       #ai_chat input[type="text"] {
         height: 44px;
       }
@@ -193,9 +195,8 @@
         width: 48px;
       }
     }
-    /* Fallback for small screens: place it inline */
     @media (max-width: 1024px) {
-      #ai_chat { position: static; width: auto; right: auto; top: auto; }
+      #ai_chat { bottom: 8px; width: calc(100vw - 16px); }
     }
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
     html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
@@ -235,12 +236,18 @@
       cursor: not-allowed;
       filter: none;
     }
+    /* Output bubble appears above the docked bar */
     #ai_chat_output {
-      margin-top: 8px;
+      position: absolute;
+      right: 10px;
+      bottom: calc(100% + 10px);
+      margin-top: 0;
       padding: 10px;
       border-radius: 10px;
       background: rgba(40,34,68,0.25);
       border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 6px 28px rgba(0,0,0,.35);
+      max-width: min(420px, 60vw);
       white-space: pre-wrap;
     }
     /* Typing indicator bubble (Musai-style) */
