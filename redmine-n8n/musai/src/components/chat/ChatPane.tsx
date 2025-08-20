@@ -22,6 +22,10 @@ interface ChatPaneProps {
   className?: string;
   isTyping?: boolean;
   isLoading?: boolean;
+  /** Optional text to prepend to the user's message when sending */
+  prefixText?: string;
+  /** Whether to show controls above the input (stream/effects). Defaults true */
+  showControls?: boolean;
 }
 
 // Theme utility function
@@ -85,7 +89,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   readOnly = false,
   className = '',
   isTyping = false,
-  isLoading = false
+  isLoading = false,
+  prefixText,
+  showControls = true
 }) => {
   const [contextMenu, setContextMenu] = useState<{
     messageId: string;
@@ -172,7 +178,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   return (
     <div className={`chat-pane h-full flex flex-col min-h-0 ${theme.container} ${className}`}>
       {/* Messages Area */}
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-20 md:pb-24">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-2">
         {messageList.map((message, index) => {
           const isLast = index === messageList.length - 1;
           const showTypingInThisBubble = Boolean(
@@ -220,7 +226,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
       {/* Input Area */}
       {!readOnly && (
-        <div className={`border-t ${theme.border} bg-background/50 pb-4 md:pb-6`}>
+        <div className={`border-t ${theme.border} bg-background/50`}>
           <ChatInput
             module={module}
             onMessageSend={onMessageSend}
@@ -240,6 +246,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
               }
             }}
             theme={theme}
+            prefixText={prefixText}
+            showControls={showControls}
           />
         </div>
       )}

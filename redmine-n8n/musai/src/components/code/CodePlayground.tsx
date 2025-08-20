@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Card, CardContent, CardHeader } from './ui/card';
-import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from './ui/resizable';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable';
 import { executeJavaScript, executeHTML } from '@/utils/codeExecutor';
 import { useToast } from '@/hooks/use-toast';
-import { EditorHeader } from './playground/EditorHeader';
-import { PlaygroundOutput } from './playground/PlaygroundOutput';
+import { EditorHeader } from '@/components/playground/EditorHeader';
+import { PlaygroundOutput } from '@/components/playground/PlaygroundOutput';
 import { usePopoutWindow } from '@/hooks/usePopoutWindow';
-import { SUPPORTED_LANGUAGES } from './playground/constants';
+import { SUPPORTED_LANGUAGES } from '@/components/playground/constants';
 
 interface CodePlaygroundProps {
   defaultLanguage?: string;
@@ -81,7 +81,7 @@ const CodePlayground: React.FC<CodePlaygroundProps> = ({
       
       toast({
         description: error ? "Execution failed" : "Code executed successfully",
-        variant: error ? "destructive" : "default",
+        variant: error ? "destructive" : "success",
       });
     } catch (err) {
       toast({
@@ -171,3 +171,5 @@ const CodePlayground: React.FC<CodePlaygroundProps> = ({
 };
 
 export default CodePlayground;
+
+

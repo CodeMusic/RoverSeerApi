@@ -3,11 +3,15 @@ import { Message } from '@/types/chat';
 import { User, Bot, Clock, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
+import { parseCtxEnvelope, stripCodeAndResultsBlocks } from '@/utils/chatSanitizers';
 import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
 import { StreamingText } from '@/components/chat/StreamingText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { APP_TERMS, MUSAI_COLORS } from '@/config/constants';
+import { isLikelyMarkdown } from '@/utils/markdown';
+import { formatNaturalTimestamp } from '@/utils/time';
 import { hexToRgba } from '@/utils/chroma';
+import { extractMoodFromContent, getTherapyMoodStyling, getMoodEmoji } from '@/utils/mood';
 
 interface MessageBubbleProps {
   message: Message;
@@ -37,46 +41,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const displayName = isUser ? roleConfig.user : roleConfig.assistant;
   const { isDark } = useTheme();
 
-  const formatNaturalTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const now = new Date();
+  // Decode hidden-context envelope and strip code/results tags for display hygiene
 
-    const sameDay = (
-      date.getFullYear() === now.getFullYear() &&
-      date.getMonth() === now.getMonth() &&
-      date.getDate() === now.getDate()
-    );
+  // Prepare raw text for display: decode CTX envelope, then strip code/results blocks
+  const rawForDisplay = (() =>
+  {
+    const decoded = parseCtxEnvelope(message.content);
+    const base = decoded ? decoded.visible : message.content;
+    return stripCodeAndResultsBlocks(base);
+  })();
 
-    const yesterdayRef = new Date(now);
-    yesterdayRef.setDate(now.getDate() - 1);
-    const yesterday = (
-      date.getFullYear() === yesterdayRef.getFullYear() &&
-      date.getMonth() === yesterdayRef.getMonth() &&
-      date.getDate() === yesterdayRef.getDate()
-    );
-
-    const to12Hour = (d: Date): string => {
-      let h = d.getHours();
-      const m = d.getMinutes().toString().padStart(2, '0');
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      h = h % 12;
-      if (h === 0) h = 12;
-      return `${h}:${m} ${ampm}`;
-    };
-
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = date.getDate();
-    const ordinal = (n: number) => {
-      const s = ['th', 'st', 'nd', 'rd'];
-      const v = n % 100;
-      return s[(v - 20) % 10] || s[v] || s[0];
-    };
-
-    const time = to12Hour(date);
-    if (sameDay) return `Today at ${time}`;
-    if (yesterday) return `Yesterday at ${time}`;
-    return `${monthNames[date.getMonth()]} ${day}${ordinal(day)}, ${date.getFullYear()} at ${time}`;
-  };
+  // formatNaturalTimestamp imported from utils/time
 
   const getModuleSpecificStyling = () => {
     switch (module) {
@@ -121,88 +96,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const styling = getModuleSpecificStyling();
   const [activePov, setActivePov] = React.useState<'logical' | 'creative' | null>(null);
 
-  // Extract leading mood tag like: [Mood: Calm] ...
-  const extractMoodFromContent = (text: string): { mood: string | null; stripped: string } =>
-  {
-    if (!text) return { mood: null, stripped: text };
-    const match = text.match(/^\s*\[\s*Mood\s*:\s*([^\]]+)\]\s*(.*)$/i);
-    if (match)
-    {
-      const moodRaw = (match[1] || '').trim();
-      const remainder = match[2] ?? '';
-      return { mood: moodRaw, stripped: remainder };
-    }
-    return { mood: null, stripped: text };
-  };
-
   // Map mood to bubble/text classes (therapy user messages only)
-  const getMoodStyling = (mood: string) =>
-  {
-    const key = mood.toLowerCase();
-    switch (key)
-    {
-      case 'happy':
-        return {
-          userBubble: 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700',
-          userText: 'text-yellow-900 dark:text-yellow-100'
-        };
-      case 'sad':
-        return {
-          userBubble: 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700',
-          userText: 'text-blue-900 dark:text-blue-100'
-        };
-      case 'anxious':
-        return {
-          userBubble: 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700',
-          userText: 'text-amber-900 dark:text-amber-100'
-        };
-      case 'frustrated':
-        return {
-          userBubble: 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700',
-          userText: 'text-red-900 dark:text-red-100'
-        };
-      case 'calm':
-        return {
-          userBubble: 'bg-teal-100 dark:bg-teal-900/30 border-teal-300 dark:border-teal-700',
-          userText: 'text-teal-900 dark:text-teal-100'
-        };
-      case 'thoughtful':
-        return {
-          userBubble: 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700',
-          userText: 'text-purple-900 dark:text-purple-100'
-        };
-      default:
-        return null;
-    }
-  };
+  const getMoodStyling = getTherapyMoodStyling;
 
   // For therapy user messages, derive mood and display content accordingly
   const { mood: extractedMoodFromText, stripped: displayContentFromText } = (() =>
   {
     if (module === 'therapy' && isUser)
     {
-      return extractMoodFromContent(message.content);
+      return extractMoodFromContent(rawForDisplay);
     }
-    return { mood: null, stripped: message.content };
+    return { mood: null, stripped: rawForDisplay };
   })();
   const effectiveMood = (message as any).mood || extractedMoodFromText;
   const displayContent = displayContentFromText;
   const moodStyling = effectiveMood ? getMoodStyling(String(effectiveMood)) : null;
 
   // Map mood to an emoji for quick affect recognition
-  const getMoodEmoji = (mood: string): string =>
-  {
-    switch (mood.toLowerCase())
-    {
-      case 'happy': return '😊';
-      case 'sad': return '😔';
-      case 'anxious': return '😰';
-      case 'frustrated': return '😤';
-      case 'calm': return '😌';
-      case 'thoughtful': return '🤔';
-      default: return '✨';
-    }
-  };
+  // getMoodEmoji imported from utils/mood
 
   const moodBadgeStyle: React.CSSProperties | undefined = effectiveMood ? {
     backgroundColor: 'rgba(var(--mood-rgb, 147, 51, 234), 0.12)',
@@ -290,19 +201,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     };
   })();
 
-  const isLikelyMarkdown = (text: string): boolean => {
-    if (!text) return false;
-    return (
-      /(^|\n)```/.test(text) || // code block
-      /`[^`]+`/.test(text) || // inline code
-      /\[[^\]]+\]\([^\)]+\)/.test(text) || // links
-      /(^|\n)#{1,6}\s+/.test(text) || // headings
-      /(^|\n)(-|\*|\+)\s+/.test(text) || // bullet lists
-      /(^|\n)\d+\.\s+/.test(text) || // numbered lists
-      /!\[[^\]]*\]\([^\)]+\)/.test(text) || // images
-      /\|[^\n]*\|/.test(text) // tables
-    );
-  };
+  // isLikelyMarkdown imported from utils/markdown
 
   return (
     <div 
@@ -350,7 +249,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <div
               className={cn(
                 "absolute -top-3 right-3 px-2 py-0.5 text-[10px] rounded-full border shadow-sm",
-                "opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur"
+                "opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur",
+                "z-10"
               )}
               style={moodBadgeStyle}
               aria-label={`Mood: ${String(effectiveMood)}`}

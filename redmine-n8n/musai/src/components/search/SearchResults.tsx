@@ -180,7 +180,9 @@ export const SearchResults = ({
           })()}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-lg font-semibold truncate">{session.query}</h1>
+              <h1 className="text-lg font-semibold truncate max-w-[60vw] sm:max-w-[50vw] md:max-w-[40vw] lg:max-w-[32rem]">
+                {session.query}
+              </h1>
               <Badge className={cn("text-xs px-2 py-1", getIntentColor(session.intent))}>
                 {getIntentLabel(session.intent)}
               </Badge>

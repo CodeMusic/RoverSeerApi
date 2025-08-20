@@ -240,4 +240,7 @@ export const DEBUG_FLAGS = {
   hideThinkingTags: (typeof window !== 'undefined' && (window as any).env?.VITE_HIDE_THINKING_TAGS) ?? import.meta.env.VITE_HIDE_THINKING_TAGS ?? 'true',
   // When true, hide bicameral intermediate outputs; when false (beta), show them
   hideBicameralVoiceOutput: (typeof window !== 'undefined' && (window as any).env?.VITE_HIDE_BICAMERAL_VOICE_OUTPUT) ?? import.meta.env.VITE_HIDE_BICAMERAL_VOICE_OUTPUT ?? 'false',
+  // When true, always show the system status bar on public/info pages as well.
+  // Default is false so the status bar only appears within the gated app experience.
+  showStatusBarOutsideApp: (typeof window !== 'undefined' && (window as any).env?.VITE_SHOW_STATUS_BAR_OUTSIDE_APP) ?? import.meta.env.VITE_SHOW_STATUS_BAR_OUTSIDE_APP ?? 'false',
 };

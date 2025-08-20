@@ -4,7 +4,7 @@ import { BaseSession } from "@/types/chat";
 import { PlusCircle, Check, X, ChevronLeft } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { useState, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -25,6 +25,8 @@ interface BaseSessionSidebarProps<T extends BaseSession> {
   onRenameSession: (sessionId: string, newName: string) => void;
   onToggleFavorite: (sessionId: string) => void;
   onToggleCollapse?: () => void;
+  // Optional slot for module-specific controls (e.g., search, step navigation)
+  renderTopSection?: ReactNode;
 }
 
 export function BaseSessionSidebar<T extends BaseSession>({
@@ -42,6 +44,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
   onRenameSession,
   onToggleFavorite,
   onToggleCollapse,
+  renderTopSection,
 }: BaseSessionSidebarProps<T>) {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -53,23 +56,23 @@ export function BaseSessionSidebar<T extends BaseSession>({
     const session = sessions.find(s => s.id === sessionId);
     
     if (session?.favorite) {
-      toast.error("Cannot delete a favorite session");
+      toast({ description: "Cannot delete a favorite session", variant: "destructive" });
       return;
     }
     
     if (sessions.length === 1) {
-      toast.error("Cannot delete the last session");
+      toast({ description: "Cannot delete the last session", variant: "destructive" });
       return;
     }
     onDeleteSession(sessionId);
-    toast.success("Session deleted successfully");
+    toast({ description: "Session deleted successfully", variant: "success" });
   };
 
   const handleToggleFavorite = (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     onToggleFavorite(sessionId);
     const session = sessions.find(s => s.id === sessionId);
-    toast.success(session?.favorite ? "Session removed from favorites" : "Session added to favorites");
+    toast({ description: session?.favorite ? "Session removed from favorites" : "Session added to favorites", variant: "info" });
   };
 
   const startEditing = (e: React.MouseEvent, session: T) => {
@@ -83,7 +86,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
     if (editingSessionId && editingName.trim()) {
       onRenameSession(editingSessionId, editingName.trim());
       setEditingSessionId(null);
-      toast.success("Session renamed successfully");
+      toast({ description: "Session renamed successfully", variant: "success" });
     }
   };
 
@@ -121,6 +124,12 @@ export function BaseSessionSidebar<T extends BaseSession>({
           {newSessionText}
         </Button>
       </div>
+
+      {renderTopSection && (
+        <div className="border-b border-border/20">
+          {renderTopSection}
+        </div>
+      )}
 
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
@@ -179,7 +188,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
                       </form>
                     ) : (
                       <>
-                        <div className="font-medium truncate">
+                        <div className="font-medium truncate max-w-[70%]">
                           {getSessionName(session)}
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
@@ -192,6 +201,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
                   {/* Action Buttons (inline, always visible) */}
                   {editingSessionId !== session.id && showActions && (
                     <SessionActions
+                      className="flex-shrink-0"
                       isFavorite={Boolean((session as any).favorite)}
                       onToggleFavorite={(e) => handleToggleFavorite(e, session.id)}
                       onStartEdit={(e) => startEditing(e, session)}

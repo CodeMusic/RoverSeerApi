@@ -1,12 +1,12 @@
-
 import { Message } from '@/types/chat';
 import { cn } from '@/lib/utils';
 import { Copy, Bot } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { MarkdownRenderer } from './chat/MarkdownRenderer';
-import { ThinkPanel } from './chat/ThinkPanel';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { parseCtxEnvelope, stripCodeAndResultsBlocks } from '@/utils/chatSanitizers';
+import { ThinkPanel } from './ThinkPanel';
 import { useEmotionEffects } from '@/hooks/useEmotionEffects';
 import { useEffect } from 'react';
 import { DEBUG_FLAGS } from '@/config/constants';
@@ -46,6 +46,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
       toast({
         description: "Message copied to clipboard",
         duration: 2000,
+        variant: "success",
       });
     } catch (err) {
       console.error('Failed to copy text:', err);
@@ -56,6 +57,15 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
       });
     }
   };
+
+  // Decode hidden-context envelope and strip code/results tags for display hygiene
+
+  const displayContent = (() =>
+  {
+    const decoded = parseCtxEnvelope(message.content);
+    const base = decoded ? decoded.visible : message.content;
+    return stripCodeAndResultsBlocks(base);
+  })();
 
   return (
     <div
@@ -112,7 +122,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
           )}
           <div className="overflow-x-auto">
             <div className="markdown-content break-words">
-              <MarkdownRenderer content={message.content} />
+              <MarkdownRenderer content={displayContent} />
             </div>
           </div>
         </div>
@@ -144,3 +154,5 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
     </div>
   );
 };
+
+

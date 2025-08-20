@@ -2,6 +2,17 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Star, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface SessionActionsProps
 {
@@ -22,7 +33,7 @@ export function SessionActions({
 {
   return (
     <div className={cn(
-      "flex gap-1 flex-shrink-0",
+      "flex gap-1 flex-shrink-0 text-muted-foreground",
       className
     )}>
       <Button
@@ -36,7 +47,7 @@ export function SessionActions({
         title="Toggle favorite"
         aria-label="Toggle favorite"
       >
-        <Star className="h-3 w-3" fill={isFavorite ? "currentColor" : "none"} />
+        <Star className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} />
       </Button>
       <Button
         variant="ghost"
@@ -46,18 +57,42 @@ export function SessionActions({
         title="Rename session"
         aria-label="Rename session"
       >
-        <Pencil className="h-3 w-3" />
+        <Pencil className="h-4 w-4" />
       </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive hover:shadow-sm focus:bg-destructive/20 focus:text-destructive"
-        onClick={onDelete}
-        title="Delete session"
-        aria-label="Delete session"
-      >
-        <Trash2 className="h-3 w-3" />
-      </Button>
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive hover:shadow-sm focus:bg-destructive/20 focus:text-destructive"
+            onClick={(e) => e.stopPropagation()}
+            title="Delete session"
+            aria-label="Delete session"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Press Enter to confirm deletion.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              autoFocus
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(e);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

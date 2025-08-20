@@ -47,19 +47,23 @@ export const useDevSessions = () => {
   }, []);
 
   const deleteSession = useCallback((sessionId: string) => {
-    setSessions(prev => prev.filter(session => session.id !== sessionId));
-    
-    // If we deleted the current session, select the first available one
-    if (currentSessionId === sessionId) {
-      setSessions(prev => {
-        if (prev.length > 0) {
-          setCurrentSessionId(prev[0].id);
-        } else {
+    setSessions(prev => {
+      const remaining = prev.filter(session => session.id !== sessionId);
+      // If we deleted the current session, select the most recent remaining (if any)
+      if (currentSessionId === sessionId)
+      {
+        if (remaining.length > 0)
+        {
+          const mostRecent = remaining.reduce((latest, s) => s.lastUpdated > latest.lastUpdated ? s : latest, remaining[0]);
+          setCurrentSessionId(mostRecent.id);
+        }
+        else
+        {
           setCurrentSessionId('');
         }
-        return prev;
-      });
-    }
+      }
+      return remaining;
+    });
   }, [currentSessionId]);
 
   const renameSession = useCallback((sessionId: string, newName: string) => {

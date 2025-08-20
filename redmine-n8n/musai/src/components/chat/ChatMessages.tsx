@@ -1,6 +1,6 @@
 
 import { Message } from "@/types/chat";
-import { ChatMessage } from "@/components/ChatMessage";
+import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEffect, useRef, useState } from "react";
 import { MysticalTypingIndicator } from "./MysticalTypingIndicator";

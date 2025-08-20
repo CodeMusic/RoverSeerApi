@@ -7,7 +7,7 @@ import { ROUTES } from "@/config/routes";
 import { APP_TERMS, MUSAI_COLORS, CANONICAL_TOOL_ORDER } from "@/config/constants";
 import { useIsMobile } from "@/hooks/use-mobile";
 //
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { useCurationsAvailability } from "@/hooks/useCurationsAvailability";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
@@ -176,7 +176,7 @@ export const NavigationBar = ({
   return (
     <div
       className={cn(
-        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-50 transition-all duration-300",
+        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-[60] transition-all duration-300",
         isMobile 
           ? "w-12 items-center" // Always compact on mobile
           : isExpanded 

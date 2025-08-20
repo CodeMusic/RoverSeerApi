@@ -19,6 +19,7 @@ import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartToo
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ClipboardList, FileUp, MessageCircle, Stethoscope, Brain, ShieldQuestion, Info, Mic, Image as ImageIcon, FileText, Download } from 'lucide-react';
 import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
+import { fileToDataUri } from '@/utils/files';
 
 function getOrCreatePatientId(): string
 {
@@ -37,16 +38,7 @@ function classifyArtifactKind(file: File): Artifact['kind']
   return 'note';
 }
 
-async function fileToDataUri(file: File): Promise<string>
-{
-  return new Promise((resolve, reject) =>
-  {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+// fileToDataUri imported from utils/files
 
 export default function MedicalMusaiConsole()
 {

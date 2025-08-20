@@ -4,6 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Paperclip, Smile, Heart, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { THERAPY_MOODS } from '@/utils/mood';
 
 interface ChatInputProps {
   module: string;
@@ -19,6 +20,10 @@ interface ChatInputProps {
     accent: string;
     border: string;
   };
+  /** Optional text to prepend to the user's message when sending (e.g., contextual code/output) */
+  prefixText?: string;
+  /** Whether to show the controls row (stream/effects). Defaults to true */
+  showControls?: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -30,11 +35,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   effectsEnabled = true,
   onToggleEffects,
   placeholder,
-  theme
+  theme,
+  prefixText,
+  showControls = true
 }) => {
   const [input, setInput] = useState('');
   const [selectedMood, setSelectedMood] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // No envelope; we send plain text with optional inline prefixes so AI sees full context
 
   const getPlaceholder = () => {
     if (placeholder) return placeholder;
@@ -57,9 +66,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const messageText = selectedMood && module === 'therapy' 
-      ? `[Mood: ${selectedMood}] ${input.trim()}`
-      : input.trim();
+    const prefixParts: string[] = [];
+    if (prefixText && prefixText.trim()) {
+      prefixParts.push(prefixText.trim());
+    }
+    if (selectedMood && module === 'therapy') {
+      prefixParts.push(`[Mood: ${selectedMood}]`);
+    }
+    const visibleText = input.trim();
+    const aiPayload = prefixParts.length > 0 ? `${prefixParts.join(' ')} ${visibleText}` : visibleText;
+    const messageText = aiPayload;
 
     setInput('');
     setSelectedMood('');
@@ -83,18 +99,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  // Therapy-specific mood tags
-  const therapyMoods = [
-    { emoji: '😊', label: 'Happy' },
-    { emoji: '😔', label: 'Sad' },
-    { emoji: '😰', label: 'Anxious' },
-    { emoji: '😤', label: 'Frustrated' },
-    { emoji: '😌', label: 'Calm' },
-    { emoji: '🤔', label: 'Thoughtful' }
-  ];
+  // Therapy-specific mood tags (centralized)
+  const therapyMoods = THERAPY_MOODS;
 
   return (
-    <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-3 sticky bottom-[calc(2rem+env(safe-area-inset-bottom))] bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-3 bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       {/* Therapy Mood Selector */}
       {module === 'therapy' && (
         <div className="flex gap-2 flex-wrap">
@@ -118,27 +127,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       )}
 
       {/* Controls Row */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
-        <div className="hidden sm:block" />
-        <div className="inline-flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-end">
-          <label className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span>Stream responses</span>
-            <Switch
-              checked={streamEnabled}
-              onCheckedChange={(v) => onToggleStream && onToggleStream(Boolean(v))}
-              aria-label="Toggle streaming responses"
-            />
-          </label>
-          <label className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span>Visual effects</span>
-            <Switch
-              checked={effectsEnabled}
-              onCheckedChange={(v) => onToggleEffects && onToggleEffects(Boolean(v))}
-              aria-label="Toggle visual effects"
-            />
-          </label>
+      {showControls && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
+          <div className="hidden sm:block" />
+          <div className="inline-flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-end">
+            <label className="inline-flex items-center gap-2 whitespace-nowrap">
+              <span>Stream</span>
+              <Switch
+                checked={streamEnabled}
+                onCheckedChange={(v) => onToggleStream && onToggleStream(Boolean(v))}
+                aria-label="Toggle streaming responses"
+              />
+            </label>
+            <label className="inline-flex items-center gap-2 whitespace-nowrap">
+              <span>Effects</span>
+              <Switch
+                checked={effectsEnabled}
+                onCheckedChange={(v) => onToggleEffects && onToggleEffects(Boolean(v))}
+                aria-label="Toggle visual effects"
+              />
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="flex gap-2">

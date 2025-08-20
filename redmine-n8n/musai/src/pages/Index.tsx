@@ -10,7 +10,7 @@ import { ChatPane } from "@/components/chat/ChatPane";
 import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { AllSessions } from "@/types/chat";
-import { APP_TERMS } from "@/config/constants";
+import { APP_TERMS, CANONICAL_TOOL_ORDER } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { prepareFileData } from '@/utils/fileOperations';
 import { eyeApi } from '@/lib/eyeApi';
@@ -22,6 +22,10 @@ import { NarrativeSidebar, ConceptSeedingPanel, CharacterCreationPanel, ArcGener
 import PortalEffect from "@/components/effects/PortalEffect";
 import VictoryModal from "@/components/common/VictoryModal";
 import { CodeMusaiLayout } from "@/components/code/CodeMusaiLayout";
+import { useDevSessions } from "@/hooks/useDevSessions";
+import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { useMusaiMood } from '@/contexts/MusaiMoodContext';
+import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
 
 const Index = () => {
   const location = useLocation();
@@ -74,8 +78,126 @@ const Index = () => {
       params.set('mode', mode);
       navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
       setTimeout(() => setPortalPhase('none'), 700);
-    }, 250);
+    }, 320);
   };
+  const {
+    sessions: devSessions,
+    currentSessionId: devCurrentSessionId,
+    createNewSession: createNewDevSession,
+    deleteSession: deleteDevSession,
+    renameSession: renameDevSession,
+    toggleFavorite: toggleDevFavorite,
+    updateSession: updateDevSession,
+    setCurrentSessionId: setDevCurrentSessionId,
+  } = useDevSessions();
+
+  const getCurrentDevSession = () => devSessions.find(s => s.id === devCurrentSessionId);
+  // Build ordered list of visible tools to support Cmd+number shortcuts
+  const { isToolVisible } = useUserPreferences();
+  const { isCareerMusaiActive } = useMusaiMood();
+  const { isAvailable: curationsAvailable } = useCurationsAvailability();
+
+  const tabIdToToolKey = (tabId: string): 'chat' | 'search' | 'code' | 'university' | 'narrative' | 'career' | 'therapy' | 'medical' | 'task' | 'eye' =>
+  {
+    switch (tabId)
+    {
+      case APP_TERMS.TAB_CHAT:
+        return 'chat';
+      case APP_TERMS.TAB_SEARCH:
+        return 'search';
+      case APP_TERMS.TAB_CODE:
+        return 'code';
+      case APP_TERMS.TAB_UNIVERSITY:
+        return 'university';
+      case APP_TERMS.TAB_NARRATIVE:
+        return 'narrative';
+      case APP_TERMS.TAB_CAREER:
+        return 'career';
+      case APP_TERMS.TAB_THERAPY:
+        return 'therapy';
+      case APP_TERMS.TAB_MEDICAL:
+        return 'medical';
+      case APP_TERMS.TAB_TASK:
+        return 'task';
+      case APP_TERMS.TAB_EYE:
+        return 'eye';
+      default:
+        return 'chat';
+    }
+  };
+
+  const orderedToolIds = useCallback(() => {
+    const base = [
+      APP_TERMS.TAB_CHAT,
+      APP_TERMS.TAB_SEARCH,
+      APP_TERMS.TAB_EYE,
+      APP_TERMS.TAB_CODE,
+      APP_TERMS.TAB_UNIVERSITY,
+      APP_TERMS.TAB_NARRATIVE,
+      APP_TERMS.TAB_THERAPY,
+      APP_TERMS.TAB_MEDICAL,
+    ].filter(id => isToolVisible(tabIdToToolKey(id)));
+
+    const extra: string[] = [];
+    if (isCareerMusaiActive && isToolVisible('career')) extra.push(APP_TERMS.TAB_CAREER);
+    // Pseudo-ids for routes outside the main tab system
+    extra.push('studio');
+    if (curationsAvailable) extra.push('curations');
+    if (isToolVisible('task')) extra.push(APP_TERMS.TAB_TASK);
+
+    const unordered = [...base, ...extra];
+    return unordered.sort((a, b) => CANONICAL_TOOL_ORDER.indexOf(a) - CANONICAL_TOOL_ORDER.indexOf(b));
+  }, [isToolVisible, isCareerMusaiActive, curationsAvailable]);
+
+  const navigateToTool = useCallback((toolId: string) => {
+    // Handle pseudo-ids first
+    if (toolId === 'curations')
+    {
+      navigate(ROUTES.CURATIONS);
+      return;
+    }
+    if (toolId === 'studio')
+    {
+      navigate(ROUTES.MUSAI_STUDIO);
+      return;
+    }
+    // For real tabs, set accent color via mood context if desired
+    // Then switch tabs through the unified handler
+    handleTabChange(toolId);
+  }, [navigate]);
+
+  // Global keyboard shortcuts: Ctrl + 1..0 - =
+  useEffect(() => {
+    // Use KeyboardEvent.code so Shift does not change matching ('!' vs '1')
+    const codeSequence = ['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0','Minus','Equal'];
+    const numpadSequence = ['Numpad1','Numpad2','Numpad3','Numpad4','Numpad5','Numpad6','Numpad7','Numpad8','Numpad9','Numpad0'];
+    const handler = (e: KeyboardEvent) => {
+      // Require only Ctrl (not Meta/Alt) so it works across screens; allow Shift without affecting code matching
+      if (!e.ctrlKey || e.metaKey || e.altKey) return;
+      let idx = codeSequence.indexOf(e.code);
+      if (idx === -1) {
+        const np = numpadSequence.indexOf(e.code);
+        if (np !== -1) idx = np; // map numpad 1..0 → 0..9
+      }
+      if (idx === -1) return;
+      e.preventDefault();
+      const tools = orderedToolIds();
+      if (idx < tools.length)
+      {
+        const toolId = tools[idx];
+        navigateToTool(toolId);
+      }
+    };
+    // Capture phase to avoid being swallowed by nested editors/widgets
+    document.addEventListener('keydown', handler, { capture: true } as AddEventListenerOptions);
+    return () => document.removeEventListener('keydown', handler, { capture: true } as EventListenerOptions);
+  }, [orderedToolIds, navigateToTool]);
+
+  
+  
+  
+  
+  
   const {
     sessions,
     currentSessionId,
@@ -150,7 +272,8 @@ const Index = () => {
   const allSessions: AllSessions[] = [
     ...sessions,
     ...narrativeSessions,
-    ...therapySessions
+    ...therapySessions,
+    ...devSessions,
   ];
 
   // Get current session based on tab
@@ -456,25 +579,12 @@ const Index = () => {
       // If there's an initial message and we haven't sent it yet, send it automatically
       if (location.state?.initialMessage && !hasSentInitialMessage.current) {
         const initialMessage = location.state.initialMessage;
-        const messageKey = `${currentSessionId}-${initialMessage}`;
-        
-        // Check if this exact message was already sent for this session
-        const wasAlreadySent = localStorage.getItem(`sent_initial_${messageKey}`) === 'true';
-        
-        if (!wasAlreadySent) {
-          hasSentInitialMessage.current = true;
-          initialMessageKey.current = messageKey;
-          
-          // Mark this message as sent
-          localStorage.setItem(`sent_initial_${messageKey}`, 'true');
-          
-          // Use a longer delay to ensure the session is properly set and we can get its messages
-          setTimeout(() => {
-            sendInitialMessage(initialMessage);
-          }, 200);
-        } else {
-          console.log('Initial message already sent for this session, skipping');
-        }
+        hasSentInitialMessage.current = true;
+        initialMessageKey.current = `${currentSessionId}-${initialMessage}`;
+        // Use a longer delay to ensure the session is properly set and we can get its messages
+        setTimeout(() => {
+          sendInitialMessage(initialMessage);
+        }, 200);
       }
     } else if (location.state?.viewPastChats) {
       // User wants to view past chats
@@ -494,15 +604,16 @@ const Index = () => {
       return;
     }
 
-    const messageKey = `${currentTab}-${initialMessage}`;
-    const wasAlreadySent = localStorage.getItem(`sent_initial_${messageKey}`) === 'true';
-    if (wasAlreadySent) {
-      return;
+    // Consume the q param so refresh won't re-submit
+    if (queryParam) {
+      const params = new URLSearchParams(location.search);
+      params.delete('q');
+      // Preserve other params like mode/victory
+      navigate({ pathname: location.pathname, search: params.toString() ? `?${params.toString()}` : '' }, { replace: true });
     }
 
     hasSentInitialMessage.current = true;
-    initialMessageKey.current = messageKey;
-    localStorage.setItem(`sent_initial_${messageKey}`, 'true');
+    initialMessageKey.current = `${currentTab}-${initialMessage}`;
 
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
     {
@@ -595,6 +706,9 @@ const Index = () => {
     if (!session) return;
 
     switch (session.type) {
+      case 'dev':
+        setDevCurrentSessionId(sessionId);
+        break;
       case 'chat':
       case 'career':
         setCurrentSessionId(sessionId);
@@ -613,6 +727,8 @@ const Index = () => {
   // Handle new session creation based on tab
   const handleNewSession = async () => {
     switch (currentTab) {
+      case APP_TERMS.TAB_CODE:
+        return createNewDevSession();
       case APP_TERMS.TAB_CAREER:
         return createNewCareerSession();
       case APP_TERMS.TAB_NARRATIVE: {
@@ -633,6 +749,9 @@ const Index = () => {
     if (!session) return;
 
     switch (session.type) {
+      case 'dev':
+        deleteDevSession(sessionId);
+        break;
       case 'chat':
       case 'career':
         deleteSession(sessionId);
@@ -654,6 +773,9 @@ const Index = () => {
     if (!session) return;
 
     switch (session.type) {
+      case 'dev':
+        renameDevSession(sessionId, newName);
+        break;
       case 'chat':
       case 'career':
         renameSession(sessionId, newName);
@@ -675,6 +797,9 @@ const Index = () => {
     if (!session) return;
 
     switch (session.type) {
+      case 'dev':
+        toggleDevFavorite(sessionId);
+        break;
       case 'chat':
       case 'career':
         toggleFavorite(sessionId);
@@ -695,7 +820,17 @@ const Index = () => {
     // Dedicated CodeMusai playground UI
     if (currentTab === APP_TERMS.TAB_CODE) {
       return (
-        <CodeMusaiLayout onClose={() => handleTabChange(APP_TERMS.TAB_CHAT)} />
+        <CodeMusaiLayout 
+          onClose={() => handleTabChange(APP_TERMS.TAB_CHAT)} 
+          sessions={devSessions}
+          currentSessionId={devCurrentSessionId}
+          createNewSession={createNewDevSession}
+          deleteSession={deleteDevSession}
+          renameSession={renameDevSession}
+          toggleFavorite={toggleDevFavorite}
+          updateSession={updateDevSession}
+          setCurrentSessionId={setDevCurrentSessionId}
+        />
       );
     }
     // Dedicated curated search UI (non-chat)
@@ -755,9 +890,8 @@ const Index = () => {
                 try {
                   const trimmed = (input || '').trim();
                   if (file) {
-                    const b64 = await file.arrayBuffer().then(buf =>
-                      `data:${file.type};base64,` + btoa(String.fromCharCode(...new Uint8Array(buf)))
-                    );
+                    const { arrayBufferToBase64DataUri } = await import('@/utils/files');
+                    const b64 = await arrayBufferToBase64DataUri(file);
                     await medicalApi.ingestDocuments({ files: [{ name: file.name, type: file.type, data: b64 }] });
                   }
                   if (trimmed) {
@@ -999,7 +1133,7 @@ const Index = () => {
       <BaseLayout
       currentTab={currentTab}
       sessions={allSessions}
-      currentSessionId={currentSession?.id || ""}
+      currentSessionId={currentTab === APP_TERMS.TAB_CODE ? (devCurrentSessionId || "") : (currentSession?.id || "")}
       onNewSession={handleNewSession}
       onSessionSelect={handleSessionSelect}
       onDeleteSession={handleDeleteSession}

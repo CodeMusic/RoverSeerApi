@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Settings, Palette, Bell, Shield, HelpCircle, Info, Navigation, User, Bot, Image, Trash2, Plus, Gauge } from "lucide-react";
 import { useUserPreferences } from "@/contexts/UserPreferencesContext";
 import { useMusaiMood } from "@/contexts/MusaiMoodContext";

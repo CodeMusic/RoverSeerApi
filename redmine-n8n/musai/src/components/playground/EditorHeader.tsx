@@ -10,7 +10,7 @@ interface EditorHeaderProps {
   language: string;
   setLanguage: (value: string) => void;
   code: string;
-  onRun: () => void;
+  onRun: (ev?: React.MouseEvent) => void;
   onPopOutput: () => void;
   isOutputPopped: boolean;
 }
@@ -33,6 +33,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
       toast({
         title: "Copied!",
         description: "Code copied to clipboard",
+        variant: "success",
       });
     } catch (err) {
       toast({
@@ -62,6 +63,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
 
       toast({
         description: `File saved as ${filename}`,
+        variant: "success",
       });
     } catch (err) {
       toast({
@@ -93,7 +95,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={onRun}
+            onClick={(ev) => onRun?.(ev)}
             className="hover:bg-accent"
           >
             <Play className="w-4 h-4 mr-2" />

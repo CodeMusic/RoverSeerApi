@@ -1,13 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Code } from 'lucide-react';
 import { NavigationBar } from '@/components/common/NavigationBar';
 import TopAppBar from '@/components/common/TopAppBar';
-import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { BaseSessionSidebar } from '@/components/common/BaseSessionSidebar';
+import { MessageSquare } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
-import { AllSessions, ChatSession, CareerSession, TherapySession } from '@/types/chat';
+import { AllSessions, BaseSession, ChatSession, CareerSession, TherapySession, DevSession } from '@/types/chat';
 import { APP_TERMS } from '@/config/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { UI_STRINGS } from '@/config/uiStrings';
 import { getStoredClientIpHash } from '@/utils/ip';
 
 interface BaseLayoutProps {
@@ -35,6 +38,12 @@ interface BaseLayoutProps {
   hideTopAppBar?: boolean;
   // When true, expands the left sidebar once (used after creating a new narrative)
   expandLeftSidebarOnce?: boolean;
+
+  // Optional overrides to make the base session manager flexible per module
+  leftSidebarTitle?: string;
+  leftSidebarNewSessionText?: string;
+  leftSidebarGetSessionIcon?: (session: ChatSession | CareerSession | TherapySession | DevSession) => React.ReactNode;
+  leftSidebarGetSessionName?: (session: ChatSession | CareerSession | TherapySession | DevSession) => string;
 }
 
 export const BaseLayout: React.FC<BaseLayoutProps> = ({
@@ -53,11 +62,16 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   isNavigationExpanded,
   onToggleNavigation,
   hideTopAppBar,
-  expandLeftSidebarOnce
+  expandLeftSidebarOnce,
+  leftSidebarTitle,
+  leftSidebarNewSessionText,
+  leftSidebarGetSessionIcon,
+  leftSidebarGetSessionName
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
+  const [isSearchSidebarVisible, setIsSearchSidebarVisible] = useState(false);
   const { preferences } = useUserPreferences();
   const isMobile = useIsMobile();
   const rightContent = renderRightSidebar ? renderRightSidebar() : null;
@@ -88,10 +102,15 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     return typeMatches && ipMatches;
   });
 
-  // Filter for sessions that have messages (compatible with ChatSidebar)
-  const chatCompatibleSessions = filteredSessions.filter((session): session is ChatSession | CareerSession | TherapySession => 
-    session.type === 'chat' || session.type === 'career' || session.type === 'therapy'
-  );
+  // Choose which sessions to show in the base sidebar per tab
+  const sidebarSessions: BaseSession[] = (() => {
+    if (currentTab === APP_TERMS.TAB_CODE) {
+      return filteredSessions.filter(s => s.type === 'dev');
+    }
+    return filteredSessions.filter((session) => 
+      session.type === 'chat' || session.type === 'career' || session.type === 'therapy'
+    );
+  })() as BaseSession[];
 
   // Set initial sidebar state based on user preferences
   useEffect(() => {
@@ -109,12 +128,52 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     }
   }, [currentTab, filteredSessions.length, preferences.autoSelectFirstItem]);
 
+  // Listen for search sidebar visibility changes
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { visible?: boolean } | undefined;
+      setIsSearchSidebarVisible(Boolean(detail?.visible));
+    };
+    window.addEventListener('musai-search-visibility-change', handler as EventListener);
+    return () => window.removeEventListener('musai-search-visibility-change', handler as EventListener);
+  }, []);
+
+  // Removed PreMusai visibility gating so the hamburger remains available when the sidebar is collapsed
+
+  // Global events to control the left sidebar (used by CodeMusai and others)
+  useEffect(() => {
+    const collapse = () => { setIsSidebarCollapsed(true); setIsSidebarOpen(false); };
+    const expand = () => { setIsSidebarCollapsed(false); setIsSidebarOpen(true); };
+    const toggle = () => {
+      setIsSidebarCollapsed(prev => !prev);
+      setIsSidebarOpen(prev => !prev);
+    };
+    window.addEventListener('musai-left-sidebar-collapse', collapse);
+    window.addEventListener('musai-left-sidebar-expand', expand);
+    window.addEventListener('musai-left-sidebar-toggle', toggle);
+    return () => {
+      window.removeEventListener('musai-left-sidebar-collapse', collapse);
+      window.removeEventListener('musai-left-sidebar-expand', expand);
+      window.removeEventListener('musai-left-sidebar-toggle', toggle);
+    };
+  }, []);
+
   // Allow parent to force-expand the left sidebar once (e.g., after creating a narrative)
   useEffect(() => {
     if (expandLeftSidebarOnce) {
       setIsSidebarCollapsed(false);
     }
   }, [expandLeftSidebarOnce]);
+
+  // Announce sidebar-capable layout presence for global UI (e.g., toasters)
+  useEffect(() => {
+    const evt = new CustomEvent('musai-sidebar-presence', { detail: { hasSidebar: true } });
+    window.dispatchEvent(evt);
+    return () => {
+      const bye = new CustomEvent('musai-sidebar-presence', { detail: { hasSidebar: false } });
+      window.dispatchEvent(bye);
+    };
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
@@ -129,7 +188,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
 
       {/* Main Layout below top bar */}
       <div className={cn(
-        "flex-1 transition-all duration-300 relative z-10",
+        "flex-1 transition-all duration-300 relative z-10 bg-background",
         // Top app bar height
         hideTopAppBar ? undefined : "pt-16",
         // Offset for fixed left navigation bar
@@ -141,10 +200,10 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           hideTopAppBar ? "h-[100dvh] md:h-[100svh]" : "h-[calc(100dvh-4rem)] md:h-[calc(100svh-4rem)]",
           "flex overflow-x-hidden"
         )}>
-          {/* Left Sidebar */}
-          {!isSidebarCollapsed && (
+          {/* Left Sidebar (disabled for Search; Search manages its own sidebar) */}
+          {currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed && (
             <div className={cn(
-              "w-96 border-r border-border bg-background",
+              "w-96 border-r border-border bg-background h-full",
               "transition-all duration-300 ease-in-out",
               // On mobile, render as overlay to avoid affecting layout width
               isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg" : undefined,
@@ -152,28 +211,62 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
             )}>
               {leftOverride ?? (
-                <ChatSidebar
-                  sessions={chatCompatibleSessions}
+                <BaseSessionSidebar
+                  sessions={sidebarSessions}
                   currentSessionId={currentSessionId}
-                  onNewChat={onNewSession}
+                  isSidebarOpen={isMobile ? isSidebarOpen : true}
+                  title={leftSidebarTitle ?? (
+                    UI_STRINGS.musai[currentTab]?.sidebarTitle ?? UI_STRINGS.defaults.sidebarTitle
+                  )}
+                  newSessionText={leftSidebarNewSessionText ?? (
+                    UI_STRINGS.musai[currentTab]?.newSessionText ?? UI_STRINGS.defaults.newSessionText
+                  )}
+                  getSessionIcon={leftSidebarGetSessionIcon ?? ((session) => (
+                    (session as any).code ? <Code className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />
+                  ))}
+                  getSessionName={leftSidebarGetSessionName ?? ((session) => {
+                    if ((session as any).code) {
+                      const code = String((session as any).code || '');
+                      const first = code.split('\n')[0] || '';
+                      return session.name || (first.length > 30 ? first.slice(0, 30) + '...' : (first || `${(session as any).language || 'code'} Session`));
+                    }
+                    const msg = (session as any).messages?.find?.((m: any) => m.role === 'user')?.content;
+                    return session.name || msg || 'New Chat';
+                  })}
+                  getSessionSubtitle={(session) => format(session.lastUpdated, 'MMM d, h:mm a')}
+                  onNewSession={onNewSession}
                   onSessionSelect={onSessionSelect}
                   onDeleteSession={onDeleteSession}
                   onRenameSession={onRenameSession}
                   onToggleFavorite={onToggleFavorite}
-                  isSidebarOpen={isSidebarOpen}
-                  isCollapsed={isSidebarCollapsed}
                   onToggleCollapse={() => setIsSidebarCollapsed(true)}
                 />
               )}
             </div>
           )}
 
-          {/* Collapsed Sidebar Toggle */}
-          {isSidebarCollapsed && (
-            <div className="w-12 border-l border-border bg-background flex flex-col">
+          {/* Collapsed Sidebar Toggle; for Search show only when its own sidebar is hidden */}
+          {(
+            (currentTab !== APP_TERMS.TAB_SEARCH && isSidebarCollapsed) ||
+            (currentTab === APP_TERMS.TAB_SEARCH && !isSearchSidebarVisible)
+          ) && (
+            <div
+              className={cn(
+                "w-12 border-l border-border bg-background flex flex-col relative",
+                // Visually extend the white strip under the top app bar without affecting layout
+                hideTopAppBar ? undefined : "-mt-16 pt-16"
+              )}
+            >
               <button
-                onClick={() => setIsSidebarCollapsed(false)}
-                className="p-3 hover:bg-accent hover:text-accent-foreground transition-colors"
+                onClick={() => {
+                  if (currentTab === APP_TERMS.TAB_SEARCH) {
+                    const evt = new Event('musai-search-expand-sidebar');
+                    window.dispatchEvent(evt);
+                  } else {
+                    setIsSidebarCollapsed(false);
+                  }
+                }}
+                className="p-3 hover:bg-accent hover:text-accent-foreground transition-colors text-muted-foreground"
                 title="Expand Sidebar"
               >
                 <Menu className="h-4 w-4" />

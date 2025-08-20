@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Clock, ArrowLeft, Brain, Link, Cog, Globe, Trash2, Star, Edit3 } from "lucide-react";
+import { Search, Plus, Brain, Link, Cog, Globe, RefreshCcw } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import type { SearchSessionModel } from "@/types/search";
+import { BaseSessionSidebar } from "@/components/common/BaseSessionSidebar";
+import type { BaseSession } from "@/types/chat";
+import { UI_STRINGS } from "@/config/uiStrings";
+import { APP_TERMS } from "@/config/constants";
 
 type SearchSession = SearchSessionModel;
 
@@ -19,6 +22,7 @@ interface SearchSidebarProps {
   onDeleteSession?: (sessionId: string) => void;
   onRenameSession?: (sessionId: string, newName: string) => void;
   onToggleFavorite?: (sessionId: string) => void;
+  onQuickTopicSearch?: (topic: string) => void;
 }
 
 export const SearchSidebar = ({
@@ -32,10 +36,18 @@ export const SearchSidebar = ({
   onDeleteSession,
   onRenameSession,
   onToggleFavorite,
+  onQuickTopicSearch,
 }: SearchSidebarProps) => {
-  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState<string>("");
+  type SearchSidebarSession = SearchSession & BaseSession;
+  const adaptedSessions: SearchSidebarSession[] = useMemo(() => {
+    return sessions.map((s) => ({
+      ...s,
+      lastUpdated: s.timestamp,
+      createdAt: s.timestamp,
+      favorite: Boolean(s.favorite),
+      type: 'search' as const,
+    })) as SearchSidebarSession[];
+  }, [sessions]);
 
   const getIntentIcon = (intent?: string) => {
     switch (intent) {
@@ -52,192 +64,102 @@ export const SearchSidebar = ({
     }
   };
 
-  const handleDelete = (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
-    if (onDeleteSession) {
-      onDeleteSession(sessionId);
+  const getSessionIcon = (session: SearchSidebarSession) => {
+    const IconComponent = getIntentIcon(session.intent);
+    return <IconComponent className="w-4 h-4" />;
+  };
+
+  // Quick topics: select 3 random topics once on mount (no timer rotation)
+  const allTopics = useMemo(() => (
+    [
+      "AI safety",
+      "LLM hallucinations",
+      "TypeScript best practices",
+      "React accessibility",
+      "Prompt engineering",
+      "Vector databases",
+      "n8n workflow tips",
+      "Redmine integrations",
+      "Docker Compose patterns",
+      "Kubernetes basics",
+      "Neuroscience of attention",
+      "Cognitive biases in UX",
+      "Agile retrospectives",
+      "GraphQL vs REST",
+      "Edge computing",
+      "RAG architectures",
+      "OpenAI function calling",
+      "Healthcare AI compliance",
+      "Search ranking algorithms",
+      "Web performance tuning"
+    ]
+  ), []);
+  const [visibleTopics, setVisibleTopics] = useState<string[]>([]);
+
+  const getRandomTopics = (count: number): string[] => {
+    if (!allTopics || allTopics.length === 0) return [] as string[];
+    const topics = [...allTopics];
+    for (let i = topics.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [topics[i], topics[j]] = [topics[j], topics[i]];
     }
+    return topics.slice(0, Math.min(count, topics.length));
   };
 
-  const handleToggleFavorite = (e: React.MouseEvent, sessionId: string) => {
-    e.stopPropagation();
-    onToggleFavorite?.(sessionId);
-  };
+  useEffect(() => {
+    setVisibleTopics(getRandomTopics(3));
+  }, [allTopics]);
 
-  const startEditing = (e: React.MouseEvent, session: SearchSession) => {
-    e.stopPropagation();
-    setEditingSessionId(session.id);
-    setEditingName(session.name || session.query);
-  };
-
-  const handleRenameSubmit = (e: React.FormEvent, sessionId: string) => {
-    e.preventDefault();
-    if (!editingName.trim()) return;
-    onRenameSession?.(sessionId, editingName.trim());
-    setEditingSessionId(null);
-    setEditingName("");
-  };
   return (
-    <div
-      className={cn(
-        "w-96 border-r bg-sidebar flex flex-col absolute md:relative z-40 h-full min-h-0 transition-transform duration-200 ease-in-out",
-        !isSidebarOpen && "-translate-x-full md:translate-x-0"
-      )}
-    >
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Search History</h2>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onToggleCollapse}
-            className="flex items-center gap-2"
-            title="Collapse sidebar"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </div>
-        
-        <Button
-          onClick={onNewSearch}
-          className="w-full justify-start"
-          variant="outline"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          New Search
-        </Button>
-      </div>
-
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {sessions.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No search history yet
+    <BaseSessionSidebar
+      sessions={adaptedSessions}
+      currentSessionId={currentSessionId ?? ''}
+      isSidebarOpen={isSidebarOpen}
+      title={UI_STRINGS.musai[APP_TERMS.TAB_SEARCH]?.sidebarTitle || UI_STRINGS.defaults.sidebarTitle}
+      newSessionText={UI_STRINGS.musai[APP_TERMS.TAB_SEARCH]?.newSessionText || UI_STRINGS.defaults.newSessionText}
+      getSessionIcon={getSessionIcon}
+      getSessionName={(session: SearchSidebarSession) => {
+        const raw = session.name || session.query || "";
+        const maxLen = 60;
+        return raw.length > maxLen ? raw.slice(0, maxLen) + "…" : raw;
+      }}
+      getSessionSubtitle={(session: SearchSidebarSession) => {
+        const results = session.results?.length ?? 0;
+        const followUps = session.followUps?.length ?? 0;
+        const time = format((session as any).timestamp ?? (session as any).lastUpdated, 'MMM d, h:mm a');
+        const mode = session.mode === 'research' ? ' • research' : '';
+        const follow = followUps > 0 ? ` • ${followUps} follow-up${followUps !== 1 ? 's' : ''}` : '';
+        return `${results} result${results !== 1 ? 's' : ''}${follow} • ${time}${mode}`;
+      }}
+      onNewSession={onNewSearch}
+      onSessionSelect={onSessionSelect}
+      onDeleteSession={(id) => onDeleteSession?.(id)}
+      onRenameSession={(id, name) => onRenameSession?.(id, name)}
+      onToggleFavorite={(id) => onToggleFavorite?.(id)}
+      onToggleCollapse={onToggleCollapse}
+      renderTopSection={(
+        <div className="p-4 pt-0">
+          <div className="mt-2 border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-muted-foreground">Quick Topics</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground"
+                title="Shuffle topics"
+                onClick={() => setVisibleTopics(getRandomTopics(3))}
+              >
+                <RefreshCcw className="w-3 h-3" />
+              </Button>
             </div>
-          ) : (
-            sessions.map((session) => {
-              const isActive = session.id === currentSessionId;
-              const isHovered = hoveredSessionId === session.id;
-              const showActions = true;
-
-              return (
-                <div
-                  key={session.id}
-                  onClick={() => onSessionSelect(session.id)}
-                  onMouseEnter={() => setHoveredSessionId(session.id)}
-                  onMouseLeave={() => setHoveredSessionId(null)}
-                  className={cn(
-                    "w-full text-left pl-3 pr-12 py-2.5 rounded-lg transition-all duration-200 group relative cursor-pointer",
-                    "flex items-center gap-3 text-sm",
-                    isActive 
-                      ? "bg-sidebar-accent border border-border/50 shadow-sm" 
-                      : isHovered
-                        ? "bg-sidebar-accent/70 border border-border/40 shadow-sm"
-                        : "hover:bg-sidebar-accent/50 border border-transparent hover:border-border/30"
-                  )}
-                  tabIndex={0}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {(() => {
-                      const IconComponent = getIntentIcon(session.intent);
-                      return (
-                        <IconComponent className={cn(
-                          "w-4 h-4 flex-shrink-0 transition-colors duration-200",
-                          isActive 
-                            ? "text-primary" 
-                            : "text-muted-foreground/60 group-hover:text-muted-foreground"
-                        )} />
-                      );
-                    })()}
-                    <div className="truncate flex-1 min-w-0 pr-2">
-                      {editingSessionId === session.id ? (
-                        <form onSubmit={(e) => handleRenameSubmit(e, session.id)} className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          <input className="h-6 text-sm w-full bg-background border rounded px-2" value={editingName} onChange={(e) => setEditingName(e.target.value)} autoFocus />
-                        </form>
-                      ) : (
-                        <div className="font-medium truncate">
-                          {session.name || session.query}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3 flex-shrink-0" />
-                        <span className="truncate">
-                          {format(session.timestamp, 'MMM d, h:mm a')}
-                        </span>
-                      </div>
-                       <div className="text-xs text-muted-foreground truncate">
-                         {session.results.length} result{session.results.length !== 1 ? 's' : ''}
-                         {session.followUps.length > 0 && (
-                           <span> • {session.followUps.length} follow-up{session.followUps.length !== 1 ? 's' : ''}</span>
-                         )}
-                         {session.mode === 'research' && <span> • research</span>}
-                       </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-1 flex-shrink-0 w-24 justify-end">
-                    {showActions && (
-                      <>
-                        {onToggleFavorite && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={"h-6 w-6 hover:bg-sidebar-accent " + (session.favorite ? "text-yellow-500" : "")}
-                            onClick={(e) => handleToggleFavorite(e, session.id)}
-                            title="Toggle favorite"
-                            aria-label="Toggle favorite"
-                          >
-                            <Star className="h-3 w-3" fill={session.favorite ? "currentColor" : "none"} />
-                          </Button>
-                        )}
-                        {onRenameSession && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-sidebar-accent"
-                            onClick={(e) => startEditing(e, session)}
-                            title="Rename search"
-                            aria-label="Rename search"
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
-                        )}
-                        {onDeleteSession && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/20 focus:text-destructive transition-all duration-200"
-                            onClick={(e) => handleDelete(e, session.id)}
-                            title="Delete search"
-                            aria-label="Delete search"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-
-          {/* Search Topics / Categories (moved inside ScrollArea so it never gets cut off) */}
-          <div className="pt-4 mt-2 border-t">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Quick Topics</h3>
             <div className="space-y-1 pb-2">
-              {[
-                "Technology",
-                "Science",
-                "Programming",
-                "AI & ML"
-              ].map((topic) => (
+              {visibleTopics.map((topic) => (
                 <Button
                   key={topic}
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start text-xs"
+                  onClick={() => onQuickTopicSearch?.(topic)}
                 >
                   <Search className="w-3 h-3 mr-2" />
                   {topic}
@@ -246,7 +168,7 @@ export const SearchSidebar = ({
             </div>
           </div>
         </div>
-      </ScrollArea>
-    </div>
+      )}
+    />
   );
 };

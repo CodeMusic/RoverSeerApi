@@ -92,6 +92,17 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, [storageKey]);
+
+  // Announce presence so global chrome (e.g., status bar) can hide while the gate is active
+  useEffect(() =>
+  {
+    const announce = (active: boolean) =>
+    {
+      window.dispatchEvent(new CustomEvent('musai-riddle-presence', { detail: { active } }));
+    };
+    announce(!isAuthorized);
+    return () => announce(false);
+  }, [isAuthorized]);
   // Capture any pending intent (e.g., initialQuery/mode) while behind the gate
   useEffect(() =>
   {

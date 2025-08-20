@@ -10,7 +10,6 @@ export function ThemeToggle({ isExpanded = true }: ThemeToggleProps) {
   const { isDark, toggleTheme } = useTheme();
 
   if (!isExpanded) {
-    // Collapsed view - just the switch
     return (
       <div className="flex justify-center">
         <Switch
@@ -23,7 +22,6 @@ export function ThemeToggle({ isExpanded = true }: ThemeToggleProps) {
     );
   }
 
-  // Expanded view - icons + switch, centered
   return (
     <div className="flex items-center justify-center gap-2">
       <Sun className="h-4 w-4 text-muted-foreground" />
@@ -36,3 +34,5 @@ export function ThemeToggle({ isExpanded = true }: ThemeToggleProps) {
     </div>
   );
 }
+
+

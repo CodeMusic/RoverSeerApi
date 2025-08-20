@@ -329,6 +329,16 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Announce PreMusai visibility so the base layout can hide the sidebar hamburger
+  useEffect(() => {
+    const showEvt = new CustomEvent('musai-premusai-visibility-change', { detail: { visible: true } });
+    window.dispatchEvent(showEvt);
+    return () => {
+      const hideEvt = new CustomEvent('musai-premusai-visibility-change', { detail: { visible: false } });
+      window.dispatchEvent(hideEvt);
+    };
+  }, []);
+
   // Load dynamic content from n8n API
   useEffect(() => {
     const loadContent = async () => {
@@ -437,12 +447,10 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
     <div className={cn("flex-1 flex flex-col", className)}>
       {/* Hero Section */}
       <div className={cn(
-        // For search, place hero slightly higher on screen to match other tools
-        type === 'search'
-          ? "flex-1 flex flex-col items-center justify-start pt-10 md:pt-16 p-6 space-y-8 max-w-4xl mx-auto w-full"
-          : "flex-1 flex flex-col items-center justify-center p-6 space-y-8 max-w-4xl mx-auto w-full"
+        // Standardize hero vertical position across all PreMusai screens
+        "flex-1 flex flex-col items-center justify-start pt-10 md:pt-16 p-6 space-y-8 max-w-4xl mx-auto w-full"
       )}>
-        <MusaiShimmer className="text-center space-y-4 p-6 rounded-lg">
+        <MusaiShimmer className="text-center p-6 rounded-lg flex flex-col items-center justify-center h-48 md:h-56 overflow-hidden">
           <div className="relative">
             {/* Dynamic glyphs based on Musai type */}
             {type === 'chat' && (

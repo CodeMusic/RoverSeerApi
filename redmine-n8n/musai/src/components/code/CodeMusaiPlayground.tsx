@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable';
 import { executeJavaScript, executeHTML } from '@/utils/codeExecutor';
 import { useToast } from '@/hooks/use-toast';
@@ -11,22 +10,15 @@ import { EditorHeader } from '../playground/EditorHeader';
 import { PlaygroundOutput } from '../playground/PlaygroundOutput';
 import { usePopoutWindow } from '@/hooks/usePopoutWindow';
 import { SUPPORTED_LANGUAGES } from '../playground/constants';
-import { Send, Code, MessageSquare, Sparkles, Bot, User, Menu, PlusCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Code, MessageSquare, Sparkles, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DevSessionSidebar } from './DevSessionSidebar';
 import { DevSession, Message } from '@/types/chat';
-import { format } from 'date-fns';
-import { MysticalTypingIndicator } from '@/components/chat/MysticalTypingIndicator';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
-import { CognitiveThinkingStrip } from '@/components/code/CognitiveThinkingStrip';
-import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
-
-interface ChatMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import { ChatPane } from '@/components/chat/ChatPane';
+import { Toaster } from '@/components/ui/toaster';
+import CodeMusaiCompiler from '@/components/code/CodeMusaiCompiler';
+import { useMessageSender } from '@/hooks/useMessageSender';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CodeMusaiPlaygroundProps {
   defaultLanguage?: string;
@@ -65,19 +57,29 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   const [language, setLanguage] = useState(defaultLanguage);
   const [output, setOutput] = useState<string>('');
   const [isOutputPopped, setIsOutputPopped] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [isCompilerVisible, setIsCompilerVisible] = useState(false);
+  const [compilerAnchor, setCompilerAnchor] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLDivElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<NodeJS.Timeout>();
 
   const currentLanguage = SUPPORTED_LANGUAGES.find(lang => lang.value === language);
   const canRunInBrowser = currentLanguage?.canRunInBrowser ?? false;
   const currentSession = sessions.find(s => s.id === currentSessionId);
+
+  // Wire CodeMusai chat to the same n8n chat endpoint
+  const queryClient = useQueryClient();
+  const { sendMessage: sendMessageToWebhook } = useMessageSender(
+    (sessionId: string, updatedMessages) => {
+      setMessages(updatedMessages);
+      saveCurrentSession({ chatMessages: updatedMessages });
+    },
+    queryClient
+  );
 
   const { handlePopOutput } = usePopoutWindow(
     isOutputPopped,
@@ -86,6 +88,50 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     code,
     output
   );
+
+  // Protective snapshot + merge strategies to ensure user code is never lost
+  const commentOutCode = (text: string, lang: string): string => {
+    const l = (lang || '').toLowerCase();
+    const ts = new Date().toISOString();
+    const banner = ` Previous code snapshot @ ${ts} `;
+    if (['javascript','typescript','css','java','c','cpp','csharp','go','rust','php','sql'].includes(l)) {
+      return `/*${banner}\n${text}\n*/`;
+    }
+    if (l === 'html') {
+      return `<!--${banner}\n${text}\n-->`;
+    }
+    if (['python','shell','bash','sh','ruby'].includes(l)) {
+      return text.split('\n').map(line => `# ${line}`).join('\n');
+    }
+    // Fallback to a generic banner
+    return `/*${banner}\n${text}\n*/`;
+  };
+
+  const applyExternalCode = (
+    newCode: string,
+    strategy: 'comment-and-prepend' | 'append' | 'replace' = 'comment-and-prepend'
+  ): void => {
+    const current = code || '';
+    let next = '';
+    switch (strategy) {
+      case 'append':
+        next = `${current}\n\n${newCode}`;
+        break;
+      case 'replace':
+        // Still snapshot the old code at the bottom for safety
+        next = `${newCode}\n\n${commentOutCode(current, language)}`;
+        break;
+      case 'comment-and-prepend':
+      default:
+        next = `${commentOutCode(current, language)}\n\n${newCode}`;
+        break;
+    }
+    setCode(next);
+    // Persist immediately so session retains the snapshot
+    saveCurrentSession({ code: next });
+  };
+
+  // This page no longer renders a scoped toaster; rely on global RouteAwareToaster
 
   // Session Management Functions
   const createNewSession = () => {
@@ -96,30 +142,19 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     setCode(session.code);
     setLanguage(session.language);
     setOutput(session.output || '');
-    setChatMessages(session.chatMessages.map(msg => ({
-      id: msg.id,
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
-      timestamp: new Date(msg.timestamp)
-    })));
+    setMessages(session.chatMessages || []);
   };
 
-  const saveCurrentSession = () => {
+  const saveCurrentSession = (overrides?: Partial<DevSession>) => {
     if (!currentSessionId) return;
-    
     const updatedSession: Partial<DevSession> = {
       code,
       language,
       output,
-      chatMessages: chatMessages.map(msg => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp.getTime()
-      })),
-      lastUpdated: Date.now()
+      chatMessages: messages,
+      lastUpdated: Date.now(),
+      ...(overrides || {})
     };
-    
     onUpdateSession(currentSessionId, updatedSession);
   };
 
@@ -150,16 +185,33 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
       const timeoutId = setTimeout(saveCurrentSession, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [code, language, output, chatMessages, currentSessionId]);
+  }, [code, language, output, messages, currentSessionId]);
 
-  // Auto-scroll chat to bottom
+  // No manual scroll; ChatPane manages its own scrolling
+
+  // Load session data whenever the selected session changes externally
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+    if (!currentSessionId)
+    {
+      // Reset to defaults when no session is selected
+      setCode(defaultValue);
+      setLanguage(defaultLanguage);
+      setOutput('');
+      setMessages([]);
+      return;
+    }
 
-  const handleRun = async () => {
+    const session = sessions.find(s => s.id === currentSessionId);
+    if (session)
+    {
+      loadSession(session);
+    }
+  }, [currentSessionId, sessions, defaultLanguage, defaultValue]);
+
+  const handleRun = async (ev?: React.MouseEvent) => {
     try {
       let result = '';
+      let hadError = false;
       
       if (language === 'javascript') {
         const executionResult = await executeJavaScript(code);
@@ -169,6 +221,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           ...(executionResult.error ? [`Error: ${executionResult.error}`] : [])
         ].join('\n');
         result = outputText;
+        hadError = Boolean(executionResult.error);
       } else if (language === 'html') {
         const iframe = executeHTML(code);
         if (iframeRef.current) {
@@ -181,12 +234,20 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
       }
       
       setOutput(result);
-      saveCurrentSession();
+      saveCurrentSession({ output: result });
       
       toast({
-        title: "Code executed successfully",
-        description: `Output updated for ${language} code`,
+        title: hadError ? "Code execution failed" : "Code executed successfully",
+        description: hadError ? 'There were errors during execution. See output.' : `Output updated for ${language} code`,
+        variant: hadError ? "destructive" : "success",
       });
+      
+      const target = ev?.currentTarget as HTMLElement | undefined;
+      if (target) {
+        const rect = target.getBoundingClientRect();
+        setCompilerAnchor({ x: rect.left + rect.width / 2, y: rect.top });
+        setIsCompilerVisible(true);
+      }
     } catch (error) {
       console.error('Code execution error:', error);
       setOutput(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -199,47 +260,17 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     }
   };
 
-  const handleChatSubmit = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: chatInput.trim(),
-      timestamp: new Date(),
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsChatLoading(true);
-
+  const onSendMessage = async (text: string) => {
+    const payload = (text || '').trim();
+    if (!payload) return;
+    setIsTyping(true);
     try {
-      // Simulate API delay
-      const aiResponse = await simulateAIResponse(
-        userMessage.content,
-        code,
-        output,
-        language
-      );
-
-      const assistantMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date(),
-      };
-
-      setChatMessages(prev => [...prev, assistantMessage]);
-      saveCurrentSession();
-    } catch (error) {
-      console.error('Chat error:', error);
-      toast({
-        title: "Chat error",
-        description: "Failed to get AI response",
-        variant: "destructive",
-      });
+      await sendMessageToWebhook(payload, currentSessionId || 'dev', messages);
+    } catch (e) {
+      console.error('Chat error:', e);
+      toast({ title: 'Chat error', description: 'Failed to contact AI', variant: 'destructive' });
     } finally {
-      setIsChatLoading(false);
+      setIsTyping(false);
     }
   };
 
@@ -269,12 +300,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     }, 100);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      handleChatSubmit();
-    }
-  };
+  // No-op key handler retained for legacy references (chat input handled inside ChatPane)
 
   // PreMusai gating logic: show PreMusai inside main area while keeping sidebars accessible
   const shouldShowPreMusai = sessions.length === 0 || !currentSession;
@@ -290,7 +316,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
         if (actionData) {
           createNewSession();
           setTimeout(() => {
-            setCode(actionData);
+            applyExternalCode(String(actionData), 'comment-and-prepend');
           }, 100);
         }
         break;
@@ -300,52 +326,25 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   };
 
   return (
-    <div className="flex h-[100dvh] bg-background overflow-hidden">
-      {/* Development Sessions Sidebar */}
-      {isSidebarOpen && (
-        <DevSessionSidebar
-          sessions={sessions}
-          currentSessionId={currentSessionId}
-          isSidebarOpen={isSidebarOpen}
-          onNewSession={createNewSession}
-          onSessionSelect={handleSessionSelect}
-          onDeleteSession={handleDeleteSession}
-          onRenameSession={handleRenameSession}
-          onToggleFavorite={handleToggleFavorite}
-          onToggleCollapse={() => setIsSidebarOpen(false)}
-        />
-      )}
-
+    <div className="flex h-full bg-background overflow-hidden">
       {/* Main Content Area */}
       
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
+        <div className="flex items-center justify-between p-3 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              title={`${isSidebarOpen ? 'Hide' : 'Show'} sessions sidebar`}
-              className={cn(isSidebarOpen ? "bg-sidebar-accent" : "")}
-            >
-              <Menu className="w-4 h-4" />
-            </Button>
             <div className="flex items-center gap-2">
               <Code className="w-5 h-5 text-primary" />
               <Sparkles className="w-4 h-4 text-purple-500" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold">CodeMusai's Playground</h1>
-              <p className="text-xs text-muted-foreground">
-                {currentSession?.name || `${language} Development`} • {sessions.length} sessions • Sidebar: {isSidebarOpen ? 'Open' : 'Closed'}
-              </p>
+              <h1 className="text-lg font-semibold">{currentSession?.name || `${language} Development`}</h1>
             </div>
           </div>
         </div>
 
         {/* Main Workspace */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden min-w-0">
           {shouldShowPreMusai ? (
             <div className="flex-1 flex flex-col">
               <PreMusaiPage
@@ -359,29 +358,19 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                     // Ensure chat is visible
                     setIsChatOpen(true);
                     if (trimmed) {
-                      const userMessage: ChatMessage = {
-                        id: Date.now().toString(),
+                      const userMessage: Message = {
+                        id: `${Date.now()}`,
                         role: 'user',
                         content: trimmed,
-                        timestamp: new Date(),
+                        timestamp: Date.now()
                       };
-                      setChatMessages(prev => [...prev, userMessage]);
-                      setIsChatLoading(true);
-                      try {
-                        const aiResponse = await simulateAIResponse(trimmed, code, output, language);
-                        const assistantMessage: ChatMessage = {
-                          id: (Date.now() + 1).toString(),
-                          role: 'assistant',
-                          content: aiResponse,
-                          timestamp: new Date(),
-                        };
-                        setChatMessages(prev => [...prev, assistantMessage]);
-                        saveCurrentSession();
-                      } catch (e) {
-                        // Keep loading state minimal; errors are non-blocking for editor
-                      } finally {
-                        setIsChatLoading(false);
-                      }
+                      setMessages(prev => {
+                        const next = [...prev, userMessage];
+                        saveCurrentSession({ chatMessages: next });
+                        return next;
+                      });
+                      setIsTyping(true);
+                      try { await onSendMessage(trimmed); } finally { setIsTyping(false); }
                     }
                   }, 100);
                 }}
@@ -393,15 +382,28 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           ) : (
           <>
           {/* Code Editor Side */}
-          <div className="flex-1 flex flex-col border-r">
+          <div className="flex-1 flex flex-col border-r min-w-0">
             <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Code className="w-4 h-4 text-primary" />
-                <span className="font-medium text-sm">Code Editor</span>
+                <span className="font-medium text-sm truncate">{currentSession?.name || `${language} Session`}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isChatOpen && (
+                  <Button
+                    onClick={() => setIsChatOpen(true)}
+                    className="h-8 px-3 bg-slate-600 text-white hover:bg-slate-700"
+                    title="Open AI Chat"
+                    aria-label="Open AI Chat"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    <span className="text-xs font-medium">Open Chat</span>
+                  </Button>
+                )}
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
-              <Card className="w-full h-full mx-auto bg-card shadow-lg border-0 rounded-none">
+              <Card className="w-full h-full mx-auto bg-card shadow-lg border-0 rounded-none flex flex-col">
                 <CardHeader className="border-b border-border/20">
                   <EditorHeader
                     language={language}
@@ -412,7 +414,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                     isOutputPopped={isOutputPopped}
                   />
                 </CardHeader>
-                <CardContent className="p-4 pb-8 h-[calc(100dvh-12rem)]">
+                <CardContent className="flex-1 overflow-hidden p-4 pb-8 relative">
                   <ResizablePanelGroup 
                     direction="vertical" 
                     className="h-full rounded-md border"
@@ -459,6 +461,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                             iframeRef={iframeRef}
                             outputRef={outputRef}
                           />
+                          {/* Using global RouteAwareToaster; no scoped toaster here */}
                         </ResizablePanel>
                       </>
                     )}
@@ -470,7 +473,7 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
 
           {/* AI Chat Side */}
           {isChatOpen && (
-            <div className="w-96 flex flex-col border-l">
+            <div className="w-96 flex flex-col border-l min-h-0">
               <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-primary" />
@@ -485,123 +488,39 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Chat Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {chatMessages.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Bot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Start a conversation with AI</h3>
-                      <p className="text-muted-foreground">
-                        Ask questions about your code, get help with debugging, or request optimizations.
-                      </p>
-                    </div>
-                  ) : (
-                    chatMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={cn(
-                          "flex gap-3",
-                          message.role === 'user' ? 'justify-end' : 'justify-start'
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "flex gap-3 max-w-[80%]",
-                            message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                          )}
-                        >
-                          <div className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                            message.role === 'user' 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-muted text-muted-foreground'
-                          )}>
-                            {message.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                          </div>
-                          <div
-                            className={cn(
-                              "rounded-lg px-4 py-2 text-sm",
-                              message.role === 'user'
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted text-foreground'
-                            )}
-                          >
-                            <div className="prose prose-slate dark:prose-invert max-w-none break-words">
-                              <MarkdownRenderer content={message.content} />
-                            </div>
-                            <div className="text-xs opacity-70 mt-1">
-                              {message.timestamp.toLocaleTimeString()}
-                            </div>
-                            {message.role === 'assistant' && (
-                              <div className="mt-3">
-                                <CognitiveThinkingStrip
-                                  logicalState="complete"
-                                  creativeState="complete"
-                                  fusionState="complete"
-                                  cloudState="skipped"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {isChatLoading && (
-                    <div className="flex justify-start">
-                      <MysticalTypingIndicator isDarkMode={false} />
-                    </div>
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-
-                {/* Chat Input */}
-                <div className="border-t p-4">
-                  <div className="flex gap-2">
-                    <Textarea
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      placeholder="Ask about your code, request help, or get suggestions... (Cmd/Ctrl + Enter to send)"
-                      className="flex-1 min-h-[60px] resize-none"
-                      disabled={isChatLoading}
-                    />
-                    <Button
-                      onClick={handleChatSubmit}
-                      disabled={!chatInput.trim() || isChatLoading}
-                      className="self-end"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    Current code and output are automatically shared with AI for context
-                  </div>
-                </div>
+              <div className="flex-1 min-h-0">
+                <ChatPane
+                  sessionId={currentSessionId || 'unsaved'}
+                  module="code"
+                  messageList={messages}
+                  onMessageSend={onSendMessage}
+                  isTyping={isTyping}
+                  className="h-full"
+                  prefixText={(() => {
+                    const maxLen = 240;
+                    const codeHead = code.split('\n').slice(0, 6).join('\n');
+                    const codePart = codeHead.length > maxLen ? `${codeHead.slice(0, maxLen)}…` : codeHead;
+                    const firstOutLine = (output || '').toString().split('\n')[0] || '';
+                    const outTrim = firstOutLine.length > maxLen ? `${firstOutLine.slice(0, maxLen)}…` : firstOutLine;
+                    return `[Code (${language}) snippet: ${codePart} | last output: ${outTrim}]`;
+                  })()}
+                />
               </div>
             </div>
           )}
 
-          {/* Chat Toggle Button when chat is closed */}
-          {!isChatOpen && (
-            <div className="absolute right-4 bottom-4">
-              <Button
-                onClick={() => setIsChatOpen(true)}
-                className="rounded-full w-12 h-12 shadow-lg"
-                title="Show AI Chat"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
+          {/* Chat Toggle Button when chat is closed (moved to header; no floating button) */}
 
           {/* Sidebar Toggle Button when sidebar is closed */}
           {!isSidebarOpen && (
             <div className="absolute left-4 top-8">
               <Button
-                onClick={() => setIsSidebarOpen(true)}
-                className="rounded-full w-12 h-12 shadow-lg"
+                onClick={() => {
+                  setIsSidebarOpen(true);
+                  const evt = new Event('musai-left-sidebar-expand');
+                  window.dispatchEvent(evt);
+                }}
+                className="rounded-full w-12 h-12 shadow-lg text-muted-foreground"
                 title="Show Sessions Sidebar"
               >
                 <Menu className="w-4 h-4" />
@@ -612,6 +531,15 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           )}
         </div>
       </div>
+      {/* Inline compiler bubble anchored from Run */}
+      <CodeMusaiCompiler
+        code={code}
+        language={language}
+        isVisible={isCompilerVisible}
+        onClose={() => setIsCompilerVisible(false)}
+        onOpenPlayground={() => setIsCompilerVisible(false)}
+        position={compilerAnchor}
+      />
     </div>
   );
 };

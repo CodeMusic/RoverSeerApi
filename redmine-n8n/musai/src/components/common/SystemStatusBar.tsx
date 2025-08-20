@@ -65,7 +65,7 @@ export function SystemStatusBar()
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-[70] pointer-events-none">
       <div className="mx-auto max-w-5xl">
         <div className="m-2 px-3 py-2 rounded-lg bg-black/60 text-white text-xs flex items-center gap-3 shadow-lg backdrop-blur pointer-events-auto">
           <span className="opacity-80">Requests:</span>

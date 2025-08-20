@@ -19,19 +19,36 @@ export const PortalEffect: React.FC<PortalEffectProps> = ({ phase }) =>
   return (
     // Lower z-index so the fixed left NavigationBar (z-50) stays visible
     <div aria-hidden className="pointer-events-none fixed inset-0 z-40">
-      {/* Dim backdrop to ensure content is occluded without hiding nav */}
-      <div className={cn(
-        'absolute inset-0',
-        isEnter ? 'animate-musai-portal-dim-enter' : 'animate-musai-portal-dim-leave'
-      )} style={{ background: 'radial-gradient(ellipse at center, rgba(99,102,241,0.28) 0%, rgba(17,24,39,0.75) 60%, rgba(0,0,0,0.85) 100%)' }} />
-      {/* Core portal pulse */}
+      {/* Soft dim + backdrop blur for cohesion */}
       <div
         className={cn(
-          'absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-screen',
-          'bg-gradient-to-br from-cyan-400 via-indigo-400 to-purple-500 opacity-80',
-          isEnter ? 'animate-musai-portal-enter' : 'animate-musai-portal-leave'
+          'absolute inset-0 backdrop-blur-sm md:backdrop-blur',
+          isEnter ? 'animate-musai-flourish-dim-enter' : 'animate-musai-flourish-dim-leave'
         )}
-        style={{ width: '26rem', height: '26rem' }}
+        style={{ background: 'linear-gradient(180deg, rgba(17,24,39,0.35), rgba(17,24,39,0.55))' }}
+      />
+
+      {/* Diagonal sheen sweep (the flourish) */}
+      <div
+        className={cn(
+          'absolute -inset-x-1/2 inset-y-0',
+          'rotate-12',
+          isEnter ? 'animate-musai-flourish-sheen-enter' : 'animate-musai-flourish-sheen-leave'
+        )}
+        style={{
+          background:
+            'linear-gradient(90deg, rgba(255,255,255,0.00) 0%, rgba(168,85,247,0.04) 35%, rgba(99,102,241,0.10) 50%, rgba(168,85,247,0.04) 65%, rgba(255,255,255,0.00) 100%)',
+          mixBlendMode: 'screen'
+        }}
+      />
+
+      {/* Subtle edge vignette to frame the transition */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(120% 80% at 50% 110%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.0) 60%), radial-gradient(120% 80% at 50% -10%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.0) 60%)'
+        }}
       />
     </div>
   );

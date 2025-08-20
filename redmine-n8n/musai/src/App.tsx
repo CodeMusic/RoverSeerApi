@@ -74,6 +74,7 @@ import EyeRecognize from "@/pages/eye/EyeRecognize";
 // Routes
 import { ROUTES, RouteUtils } from "@/config/routes";
 import { SystemStatusBar } from "@/components/common/SystemStatusBar";
+import { DEBUG_FLAGS } from "@/config/constants";
 
 function App() {
   return (
@@ -133,7 +134,7 @@ function App() {
                       </Routes>
                     </div>
                   </ErrorBoundary>
-                  <Toaster />
+                  <RouteAwareToaster />
                   <MusaiDevConsole />
                   <MatrixEffectWrapper />
                   <RainbowEffectWrapper />
@@ -150,6 +151,10 @@ function App() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function RouteAwareToaster() {
+  return <Toaster />;
 }
 
 // Matrix Effect Wrapper Component
@@ -281,34 +286,44 @@ function DevConsoleHotkey()
   return null;
 }
 
-// Only show the status bar within the core app experience (not on home/info pages)
+// Conditionally render the status bar based on session/sidebar presence.
+// A config flag can force it to show everywhere when needed.
 function StatusBarGate()
 {
+  const [hasSidebar, setHasSidebar] = React.useState(false);
+  const [riddleActive, setRiddleActive] = React.useState(false);
+  React.useEffect(() =>
+  {
+    const handler = (e: Event) =>
+    {
+      const detail = (e as CustomEvent).detail as { hasSidebar?: boolean } | undefined;
+      setHasSidebar(Boolean(detail?.hasSidebar));
+    };
+    window.addEventListener('musai-sidebar-presence', handler as EventListener);
+    return () => window.removeEventListener('musai-sidebar-presence', handler as EventListener);
+  }, []);
+
+  React.useEffect(() =>
+  {
+    const handler = (e: Event) =>
+    {
+      const detail = (e as CustomEvent).detail as { active?: boolean } | undefined;
+      setRiddleActive(Boolean(detail?.active));
+    };
+    window.addEventListener('musai-riddle-presence', handler as EventListener);
+    return () => window.removeEventListener('musai-riddle-presence', handler as EventListener);
+  }, []);
+
+  // Always show inside the unified app shell; marketing/info pages are gated by flag
   const location = useLocation();
-  const isInCoreApp = RouteUtils.isMainApp(location.pathname);
-
-  // Mirror the RiddleGate auth flag for the current day
-  const yyyymmdd = (date = new Date()) =>
+  const isMainApp = RouteUtils.isMainApp(location.pathname);
+  const showOutside = String(DEBUG_FLAGS.showStatusBarOutsideApp) === 'true';
+  // Hide on the RiddleGate page regardless of other heuristics
+  if (riddleActive)
   {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}${m}${d}`;
-  };
-  const isRiddleAuthorizedToday = () =>
-  {
-    try
-    {
-      const key = `musai_riddle_access_${yyyymmdd()}`;
-      return localStorage.getItem(key) === 'ok';
-    }
-    catch
-    {
-      return false;
-    }
-  };
-
-  if (!isInCoreApp || !isRiddleAuthorizedToday())
+    return null;
+  }
+  if (!isMainApp && !hasSidebar && !showOutside)
   {
     return null;
   }

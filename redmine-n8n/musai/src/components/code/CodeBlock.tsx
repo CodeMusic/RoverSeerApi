@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { Copy, PlayCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import CodeMusaiCompiler from './code/CodeMusaiCompiler';
+import CodeMusaiCompiler from './CodeMusaiCompiler';
 
 interface CodeBlockProps {
   language: string;
@@ -61,6 +61,7 @@ export const CodeBlock = ({ language, children }: CodeBlockProps) => {
       toast({
         description: "Code copied to clipboard",
         duration: 2000,
+        variant: "success",
       });
     } catch (err) {
       console.error('Failed to copy code:', err);
@@ -95,6 +96,7 @@ export const CodeBlock = ({ language, children }: CodeBlockProps) => {
     toast({
       description: "Code copied to CodeMusai's Playground",
       duration: 2000,
+      variant: "info",
     });
   };
 
@@ -153,3 +155,5 @@ export const CodeBlock = ({ language, children }: CodeBlockProps) => {
     </div>
   );
 };
+
+

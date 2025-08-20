@@ -1,7 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/* Musai Portal Animations */
+/* Musai Portal Animations (legacy) */
 @keyframes musai-portal-enter {
   0% { transform: translate(-50%, -50%) scale(0.05); filter: blur(20px); opacity: 0.0; }
   60% { transform: translate(-50%, -50%) scale(1.2); filter: blur(6px); opacity: 0.8; }
@@ -27,6 +27,50 @@
 }
 .animate-musai-portal-dim-enter { animation: musai-portal-dim-enter 250ms ease-in forwards; }
 .animate-musai-portal-dim-leave { animation: musai-portal-dim-leave 400ms ease-out forwards; }
+
+/* New Musai route-change flourish: diagonal sheen + soft dim */
+@keyframes musai-flourish-dim-enter {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes musai-flourish-dim-leave {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes musai-flourish-sheen-enter {
+  0% {
+    transform: translateX(-60%) rotate(12deg);
+    opacity: 0.0;
+    filter: blur(8px);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(60%) rotate(12deg);
+    opacity: 0.0;
+    filter: blur(10px);
+  }
+}
+@keyframes musai-flourish-sheen-leave {
+  0% {
+    transform: translateX(60%) rotate(12deg);
+    opacity: 0.0;
+    filter: blur(8px);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(-60%) rotate(12deg);
+    opacity: 0.0;
+    filter: blur(10px);
+  }
+}
+.animate-musai-flourish-dim-enter { animation: musai-flourish-dim-enter 220ms ease-in forwards; }
+.animate-musai-flourish-dim-leave { animation: musai-flourish-dim-leave 320ms ease-out forwards; }
+.animate-musai-flourish-sheen-enter { animation: musai-flourish-sheen-enter 520ms ease-out forwards; }
+.animate-musai-flourish-sheen-leave { animation: musai-flourish-sheen-leave 520ms ease-in forwards; }
 
 
 @layer base {

@@ -44,6 +44,37 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
   const hasSearched = currentSessionId !== null;
+  // Desktop: show based solely on collapse state; Mobile: show when explicitly opened
+  const shouldShowSidebar = (!isMobile && !isSidebarCollapsed) || (isMobile && isSidebarOpen);
+  const sidebarOpenForChild = isMobile ? isSidebarOpen : true;
+
+  const handleSidebarHeaderToggle = useCallback(() => {
+    if (isMobile)
+    {
+      setIsSidebarOpen(false);
+      return;
+    }
+    setIsSidebarCollapsed(true);
+    setIsSidebarOpen(false);
+  }, [isMobile]);
+
+  // Listen for global expand requests from BaseLayout hamburger
+  useEffect(() => {
+    const onExpand = () =>
+    {
+      setIsSidebarCollapsed(false);
+      setIsSidebarOpen(true);
+    };
+    window.addEventListener('musai-search-expand-sidebar', onExpand as EventListener);
+    return () => window.removeEventListener('musai-search-expand-sidebar', onExpand as EventListener);
+  }, []);
+
+  // Notify BaseLayout when search sidebar visibility changes so it can show/hide hamburger appropriately
+  useEffect(() => {
+    const visible = shouldShowSidebar;
+    const evt = new CustomEvent('musai-search-visibility-change', { detail: { visible } });
+    window.dispatchEvent(evt);
+  }, [shouldShowSidebar]);
   
   // Track if we've processed the initial query to prevent re-execution
   const [hasProcessedInitialQuery, setHasProcessedInitialQuery] = useState(false);
@@ -265,13 +296,35 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   }, [clientIpHash]);
 
   // Handle initial query from navigation - placed after handleSearch declaration
+  // On refresh, do NOT re-run if we already have a session for this query.
   useEffect(() => {
-    if (initialQuery && !hasProcessedInitialQuery) {
-      console.log('Auto-executing initial search query:', initialQuery);
-      setHasProcessedInitialQuery(true);
-      handleSearch(initialQuery);
+    // Wait until storage hydration to avoid racing and duplicating sessions
+    if (!hasInitializedFromStorage) {
+      return;
     }
-  }, [initialQuery, hasProcessedInitialQuery, handleSearch]);
+
+    if (!initialQuery || hasProcessedInitialQuery) {
+      return;
+    }
+
+    const trimmed = initialQuery.trim();
+    if (!trimmed) {
+      setHasProcessedInitialQuery(true);
+      return;
+    }
+
+    // If a session already exists for this query, select it instead of re-submitting
+    const existing = searchSessions.find(s => s.query === trimmed);
+    if (existing) {
+      setCurrentSessionId(existing.id);
+      setHasProcessedInitialQuery(true);
+      return;
+    }
+
+    console.log('Auto-executing initial search query:', trimmed);
+    setHasProcessedInitialQuery(true);
+    handleSearch(trimmed);
+  }, [initialQuery, hasProcessedInitialQuery, handleSearch, hasInitializedFromStorage, searchSessions]);
 
   const handleFollowUp = useCallback(async (followUpQuery: string) => {
     if (!currentSession || !followUpQuery.trim()) return;
@@ -654,48 +707,49 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
   return (
     <div className="flex h-[100dvh] relative bg-background overflow-x-hidden">
-      {/* Mobile menu button (hidden while sidebar is open to avoid duplicate controls) */}
-      {isMobile && hasSearched && !isSidebarOpen && (
+      {/* Mobile hamburger: show only when sidebar not visible */}
+      {isMobile && !shouldShowSidebar && (
         <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="fixed top-8 left-16 z-50 p-2 rounded-lg bg-background border shadow-md"
+          onClick={() => { setIsSidebarOpen(true); setIsSidebarCollapsed(false); }}
+          className="fixed top-8 left-16 z-50 p-2 rounded-lg bg-background border shadow-md text-muted-foreground"
         >
           <Menu className="w-5 h-5" />
         </button>
       )}
 
-      {/* Desktop collapse toggle button */}
-      {hasSearched && !isMobile && (
-        <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="fixed top-8 left-4 z-50 p-2 rounded-lg bg-background border shadow-md hover:bg-accent transition-colors"
-          title={isSidebarCollapsed ? "Show search history" : "Hide search history"}
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      )}
+      {/* Desktop: no floating hamburger; use header collapse control within the sidebar */}
 
-      {/* Search Sidebar - only show when there are search sessions */}
-      {hasSearched && !isSidebarCollapsed && (
+      {/* Desktop: rely on sidebar header arrow and the rail opener; no floating hamburger */}
+
+      {/* Search Sidebar */}
+      {shouldShowSidebar && (
         <div className={cn(
           "transition-all duration-300 h-[100dvh] min-h-0 overflow-hidden",
           // On mobile, render as overlay so it doesn't push content width
           // Use higher z-index than the backdrop overlay to keep it clickable
-          isMobile ? "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg" : "ml-0",
+          isMobile ? "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg" : "w-96 flex-shrink-0",
           // Hide when mobile sidebar is not open
           isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
         )}>
           <SearchSidebar
             sessions={searchSessions}
             currentSessionId={currentSessionId}
-            isSidebarOpen={isSidebarOpen}
+            isSidebarOpen={sidebarOpenForChild}
             isCollapsed={isSidebarCollapsed}
             onSessionSelect={handleSessionSelect}
             onNewSearch={handleNewSearch}
-            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onToggleCollapse={handleSidebarHeaderToggle}
             onDeleteSession={handleDeleteSession}
             onRenameSession={handleRenameSession}
             onToggleFavorite={handleToggleFavorite}
+            onQuickTopicSearch={(topic) => {
+              // Start a new search using the clicked quick topic text
+              handleSearch(topic);
+              if (isMobile)
+              {
+                setIsSidebarOpen(false);
+              }
+            }}
           />
         </div>
       )}
@@ -790,12 +844,14 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       </div>
 
       {/* Mobile sidebar overlay */}
-      {isMobile && isSidebarOpen && hasSearched && (
+      {isMobile && isSidebarOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
+
+      {/* No rail opener; desktop uses hamburger above */}
     </div>
   );
 };
