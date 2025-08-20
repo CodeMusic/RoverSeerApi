@@ -58,7 +58,7 @@
       }
     }
     body {
-      background: radial-gradient(1000px 400px at 50% -10%, var(--musai-bg-2), var(--musai-bg));
+      background: var(--musai-bg);
       color: var(--musai-text);
     }
     a { color: var(--musai-muted); }
@@ -68,6 +68,13 @@
     #search_logo svg path,
     #search_logo svg rect { stroke: inherit; fill: inherit; }
     #search_logo img, #search_logo picture { display: block; height: 80px; width: auto; }
+    /* Create healthy spacing between the logo and the search input */
+    #search_header
+    {
+      display: flex;
+      align-items: center;
+      column-gap: 16px;
+    }
     /* Search page only: gently nudge the logo for better visual alignment */
     #main_search #search_logo
     {
@@ -105,6 +112,21 @@
       border-radius: 14px;
       padding: 12px;
       margin: 12px 0 20px 0;
+      /* Float to the right of the search input area on wide viewports */
+      position: fixed;
+      top: 150px;
+      right: clamp(12px, 5vw, 48px);
+      width: min(420px, 42vw);
+      z-index: 50;
+    }
+    /* Fallback for small screens: place it inline */
+    @media (max-width: 1024px) {
+      #ai_chat {
+        position: static;
+        width: auto;
+        right: auto;
+        top: auto;
+      }
     }
     html.theme-light #ai_chat,
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
@@ -141,12 +163,76 @@
     #ai_chat button[type="submit"]:hover {
       filter: brightness(1.1);
     }
+    #ai_chat textarea[disabled],
+    #ai_chat button[disabled] {
+      opacity: .6;
+      cursor: not-allowed;
+      filter: none;
+    }
     #ai_chat_output {
       margin-top: 10px;
       padding: 10px;
       border-radius: 10px;
       background: rgba(0,0,0,0.15);
       border: 1px solid rgba(255,255,255,0.08);
+      white-space: pre-wrap;
+    }
+    /* Typing indicator bubble (Musai-style) */
+    .ai-typing-bubble {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(107,91,149,.10);
+      border: 1px solid rgba(107,91,149,.45);
+      box-shadow: 0 2px 16px rgba(0,0,0,.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .ai-typing-bubble .ai-typing-icon {
+      font-size: 16px;
+      line-height: 1;
+    }
+    .ai-typing-bubble .ai-typing-label {
+      font-size: 0.95rem;
+      color: var(--musai-text);
+      opacity: .9;
+    }
+    .ai-typing-bubble .ai-typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #a78bfa; /* purple-400 */
+    }
+    html.theme-light .ai-typing-bubble {
+      background: rgba(20,184,166,.10);
+      border-color: rgba(20,184,166,.45);
+    }
+    /* Glow and dots animation */
+    @keyframes mysticalGlow {
+      0%, 100% { box-shadow: 0 0 14px rgba(167,139,250,.25); }
+      50% { box-shadow: 0 0 22px rgba(167,139,250,.45); }
+    }
+    @keyframes mysticalDots {
+      0%, 80%, 100% { transform: scale(0.8); opacity: 0.6; }
+      40% { transform: scale(1.15); opacity: 1; }
+    }
+    .mystical-glow {
+      animation: mysticalGlow 2s ease-in-out infinite;
+    }
+    .mystical-dots {
+      animation: mysticalDots 1.4s ease-in-out infinite;
+      display: inline-block;
+    }
+    /* Main response bubble (purplish) */
+    .ai-main-bubble {
+      background: rgba(107,91,149,.14);
+      border: 1px solid rgba(107,91,149,.45);
+      color: var(--musai-text);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 8px;
       white-space: pre-wrap;
     }
     /* POV toggles and panels (red = logical, blue = creative) */
