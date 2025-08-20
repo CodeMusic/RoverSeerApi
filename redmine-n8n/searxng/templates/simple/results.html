@@ -145,7 +145,7 @@
       // Build search-contextual payload
       const contextResults = collectTopResultsContext(5);
       const contextBlock = contextResults.length
-        ? ('[Search context]\n' + contextResults.map(function (r, idx)
+        ? ('[ascontext]\n' + contextResults.map(function (r, idx)
           {
             return (idx + 1) + ') ' + (r.title || r.url || 'Untitled') + (r.url ? (' — ' + r.url) : '') + (r.snippet ? ('\n   ' + r.snippet) : '');
           }).join('\n'))

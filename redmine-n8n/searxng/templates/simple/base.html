@@ -190,7 +190,8 @@
       #ai_chat input[type="text"] {
         height: 44px;
       }
-      #ai_chat button {
+      /* scope sizing to the send button only, not POV toggles */
+      #ai_chat #ai_chat_send {
         height: 44px;
         width: 48px;
       }
@@ -211,8 +212,8 @@
       background: rgba(0,0,0,0.15);
       color: var(--musai-text);
     }
-    #ai_chat button[type="submit"],
-    #ai_chat button[type="button"] {
+    /* Style the send button only so POV toggles can have their own colors */
+    #ai_chat #ai_chat_send {
       background: var(--musai-primary);
       color: #fff;
       border-radius: 10px;
@@ -226,10 +227,30 @@
       line-height: 1;
       cursor: pointer;
     }
-    #ai_chat button[type="submit"]:hover,
-    #ai_chat button[type="button"]:hover {
+    #ai_chat #ai_chat_send:hover {
       filter: brightness(1.1);
     }
+    /* Back to top button pinned to bottom-right */
+    #backToTop {
+      position: fixed;
+      right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      z-index: 1100; /* above AI bar */
+      margin: 0;
+    }
+    #backToTop a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: var(--musai-primary);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      border: 0;
+    }
+    #backToTop a:hover { filter: brightness(1.1); }
     #ai_chat input[type="text"][disabled],
     #ai_chat button[disabled] {
       opacity: .6;
