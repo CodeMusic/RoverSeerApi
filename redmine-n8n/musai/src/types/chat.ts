@@ -3,6 +3,8 @@ export interface Message {
   content: string;
   role: 'user' | 'assistant';
   timestamp: number;
+  // Optional user affect tag for UI theming (e.g., Happy, Sad).
+  mood?: string;
   thoughts?: string; // AI internal thoughts for think tags
   // Optional structured POV thoughts from multi-agent responses
   pov?: AgentPov[];

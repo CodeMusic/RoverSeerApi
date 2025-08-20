@@ -789,6 +789,50 @@ textarea, input, button {
   }
 }
 
+/* Mood shimmer overlay for user bubbles (therapy) */
+@keyframes moodShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.mood-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.mood-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Use CSS variable --mood-rgb supplied by mood-* classes */
+  background: linear-gradient(
+    120deg,
+    rgba(0,0,0,0) 0%,
+    rgba(var(--mood-rgb, 147, 51, 234), 0.10) 20%,
+    rgba(var(--mood-rgb, 147, 51, 234), 0.22) 50%,
+    rgba(var(--mood-rgb, 147, 51, 234), 0.10) 80%,
+    rgba(0,0,0,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: moodShimmer 6s linear infinite;
+}
+
+.mood-happy { --mood-rgb: 250, 204, 21; }
+.mood-sad { --mood-rgb: 59, 130, 246; }
+.mood-anxious { --mood-rgb: 251, 191, 36; }
+.mood-frustrated { --mood-rgb: 239, 68, 68; }
+.mood-calm { --mood-rgb: 20, 184, 166; }
+.mood-thoughtful { --mood-rgb: 168, 85, 247; }
+
+/* Override base user bubble background with mood-tinted gradient */
+.imsg-bubble.imsg-user.mood-active {
+  background:
+    linear-gradient(180deg, rgba(var(--mood-rgb, 147, 51, 234), 0.16), rgba(var(--mood-rgb, 147, 51, 234), 0.10)),
+    radial-gradient(120% 120% at 30% 20%, rgba(var(--mood-rgb, 147, 51, 234), 0.18) 0%, rgba(var(--mood-rgb, 147, 51, 234), 0.00) 60%);
+}
+
 /* Wave effect for message reception */
 @keyframes mysticalWave {
   0% {

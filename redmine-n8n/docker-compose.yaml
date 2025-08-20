@@ -61,6 +61,7 @@ services:
       - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
       - WEBHOOK_URL=https://n8n.codemusic.ca/
       - WEBHOOK_TUNNEL_URL=https://n8n.codemusic.ca/
+      - TAVILY_API_KEY=tvly-dev-insert-key
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/plugins:/data/packages

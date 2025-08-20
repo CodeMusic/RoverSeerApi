@@ -44,11 +44,17 @@ export const useMessageSender = (
 
     console.log('File data prepared:', fileData ? 'Successfully processed' : 'No file data');
 
+    // Extract optional mood prefix for UI rendering, keep original input for backend
+    const moodMatch = input.match(/^\s*\[\s*Mood\s*:\s*([^\]]+)\]\s*(.*)$/i);
+    const uiMood = moodMatch ? (moodMatch[1] || '').trim() : undefined;
+    const uiContent = moodMatch ? (moodMatch[2] || '') : input;
+
     const userMessage: Message = {
       id: uuidv4(),
-      content: input,
+      content: uiContent,
       role: "user",
       timestamp: Date.now(),
+      ...(uiMood ? { mood: uiMood } : {}),
       ...(fileData && { imageData: fileData })
     };
 
@@ -133,6 +139,7 @@ export const useMessageSender = (
             body: JSON.stringify({
               // Compose sessionId as {threadId_systemId}
               sessionId: buildThreadSessionId(sessionId),
+              // Send original full text (with mood tag if present) to backend so workflows can parse it
               query: input,
               params: {
                 module: MUSAI_MODULES.CHAT,

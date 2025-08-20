@@ -121,6 +121,74 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const styling = getModuleSpecificStyling();
   const [activePov, setActivePov] = React.useState<'logical' | 'creative' | null>(null);
 
+  // Extract leading mood tag like: [Mood: Calm] ...
+  const extractMoodFromContent = (text: string): { mood: string | null; stripped: string } =>
+  {
+    if (!text) return { mood: null, stripped: text };
+    const match = text.match(/^\s*\[\s*Mood\s*:\s*([^\]]+)\]\s*(.*)$/i);
+    if (match)
+    {
+      const moodRaw = (match[1] || '').trim();
+      const remainder = match[2] ?? '';
+      return { mood: moodRaw, stripped: remainder };
+    }
+    return { mood: null, stripped: text };
+  };
+
+  // Map mood to bubble/text classes (therapy user messages only)
+  const getMoodStyling = (mood: string) =>
+  {
+    const key = mood.toLowerCase();
+    switch (key)
+    {
+      case 'happy':
+        return {
+          userBubble: 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700',
+          userText: 'text-yellow-900 dark:text-yellow-100'
+        };
+      case 'sad':
+        return {
+          userBubble: 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700',
+          userText: 'text-blue-900 dark:text-blue-100'
+        };
+      case 'anxious':
+        return {
+          userBubble: 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700',
+          userText: 'text-amber-900 dark:text-amber-100'
+        };
+      case 'frustrated':
+        return {
+          userBubble: 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700',
+          userText: 'text-red-900 dark:text-red-100'
+        };
+      case 'calm':
+        return {
+          userBubble: 'bg-teal-100 dark:bg-teal-900/30 border-teal-300 dark:border-teal-700',
+          userText: 'text-teal-900 dark:text-teal-100'
+        };
+      case 'thoughtful':
+        return {
+          userBubble: 'bg-purple-100 dark:bg-purple-900/30 border-purple-300 dark:border-purple-700',
+          userText: 'text-purple-900 dark:text-purple-100'
+        };
+      default:
+        return null;
+    }
+  };
+
+  // For therapy user messages, derive mood and display content accordingly
+  const { mood: extractedMoodFromText, stripped: displayContentFromText } = (() =>
+  {
+    if (module === 'therapy' && isUser)
+    {
+      return extractMoodFromContent(message.content);
+    }
+    return { mood: null, stripped: message.content };
+  })();
+  const effectiveMood = (message as any).mood || extractedMoodFromText;
+  const displayContent = displayContentFromText;
+  const moodStyling = effectiveMood ? getMoodStyling(String(effectiveMood)) : null;
+
   const PovPanels: React.FC<{ message: Message; active: 'logical' | 'creative' | null; setActive: React.Dispatch<React.SetStateAction<'logical' | 'creative' | null>> }> = ({ message, active, setActive }) => {
     const logical = (message as any).logicalThought as string | undefined
       || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
@@ -252,13 +320,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Message Bubble */}
         <div className={cn(
           "rounded-lg px-4 py-2 border-2 imsg-bubble",
-          isUser ? cn(styling.userBubble, "imsg-user") : cn(styling.assistantBubble, "imsg-ai"),
+          isUser ? cn(moodStyling?.userBubble || styling.userBubble, "imsg-user", effectiveMood && "mood-shimmer", effectiveMood && `mood-${String(effectiveMood).toLowerCase()}`) : cn(styling.assistantBubble, "imsg-ai"),
           isTyping && "animate-pulse",
           isTyping && !isUser && "flex items-center justify-center"
-        )} style={isUser ? userBubbleStyle : undefined}>
+        )} style={isUser ? (moodStyling ? undefined : userBubbleStyle) : undefined}>
           <div className={cn(
             isUser 
-              ? cn(styling.userText, "text-[1.2rem] md:text-[1.28rem] leading-8 font-user-sans") 
+              ? cn(moodStyling?.userText || styling.userText, "text-[1.2rem] md:text-[1.28rem] leading-8 font-user-sans") 
               : cn(styling.assistantText, "text-[1rem] md:text-[1.06rem] leading-7 font-ai-mono")
           )}>
             {isTyping && !isUser ? (
@@ -267,9 +335,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             ) : (
               <div className="prose prose-slate dark:prose-invert max-w-none break-words">
-                {isLikelyMarkdown(message.content)
-                  ? <MarkdownRenderer content={message.content} />
-                  : <StreamingText content={message.content} />}
+                {isLikelyMarkdown(displayContent)
+                  ? <MarkdownRenderer content={displayContent} />
+                  : <StreamingText content={displayContent} />}
               </div>
             )}
           </div>

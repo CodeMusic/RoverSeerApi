@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { narrativeApi, NarrativeSummary } from '@/lib/narrativeApi';
-import { Sparkles, BookOpen } from 'lucide-react';
+import { Sparkles, BookOpen, ArrowLeft } from 'lucide-react';
 
 interface NarrativePanelProps {
   mode: 'therapy' | 'general' | 'career' | 'code' | 'university';
+  onClose?: () => void;
 }
 
-export const NarrativePanel: React.FC<NarrativePanelProps> = ({ mode }) =>
+export const NarrativePanel: React.FC<NarrativePanelProps> = ({ mode, onClose }) =>
 {
   const [seed, setSeed] = useState('');
   const [title, setTitle] = useState('');
@@ -33,6 +34,13 @@ export const NarrativePanel: React.FC<NarrativePanelProps> = ({ mode }) =>
 
   return (
     <div className="h-full p-4 space-y-4 overflow-y-auto">
+      {onClose && (
+        <div className="flex items-center">
+          <Button variant="ghost" size="sm" onClick={onClose} className="px-2">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Therapy
+          </Button>
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

@@ -242,7 +242,7 @@ const Index = () => {
     // Therapy: show Narrative panel pop-in
     if (currentTab === APP_TERMS.TAB_THERAPY) {
       if (showNarrativePanel) {
-        return <NarrativePanel mode="therapy" />;
+        return <NarrativePanel mode="therapy" onClose={() => setShowNarrativePanel(false)} />;
       }
       if (currentSession.type === 'therapy') {
         return <TherapyPanel session={currentSession} onUpdateContext={(id, ctx) => updateTherapyContext(id, ctx)} />;
