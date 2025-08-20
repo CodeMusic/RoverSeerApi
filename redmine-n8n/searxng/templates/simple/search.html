@@ -7,10 +7,7 @@
       {% if logo_data_uri %}
         <img src="{{ logo_data_uri }}" alt="{{ instance_name }} logo">
       {% else %}
-        <picture>
-          <source srcset="{{ url_for('static', filename='img/searxng.svg') }}" type="image/svg+xml">
-          <img src="{{ url_for('static', filename='img/searxng.png') }}" alt="{{ instance_name }} logo">
-        </picture>
+        <img src="{{ url_for('static', filename='img/searxng.png') }}" alt="{{ instance_name }} logo">
       {% endif %}
     </a>
     <div id="search_view">
