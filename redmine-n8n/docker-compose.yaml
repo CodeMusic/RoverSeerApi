@@ -130,7 +130,7 @@ services:
     #   - ./searxng/engines.yml:/etc/searxng/engines.yml:ro
 
   morty:
-    image: searxng/morty:latest
+    image: dalf/morty:latest
     container_name: morty
     restart: unless-stopped
     environment:
