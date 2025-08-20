@@ -189,6 +189,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const displayContent = displayContentFromText;
   const moodStyling = effectiveMood ? getMoodStyling(String(effectiveMood)) : null;
 
+  // Map mood to an emoji for quick affect recognition
+  const getMoodEmoji = (mood: string): string =>
+  {
+    switch (mood.toLowerCase())
+    {
+      case 'happy': return '😊';
+      case 'sad': return '😔';
+      case 'anxious': return '😰';
+      case 'frustrated': return '😤';
+      case 'calm': return '😌';
+      case 'thoughtful': return '🤔';
+      default: return '✨';
+    }
+  };
+
+  const moodBadgeStyle: React.CSSProperties | undefined = effectiveMood ? {
+    backgroundColor: 'rgba(var(--mood-rgb, 147, 51, 234), 0.12)',
+    borderColor: 'rgba(var(--mood-rgb, 147, 51, 234), 0.45)',
+    color: 'rgb(var(--mood-rgb, 147, 51, 234))'
+  } : undefined;
+
   const PovPanels: React.FC<{ message: Message; active: 'logical' | 'creative' | null; setActive: React.Dispatch<React.SetStateAction<'logical' | 'creative' | null>> }> = ({ message, active, setActive }) => {
     const logical = (message as any).logicalThought as string | undefined
       || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
@@ -320,10 +341,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {/* Message Bubble */}
         <div className={cn(
           "rounded-lg px-4 py-2 border-2 imsg-bubble",
-          isUser ? cn(moodStyling?.userBubble || styling.userBubble, "imsg-user", effectiveMood && "mood-shimmer", effectiveMood && `mood-${String(effectiveMood).toLowerCase()}`) : cn(styling.assistantBubble, "imsg-ai"),
+          isUser ? cn(moodStyling?.userBubble || styling.userBubble, "imsg-user", effectiveMood && "mood-shimmer", effectiveMood && `mood-${String(effectiveMood).toLowerCase()}`, effectiveMood && "mood-active") : cn(styling.assistantBubble, "imsg-ai"),
           isTyping && "animate-pulse",
           isTyping && !isUser && "flex items-center justify-center"
         )} style={isUser ? (moodStyling ? undefined : userBubbleStyle) : undefined}>
+          {/* Mood indicator badge (appears on hover) */}
+          {isUser && effectiveMood && (
+            <div
+              className={cn(
+                "absolute -top-3 right-3 px-2 py-0.5 text-[10px] rounded-full border shadow-sm",
+                "opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur"
+              )}
+              style={moodBadgeStyle}
+              aria-label={`Mood: ${String(effectiveMood)}`}
+            >
+              <span className="mr-1 align-middle">
+                {getMoodEmoji(String(effectiveMood))}
+              </span>
+              <span className="align-middle">
+                {String(effectiveMood)}
+              </span>
+            </div>
+          )}
           <div className={cn(
             isUser 
               ? cn(moodStyling?.userText || styling.userText, "text-[1.2rem] md:text-[1.28rem] leading-8 font-user-sans") 

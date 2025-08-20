@@ -654,8 +654,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
   return (
     <div className="flex h-[100dvh] relative bg-background overflow-x-hidden">
-      {/* Mobile menu button */}
-      {isMobile && hasSearched && (
+      {/* Mobile menu button (hidden while sidebar is open to avoid duplicate controls) */}
+      {isMobile && hasSearched && !isSidebarOpen && (
         <button
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="fixed top-8 left-16 z-50 p-2 rounded-lg bg-background border shadow-md"
