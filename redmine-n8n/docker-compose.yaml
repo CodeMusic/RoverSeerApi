@@ -112,22 +112,36 @@ services:
     container_name: searxng
     restart: unless-stopped
     ports:
-      - "8080:8080"                    # expose to LAN so Mac mini Apache can reach iMac:8080
+      - "8080:8080"
     environment:
       - BASE_URL=https://search.codemusic.ca
       - SECRET_KEY=b618b27c029ee157f5e30a12d1067d8566d715009b3873d1e5ca634ceea1dfd6
       - INSTANCE_NAME=MusaiSearch
       - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
       - AUTOCOMPLETE=duckduckgo
-      - MORTY_URL=http://morty:3000/    # container-to-container (DO NOT map Morty to host 3000)
+      - MORTY_URL=http://morty:3000/
       - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
     depends_on:
       - morty
     networks:
       - ai_net
-    # volumes:   # (commented out for now, use baked-in defaults)
-    #   - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
-    #   - ./searxng/engines.yml:/etc/searxng/engines.yml:ro
+    volumes:
+      # Config (single file)
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+
+      # Brand & static overrides (whole folders)
+      - ./searxng/branding/img:/usr/local/searxng/searx/static/themes/simple/img:ro
+      - ./searxng/static/css:/usr/local/searxng/searx/static/themes/simple/css:ro
+      - ./searxng/static/js:/usr/local/searxng/searx/static/themes/simple/js:ro
+
+      # Template overrides (optional, if you copied them)
+      - ./searxng/templates/simple:/usr/local/searxng/searx/templates/simple:ro
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "-", "http://localhost:8080/search?q=ping&format=json"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   morty:
     image: dalf/morty:latest
@@ -135,9 +149,14 @@ services:
     restart: unless-stopped
     environment:
       - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+      - MORTY_ADDRESS=0.0.0.0:3000
     networks:
       - ai_net
-    # NOTE: no ports: section → stays internal at 3000, only visible to searxng
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   wyoming-whisper:
     image: rhasspy/wyoming-whisper
