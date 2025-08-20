@@ -127,7 +127,7 @@ services:
       - ai_net
     volumes:
       # Config (single file)
-      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./searxng/settings.yml:/etc/searxng/settings.yml
 
       # Brand & static overrides (whole folders)
       - ./searxng/branding/img:/usr/local/searxng/searx/static/themes/simple/img:ro
