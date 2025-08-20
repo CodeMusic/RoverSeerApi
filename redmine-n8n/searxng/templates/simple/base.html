@@ -38,6 +38,25 @@
       --musai-text: #e6e6f0;
       --musai-muted: #a7a9be;
     }
+    /* Light mode palette and surfaces */
+    html.theme-light {
+      --musai-primary: #0f766e; /* teal-700 */
+      --musai-accent: #14b8a6;  /* teal-500 */
+      --musai-bg: #eafaf7;      /* very light teal */
+      --musai-bg-2: #dff5f0;    /* very light teal (accent) */
+      --musai-text: #222222;    /* dark text for contrast */
+      --musai-muted: #506a6a;   /* muted teal-gray */
+    }
+    @media (prefers-color-scheme: light) {
+      html.theme-auto {
+        --musai-primary: #0f766e;
+        --musai-accent: #14b8a6;
+        --musai-bg: #eafaf7;
+        --musai-bg-2: #dff5f0;
+        --musai-text: #222222;
+        --musai-muted: #506a6a;
+      }
+    }
     body {
       background: radial-gradient(1000px 400px at 50% -10%, var(--musai-bg-2), var(--musai-bg));
       color: var(--musai-text);
@@ -49,12 +68,22 @@
     #search_logo svg path,
     #search_logo svg rect { stroke: inherit; fill: inherit; }
     #search_logo img, #search_logo picture { display: block; height: 80px; width: auto; }
+    /* Search page only: gently nudge the logo for better visual alignment */
+    #main_search #search_logo
+    {
+      position: relative;
+      left: -10px; /* shift left by 10px */
+      top: -2px;  /* shift up by ~2px */
+    }
     .search_box {
       background: rgba(46,50,66,.6);
       border: 1px solid var(--musai-primary);
       box-shadow: 0 4px 24px rgba(0,0,0,.35);
       border-radius: 14px;
     }
+    html.theme-light .search_box,
+    @media (prefers-color-scheme: light) { html.theme-auto .search_box { background: rgba(255,255,255,.9); } }
+    html.theme-light .search_box { background: rgba(255,255,255,.9); }
     #q { color: var(--musai-text); }
     #send_search {
       background: var(--musai-primary);
@@ -64,6 +93,123 @@
     }
     #send_search:hover { filter: brightness(1.1); }
     footer { color: var(--musai-muted); }
+    /* Add breathing room below the categories (General, Images, Videos, etc.) */
+    #categories {
+      padding-bottom: 12px;
+    }
+    /* AI chat area */
+    #ai_chat {
+      background: rgba(46,50,66,.6);
+      border: 1px solid var(--musai-primary);
+      box-shadow: 0 4px 24px rgba(0,0,0,.35);
+      border-radius: 14px;
+      padding: 12px;
+      margin: 12px 0 20px 0;
+    }
+    html.theme-light #ai_chat,
+    @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
+    html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
+    #ai_chat h3 {
+      margin: 0 0 8px 0;
+      color: var(--musai-text);
+      font-size: 1.05rem;
+    }
+    #ai_chat textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid var(--musai-primary);
+      background: rgba(0,0,0,0.15);
+      color: var(--musai-text);
+    }
+    #ai_chat .ai-chat-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    #ai_chat button[type="submit"] {
+      background: var(--musai-primary);
+      color: #fff;
+      border-radius: 10px;
+      border: 0;
+      padding: 8px 14px;
+      cursor: pointer;
+    }
+    #ai_chat button[type="submit"]:hover {
+      filter: brightness(1.1);
+    }
+    #ai_chat_output {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid rgba(255,255,255,0.08);
+      white-space: pre-wrap;
+    }
+    /* POV toggles and panels (red = logical, blue = creative) */
+    .ai-pov-toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0 6px 0;
+      flex-wrap: wrap;
+    }
+    .ai-pov-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255,255,255,0.06);
+      color: var(--musai-text);
+    }
+    .ai-pov-toggle[disabled] {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .ai-pov-toggle.red {
+      border-color: #fca5a5;
+      background: rgba(220,38,38,.08);
+      color: #fecaca;
+    }
+    .ai-pov-toggle.red.active {
+      background: rgba(252,165,165,.22);
+      box-shadow: inset 0 0 0 1px rgba(220,38,38,.45);
+    }
+    .ai-pov-toggle.blue {
+      border-color: #93c5fd;
+      background: rgba(37,99,235,.08);
+      color: #bfdbfe;
+    }
+    .ai-pov-toggle.blue.active {
+      background: rgba(147,197,253,.22);
+      box-shadow: inset 0 0 0 1px rgba(37,99,235,.45);
+    }
+    .ai-pov-panel {
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 10px;
+      margin-top: 6px;
+      white-space: pre-wrap;
+      font-size: 0.95rem;
+    }
+    .ai-pov-panel.red {
+      background: rgba(220,38,38,.08);
+      border-color: rgba(248,113,113,.4);
+      color: #fecaca;
+    }
+    .ai-pov-panel.blue {
+      background: rgba(37,99,235,.08);
+      border-color: rgba(96,165,250,.4);
+      color: #bfdbfe;
+    }
   </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
@@ -100,7 +246,8 @@
   </main>
   <footer>
     <p>
-    <strong>MusaiSearch</strong> — {{ _('powered by') }} <a href="{{ url_for('info', pagename='about') }}">SearXNG</a> ({{ searx_version }}) — {{ _('a privacy-respecting, open metasearch engine') }}<br>
+    <strong>MusaiSearch</strong> — {{ _('powered by') }} SearXNG ({{ searx_version }}) — {{ _('a privacy-respecting, open metasearch engine') }}<br>
+        <a href="{{ url_for('info', pagename='about') }}">{{ _('About MusaiSearch') }}</a>
         <a href="{{ searx_git_url }}">{{ _('Source code') }}</a>
         | <a href="{{ get_setting('brand.issue_url') }}">{{ _('Issue tracker') }}</a>
         {% if enable_metrics %}| <a href="{{ url_for('stats') }}">{{ _('Engine stats') }}</a>{% endif %}

@@ -1,5 +1,5 @@
 {% extends 'simple/page_with_header.html' %}
-{% block title %}{{ active_page.title }} - {% endblock %}
+{% block title %}{% if pagename == 'about' %}About MusaiSearch - {% else %}{{ active_page.title }} - {% endif %}{% endblock %}
 {% block linkto_about %}{% endblock %}
 {% block linkto_donate %}{% endblock %}
 {% block content %}
@@ -11,6 +11,80 @@
 {% endfor %}
 </ul>
 <div class="info-page {{pagename}}">
+  {% if pagename == 'about' %}
+  <h1>About MusaiSearch</h1>
+  <p>
+    MusaiSearch is a privacy‑respecting, open metasearch experience powered by SearXNG. It aggregates results from many sources while avoiding tracking, advertising profiles, or storing your queries.
+  </p>
+  <p>
+    Learn more about the vision behind MusaiSearch on <a href="https://musai.codemusic.ca/find-your-muse" rel="noopener">Find your muse</a>.
+  </p>
+  <div class="about-hero" style="margin: 16px 0;">
+    <img
+      src="{{ url_for('static', filename='img/signal_in_noise.png') }}"
+      alt="Signal in Noise — MusaiSearch"
+      loading="lazy"
+      decoding="async"
+      style="display:block; max-width:100%; height:auto; border-radius:12px; box-shadow: 0 8px 32px rgba(0,0,0,.5);"
+    >
+  </div>
+  <h2>Why use it?</h2>
+  <ul>
+    <li>No profiling: your searches are not logged or sold.</li>
+    <li>Open source: transparent code and community contributions.</li>
+    <li>Broad perspective: results are aggregated from multiple engines for balanced discovery.</li>
+  </ul>
+  <h2>Make it yours</h2>
+  <p>
+    Add this instance as your default search engine via OpenSearch, or run your own. MusaiSearch inherits the strengths of SearXNG while focusing on a calm, muse‑driven discovery experience.
+  </p>
+  {% elif pagename == 'search-syntax' %}
+  <h1>Search syntax</h1>
+  <p>
+    MusaiSearch supports powerful query modifiers to guide your discovery journey. You can tweak categories, engines, languages, and more. See Preferences for available engines, categories, and languages.
+  </p>
+
+  <h2><code>!</code> Select engine and category</h2>
+  <p>Use a <code>!</code> prefix to target specific engines or categories. Examples:</p>
+  <ul>
+    <li>Search Wikipedia for <strong>paris</strong>: <code>!wp paris</code> or <code>!wikipedia paris</code></li>
+    <li>Search in category <strong>map</strong> for <strong>paris</strong>: <code>!map paris</code></li>
+    <li>Image search: <code>!images Wau Holland</code></li>
+  </ul>
+  <p>Abbreviations are accepted. Modifiers are chainable and inclusive, e.g. <code>!map !ddg !wp paris</code>.</p>
+
+  <h2><code>:</code> Select language</h2>
+  <p>Use a <code>:</code> prefix to select a language filter. Example:</p>
+  <ul>
+    <li>Search Wikipedia in French: <code>:fr !wp Wau Holland</code></li>
+  </ul>
+
+  <h2><code>!!&lt;bang&gt;</code> External bangs</h2>
+  <p>
+    MusaiSearch supports DuckDuckGo external bangs. Use <code>!!</code> to jump directly to an external search page, e.g. <code>!!wfr Wau Holland</code>.
+  </p>
+  <p>
+    Note: this opens an external site directly. MusaiSearch cannot protect your privacy once you leave this site.
+  </p>
+
+  <h2><code>!!</code> automatic redirect</h2>
+  <p>
+    Include <code>!!</code> in your query (separated by spaces) to auto‑redirect to the first result, similar to “Feeling Lucky”. Example: <code>!! Wau Holland</code>.
+  </p>
+  <p>
+    Caution: redirect destinations can’t be verified for trustworthiness, and MusaiSearch cannot protect your privacy on external sites.
+  </p>
+
+  <h2>Special queries</h2>
+  <p>Some utility queries (enable in Preferences):</p>
+  <ul>
+    <li>Generate a random UUID: <code>random uuid</code></li>
+    <li>Find the average: <code>avg 123 548 2.04 24.2</code></li>
+    <li>Show your browser user agent: <code>user-agent</code> (if activated)</li>
+    <li>Hash digests: <code>md5 lorem ipsum</code>, <code>sha512 lorem ipsum</code></li>
+  </ul>
+  {% else %}
   {{- active_page.html | safe -}}
+  {% endif %}
 </div>
 {% endblock %}

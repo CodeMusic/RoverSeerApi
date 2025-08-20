@@ -12,6 +12,155 @@
 {% block content %}
 {% include 'simple/search.html' %}
 
+<section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}">
+  <h3>Ask Musai AI</h3>
+  <form id="ai_chat_form">
+    <textarea id="ai_chat_input" placeholder="Ask about these results or anything else…"></textarea>
+    <div class="ai-chat-actions">
+      <button type="submit">Send</button>
+      <small id="ai_chat_status" aria-live="polite"></small>
+    </div>
+  </form>
+  <div id="ai_chat_output" hidden></div>
+  <script>
+    // very small helper to call your webhook with current search metadata
+    const aiForm = document.getElementById('ai_chat_form');
+    const aiInput = document.getElementById('ai_chat_input');
+    const aiOut = document.getElementById('ai_chat_output');
+    const aiStatus = document.getElementById('ai_chat_status');
+    const aiSection = document.getElementById('ai_chat');
+
+    aiForm?.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      const message = aiInput.value.trim();
+      if (!message) {
+        return;
+      }
+
+      aiStatus.textContent = 'Thinking…';
+      aiOut.hidden = true;
+
+      // stable client session id using localStorage
+      const storageKey = 'musai_session_id';
+      let sessionId = localStorage.getItem(storageKey);
+      if (!sessionId) {
+        sessionId = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+        localStorage.setItem(storageKey, sessionId);
+      }
+
+      const ds = aiSection?.dataset || {};
+      const payload = {
+        sessionId: sessionId,
+        query: message,
+        action: 'webhookChat',
+        meta: JSON.stringify({ search: {
+          q: ds.q || '',
+          selected_categories: (ds.categories || '').split(',').filter(Boolean),
+          pageno: parseInt(ds.pageno || '1', 10),
+          time_range: ds.timeRange || '',
+          language: ds.language || '',
+          safesearch: ds.safesearch || ''
+        }})
+      };
+
+      try {
+        const res = await fetch('https://n8n.codemusic.ca/webhook/chat/message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp'
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        // Normalize to first record shape { response, pov }
+        const record = Array.isArray(data) ? (data[0] || {}) : (data || {});
+        const responseText = record.response || '';
+        const pov = Array.isArray(record.pov) ? record.pov : [];
+
+        // Clear output
+        aiOut.innerHTML = '';
+
+        // Main response
+        const main = document.createElement('div');
+        main.textContent = responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : '');
+        aiOut.appendChild(main);
+
+        // Extract logical/creative thoughts if present
+        let logicalThought = '';
+        let creativeThought = '';
+        for (const p of pov) {
+          const t = (p && (p.type || p.name) || '').toString().toLowerCase();
+          if (!logicalThought && (t === 'logical' || /logic/.test(t)) && typeof p.thought === 'string') {
+            logicalThought = p.thought;
+          }
+          if (!creativeThought && (t === 'creative' || /creativ/.test(t)) && typeof p.thought === 'string') {
+            creativeThought = p.thought;
+          }
+        }
+
+        if (logicalThought || creativeThought) {
+          const toggles = document.createElement('div');
+          toggles.className = 'ai-pov-toggle-group';
+
+          const redBtn = document.createElement('button');
+          redBtn.type = 'button';
+          redBtn.className = 'ai-pov-toggle red';
+          redBtn.textContent = 'Logical';
+          if (!logicalThought) redBtn.disabled = true;
+
+          const blueBtn = document.createElement('button');
+          blueBtn.type = 'button';
+          blueBtn.className = 'ai-pov-toggle blue';
+          blueBtn.textContent = 'Creative';
+          if (!creativeThought) blueBtn.disabled = true;
+
+          const redPanel = document.createElement('div');
+          redPanel.className = 'ai-pov-panel red';
+          redPanel.textContent = logicalThought || '';
+          redPanel.hidden = true;
+
+          const bluePanel = document.createElement('div');
+          bluePanel.className = 'ai-pov-panel blue';
+          bluePanel.textContent = creativeThought || '';
+          bluePanel.hidden = true;
+
+          function setActive(which) {
+            const isRed = which === 'red';
+            const isBlue = which === 'blue';
+            redPanel.hidden = !isRed;
+            bluePanel.hidden = !isBlue;
+            redBtn.classList.toggle('active', isRed);
+            blueBtn.classList.toggle('active', isBlue);
+          }
+
+          redBtn.addEventListener('click', () => {
+            if (redBtn.disabled) return;
+            setActive(redPanel.hidden ? 'red' : null);
+          });
+          blueBtn.addEventListener('click', () => {
+            if (blueBtn.disabled) return;
+            setActive(bluePanel.hidden ? 'blue' : null);
+          });
+
+          aiOut.appendChild(toggles);
+          toggles.appendChild(redBtn);
+          toggles.appendChild(blueBtn);
+          aiOut.appendChild(redPanel);
+          aiOut.appendChild(bluePanel);
+        }
+
+        aiOut.hidden = false;
+      } catch (err) {
+        aiOut.textContent = 'Error contacting AI service.';
+        aiOut.hidden = false;
+      } finally {
+        aiStatus.textContent = '';
+      }
+    });
+  </script>
+</section>
+
 {% if results and results|map(attribute='template')|unique|list|count == 1 %}
   {% set only_template = 'only_template_' + results[0]['template']|default('default')|replace('.html', '') %}
 {% else %}
