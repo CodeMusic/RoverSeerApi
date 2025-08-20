@@ -36,7 +36,20 @@
       {
         var cls = document.documentElement.className || '';
         var isAuto = /(^|\s)theme-auto(\s|$)/.test(cls);
-        var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        var getESTHour = function()
+        {
+          try
+          {
+            return parseInt(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/New_York' }).format(new Date()), 10);
+          }
+          catch (e)
+          {
+            return (new Date()).getUTCHours();
+          }
+        };
+        var prefersLight = isAuto
+          ? (function(){ var h = getESTHour(); return h >= 7 && h < 19; })()
+          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
         var light = '#eafaf7';
         var dark = '#1e2030';
         var black = '#000000';
@@ -71,6 +84,40 @@
     // update the css
     document.documentElement.classList.remove('no-js');
     document.documentElement.classList.add('js');
+  </script>
+  <script>
+    (function applyEstAutoTheme()
+    {
+      try
+      {
+        var root = document.documentElement;
+        if (!/(^|\s)theme-auto(\s|$)/.test(root.className)) { return; }
+        var getESTHour = function()
+        {
+          try
+          {
+            return parseInt(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/New_York' }).format(new Date()), 10);
+          }
+          catch (e)
+          {
+            return (new Date()).getUTCHours();
+          }
+        };
+        var apply = function()
+        {
+          var hour = getESTHour();
+          var estLight = hour >= 7 && hour < 19;
+          root.classList.remove('est-light', 'est-dark');
+          root.classList.add(estLight ? 'est-light' : 'est-dark');
+          var color = estLight ? '#eafaf7' : '#1e2030';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) { meta.setAttribute('content', color); }
+        };
+        apply();
+        setInterval(apply, 300000); // refresh every 5 minutes
+      }
+      catch (e) { /* no-op */ }
+    })();
   </script>
   {% block head %}
   <link title="{{ instance_name }}" type="application/opensearchdescription+xml" rel="search" href="{{ opensearch_url }}">
@@ -112,6 +159,10 @@
     /* Keep content clear of the docked AI bar */
     main {
       padding-bottom: calc(120px + env(safe-area-inset-bottom));
+    }
+    /* When AI chat is collapsed, reduce the cognitive footprint at the bottom */
+    html.ai-chat-collapsed main {
+      padding-bottom: calc(56px + env(safe-area-inset-bottom));
     }
     a { color: var(--musai-muted); }
     a:hover { color: var(--musai-accent); }
@@ -210,6 +261,45 @@
       align-items: center;
       gap: 8px;
     }
+    /* Collapse affordance (left-most) */
+    #ai_chat .ai-toggle {
+      background: var(--musai-primary);
+      color: #fff;
+      border-radius: 10px;
+      border: 0;
+      height: 32px;
+      width: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    #ai_chat .ai-toggle:hover {
+      filter: brightness(1.1);
+    }
+    /* Brand cue appears only when collapsed */
+    #ai_chat .ai-brand {
+      display: none;
+      font-weight: 600;
+      color: var(--musai-text);
+      opacity: .9;
+      margin-left: 4px;
+    }
+    /* Collapsed visual state: hide input/output, show compact identity */
+    #ai_chat.collapsed {
+      padding: 6px 10px;
+      gap: 8px;
+    }
+    #ai_chat.collapsed form,
+    #ai_chat.collapsed #ai_chat_output {
+      display: none;
+    }
+    #ai_chat.collapsed .ai-brand {
+      display: inline;
+    }
     @media (min-width: 1025px) {
       #ai_chat input[type="text"] {
         height: 44px;
@@ -275,6 +365,10 @@
       border: 0;
     }
     #backToTop a:hover { filter: brightness(1.1); }
+    /* Align back-to-top with reduced bottom padding when collapsed */
+    html.ai-chat-collapsed #backToTop {
+      bottom: calc(56px + env(safe-area-inset-bottom));
+    }
     #ai_chat input[type="text"][disabled],
     #ai_chat button[disabled] {
       opacity: .6;
@@ -432,7 +526,32 @@
 
       /* Keep the back-to-top button clear of the AI bar */
       #backToTop { bottom: calc(88px + env(safe-area-inset-bottom)); }
+      /* If collapsed on small screens, further reduce the offset */
+      html.ai-chat-collapsed #backToTop { bottom: calc(56px + env(safe-area-inset-bottom)); }
     }
+  </style>
+  <style>
+    /* EST-based overrides for auto theme */
+    html.theme-auto.est-light {
+      --musai-primary: #0f766e;
+      --musai-accent: #14b8a6;
+      --musai-bg: #eafaf7;
+      --musai-bg-2: #dff5f0;
+      --musai-text: #222222;
+      --musai-muted: #506a6a;
+    }
+    html.theme-auto.est-dark {
+      --musai-primary: #6e62a6;
+      --musai-accent: #9aa3c7;
+      --musai-bg: #1e2030;
+      --musai-bg-2: #2a2e42;
+      --musai-text: #ececf4;
+      --musai-muted: #aab0c8;
+    }
+    html.theme-auto.est-light .search_box { background: rgba(255,255,255,.9); }
+    html.theme-auto.est-dark .search_box { background: rgba(46,50,66,.6); }
+    html.theme-auto.est-light #ai_chat { background: rgba(255,255,255,.9); }
+    html.theme-auto.est-dark #ai_chat { background: rgba(46,50,74,.9); }
   </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >

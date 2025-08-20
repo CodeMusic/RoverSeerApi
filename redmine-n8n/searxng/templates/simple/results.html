@@ -13,6 +13,8 @@
 {% include 'simple/search.html' %}
 
 <section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}">
+  <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
+  <span class="ai-brand" aria-hidden="true">Musai</span>
   <form id="ai_chat_form" aria-label="Ask Musai..." onsubmit="return false" action="#">
     <input id="ai_chat_input" type="text" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai">
     <button id="ai_chat_send" type="button" title="Send" aria-label="Send">↵</button>
@@ -27,6 +29,34 @@
     const aiStatus = document.getElementById('ai_chat_status');
     const aiSection = document.getElementById('ai_chat');
     const aiSend = document.getElementById('ai_chat_send');
+    const aiToggle = document.getElementById('ai_chat_toggle');
+    const rootHtml = document.documentElement;
+    const collapseStorageKey = 'musai_ai_chat_collapsed';
+    // Initialize collapsed state from persistence
+    try {
+      const isCollapsed = localStorage.getItem(collapseStorageKey) === '1';
+      if (isCollapsed) {
+        aiSection.classList.add('collapsed');
+        rootHtml.classList.add('ai-chat-collapsed');
+        if (aiToggle) { aiToggle.setAttribute('aria-label', 'Expand AI assistant'); aiToggle.title = 'Expand'; aiToggle.textContent = '▸'; }
+      }
+    } catch (e) { /* no-op */ }
+
+    // Toggle collapse/expand for attentional control
+    aiToggle?.addEventListener('click', function(ev)
+    {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const willCollapse = !aiSection.classList.contains('collapsed');
+      aiSection.classList.toggle('collapsed', willCollapse);
+      rootHtml.classList.toggle('ai-chat-collapsed', willCollapse);
+      try { localStorage.setItem(collapseStorageKey, willCollapse ? '1' : '0'); } catch (e) { /* no-op */ }
+      if (aiToggle) {
+        aiToggle.setAttribute('aria-label', willCollapse ? 'Expand AI assistant' : 'Collapse AI assistant');
+        aiToggle.title = willCollapse ? 'Expand' : 'Collapse';
+        aiToggle.textContent = willCollapse ? '▸' : '▾';
+      }
+    });
     let typingEl = null;
 
     // Submit on Enter, newline on Shift+Enter
@@ -98,6 +128,14 @@
     aiForm?.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
+      // If currently collapsed, expand to accept input
+      if (aiSection.classList.contains('collapsed'))
+      {
+        aiSection.classList.remove('collapsed');
+        rootHtml.classList.remove('ai-chat-collapsed');
+        try { localStorage.setItem(collapseStorageKey, '0'); } catch (e) { /* no-op */ }
+        if (aiToggle) { aiToggle.setAttribute('aria-label', 'Collapse AI assistant'); aiToggle.title = 'Collapse'; aiToggle.textContent = '▾'; }
+      }
       const userPrompt = aiInput.value.trim();
       if (!userPrompt) {
         return;

@@ -1,17 +1,17 @@
 {% extends 'simple/page_with_header.html' %}
-{% block title %}{% if pagename == 'about' %}About MusaiSearch - {% else %}{{ active_page.title }} - {% endif %}{% endblock %}
+{% block title %}{% if active_pagename == 'about' %}About MusaiSearch - {% else %}{{ active_page.title }} - {% endif %}{% endblock %}
 {% block linkto_about %}{% endblock %}
 {% block linkto_donate %}{% endblock %}
 {% block content %}
 <ul class="tabs">
-{% for pagename, locale, page in all_pages %}
+{% for pg_name, locale, page in all_pages %}
   <li>
-    <a href="{{ url_for('info', pagename=pagename, locale=locale) }}" {% if pagename == active_pagename %}class="active"{% endif %}>{{page.title}}</a>
+    <a href="{{ url_for('info', pagename=pg_name, locale=locale) }}" {% if pg_name == active_pagename %}class="active"{% endif %}>{{page.title}}</a>
   </li>
 {% endfor %}
 </ul>
-<div class="info-page {{pagename}}">
-  {% if pagename == 'about' %}
+<div class="info-page {{active_pagename}}">
+  {% if active_pagename == 'about' %}
   <h1>About MusaiSearch</h1>
   <p>
     MusaiSearch is a privacy‑respecting, open metasearch experience powered by SearXNG. It aggregates results from many sources while avoiding tracking, advertising profiles, or storing your queries.
@@ -38,7 +38,7 @@
   <p>
     Add this instance as your default search engine via OpenSearch, or run your own. MusaiSearch inherits the strengths of SearXNG while focusing on a calm, muse‑driven discovery experience.
   </p>
-  {% elif pagename == 'search-syntax' %}
+  {% elif active_pagename == 'search-syntax' %}
   <h1>Search syntax</h1>
   <p>
     MusaiSearch supports powerful query modifiers to guide your discovery journey. You can tweak categories, engines, languages, and more. See Preferences for available engines, categories, and languages.

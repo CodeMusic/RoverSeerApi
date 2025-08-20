@@ -41,10 +41,11 @@
     </div>{{- '' -}}
 </div>
 <div id="categories_mobile" class="hide_if_nojs">{{- '' -}}
+  <label for="categories_select" class="categories_label">{{ icon_big('layers') }}<span>{{ _('Search Type') }}</span></label>{{- '' -}}
   <select id="categories_select" aria-label="{{ _('Search type') }}">{{- '' -}}
-    <option value="">{{ _('Choose type') }}</option>
+    <option value="">{{ _('Choose Type') }}</option>
     {%- for category in categories -%}
-      <option value="{{ category }}"{% if category in selected_categories %} selected{% endif %}>{{ _(category) }}</option>
+      <option value="{{ category }}"{% if category in selected_categories %} selected{% endif %}>{{ _('TV') if category == 'TV' else _(category)|title }}</option>
     {%- endfor -%}
   </select>{{- '' -}}
 </div>
