@@ -116,7 +116,7 @@ services:
       environment:
         - BASE_URL=https://search.codemusic.ca
         - SECRET_KEY=b618b27c029ee157f5e30a12d1067d8566d715009b3873d1e5ca634ceea1dfd6
-        - INSTANCE_NAME=CodeMusic SearXNG
+        - INSTANCE_NAME=MusaiSearch
         - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
         - AUTOCOMPLETE=duckduckgo
         - MORTY_URL=http://morty:3000/    # container-to-container (DO NOT map Morty to host 3000)
