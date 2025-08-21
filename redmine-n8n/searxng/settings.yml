@@ -101,6 +101,13 @@ server:
   image_proxy: false
   # 1.0 and 1.1 are supported
   http_protocol_version: "1.0"
+
+  result_proxy:
+    # Public path your browser will hit (reverse-proxied to the morty container)
+    url: /morty/
+    # Must match Morty’s MORTY_KEY exactly
+    key: "1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39"
+
   # POST queries are more secure as they don't show up in history but may cause
   # problems when using Firefox containers.
   # Is overwritten by ${SEARXNG_METHOD}

@@ -114,13 +114,13 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - BASE_URL=https://search.codemusic.ca
-      - SECRET_KEY=b618b27c029ee157f5e30a12d1067d8566d715009b3873d1e5ca634ceea1dfd6
-      - INSTANCE_NAME=MusaiSearch
-      - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
-      - AUTOCOMPLETE=duckduckgo
-      - MORTY_URL=http://morty:3000/
-      - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+#      - BASE_URL=https://search.codemusic.ca
+#      - SECRET_KEY=b618b27c029ee157f5e30a12d1067d8566d715009b3873d1e5ca634ceea1dfd6
+#      - INSTANCE_NAME=MusaiSearch
+#      - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
+#      - AUTOCOMPLETE=duckduckgo
+#      - MORTY_URL=http://morty:3000/
+#      - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
     depends_on:
       - morty
     networks:
@@ -147,13 +147,16 @@ services:
     image: dalf/morty:latest
     container_name: morty
     restart: unless-stopped
+    ports:
+    - "3001:3000"
     environment:
       - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
-      - MORTY_ADDRESS=0.0.0.0:3000
+      - MORTY_ADDRESS=0.0.0.0
+      - MORTY_PORT=3000
     networks:
       - ai_net
     healthcheck:
-      test: ["CMD", "wget", "-qO", "-", "http://localhost:3000/"]
+      test: ["CMD", "wget", "-qO", "-", "http://localhost:3000/morty/https/example.com/"]
       interval: 30s
       timeout: 5s
       retries: 5
