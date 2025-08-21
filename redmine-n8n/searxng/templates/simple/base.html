@@ -1048,16 +1048,15 @@
                 return r.json().catch(function(){ return { url: candidate }; });
               }).then(function(data)
               {
+                var mh = (data && (data.hash || data.mortyhash)) || '';
                 var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
-                if (!nextUrl)
+                if (!nextUrl) { nextUrl = candidate; }
+                if (mh && !/[?&]hash=/.test(nextUrl))
                 {
-                  var mh = (data && (data.hash || data.mortyhash)) || '';
-                  if (mh)
-                  {
-                    try { var u = new URL(candidate, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
-                    catch (_) { nextUrl = candidate; }
-                  }
+                  try { var u = new URL(nextUrl, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
+                  catch (_) { /* no-op */ }
                 }
+                try { console.debug('[MusaiOverlay] signer POST result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl) }); } catch (_) {}
                 settle(nextUrl || candidate);
               }).catch(function()
               {
@@ -1070,18 +1069,20 @@
                   return r.json().catch(function(){ return { url: candidate }; });
                 }).then(function(data)
                 {
+                  var mh = (data && (data.hash || data.mortyhash)) || '';
                   var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
-                  if (!nextUrl)
+                  if (!nextUrl) { nextUrl = candidate; }
+                  if (mh && !/[?&]hash=/.test(nextUrl))
                   {
-                    var mh = (data && (data.hash || data.mortyhash)) || '';
-                    if (mh)
-                    {
-                      try { var u = new URL(candidate, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
-                      catch (_) { nextUrl = candidate; }
-                    }
+                    try { var u = new URL(nextUrl, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
+                    catch (_) { /* no-op */ }
                   }
+                  try { console.debug('[MusaiOverlay] signer GET result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl) }); } catch (_) {}
                   settle(nextUrl || candidate);
-                }).catch(function(){ settle(candidate); });
+                }).catch(function()
+                {
+                  settle(candidate);
+                });
               });
             }
             catch (_) { settle(candidate); }
@@ -1105,6 +1106,7 @@
             var candidate = mortyProxify(url || '');
             var loadFinal = function(finalUrl)
             {
+              try { console.debug('[MusaiOverlay] load iframe', { finalUrl: finalUrl, hasHash: /[?&]hash=/.test(finalUrl || '') }); } catch (_) {}
               try { frame.src = finalUrl || 'about:blank'; } catch (_) { frame.src = 'about:blank'; }
               try { lastKnownUrl = finalUrl || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
             };
