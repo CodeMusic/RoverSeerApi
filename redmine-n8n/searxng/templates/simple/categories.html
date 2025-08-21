@@ -92,3 +92,136 @@
   catch (e) { /* no-op */ }
 })();
 </script>
+<script>
+(function initCategoryOverflowToggle()
+{
+  try
+  {
+    var container = document.getElementById('categories_container');
+    if (!container) { return; }
+
+    var currentDisplayValue = '';
+    var moreButton = null;
+    var isExpanded = false;
+
+    var ensureMoreButton = function()
+    {
+      if (moreButton) { return moreButton; }
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'categories_more_toggle';
+      btn.className = 'category category_button';
+      btn.setAttribute('aria-expanded', 'false');
+      btn.textContent = (typeof window !== 'undefined' && window.SEARCH_I18N_MORE) ? window.SEARCH_I18N_MORE : 'More';
+      btn.addEventListener('click', function()
+      {
+        isExpanded = !isExpanded;
+        btn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+        btn.textContent = isExpanded ? ((window.SEARCH_I18N_LESS) || 'Less') : ((window.SEARCH_I18N_MORE) || 'More');
+        applyLayout();
+      });
+      moreButton = btn;
+      return moreButton;
+    };
+
+    var getItems = function()
+    {
+      return container.querySelectorAll('.category');
+    };
+
+    var hideOverflowFromIndex = function(startIndex)
+    {
+      var items = getItems();
+      for (var i = 0; i < items.length; i++)
+      {
+        var el = items[i];
+        if (i > startIndex)
+        {
+          el.style.display = 'none';
+          el.dataset.overflow = '1';
+        }
+        else
+        {
+          el.style.display = currentDisplayValue || '';
+          delete el.dataset.overflow;
+        }
+      }
+    };
+
+    var showAll = function()
+    {
+      var items = getItems();
+      for (var i = 0; i < items.length; i++)
+      {
+        var el = items[i];
+        el.style.display = currentDisplayValue || '';
+        delete el.dataset.overflow;
+      }
+    };
+
+    var applyLayout = function()
+    {
+      var items = getItems();
+      if (!items.length) { return; }
+
+      currentDisplayValue = window.getComputedStyle(items[0]).display || '';
+
+      var firstTop = items[0].offsetTop;
+      var lastFirstRowIndex = 0;
+      for (var i = 1; i < items.length; i++)
+      {
+        if (items[i].offsetTop !== firstTop)
+        {
+          break;
+        }
+        lastFirstRowIndex = i;
+      }
+
+      var needsToggle = lastFirstRowIndex < items.length - 1;
+      if (!needsToggle)
+      {
+        showAll();
+        if (moreButton && moreButton.parentNode) { moreButton.parentNode.removeChild(moreButton); }
+        return;
+      }
+
+      var btn = ensureMoreButton();
+      if (btn.parentNode !== container)
+      {
+        container.appendChild(btn);
+      }
+
+      if (isExpanded)
+      {
+        showAll();
+        container.appendChild(btn);
+      }
+      else
+      {
+        hideOverflowFromIndex(lastFirstRowIndex);
+        container.appendChild(btn);
+      }
+    };
+
+    var scheduleApply = function()
+    {
+      try { applyLayout(); } catch (_) {}
+    };
+
+    if (document.readyState === 'loading')
+    {
+      document.addEventListener('DOMContentLoaded', scheduleApply);
+    }
+    else
+    {
+      scheduleApply();
+    }
+
+    window.addEventListener('resize', function()
+    {
+      scheduleApply();
+    });
+  }
+  catch (e) { /* no-op */ }
+})();
+</script>

@@ -165,6 +165,31 @@
       catch (e) { /* no-op */ }
     })();
   </script>
+  <script>
+    (function defineN8NAuth()
+    {
+      try
+      {
+        var rawCredentials = 'siteuser:codemusai';
+        var token = (window.btoa ? ('Basic ' + btoa(rawCredentials)) : 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp');
+        window.musaiN8N = window.musaiN8N || {};
+        window.musaiN8N.authToken = token;
+        window.musaiN8N.getAuthHeader = function()
+        {
+          return { 'Authorization': window.musaiN8N.authToken };
+        };
+      }
+      catch (_)
+      {
+        window.musaiN8N = window.musaiN8N || {};
+        window.musaiN8N.authToken = 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp';
+        window.musaiN8N.getAuthHeader = function()
+        {
+          return { 'Authorization': window.musaiN8N.authToken };
+        };
+      }
+    })();
+  </script>
   <title>{% block title %}{% endblock %}{{ instance_name }}</title>
   {% block meta %}{% endblock %}
   {% if rtl %}
@@ -931,18 +956,143 @@
         };
 
         var errorDialog = document.querySelector('.dialog-error');
+        // Morty helpers to ensure iframe URLs are proxied and signed with mortyhash
+        var SIGN_WEBHOOK = 'https://n8n.codemusic.ca/webhook/sign-morty';
+        var mortyPrefix = ("{{ (get_setting('server.result_proxy.url') or '')|e }}" || '').trim();
+        var hasMortyHash = function(url)
+        {
+          try { return /[?&]mortyhash=/.test(url); } catch (_) { return false; }
+        };
+        var isMortyUrl = function(url)
+        {
+          try
+          {
+            if (!mortyPrefix) { return false; }
+            if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0)
+            {
+              var u = new URL(url, window.location.href);
+              return (u.pathname || '').indexOf(mortyPrefix) === 0;
+            }
+            return url.indexOf(mortyPrefix) === 0;
+          }
+          catch (_) { return false; }
+        };
+        var mortyProxify = function(url)
+        {
+          try
+          {
+            if (!mortyPrefix || !url) { return url; }
+            if (isMortyUrl(url)) { return url; }
+            if (url.indexOf('https://') === 0) { return mortyPrefix + 'https/' + url.slice(8); }
+            if (url.indexOf('http://') === 0) { return mortyPrefix + 'http/' + url.slice(7); }
+            return url;
+          }
+          catch (_) { return url; }
+        };
+        var stableUrlString = function(input)
+        {
+          try { return new URL(input, window.location.href).href; } catch (_) { return input || ''; }
+        };
+        var signMortyUrl = function(url)
+        {
+          return new Promise(function(resolve)
+          {
+            var candidate = stableUrlString(url);
+            if (!candidate || !isMortyUrl(candidate) || hasMortyHash(candidate))
+            {
+              resolve(candidate);
+              return;
+            }
+            var didResolve = false;
+            var settle = function(value)
+            {
+              if (didResolve) { return; }
+              didResolve = true;
+              resolve(value || candidate);
+            };
+            try
+            {
+              fetch(SIGN_WEBHOOK, {
+                method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }),
+                body: JSON.stringify({ url: candidate })
+              }).then(function(r)
+              {
+                if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                return r.json().catch(function(){ return { url: candidate }; });
+              }).then(function(data)
+              {
+                var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                if (!nextUrl)
+                {
+                  var mh = (data && (data.mortyhash || data.hash)) || '';
+                  if (mh)
+                  {
+                    try { var u = new URL(candidate, window.location.href); u.searchParams.set('mortyhash', mh); nextUrl = u.toString(); }
+                    catch (_) { nextUrl = candidate; }
+                  }
+                }
+                settle(nextUrl || candidate);
+              }).catch(function()
+              {
+                var urlParam = encodeURIComponent(candidate);
+                fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
+                  headers: (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
+                }).then(function(r)
+                {
+                  if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                  return r.json().catch(function(){ return { url: candidate }; });
+                }).then(function(data)
+                {
+                  var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                  if (!nextUrl)
+                  {
+                    var mh = (data && (data.mortyhash || data.hash)) || '';
+                    if (mh)
+                    {
+                      try { var u = new URL(candidate, window.location.href); u.searchParams.set('mortyhash', mh); nextUrl = u.toString(); }
+                      catch (_) { nextUrl = candidate; }
+                    }
+                  }
+                  settle(nextUrl || candidate);
+                }).catch(function(){ settle(candidate); });
+              });
+            }
+            catch (_) { settle(candidate); }
+          });
+        };
         var openOverlay = function(url, originId)
         {
           overlay.setAttribute('aria-hidden', 'false');
           try { rootHtml && rootHtml.classList.add('musai-overlay-open'); } catch (_) { /* no-op */ }
           if (originId) { overlay.dataset.originId = originId; }
-          try { frame.src = url; } catch (_) { frame.src = 'about:blank'; }
-          try { lastKnownUrl = url || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
+          try { frame.src = 'about:blank'; } catch (_) {}
+          try { lastKnownUrl = ''; initialOverlayUrl = ''; } catch (_) { /* no-op */ }
           initialLoadDone = false;
           loadCount = 0;
           navigatedAway = false;
           // Suppress any page-level error dialog so its close (×) does not float above the iframe
           if (errorDialog) { errorDialog.style.display = 'none'; }
+          // Compute proxied + signed URL for Morty (if configured), then load
+          try
+          {
+            var candidate = mortyProxify(url || '');
+            var loadFinal = function(finalUrl)
+            {
+              try { frame.src = finalUrl || 'about:blank'; } catch (_) { frame.src = 'about:blank'; }
+              try { lastKnownUrl = finalUrl || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
+            };
+            if (mortyPrefix && candidate)
+            {
+              try { signMortyUrl(candidate).then(loadFinal).catch(function(){ loadFinal(candidate); }); }
+              catch (_) { loadFinal(candidate); }
+            }
+            else
+            {
+              loadFinal(candidate || url || '');
+            }
+          }
+          catch (_) { /* no-op */ }
           // Ensure AI dock remains visible; content padding already accounts for it
         };
         var closeOverlay = function()
@@ -1234,10 +1384,7 @@
             {
               fetch(SIGN_WEBHOOK, {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp'
-                },
+                headers: Object.assign({ 'Content-Type': 'application/json' }, (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }),
                 body: JSON.stringify({ url: candidate })
               }).then(function(r)
               {
@@ -1270,7 +1417,7 @@
                 // Secondary: GET ?url=...
                 var urlParam = encodeURIComponent(candidate);
                 fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
-                  headers: { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
+                  headers: (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
                 }).then(function(r)
                 {
                   if (!r.ok) { throw new Error('HTTP ' + r.status); }

@@ -516,10 +516,12 @@
         const webhookUrl = webhookBase + (lastKnownForParam ? ('?url=' + encodeURIComponent(lastKnownForParam)) : '');
         const res = await fetch(webhookUrl, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp'
-          },
+          headers: Object.assign(
+            { 'Content-Type': 'application/json' },
+            (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function')
+              ? window.musaiN8N.getAuthHeader()
+              : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
+          ),
           body: JSON.stringify(payload)
         });
         const data = await res.json();
