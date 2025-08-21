@@ -222,6 +222,10 @@
     html.theme-black,
     html.theme-auto.est-dark
     {
+      /* Baseline text contrast */
+      --color-base-font: #e6e8ef; /* higher-contrast body text */
+      --color-base-font-rgb: 230,232,239;
+
       /* Accents and interactive elements */
       --color-url-font: #aab0c8; /* general links */
       --color-result-link-font: #a78bfa; /* result titles */
@@ -240,6 +244,12 @@
       --color-result-background: #2a2e42;
       --color-result-border: #3b3f57;
       --color-result-url-font: #cbd5e1;
+
+      /* Secondary/meta text */
+      --color-sidebar-font: #f8fafc; /* sidebar and infobox text */
+      --color-result-engines-font: #c0c6dc; /* engine list badges */
+      --color-result-publishdate-font: #aab3cf; /* timestamps */
+      --color-answer-font: #e6e8ef; /* answers block */
     }
     /* Mobile: swap categories row for a compact dropdown */
     #categories_mobile { display: none; }
