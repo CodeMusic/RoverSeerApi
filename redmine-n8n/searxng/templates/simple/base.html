@@ -959,6 +959,28 @@
         // Morty helpers to ensure iframe URLs are proxied and signed with hash
         var SIGN_WEBHOOK = 'https://n8n.codemusic.ca/webhook/sign-morty';
         var mortyPrefix = ("{{ (get_setting('server.result_proxy.url') or '')|e }}" || '').trim();
+        var mortyPrefixPath = (function()
+        {
+          try
+          {
+            return (new URL(mortyPrefix, window.location.href).pathname) || mortyPrefix;
+          }
+          catch (_)
+          {
+            return mortyPrefix;
+          }
+        })();
+        var mortyPrefixPath = (function()
+        {
+          try
+          {
+            return (new URL(mortyPrefix, window.location.href).pathname) || mortyPrefix;
+          }
+          catch (_)
+          {
+            return mortyPrefix;
+          }
+        })();
         var hasMortyHash = function(url)
         {
           try { return /[?&]hash=/.test(url); } catch (_) { return false; }
@@ -968,12 +990,16 @@
           try
           {
             if (!mortyPrefix) { return false; }
-            if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0)
+            var s = url || '';
+            if (!s) { return false; }
+            if (s.indexOf('http://') === 0 || s.indexOf('https://') === 0)
             {
-              var u = new URL(url, window.location.href);
-              return (u.pathname || '').indexOf(mortyPrefix) === 0;
+              var u = new URL(s, window.location.href);
+              var href = u.href || '';
+              var path = u.pathname || '';
+              return (href.indexOf(mortyPrefix) === 0) || (path.indexOf(mortyPrefixPath) === 0);
             }
-            return url.indexOf(mortyPrefix) === 0;
+            return (s.indexOf(mortyPrefix) === 0) || (s.indexOf(mortyPrefixPath) === 0);
           }
           catch (_) { return false; }
         };
@@ -1336,13 +1362,17 @@
           try
           {
             if (!mortyPrefix) { return false; }
+            var s = url || '';
+            if (!s) { return false; }
             // Accept absolute and relative URLs
-            if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0)
+            if (s.indexOf('http://') === 0 || s.indexOf('https://') === 0)
             {
-              var u = new URL(url, window.location.href);
-              return (u.pathname || '').indexOf(mortyPrefix) === 0;
+              var u = new URL(s, window.location.href);
+              var href = u.href || '';
+              var path = u.pathname || '';
+              return (href.indexOf(mortyPrefix) === 0) || (path.indexOf(mortyPrefixPath) === 0);
             }
-            return url.indexOf(mortyPrefix) === 0;
+            return (s.indexOf(mortyPrefix) === 0) || (s.indexOf(mortyPrefixPath) === 0);
           }
           catch (_) { return false; }
         };
