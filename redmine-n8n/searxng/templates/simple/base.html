@@ -277,6 +277,14 @@
     }
     a { color: var(--musai-muted); }
     a:hover { color: var(--musai-accent); }
+    /* Ensure general text elements always inherit theme-aware font color */
+    h1, h2, h3, h4, h5, h6,
+    p, li, dt, dd,
+    th, td,
+    label, summary, figcaption
+    {
+      color: var(--color-base-font);
+    }
     /* Ensure Musai badge text contrasts per theme (white on dark) */
     #links_on_top .link_on_top_musai span { color: var(--musai-text); }
     /* Home page title behaves like a text logo; make it about 2x larger */
@@ -1226,7 +1234,10 @@
             {
               fetch(SIGN_WEBHOOK, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp'
+                },
                 body: JSON.stringify({ url: candidate })
               }).then(function(r)
               {
@@ -1258,7 +1269,9 @@
               {
                 // Secondary: GET ?url=...
                 var urlParam = encodeURIComponent(candidate);
-                fetch(SIGN_WEBHOOK + '?url=' + urlParam).then(function(r)
+                fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
+                  headers: { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
+                }).then(function(r)
                 {
                   if (!r.ok) { throw new Error('HTTP ' + r.status); }
                   return r.json().catch(function()
