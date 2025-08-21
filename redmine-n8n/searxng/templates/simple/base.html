@@ -79,6 +79,33 @@
       font-weight: 600;
     }
     #musaiOverlayTopbar .musai-logo img { width: 18px; height: 18px; }
+    #musaiOverlayTopbar form.musai-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 8px;
+      flex: 1;
+    }
+    #musaiOverlayTopbar form.musai-search input[type="text"] {
+      width: 100%;
+      min-width: 120px;
+      height: 36px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid var(--musai-primary);
+      background: rgba(0,0,0,0.15);
+      color: var(--musai-text);
+    }
+    #musaiOverlayTopbar form.musai-search button[type="submit"] {
+      background: var(--musai-primary);
+      color: #fff;
+      border-radius: 10px;
+      border: 0;
+      height: 36px;
+      padding: 0 10px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
     #musaiOverlayTopbar .toolbar-spacer { flex: 1; }
     #musaiOverlayTopbar button {
       background: var(--musai-primary);
@@ -285,6 +312,13 @@
     {
       padding-bottom: 16px;
     }
+    /* Pages with simple header: make the top-left logo about twice as large */
+    .page_with_header img.logo
+    {
+      height: 212px;
+      width: auto;
+      display: block;
+    }
     .search_box {
       background: rgba(46,50,66,.6);
       border: 1px solid var(--musai-primary);
@@ -384,7 +418,7 @@
       position: fixed;
       left: 50%;
       transform: translateX(-50%);
-      bottom: calc(16px + env(safe-area-inset-bottom));
+      bottom: calc(30px + env(safe-area-inset-bottom));
       width: min(900px, calc(100vw - 28px));
       z-index: 999;
       margin: 0;
@@ -480,33 +514,23 @@
     #ai_chat #ai_chat_send:hover {
       filter: brightness(1.1);
     }
-    /* Back to top button pinned to bottom-right */
-    #backToTop {
-      position: fixed;
-      right: 16px;
-      bottom: calc(16px + env(safe-area-inset-bottom));
-      z-index: 1100; /* above AI bar */
-      margin: 0;
-    }
-    #backToTop a {
+    /* Back to top integrated into AI bar */
+    #ai_chat #ai_backToTop {
+      background: var(--musai-primary);
+      color: #fff;
+      border-radius: 10px;
+      border: 0;
+      height: 40px;
+      width: 44px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
-      border-radius: 999px;
-      background: var(--musai-primary);
-      color: #ffffff;
-      box-shadow: 0 3px 12px rgba(0,0,0,.28);
-      border: 0;
       font-size: 0;
+      line-height: 1;
+      cursor: pointer;
+      flex: 0 0 auto;
     }
-    #backToTop a svg { width: 16px; height: 16px; }
-    #backToTop a:hover { filter: brightness(1.1); }
-    /* Align back-to-top with reduced bottom padding when collapsed */
-    html.ai-chat-collapsed #backToTop {
-      bottom: calc(56px + env(safe-area-inset-bottom));
-    }
+    #ai_chat #ai_backToTop:hover { filter: brightness(1.1); }
     #ai_chat input[type="text"][disabled],
     #ai_chat button[disabled] {
       opacity: .6;
@@ -547,6 +571,7 @@
       font-size: 16px;
       line-height: 1;
     }
+    .ai-typing-bubble .ai-typing-icon img { width: 16px; height: 16px; display: block; }
     .ai-typing-bubble .ai-typing-label {
       font-size: 0.95rem;
       color: var(--musai-text);
@@ -657,6 +682,9 @@
       /* Home page only: keep the larger proportion on small screens */
       #main_index #search_logo img, #main_index #search_logo picture { height: 148px; }
 
+      /* Keep header logo proportionate on small screens */
+      .page_with_header img.logo { height: 148px; }
+
       /* Larger touch targets and readable text to avoid auto-zoom */
       #ai_chat input[type="text"] { height: 44px; font-size: 16px; }
       #ai_chat #ai_chat_send { height: 44px; width: 48px; font-size: 18px; }
@@ -736,24 +764,8 @@
   </main>
   <footer>
     <p>
-    <strong>MusaiSearch</strong> — {{ _('powered by') }} SearXNG ({{ searx_version }}) — {{ _('a privacy-respecting, open metasearch engine') }}<br>
-        <a href="{{ url_for('info', pagename='about') }}">{{ _('About MusaiSearch') }}</a>
-        <a href="{{ searx_git_url }}">{{ _('Source code') }}</a>
-        | <a href="{{ get_setting('brand.issue_url') }}">{{ _('Issue tracker') }}</a>
-        {% if enable_metrics %}| <a href="{{ url_for('stats') }}">{{ _('Engine stats') }}</a>{% endif %}
-        {% if get_setting('brand.public_instances') %}
-        | <a href="{{ get_setting('brand.public_instances') }}">{{ _('Public instances') }}</a>
-        {% endif %}
-        {% if get_setting('general.privacypolicy_url') %}
-        | <a href="{{ get_setting('general.privacypolicy_url') }}">{{ _('Privacy policy') }}</a>
-        {% endif %}
-        {% if get_setting('general.contact_url') %}
-        | <a href="{{ get_setting('general.contact_url') }}">{{ _('Contact instance maintainer') }}</a>
-        {% endif %}
-        {% for title, link in get_setting('brand.custom.links').items() %}
-        | <a href="{{ link }}">{{ _(title) }}</a>
-        {% endfor %}
-        | <a href="https://musai.codemusic.ca">{{ _('Back to Musai') }}</a>
+      <a href="https://musai.codemusic.ca"><strong>MusaiSearch</strong></a> — powered by SearXNG, N8N, Redmine, and Ollama<br>
+      <a href="https://codemusic.ca">CodeMusic Construction</a> in association with <a href="https://dtour.codemusic.ca">DTour Designs</a>
     </p>
   </footer>
   {% if get_setting('ui.allow_musairesult_iframes') %}
@@ -763,88 +775,17 @@
         <img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
         <span>Musai</span>
       </a>
+      <form id="musaiOverlaySearch" class="musai-search" method="GET" action="{{ url_for('search') }}" role="search">
+        <input id="musaiOverlayQ" name="q" type="text" placeholder="{{ _('Search for...') }}" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" dir="auto">
+        <button id="musaiOverlaySubmit" type="submit" aria-label="{{ _('search') }}">{{ _('Search') }}</button>
+      </form>
       <div class="toolbar-spacer"></div>
       <button type="button" id="musaiOverlayCloseReturn" title="Close and return to results">Close &amp; Return</button>
     </div>
     <iframe id="musaiOverlayFrame" src="about:blank" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
   </div>
   {% endif %}
-  <div id="backToTop" style="display:none">
-    <a href="#" aria-label="Back to top" title="Back to top">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="18 15 12 9 6 15"></polyline>
-      </svg>
-    </a>
-  </div>
-  <script>
-    (function cognitionDrivenBackToTop()
-    {
-      try
-      {
-        var container = document.getElementById('backToTop');
-        if (!container)
-        {
-          return;
-        }
-        var link = container.querySelector('a');
-        if (link)
-        {
-          link.addEventListener('click', function(e)
-          {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          });
-        }
-
-        var lastY = window.scrollY || window.pageYOffset || 0;
-        var ticking = false;
-        var threshold = 120;
-
-        var show = function()
-        {
-          if (container.style.display !== 'block')
-          {
-            container.style.display = 'block';
-          }
-        };
-        var hide = function()
-        {
-          if (container.style.display !== 'none')
-          {
-            container.style.display = 'none';
-          }
-        };
-
-        hide();
-
-        window.addEventListener('scroll', function()
-        {
-          var currentY = window.scrollY || window.pageYOffset || 0;
-          if (ticking) { return; }
-          ticking = true;
-          window.requestAnimationFrame(function()
-          {
-            var isScrollingDown = currentY > lastY;
-            if (currentY < threshold)
-            {
-              hide();
-            }
-            else if (isScrollingDown)
-            {
-              show();
-            }
-            else
-            {
-              hide();
-            }
-            lastY = currentY;
-            ticking = false;
-          });
-        }, { passive: true });
-      }
-      catch (e) { /* no-op */ }
-    })();
-  </script>
+  
   {% if get_setting('ui.allow_musairesult_iframes') %}
   <script>
     (function attachMusaiOverlay()
@@ -858,6 +799,9 @@
         }
         var frame = document.getElementById('musaiOverlayFrame');
         var btnCloseReturn = document.getElementById('musaiOverlayCloseReturn');
+        var searchForm = document.getElementById('musaiOverlaySearch');
+        var searchInput = document.getElementById('musaiOverlayQ');
+        var logoLink = document.querySelector('#musaiOverlayTopbar .musai-logo');
 
         var errorDialog = document.querySelector('.dialog-error');
         var openOverlay = function(url, originId)
@@ -901,6 +845,59 @@
           }
         };
         btnCloseReturn && btnCloseReturn.addEventListener('click', performCloseReturn);
+
+        // Submit handler for overlay search: navigate main app to results
+        if (searchForm && searchInput)
+        {
+          searchForm.addEventListener('submit', function(ev)
+          {
+            try
+            {
+              ev.preventDefault();
+              ev.stopPropagation();
+              var q = (searchInput.value || '').trim();
+              if (!q) { return; }
+              // If AI is currently thinking, confirm before navigating away
+              try
+              {
+                if (window.musaiAI && typeof window.musaiAI.isBusy === 'function' && window.musaiAI.isBusy())
+                {
+                  var ok = window.confirm('Musai is thinking. Starting a new search will cancel the response. Continue?');
+                  if (!ok) { return; }
+                }
+              }
+              catch (_) { /* no-op */ }
+              // Close overlay and redirect to search results
+              try { closeOverlay(); } catch (_) { /* no-op */ }
+              try { if (window.musaiAI && typeof window.musaiAI.markInternalNav === 'function') { window.musaiAI.markInternalNav(); } } catch (_) { /* no-op */ }
+              var base = searchForm.getAttribute('action') || "{{ url_for('search') }}";
+              var url = base + '?q=' + encodeURIComponent(q);
+              try { window.location.href = url; } catch (_) { /* no-op */ }
+            }
+            catch (_) { /* no-op */ }
+          });
+        }
+
+        // Guard navigation via logo when AI busy
+        if (logoLink)
+        {
+          logoLink.addEventListener('click', function(e)
+          {
+            try
+            {
+              if (window.musaiAI && typeof window.musaiAI.isBusy === 'function' && window.musaiAI.isBusy())
+              {
+                var proceed = window.confirm('Musai is thinking. Navigating home will cancel the response. Continue?');
+                if (!proceed)
+                {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }
+            }
+            catch (_) { /* no-op */ }
+          });
+        }
 
         // ESC closes overlay
         document.addEventListener('keydown', function(e)

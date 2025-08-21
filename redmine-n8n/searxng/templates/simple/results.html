@@ -20,6 +20,9 @@
     <button id="ai_chat_send" type="button" title="Send" aria-label="Send">↵</button>
     <small id="ai_chat_status" aria-live="polite"></small>
   </form>
+  <button id="ai_backToTop" type="button" title="Back to top" aria-label="Back to top" hidden>
+    {{ icon_big('chevron-up') }}
+  </button>
   <div id="ai_chat_output" hidden></div>
   <script>
     // very small helper to call your webhook with current search metadata
@@ -33,6 +36,8 @@
     const rootHtml = document.documentElement;
     const collapseStorageKey = 'musai_ai_chat_collapsed';
     let chatBusy = false;
+    let internalNavInProgress = false;
+    const aiBackTop = document.getElementById('ai_backToTop');
     // Always start expanded on results pages (ignore any previous collapsed state)
     try
     {
@@ -63,6 +68,54 @@
         aiToggle.textContent = willCollapse ? '▸' : '▾';
       }
     });
+
+    // Expose AI busy state and internal navigation marker for other UI (overlay/header)
+    try {
+      window.musaiAI = window.musaiAI || {};
+      window.musaiAI.isBusy = function() { return !!chatBusy; };
+      window.musaiAI.markInternalNav = function() {
+        internalNavInProgress = true;
+        setTimeout(function() { internalNavInProgress = false; }, 3000);
+      };
+    } catch (_) { /* no-op */ }
+    // Affordance: show integrated back-to-top when user scrolls down
+    (function attachBackToTop()
+    {
+      try
+      {
+        if (!aiBackTop) { return; }
+        aiBackTop.addEventListener('click', function(e)
+        {
+          e.preventDefault();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        let lastY = window.scrollY || window.pageYOffset || 0;
+        let ticking = false;
+        const threshold = 120;
+
+        const show = function() { aiBackTop.hidden = false; };
+        const hide = function() { aiBackTop.hidden = true; };
+        hide();
+
+        window.addEventListener('scroll', function()
+        {
+          const currentY = window.scrollY || window.pageYOffset || 0;
+          if (ticking) { return; }
+          ticking = true;
+          window.requestAnimationFrame(function()
+          {
+            const isScrollingDown = currentY > lastY;
+            if (currentY < threshold) { hide(); }
+            else if (isScrollingDown) { show(); }
+            else { hide(); }
+            lastY = currentY;
+            ticking = false;
+          });
+        }, { passive: true });
+      }
+      catch (e) { /* no-op */ }
+    })();
     let typingEl = null;
 
     // Submit on Enter, newline on Shift+Enter
@@ -162,7 +215,7 @@
           typingEl.setAttribute('role', 'status');
           typingEl.setAttribute('aria-live', 'polite');
           typingEl.innerHTML = `
-            <span class="ai-typing-icon" aria-hidden="true">🧠</span>
+            <span class="ai-typing-icon" aria-hidden="true"><img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt=""></span>
             <span class="ai-typing-label">Musai is thinking</span>
             <span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;">
               <span class="ai-typing-dot mystical-dots" style="animation-delay:0ms"></span>
@@ -171,9 +224,13 @@
             </span>
           `;
         }
-        aiOut.hidden = false;
+        // Place indicator to the left of the AI text entry
+        if (typingEl.parentNode !== aiForm) {
+          try { aiForm.insertBefore(typingEl, aiInput); } catch (_) { /* no-op */ }
+        }
+        // Keep output bubble hidden until we have a response
+        aiOut.hidden = true;
         aiOut.innerHTML = '';
-        aiOut.appendChild(typingEl);
       } catch (e) {
         /* no-op */
       }
@@ -233,6 +290,7 @@
 
         // Clear output and remove typing indicator
         aiOut.innerHTML = '';
+        try { if (typingEl && typingEl.parentNode) { typingEl.parentNode.removeChild(typingEl); } } catch (_) { /* no-op */ }
         typingEl = null;
 
         // Main response (purplish bubble)
@@ -328,7 +386,7 @@
 
     // Prevent accidental navigation while Musai is thinking
     window.addEventListener('beforeunload', function (e) {
-      if (chatBusy) {
+      if (chatBusy && !internalNavInProgress) {
         e.preventDefault();
         e.returnValue = '';
       }
@@ -358,6 +416,14 @@
         var isHashLink = href.charAt(0) === '#';
         if (isHashLink) { return; }
 
+        // Allow same-origin navigations (staying within Musai) without interruption
+        var dest;
+        try { dest = new URL(href, window.location.href); } catch (_) { dest = null; }
+        if (dest && dest.origin === window.location.origin) {
+          internalNavInProgress = true;
+          return;
+        }
+
         // Detect direct media/doc links (images, audio/video, pdf) and offer to open in new tab or Musai
         var isMedia = /\.(png|jpe?g|gif|webp|svg|bmp|ico|pdf|mp3|wav|ogg|flac|mp4|m4v|webm|mov)([#?].*)?$/i.test(href);
         e.preventDefault();
@@ -382,11 +448,18 @@
     // Intercept any form submissions (e.g., categories, pagination) while busy
     document.addEventListener('submit', function (e) {
       if (!chatBusy) { return; }
+      try {
+        var form = e.target;
+        if (form && form.action) {
+          var dest = new URL(form.action, window.location.href);
+          if (dest.origin === window.location.origin) {
+            internalNavInProgress = true;
+            return;
+          }
+        }
+      } catch (_) { /* no-op */ }
       var ok = window.confirm('Musai is thinking. Submitting will cancel the response. Continue?');
-      if (!ok) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      if (!ok) { e.preventDefault(); e.stopPropagation(); }
     }, true);
   </script>
 </section>
