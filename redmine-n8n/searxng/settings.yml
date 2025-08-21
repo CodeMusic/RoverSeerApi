@@ -91,7 +91,7 @@ server:
   limiter: false
   # enable features designed only for public instances.
   # Is overwritten by ${SEARXNG_PUBLIC_INSTANCE}
-  public_instance: true
+  public_instance: false
 
   # If your instance owns a /etc/searxng/settings.yml file, then set the following
   # values there.
