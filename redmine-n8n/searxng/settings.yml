@@ -104,7 +104,7 @@ server:
 
   result_proxy:
     # Public path your browser will hit (reverse-proxied to the morty container)
-    url: /morty/
+    url: https://search.codemusic.ca/morty/
     # Must match Morty’s MORTY_KEY exactly
     key: "1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39"
 

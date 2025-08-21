@@ -149,7 +149,7 @@ services:
     container_name: morty
     restart: unless-stopped
     ports:
-    - "3001:3000"
+      - "3001:3000"
     environment:
       - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
       - MORTY_ADDRESS=0.0.0.0:3000
