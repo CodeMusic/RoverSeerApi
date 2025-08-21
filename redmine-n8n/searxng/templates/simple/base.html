@@ -914,8 +914,23 @@
 
         // Expose current overlay URL for AI dock to send to backend
         window.musaiOverlayAPI = {
-          isOpen: function() { return overlay.getAttribute('aria-hidden') === 'false'; },
-          currentUrl: function() { try { return frame && frame.src || ''; } catch (_) { return ''; } }
+          isOpen: function()
+          {
+            return overlay.getAttribute('aria-hidden') === 'false';
+          },
+          currentUrl: function()
+          {
+            try { return frame && frame.src || ''; }
+            catch (_) { return ''; }
+          },
+          open: function(url, originId)
+          {
+            try { openOverlay(url, originId); } catch (_) {}
+          },
+          close: function()
+          {
+            try { performCloseReturn(); } catch (_) {}
+          }
         };
       }
       catch (e) { /* no-op */ }

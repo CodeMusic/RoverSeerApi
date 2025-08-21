@@ -33,15 +33,20 @@
     const rootHtml = document.documentElement;
     const collapseStorageKey = 'musai_ai_chat_collapsed';
     let chatBusy = false;
-    // Initialize collapsed state from persistence
-    try {
-      const isCollapsed = localStorage.getItem(collapseStorageKey) === '1';
-      if (isCollapsed) {
-        aiSection.classList.add('collapsed');
-        rootHtml.classList.add('ai-chat-collapsed');
-        if (aiToggle) { aiToggle.setAttribute('aria-label', 'Expand AI assistant'); aiToggle.title = 'Expand'; aiToggle.textContent = '▸'; }
+    // Always start expanded on results pages (ignore any previous collapsed state)
+    try
+    {
+      aiSection.classList.remove('collapsed');
+      rootHtml.classList.remove('ai-chat-collapsed');
+      if (aiToggle)
+      {
+        aiToggle.setAttribute('aria-label', 'Collapse AI assistant');
+        aiToggle.title = 'Collapse';
+        aiToggle.textContent = '▾';
       }
-    } catch (e) { /* no-op */ }
+      try { localStorage.setItem(collapseStorageKey, '0'); } catch (_) { /* no-op */ }
+    }
+    catch (e) { /* no-op */ }
 
     // Toggle collapse/expand for attentional control
     aiToggle?.addEventListener('click', function(ev)
@@ -329,28 +334,49 @@
       }
     });
 
-    // Intercept clicks on in-origin links and submissions while chat is busy
+    // Intercept clicks on links while chat is busy: offer Open in Musai / Leave / Cancel
     document.addEventListener('click', function (e) {
       if (!chatBusy) { return; }
       var anchor = e.target && (e.target.closest ? e.target.closest('a[href]') : null);
-      if (anchor) {
-        try {
-          var href = anchor.getAttribute('href') || '';
-          var isHashLink = href.charAt(0) === '#';
-          if (isHashLink) { return; }
-          var originMatches = false;
-          try { originMatches = (anchor.origin === window.location.origin); } catch (_) {}
-          var isSameOrigin = originMatches || href.indexOf(window.location.origin) === 0 || href.indexOf('/') === 0;
-          if (isSameOrigin) {
-            var ok = window.confirm('Musai is thinking. Navigating away will cancel the response. Continue?');
-            if (!ok) {
-              e.preventDefault();
-              e.stopPropagation();
-              return;
-            }
-          }
-        } catch (_) { /* no-op */ }
-      }
+      if (!anchor) { return; }
+      try {
+        // Respect user intent for new-tab/middle-click
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) { return; }
+
+        // Ignore in-page UI controls (collapse/media loaders/maps/etc.)
+        var ignoreUi = (
+          anchor.classList.contains('media-loader') ||
+          anchor.classList.contains('btn-collapse') ||
+          anchor.hasAttribute('data-target') ||
+          anchor.hasAttribute('data-toggle')
+        );
+        if (ignoreUi) { return; }
+
+        var href = anchor.getAttribute('href') || '';
+        if (!href || href === '#') { return; }
+
+        var isHashLink = href.charAt(0) === '#';
+        if (isHashLink) { return; }
+
+        // Detect direct media/doc links (images, audio/video, pdf) and offer to open in new tab or Musai
+        var isMedia = /\.(png|jpe?g|gif|webp|svg|bmp|ico|pdf|mp3|wav|ogg|flac|mp4|m4v|webm|mov)([#?].*)?$/i.test(href);
+        e.preventDefault();
+        e.stopPropagation();
+        var promptMsg = 'Musai is thinking. What would you like to do with this link?';
+        var openMusai = window.confirm(promptMsg + '\n\nOK = Open in Musai overlay\nCancel = More options');
+        if (openMusai) {
+          try { window.musaiOverlayAPI && window.musaiOverlayAPI.open(href, (anchor.id || '')); } catch (_) {}
+          return;
+        }
+        if (isMedia) {
+          var openNewTab = window.confirm('Open in a new tab instead?\n\nOK = New tab\nCancel = Cancel');
+          if (openNewTab) { try { window.open(href, '_blank', 'noopener'); } catch (_) {} }
+          return;
+        }
+        var leave = window.confirm('Leave this page and open the link here?\n\nOK = Leave site\nCancel = Cancel');
+        if (leave) { try { window.location.href = href; } catch (_) {} }
+        return;
+      } catch (_) { /* no-op */ }
     }, true);
 
     // Intercept any form submissions (e.g., categories, pagination) while busy
