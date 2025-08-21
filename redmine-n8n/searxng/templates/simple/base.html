@@ -956,12 +956,12 @@
         };
 
         var errorDialog = document.querySelector('.dialog-error');
-        // Morty helpers to ensure iframe URLs are proxied and signed with mortyhash
+        // Morty helpers to ensure iframe URLs are proxied and signed with hash
         var SIGN_WEBHOOK = 'https://n8n.codemusic.ca/webhook/sign-morty';
         var mortyPrefix = ("{{ (get_setting('server.result_proxy.url') or '')|e }}" || '').trim();
         var hasMortyHash = function(url)
         {
-          try { return /[?&]mortyhash=/.test(url); } catch (_) { return false; }
+          try { return /[?&]hash=/.test(url); } catch (_) { return false; }
         };
         var isMortyUrl = function(url)
         {
@@ -1025,10 +1025,10 @@
                 var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
                 if (!nextUrl)
                 {
-                  var mh = (data && (data.mortyhash || data.hash)) || '';
+                  var mh = (data && (data.hash || data.mortyhash)) || '';
                   if (mh)
                   {
-                    try { var u = new URL(candidate, window.location.href); u.searchParams.set('mortyhash', mh); nextUrl = u.toString(); }
+                    try { var u = new URL(candidate, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
                     catch (_) { nextUrl = candidate; }
                   }
                 }
@@ -1047,10 +1047,10 @@
                   var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
                   if (!nextUrl)
                   {
-                    var mh = (data && (data.mortyhash || data.hash)) || '';
+                    var mh = (data && (data.hash || data.mortyhash)) || '';
                     if (mh)
                     {
-                      try { var u = new URL(candidate, window.location.href); u.searchParams.set('mortyhash', mh); nextUrl = u.toString(); }
+                      try { var u = new URL(candidate, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
                       catch (_) { nextUrl = candidate; }
                     }
                   }
@@ -1326,7 +1326,7 @@
         {
           try
           {
-            return /[?&]mortyhash=/.test(url);
+            return /[?&]hash=/.test(url);
           }
           catch (_) { return false; }
         };
@@ -1398,14 +1398,14 @@
                 var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
                 if (!nextUrl)
                 {
-                  // Fallback: try to extract mortyhash from payload
-                  var mh = (data && (data.mortyhash || data.hash)) || '';
+                  // Fallback: try to extract hash from payload
+                  var mh = (data && (data.hash || data.mortyhash)) || '';
                   if (mh)
                   {
                     try
                     {
                       var u = new URL(candidate, window.location.href);
-                      u.searchParams.set('mortyhash', mh);
+                      u.searchParams.set('hash', mh);
                       nextUrl = u.toString();
                     }
                     catch (_) { nextUrl = candidate; }
@@ -1430,13 +1430,13 @@
                   var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
                   if (!nextUrl)
                   {
-                    var mh = (data && (data.mortyhash || data.hash)) || '';
+                    var mh = (data && (data.hash || data.mortyhash)) || '';
                     if (mh)
                     {
                       try
                       {
                         var u = new URL(candidate, window.location.href);
-                        u.searchParams.set('mortyhash', mh);
+                        u.searchParams.set('hash', mh);
                         nextUrl = u.toString();
                       }
                       catch (_) { nextUrl = candidate; }
