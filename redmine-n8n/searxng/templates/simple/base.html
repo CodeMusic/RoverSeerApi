@@ -38,10 +38,14 @@
       margin-left: 6px;
       padding: 0;
       background: transparent;
-      border: 0;
+      border: 2px solid transparent;
+      border-radius: 6px;
       cursor: pointer;
       vertical-align: middle;
     }
+    /* Proxied state: green border; otherwise a subtle black border */
+    .musai-open-iframe.proxied-yes { border-color: #16a34a; }
+    .musai-open-iframe.proxied-no { border-color: rgba(0,0,0,0.6); }
     .musai-inline-icon {
       width: 14px;
       height: 14px;

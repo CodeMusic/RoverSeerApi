@@ -33,15 +33,24 @@
   {%- if result.thumbnail %}{{ result_open_link(result.url) }}<img class="thumbnail" src="{{ image_proxify(result.thumbnail) }}" title="{{ result.title|striptags }}" loading="lazy">{{ result_close_link() }}{% endif -%}
   <h3>
     {{ result_link(result.url, result.title|safe) }}
-    {# Inline indicator when the result is proxied via Morty (/morty/) #}
-    {% set morty_prefix = get_setting('server.result_proxy.url') or '' %}
-    {% if morty_prefix and result.url and (result.url[:morty_prefix|length] == morty_prefix) %}
+    {# Inline indicator when the result is proxied via Morty (/morty/). Detect both relative and absolute URLs. #}
+    {% set morty_prefix = (get_setting('server.result_proxy.url') or '') %}
+    {% set morty_prefix = morty_prefix.strip() %}
+    {% set is_morty = false %}
+    {% if morty_prefix %}
+      {% if result.url and (morty_prefix in result.url) %}
+        {% set is_morty = true %}
+      {% elif result.parsed_url and result.parsed_url.path and (result.parsed_url.path[:morty_prefix|length] == morty_prefix) %}
+        {% set is_morty = true %}
+      {% endif %}
+    {% endif %}
+    {% if is_morty %}
     <span class="proxy-badge" title="Proxied via Musai" aria-label="Proxied via Musai">
       <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Proxy">
     </span>
     {% endif %}
     {% if get_setting('ui.allow_musairesult_iframes') %}
-    <button type="button" class="musai-open-iframe" data-musai-open="1" data-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay">
+    <button type="button" class="musai-open-iframe {{ 'proxied-yes' if is_morty else 'proxied-no' }}" data-musai-open="1" data-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay">
       <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
     </button>
     {% endif %}
