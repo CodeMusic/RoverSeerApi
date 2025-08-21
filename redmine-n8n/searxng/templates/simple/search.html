@@ -59,3 +59,73 @@
     catch (e) { /* no-op */ }
   })();
   </script>
+<script>
+  (function interceptUrlOnResultsPage()
+  {
+    try
+    {
+      var isOnResultsPage = !!document.getElementById('main_results');
+      if (!isOnResultsPage) { return; }
+
+      var searchForm = document.getElementById('search');
+      var queryInput = document.getElementById('q');
+      if (!searchForm || !queryInput) { return; }
+
+      var hasScheme = function(value)
+      {
+        return /^(?:[a-z][a-z0-9+.-]*):\/\//i.test(value);
+      };
+
+      var looksLikeUrl = function(value)
+      {
+        if (!value) { return false; }
+        if (/\s/.test(value)) { return false; }
+        if (hasScheme(value)) { return true; }
+        if (/^www\./i.test(value)) { return true; }
+        // localhost[:port][/path]
+        if (/^(?:localhost)(?::\d+)?(?:[\/\?#].*)?$/i.test(value)) { return true; }
+        // IPv4[:port][/path]
+        if (/^(?:\d{1,3})(?:\.\d{1,3}){3}(?::\d+)?(?:[\/\?#].*)?$/.test(value)) { return true; }
+        // domain.tld or sub.domain.tld with optional path/query/hash
+        return /^[^\s]+\.[a-z]{2,}(?:[\/\?#].*)?$/i.test(value);
+      };
+
+      var normalizeUrl = function(value)
+      {
+        if (!value) { return value; }
+        if (hasScheme(value)) { return value; }
+        if (/^www\./i.test(value)) { return 'https://' + value; }
+        if (/^(?:localhost|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?(?:[\/\?#].*)?$/i.test(value)) { return 'http://' + value; }
+        // Bare domain -> assume https
+        return 'https://' + value;
+      };
+
+      searchForm.addEventListener('submit', function(ev)
+      {
+        try
+        {
+          var raw = (queryInput.value || '').trim();
+          if (!raw) { return; }
+          if (!looksLikeUrl(raw)) { return; }
+
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          var finalUrl = normalizeUrl(raw);
+          try { if (window.musaiAI && typeof window.musaiAI.markInternalNav === 'function') { window.musaiAI.markInternalNav(); } } catch (_) { /* no-op */ }
+          if (window.musaiOverlayAPI && typeof window.musaiOverlayAPI.open === 'function')
+          {
+            window.musaiOverlayAPI.open(finalUrl, 'searchbar-direct');
+          }
+          else
+          {
+            // Fallback: open in new tab if overlay is unavailable
+            try { window.open(finalUrl, '_blank', 'noopener'); } catch (_) { /* no-op */ }
+          }
+        }
+        catch (_) { /* no-op */ }
+      });
+    }
+    catch (e) { /* no-op */ }
+  })();
+</script>

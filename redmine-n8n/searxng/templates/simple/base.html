@@ -287,11 +287,11 @@
     #search_logo svg path,
     #search_logo svg rect { stroke: inherit; fill: inherit; }
     #search_logo img, #search_logo picture { display: block; height: 106px; width: auto; }
-    /* Home page only: scale logo to be about twice as large */
+    /* Home page only: scale logo to be about four times baseline (double previous) */
     #main_index #search_logo img,
     #main_index #search_logo picture
     {
-      height: 212px;
+      height: 424px;
     }
     /* Create healthy spacing between the logo and the search input */
     #search_header
@@ -311,6 +311,12 @@
     #main_results #search_header
     {
       padding-bottom: 16px;
+    }
+    /* Results page only: reduce logo size by ~30% from baseline (106px → 74px) */
+    #main_results #search_logo img,
+    #main_results #search_logo picture
+    {
+      height: 74px;
     }
     /* Pages with simple header: make the top-left logo about twice as large */
     .page_with_header img.logo
@@ -486,7 +492,8 @@
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
     html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
     #ai_chat form { flex: 1; display: flex; align-items: center; gap: 8px; margin: 0; }
-    #ai_chat input[type="text"] {
+    #ai_chat input[type="text"],
+    #ai_chat textarea {
       flex: 1;
       min-width: 0;
       height: 40px;
@@ -495,6 +502,8 @@
       border: 1px solid var(--musai-primary);
       background: rgba(0,0,0,0.15);
       color: var(--musai-text);
+      resize: none;
+      line-height: 1.4;
     }
     /* Style the send button only so POV toggles can have their own colors */
     #ai_chat #ai_chat_send {
@@ -532,6 +541,7 @@
     }
     #ai_chat #ai_backToTop:hover { filter: brightness(1.1); }
     #ai_chat input[type="text"][disabled],
+    #ai_chat textarea[disabled],
     #ai_chat button[disabled] {
       opacity: .6;
       cursor: not-allowed;
@@ -656,6 +666,16 @@
       background: #1d4ed8;
       box-shadow: inset 0 0 0 1px #1e3a8a;
     }
+    /* New: Perspective (violet) bubble toggle */
+    .ai-pov-toggle.violet {
+      border-color: #6d28d9;
+      background: #7c3aed;
+      color: #ffffff;
+    }
+    .ai-pov-toggle.violet.active {
+      background: #6d28d9;
+      box-shadow: inset 0 0 0 1px #4c1d95;
+    }
     .ai-pov-panel {
       border-radius: 10px;
       border: 1px solid rgba(255,255,255,0.08);
@@ -674,6 +694,16 @@
       border-color: #1d4ed8;
       color: #ffffff;
     }
+    .ai-pov-panel.violet {
+      background: #7c3aed;
+      border-color: #6d28d9;
+      color: #ffffff;
+    }
+
+    /* Collapsible AI response bubble behavior when clicking outside */
+    html.ai-chat-collapsed #ai_chat_output {
+      display: none !important;
+    }
     /* Mobile refinements for iPhone widths */
     @media (max-width: 640px) {
       /* So header elements don’t overflow */
@@ -686,7 +716,7 @@
       .page_with_header img.logo { height: 148px; }
 
       /* Larger touch targets and readable text to avoid auto-zoom */
-      #ai_chat input[type="text"] { height: 44px; font-size: 16px; }
+      #ai_chat input[type="text"], #ai_chat textarea { height: 44px; font-size: 16px; }
       #ai_chat #ai_chat_send { height: 44px; width: 48px; font-size: 18px; }
       #ai_chat .ai-toggle { height: 44px; width: 48px; font-size: 18px; }
       /* When collapsed on small screens, tighten spacing to fit the label neatly */
@@ -802,6 +832,36 @@
         var searchForm = document.getElementById('musaiOverlaySearch');
         var searchInput = document.getElementById('musaiOverlayQ');
         var logoLink = document.querySelector('#musaiOverlayTopbar .musai-logo');
+        var lastKnownUrl = '';
+        var initialOverlayUrl = '';
+        var initialLoadDone = false;
+        var loadCount = 0;
+        var navigatedAway = false;
+
+        var updateLastKnownUrl = function()
+        {
+          try
+          {
+            var newUrl = '';
+            try
+            {
+              if (frame && frame.contentWindow && frame.contentWindow.location)
+              {
+                newUrl = frame.contentWindow.location.href || '';
+              }
+            }
+            catch (_) { /* cross-origin, ignore */ }
+            if (!newUrl)
+            {
+              try { newUrl = (frame && frame.src) || ''; } catch (_) { /* no-op */ }
+            }
+            if (newUrl)
+            {
+              lastKnownUrl = newUrl;
+            }
+          }
+          catch (_) { /* no-op */ }
+        };
 
         var errorDialog = document.querySelector('.dialog-error');
         var openOverlay = function(url, originId)
@@ -809,6 +869,10 @@
           overlay.setAttribute('aria-hidden', 'false');
           if (originId) { overlay.dataset.originId = originId; }
           try { frame.src = url; } catch (_) { frame.src = 'about:blank'; }
+          try { lastKnownUrl = url || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
+          initialLoadDone = false;
+          loadCount = 0;
+          navigatedAway = false;
           // Suppress any page-level error dialog so its close (×) does not float above the iframe
           if (errorDialog) { errorDialog.style.display = 'none'; }
           // Ensure AI dock remains visible; content padding already accounts for it
@@ -845,6 +909,79 @@
           }
         };
         btnCloseReturn && btnCloseReturn.addEventListener('click', performCloseReturn);
+
+        // Track iframe navigations: same-origin via contentWindow, cross-origin via src
+        try {
+          frame && frame.addEventListener('load', function()
+          {
+            loadCount += 1;
+            // Update last known URL when possible
+            try { updateLastKnownUrl(); } catch (_) { /* no-op */ }
+            if (!initialLoadDone)
+            {
+              initialLoadDone = true;
+              return;
+            }
+            // Any subsequent load implies navigation away from the original page
+            try
+            {
+              if (loadCount > 1)
+              {
+                // If we can compare URLs and they differ, mark navigated; otherwise assume navigated
+                var current = lastKnownUrl || '';
+                if (!current || !initialOverlayUrl || current !== initialOverlayUrl)
+                {
+                  navigatedAway = true;
+                }
+                else
+                {
+                  // Same URL after load (rare), keep current flag
+                  navigatedAway = navigatedAway || true;
+                }
+              }
+            }
+            catch (_) { /* no-op */ }
+          }, true);
+        } catch (_) { /* no-op */ }
+
+        // Accept cooperative URL updates from embedded pages
+        try
+        {
+          window.addEventListener('message', function(ev)
+          {
+            try
+            {
+              if (!frame || !frame.contentWindow || ev.source !== frame.contentWindow) { return; }
+              var data = ev.data;
+              var candidate = '';
+              if (typeof data === 'string')
+              {
+                candidate = data;
+              }
+              else if (data && typeof data === 'object')
+              {
+                if (typeof data.url === 'string') { candidate = data.url; }
+                else if (typeof data.href === 'string') { candidate = data.href; }
+                else if (data.location)
+                {
+                  if (typeof data.location === 'string') { candidate = data.location; }
+                  else if (typeof data.location.href === 'string') { candidate = data.location.href; }
+                }
+                if (!candidate && (data.type === 'musai-location' || data.type === 'musai.overlay.location'))
+                {
+                  if (typeof data.value === 'string') { candidate = data.value; }
+                }
+              }
+              if (candidate && typeof candidate === 'string')
+              {
+                try { candidate = new URL(candidate, lastKnownUrl || (frame && frame.src) || window.location.href).href; } catch (_) { /* no-op */ }
+                lastKnownUrl = candidate;
+              }
+            }
+            catch (_) { /* no-op */ }
+          }, false);
+        }
+        catch (_) { /* no-op */ }
 
         // Submit handler for overlay search: navigate main app to results
         if (searchForm && searchInput)
@@ -917,7 +1054,30 @@
           },
           currentUrl: function()
           {
-            try { return frame && frame.src || ''; }
+            try { return (lastKnownUrl || (frame && frame.src) || '') ; }
+            catch (_) { return ''; }
+          },
+          hasNavigatedAway: function()
+          {
+            try { return !!navigatedAway; } catch (_) { return false; }
+          },
+          state: function()
+          {
+            try
+            {
+              return {
+                isOpen: overlay.getAttribute('aria-hidden') === 'false',
+                initialUrl: initialOverlayUrl || '',
+                lastKnownUrl: lastKnownUrl || '',
+                loadCount: loadCount,
+                navigatedAway: !!navigatedAway
+              };
+            }
+            catch (_) { return { isOpen: false, initialUrl: '', lastKnownUrl: '', loadCount: 0, navigatedAway: false }; }
+          },
+          lastKnownUrl: function()
+          {
+            try { return lastKnownUrl || ''; }
             catch (_) { return ''; }
           },
           open: function(url, originId)

@@ -15,13 +15,13 @@
 <section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}">
   <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
   <span class="ai-brand" aria-hidden="true">Musai</span>
-  <form id="ai_chat_form" aria-label="Ask Musai..." onsubmit="return false" action="#">
-    <input id="ai_chat_input" type="text" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai">
-    <button id="ai_chat_send" type="button" title="Send" aria-label="Send">↵</button>
+  <form id="ai_chat_form" aria-label="Ask Musai..." action="#">
+    <textarea id="ai_chat_input" rows="1" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai"></textarea>
+    <button id="ai_chat_send" type="submit" title="Send" aria-label="Send">↵</button>
     <small id="ai_chat_status" aria-live="polite"></small>
   </form>
   <button id="ai_backToTop" type="button" title="Back to top" aria-label="Back to top" hidden>
-    {{ icon_big('chevron-up') }}
+    {{ icon_big('navigate-up') }}
   </button>
   <div id="ai_chat_output" hidden></div>
   <script>
@@ -38,6 +38,29 @@
     let chatBusy = false;
     let internalNavInProgress = false;
     const aiBackTop = document.getElementById('ai_backToTop');
+    // Auto-resize the textarea to maintain flow and reduce cognitive friction
+    (function autoSizeAITextarea()
+    {
+      try
+      {
+        if (!aiInput) { return; }
+        var maxHeight = 140;
+        var adjust = function()
+        {
+          try
+          {
+            aiInput.style.height = 'auto';
+            var h = Math.min(aiInput.scrollHeight || 0, maxHeight);
+            aiInput.style.height = (h > 0 ? h : 40) + 'px';
+          }
+          catch (_) { /* no-op */ }
+        };
+        aiInput.addEventListener('input', adjust);
+        // Initialize once on load
+        adjust();
+      }
+      catch (e) { /* no-op */ }
+    })();
     // Always start expanded on results pages (ignore any previous collapsed state)
     try
     {
@@ -68,6 +91,34 @@
         aiToggle.textContent = willCollapse ? '▸' : '▾';
       }
     });
+
+    // Collapse the AI response when clicking on the results area (outside the dock)
+    (function attachOutsideCollapse()
+    {
+      try
+      {
+        document.addEventListener('click', function(e)
+        {
+          // Ignore clicks inside the AI area
+          if (aiSection && (e.target === aiSection || (e.target.closest && e.target.closest('#ai_chat'))))
+          {
+            return;
+          }
+          // Only act if the output is currently visible
+          var outputVisible = aiOut && !aiOut.hidden && aiOut.innerHTML.trim() !== '';
+          if (!outputVisible)
+          {
+            return;
+          }
+          // Collapse to bubbles-only mode
+          aiSection.classList.add('collapsed');
+          rootHtml.classList.add('ai-chat-collapsed');
+          try { localStorage.setItem(collapseStorageKey, '1'); } catch (_) { /* no-op */ }
+          if (aiToggle) { aiToggle.setAttribute('aria-label', 'Expand AI assistant'); aiToggle.title = 'Expand'; aiToggle.textContent = '▸'; }
+        }, true);
+      }
+      catch (e) { /* no-op */ }
+    })();
 
     // Expose AI busy state and internal navigation marker for other UI (overlay/header)
     try {
@@ -254,13 +305,63 @@
         : '';
       const combinedQuery = contextBlock ? (contextBlock + '\n\n' + userPrompt) : userPrompt;
 
-      // If overlay is open, capture that URL to send as a dedicated param
+      // Detect if userPrompt looks like a direct URL; used when overlay is closed
+      function inferUrlFromPrompt(prompt)
+      {
+        try
+        {
+          var raw = (prompt || '').trim();
+          if (!raw) { return ''; }
+          try
+          {
+            var u1 = new URL(raw);
+            return u1.href;
+          }
+          catch (_)
+          {
+            // Heuristic: add scheme if missing (example.com/foo)
+            if (/^www\.[^\s]+/i.test(raw) || /[^\s]+\.[a-z]{2,}(?:[\/?#]|$)/i.test(raw))
+            {
+              try { var u2 = new URL('https://' + raw); return u2.href; } catch (__) { /* no-op */ }
+            }
+          }
+        }
+        catch (_) { /* no-op */ }
+        return '';
+      }
+
+      // If overlay is open, capture last known URL and navigation state; otherwise, use prompt-derived URL if any
       var overlayUrl = '';
-      try { overlayUrl = (window.musaiOverlayAPI && window.musaiOverlayAPI.isOpen()) ? (window.musaiOverlayAPI.currentUrl() || '') : ''; } catch (_) {}
+      var overlayState = { isOpen: false, initialUrl: '', lastKnownUrl: '', loadCount: 0, navigatedAway: false };
+      try
+      {
+        var open = (window.musaiOverlayAPI && typeof window.musaiOverlayAPI.isOpen === 'function' && window.musaiOverlayAPI.isOpen());
+        if (open)
+        {
+          try { overlayUrl = (window.musaiOverlayAPI.lastKnownUrl && window.musaiOverlayAPI.lastKnownUrl()) || (window.musaiOverlayAPI.currentUrl && window.musaiOverlayAPI.currentUrl()) || ''; } catch (__) { /* no-op */ }
+          try { overlayState = (window.musaiOverlayAPI.state && window.musaiOverlayAPI.state()) || overlayState; } catch (__) { /* no-op */ }
+        }
+        else
+        {
+          overlayUrl = inferUrlFromPrompt(userPrompt) || '';
+        }
+      }
+      catch (_) { /* no-op */ }
+
+      // If navigated away inside the iframe, append a human-readable bracketed note to the AI message
+      let effectiveQuery = combinedQuery;
+      try
+      {
+        if (overlayState && overlayState.isOpen && overlayState.navigatedAway)
+        {
+          effectiveQuery = combinedQuery + '\n\n[ The user has navigated away from the search so we do not know their current page ]';
+        }
+      }
+      catch (_) { /* no-op */ }
 
       const payload = {
         sessionId: sessionId,
-        query: combinedQuery,
+        query: effectiveQuery,
         action: 'webhookChat',
         url: overlayUrl,
         meta: JSON.stringify({ search: {
@@ -270,11 +371,20 @@
           time_range: ds.timeRange || '',
           language: ds.language || '',
           safesearch: ds.safesearch || ''
-        }, contextResults: contextResults })
+        }, contextResults: contextResults, overlay: overlayState })
       };
 
       try {
-        const res = await fetch('https://n8n.codemusic.ca/webhook/chat/message', {
+        // Add last_known_url as an explicit parameter on the webhook URL
+        let lastKnownForParam = '';
+        try
+        {
+          lastKnownForParam = (overlayState && overlayState.lastKnownUrl) || overlayUrl || '';
+        }
+        catch (_) { /* no-op */ }
+        const webhookBase = 'https://n8n.codemusic.ca/webhook/chat/message';
+        const webhookUrl = webhookBase + (lastKnownForParam ? ('?url=' + encodeURIComponent(lastKnownForParam)) : '');
+        const res = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -301,6 +411,7 @@
         // Extract logical/creative thoughts if present
         let logicalThought = '';
         let creativeThought = '';
+        let perspectiveThought = '';
         for (const p of pov) {
           const t = (p && (p.type || p.name) || '').toString().toLowerCase();
           if (!logicalThought && (t === 'logical' || /logic/.test(t)) && typeof p.thought === 'string') {
@@ -309,9 +420,12 @@
           if (!creativeThought && (t === 'creative' || /creativ/.test(t)) && typeof p.thought === 'string') {
             creativeThought = p.thought;
           }
+          if (!perspectiveThought && (t === 'perspective' || /perspective|perspec/.test(t)) && typeof p.thought === 'string') {
+            perspectiveThought = p.thought;
+          }
         }
 
-        if (logicalThought || creativeThought) {
+        if (logicalThought || creativeThought || perspectiveThought) {
           const toggles = document.createElement('div');
           toggles.className = 'ai-pov-toggle-group';
 
@@ -327,6 +441,12 @@
           blueBtn.textContent = 'Creative';
           if (!creativeThought) blueBtn.disabled = true;
 
+          const violetBtn = document.createElement('button');
+          violetBtn.type = 'button';
+          violetBtn.className = 'ai-pov-toggle violet';
+          violetBtn.textContent = 'Perspective';
+          if (!perspectiveThought) violetBtn.disabled = true;
+
           const redPanel = document.createElement('div');
           redPanel.className = 'ai-pov-panel red';
           redPanel.textContent = logicalThought || '';
@@ -337,15 +457,23 @@
           bluePanel.textContent = creativeThought || '';
           bluePanel.hidden = true;
 
+          const violetPanel = document.createElement('div');
+          violetPanel.className = 'ai-pov-panel violet';
+          violetPanel.textContent = perspectiveThought || '';
+          violetPanel.hidden = true;
+
           function setActive(which) {
             const isRed = which === 'red';
             const isBlue = which === 'blue';
+            const isViolet = which === 'violet';
             // Only one visible at a time: when a POV is active, hide the main response
             main.hidden = !!which;
             redPanel.hidden = !isRed;
             bluePanel.hidden = !isBlue;
+            violetPanel.hidden = !isViolet;
             redBtn.classList.toggle('active', isRed);
             blueBtn.classList.toggle('active', isBlue);
+            violetBtn.classList.toggle('active', isViolet);
           }
 
           redBtn.addEventListener('click', function () {
@@ -356,14 +484,20 @@
             if (blueBtn.disabled) return;
             setActive(!blueBtn.classList.contains('active') ? 'blue' : null);
           });
+          violetBtn.addEventListener('click', function () {
+            if (violetBtn.disabled) return;
+            setActive(!violetBtn.classList.contains('active') ? 'violet' : null);
+          });
 
           // Render header first, then the single visible content beneath it
           aiOut.appendChild(toggles);
           toggles.appendChild(redBtn);
           toggles.appendChild(blueBtn);
+          toggles.appendChild(violetBtn);
           aiOut.appendChild(main);
           aiOut.appendChild(redPanel);
           aiOut.appendChild(bluePanel);
+          aiOut.appendChild(violetPanel);
           // default: show only main response
           setActive(null);
         } else {
