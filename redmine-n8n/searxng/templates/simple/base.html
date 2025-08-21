@@ -277,6 +277,8 @@
     }
     a { color: var(--musai-muted); }
     a:hover { color: var(--musai-accent); }
+    /* Ensure Musai badge text contrasts per theme (white on dark) */
+    #links_on_top .link_on_top_musai span { color: var(--musai-text); }
     /* Home page title behaves like a text logo; make it about 2x larger */
     #main_index .title h1
     {
@@ -1154,5 +1156,241 @@
   </script>
   {% endif %}
   <script type="module" src="{{ url_for('static', filename='js/searxng.core.min.js') }}" client_settings="{{ client_settings }}"></script>
+  <script>
+    (function ensureMortyLinksAreSigned()
+    {
+      try
+      {
+        var SIGN_WEBHOOK = 'https://n8n.codemusic.ca/webhook/sign-morty';
+        var mortyPrefix = ("{{ (get_setting('server.result_proxy.url') or '')|e }}" || '').trim();
+
+        var hasMortyHash = function(url)
+        {
+          try
+          {
+            return /[?&]mortyhash=/.test(url);
+          }
+          catch (_) { return false; }
+        };
+
+        var isMortyUrl = function(url)
+        {
+          try
+          {
+            if (!mortyPrefix) { return false; }
+            // Accept absolute and relative URLs
+            if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0)
+            {
+              var u = new URL(url, window.location.href);
+              return (u.pathname || '').indexOf(mortyPrefix) === 0;
+            }
+            return url.indexOf(mortyPrefix) === 0;
+          }
+          catch (_) { return false; }
+        };
+
+        var stableUrlString = function(input)
+        {
+          try
+          {
+            var u = new URL(input, window.location.href);
+            return u.href;
+          }
+          catch (_)
+          {
+            return input || '';
+          }
+        };
+
+        var signUrl = function(url)
+        {
+          return new Promise(function(resolve)
+          {
+            var candidate = stableUrlString(url);
+            if (!candidate || !isMortyUrl(candidate) || hasMortyHash(candidate))
+            {
+              resolve(candidate);
+              return;
+            }
+
+            // Primary: POST JSON { url }
+            var didResolve = false;
+            var settle = function(value)
+            {
+              if (didResolve) { return; }
+              didResolve = true;
+              resolve(value || candidate);
+            };
+
+            try
+            {
+              fetch(SIGN_WEBHOOK, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: candidate })
+              }).then(function(r)
+              {
+                if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                return r.json().catch(function()
+                {
+                  return { url: candidate };
+                });
+              }).then(function(data)
+              {
+                var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                if (!nextUrl)
+                {
+                  // Fallback: try to extract mortyhash from payload
+                  var mh = (data && (data.mortyhash || data.hash)) || '';
+                  if (mh)
+                  {
+                    try
+                    {
+                      var u = new URL(candidate, window.location.href);
+                      u.searchParams.set('mortyhash', mh);
+                      nextUrl = u.toString();
+                    }
+                    catch (_) { nextUrl = candidate; }
+                  }
+                }
+                settle(nextUrl || candidate);
+              }).catch(function()
+              {
+                // Secondary: GET ?url=...
+                var urlParam = encodeURIComponent(candidate);
+                fetch(SIGN_WEBHOOK + '?url=' + urlParam).then(function(r)
+                {
+                  if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                  return r.json().catch(function()
+                  {
+                    return { url: candidate };
+                  });
+                }).then(function(data)
+                {
+                  var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                  if (!nextUrl)
+                  {
+                    var mh = (data && (data.mortyhash || data.hash)) || '';
+                    if (mh)
+                    {
+                      try
+                      {
+                        var u = new URL(candidate, window.location.href);
+                        u.searchParams.set('mortyhash', mh);
+                        nextUrl = u.toString();
+                      }
+                      catch (_) { nextUrl = candidate; }
+                    }
+                  }
+                  settle(nextUrl || candidate);
+                }).catch(function()
+                {
+                  settle(candidate);
+                });
+              });
+            }
+            catch (_)
+            {
+              settle(candidate);
+            }
+          });
+        };
+
+        var upgradeAnchor = function(a)
+        {
+          try
+          {
+            if (!a || a.dataset.mortySigned === '1') { return; }
+            var href = a.getAttribute('href') || '';
+            if (!isMortyUrl(href) || hasMortyHash(href))
+            {
+              a.dataset.mortySigned = '1';
+              return;
+            }
+            signUrl(href).then(function(signed)
+            {
+              try { if (signed && typeof signed === 'string') { a.setAttribute('href', signed); } } catch (_) {}
+              a.dataset.mortySigned = '1';
+            });
+          }
+          catch (_) { /* no-op */ }
+        };
+
+        var upgradeButton = function(btn)
+        {
+          try
+          {
+            if (!btn || btn.dataset.mortySigned === '1') { return; }
+            var url = btn.getAttribute('data-url') || '';
+            if (!isMortyUrl(url) || hasMortyHash(url))
+            {
+              btn.dataset.mortySigned = '1';
+              return;
+            }
+            signUrl(url).then(function(signed)
+            {
+              try { if (signed && typeof signed === 'string') { btn.setAttribute('data-url', signed); } } catch (_) {}
+              btn.dataset.mortySigned = '1';
+            });
+          }
+          catch (_) { /* no-op */ }
+        };
+
+        var upgradeAll = function(root)
+        {
+          try
+          {
+            var scope = root || document;
+            var anchors = scope.querySelectorAll('a.proxy-badge');
+            for (var i = 0; i < anchors.length; i++) { upgradeAnchor(anchors[i]); }
+            var buttons = scope.querySelectorAll('button.musai-open-iframe');
+            for (var j = 0; j < buttons.length; j++) { upgradeButton(buttons[j]); }
+          }
+          catch (_) { /* no-op */ }
+        };
+
+        if (mortyPrefix)
+        {
+          if (document.readyState === 'loading')
+          {
+            document.addEventListener('DOMContentLoaded', function()
+            {
+              try { upgradeAll(document); } catch (_) { /* no-op */ }
+            });
+          }
+          else
+          {
+            upgradeAll(document);
+          }
+
+          // Observe dynamically inserted results (infinite scroll, etc.)
+          try
+          {
+            var obs = new MutationObserver(function(muts)
+            {
+              for (var k = 0; k < muts.length; k++)
+              {
+                var m = muts[k];
+                if (m && m.addedNodes && m.addedNodes.length)
+                {
+                  for (var n = 0; n < m.addedNodes.length; n++)
+                  {
+                    var node = m.addedNodes[n];
+                    if (node && node.nodeType === 1)
+                    {
+                      upgradeAll(node);
+                    }
+                  }
+                }
+              }
+            });
+            obs.observe(document.documentElement, { childList: true, subtree: true });
+          }
+          catch (_) { /* no-op */ }
+        }
+      }
+      catch (e) { /* no-op */ }
+    })();
+  </script>
 </body>
 </html>

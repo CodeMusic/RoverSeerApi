@@ -5,18 +5,23 @@
     <img width="14" height="14" class="favicon" src="{{ url_for('static', filename='themes/simple/img/icons/' + favicon + '.png') }}" alt="{{ favicon }}">
 {%- endmacro %}
 
-{# Build a Morty-proxied URL when configured; otherwise return the original URL #}
+{# Build a Morty-proxied URL when configured; optionally append a signed mortyhash #}
 {% macro morty_proxify(url) -%}
   {%- set p = (get_setting('server.result_proxy.url') or '').strip() -%}
   {%- if not p or not url -%}
     {{- url -}}
   {%- else -%}
     {%- if url[:8] == 'https://' -%}
-      {{- p ~ 'https/' ~ url[8:] -}}
+      {%- set built = p ~ 'https/' ~ url[8:] -%}
     {%- elif url[:7] == 'http://' -%}
-      {{- p ~ 'http/' ~ url[7:] -}}
+      {%- set built = p ~ 'http/' ~ url[7:] -%}
     {%- else -%}
-      {{- url -}}
+      {%- set built = url -%}
+    {%- endif -%}
+    {%- if built and (get_setting('server.result_proxy.key') or '') and (sign_morty_url is defined) -%}
+      {{- sign_morty_url(built) -}}
+    {%- else -%}
+      {{- built -}}
     {%- endif -%}
   {%- endif -%}
 {%- endmacro %}
@@ -61,12 +66,14 @@
       {% endif %}
     {% endif %}
     {% set proxied_link = morty_proxify(result.url) %}
-    {% if morty_prefix %}
+    {% set allow_iframe = get_setting('ui.allow_musairesult_iframes') %}
+    {# Show either the proxy badge OR the Musai iframe button; not both #}
+    {% if morty_prefix and not allow_iframe %}
       <a href="{{ proxied_link }}" class="proxy-badge" {% if results_on_new_tab %}target="_blank" rel="noopener noreferrer"{% else %}rel="noreferrer"{% endif %} title="Proxied via Musai" aria-label="Proxied via Musai">
         <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Proxy">
       </a>
     {% endif %}
-    {% if get_setting('ui.allow_musairesult_iframes') %}
+    {% if allow_iframe %}
     <button type="button" class="musai-open-iframe" data-musai-open="1" data-url="{{ proxied_link }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay">
       <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
     </button>
