@@ -106,7 +106,7 @@ server:
     # Public path your browser will hit (reverse-proxied to the morty container)
     url: https://search.codemusic.ca/morty/
     # Must match Morty’s MORTY_KEY exactly
-    key: "1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39"
+    key: "abda1f2d263f71cf7ab0e58aaa9b6d15811f1c10fc9e1c48ba7fcd7cea27daa0"
 
   # POST queries are more secure as they don't show up in history but may cause
   # problems when using Firefox containers.
