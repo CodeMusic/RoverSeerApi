@@ -970,17 +970,7 @@
             return mortyPrefix;
           }
         })();
-        var mortyPrefixPath = (function()
-        {
-          try
-          {
-            return (new URL(mortyPrefix, window.location.href).pathname) || mortyPrefix;
-          }
-          catch (_)
-          {
-            return mortyPrefix;
-          }
-        })();
+        try { console.debug('[MortySign] config', { mortyPrefix: mortyPrefix, mortyPrefixPath: mortyPrefixPath }); } catch (_) {}
         var hasMortyHash = function(url)
         {
           try { return /[?&]hash=/.test(url); } catch (_) { return false; }
@@ -1051,12 +1041,25 @@
                 var mh = (data && (data.hash || data.mortyhash)) || '';
                 var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
                 if (!nextUrl) { nextUrl = candidate; }
-                if (mh && !/[?&]hash=/.test(nextUrl))
+                try
                 {
-                  try { var u = new URL(nextUrl, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
-                  catch (_) { /* no-op */ }
+                  var u0 = new URL(nextUrl, window.location.href);
+                  var hasHashParam = u0.searchParams.has('hash');
+                  var hasMortyhashParam = u0.searchParams.has('mortyhash');
+                  if (mh)
+                  {
+                    if (!hasHashParam) { u0.searchParams.set('hash', mh); }
+                    if (!hasMortyhashParam) { u0.searchParams.set('mortyhash', mh); }
+                    nextUrl = u0.toString();
+                  }
+                  else if (hasMortyhashParam && !hasHashParam)
+                  {
+                    var m = u0.searchParams.get('mortyhash') || '';
+                    if (m) { u0.searchParams.set('hash', m); nextUrl = u0.toString(); }
+                  }
                 }
-                try { console.debug('[MusaiOverlay] signer POST result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl) }); } catch (_) {}
+                catch (_) { /* no-op */ }
+                try { console.debug('[MusaiOverlay] signer POST result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
                 settle(nextUrl || candidate);
               }).catch(function()
               {
@@ -1072,12 +1075,25 @@
                   var mh = (data && (data.hash || data.mortyhash)) || '';
                   var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
                   if (!nextUrl) { nextUrl = candidate; }
-                  if (mh && !/[?&]hash=/.test(nextUrl))
+                  try
                   {
-                    try { var u = new URL(nextUrl, window.location.href); u.searchParams.set('hash', mh); nextUrl = u.toString(); }
-                    catch (_) { /* no-op */ }
+                    var u0 = new URL(nextUrl, window.location.href);
+                    var hasHashParam = u0.searchParams.has('hash');
+                    var hasMortyhashParam = u0.searchParams.has('mortyhash');
+                    if (mh)
+                    {
+                      if (!hasHashParam) { u0.searchParams.set('hash', mh); }
+                      if (!hasMortyhashParam) { u0.searchParams.set('mortyhash', mh); }
+                      nextUrl = u0.toString();
+                    }
+                    else if (hasMortyhashParam && !hasHashParam)
+                    {
+                      var m = u0.searchParams.get('mortyhash') || '';
+                      if (m) { u0.searchParams.set('hash', m); nextUrl = u0.toString(); }
+                    }
                   }
-                  try { console.debug('[MusaiOverlay] signer GET result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl) }); } catch (_) {}
+                  catch (_) { /* no-op */ }
+                  try { console.debug('[MusaiOverlay] signer GET result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
                   settle(nextUrl || candidate);
                 }).catch(function()
                 {
@@ -1349,6 +1365,18 @@
       {
         var SIGN_WEBHOOK = 'https://n8n.codemusic.ca/webhook/sign-morty';
         var mortyPrefix = ("{{ (get_setting('server.result_proxy.url') or '')|e }}" || '').trim();
+        var mortyPrefixPath = (function()
+        {
+          try
+          {
+            return (new URL(mortyPrefix, window.location.href).pathname) || mortyPrefix;
+          }
+          catch (_)
+          {
+            return mortyPrefix;
+          }
+        })();
+        try { console.debug('[MortySign] config', { mortyPrefix: mortyPrefix, mortyPrefixPath: mortyPrefixPath }); } catch (_) {}
 
         var hasMortyHash = function(url)
         {
@@ -1397,8 +1425,10 @@
           return new Promise(function(resolve)
           {
             var candidate = stableUrlString(url);
+            try { console.debug('[MortySign] signUrl start', { candidate: candidate }); } catch (_) {}
             if (!candidate || !isMortyUrl(candidate) || hasMortyHash(candidate))
             {
+              try { console.debug('[MortySign] signUrl skip', { reason: (!candidate ? 'no-candidate' : (!isMortyUrl(candidate) ? 'not-morty' : 'already-has-hash')), candidate: candidate }); } catch (_) {}
               resolve(candidate);
               return;
             }
@@ -1438,11 +1468,13 @@
                     {
                       var u = new URL(candidate, window.location.href);
                       u.searchParams.set('hash', mh);
+                      u.searchParams.set('mortyhash', mh);
                       nextUrl = u.toString();
                     }
                     catch (_) { nextUrl = candidate; }
                   }
                 }
+                try { console.debug('[MortySign] signUrl POST result', { data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
                 settle(nextUrl || candidate);
               }).catch(function()
               {
@@ -1469,11 +1501,13 @@
                       {
                         var u = new URL(candidate, window.location.href);
                         u.searchParams.set('hash', mh);
+                        u.searchParams.set('mortyhash', mh);
                         nextUrl = u.toString();
                       }
                       catch (_) { nextUrl = candidate; }
                     }
                   }
+                  try { console.debug('[MortySign] signUrl GET result', { data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
                   settle(nextUrl || candidate);
                 }).catch(function()
                 {
@@ -1519,10 +1553,12 @@
               btn.dataset.mortySigned = '1';
               return;
             }
+            try { console.debug('[MortySign] upgradeButton before', { url: url }); } catch (_) {}
             signUrl(url).then(function(signed)
             {
               try { if (signed && typeof signed === 'string') { btn.setAttribute('data-url', signed); } } catch (_) {}
               btn.dataset.mortySigned = '1';
+              try { console.debug('[MortySign] upgradeButton after', { signed: signed, hasHash: /[?&]hash=/.test(signed || '') }); } catch (_) {}
             });
           }
           catch (_) { /* no-op */ }
