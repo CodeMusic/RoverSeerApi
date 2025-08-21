@@ -1,5 +1,7 @@
 <form id="search" method="{{ method or 'POST' }}" action="{{ url_for('search') }}" role="search">
   <div id="search_header">
+    {# Omit the header logo on the home page #}
+    {% if self._TemplateReference__context.name != 'simple/index.html' %}
     <a id="search_logo" href="{{ url_for('index') }}" tabindex="0" title="{{ _('Display the front page') }}">
       <span hidden>MusaiSearch</span>
       {% set brand_settings = get_setting('brand') %}
@@ -10,6 +12,7 @@
         <img src="{{ url_for('static', filename='img/searxng.png') }}" alt="{{ instance_name }} logo">
       {% endif %}
     </a>
+    {% endif %}
     <div id="search_view">
       <div class="search_box">
         <input id="q" name="q" type="text" placeholder="{{ _('Search for...') }}" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" dir="auto" value="{{ q or '' }}">
