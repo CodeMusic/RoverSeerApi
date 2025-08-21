@@ -198,7 +198,9 @@
     }
     @media (prefers-color-scheme: light) { html.theme-auto .search_box { background: rgba(255,255,255,.9); } }
     html.theme-light .search_box { background: rgba(255,255,255,.9); }
-    #q { color: var(--musai-text); }
+    /* Use theme-aware input text color to ensure readability on light/dark */
+    #q { color: var(--color-search-font); }
+    #q::placeholder { color: #aab0c8; opacity: .9; }
     /* Prevent iOS Safari auto-zoom on focus */
     @media (max-width: 640px) {
       #q { font-size: 16px; }
@@ -214,6 +216,30 @@
     /* Add breathing room below the categories (General, Images, Videos, etc.) */
     #categories {
       padding-bottom: 12px;
+    }
+    /* Dark-mode tuning: harmonize default SearXNG variables to Musai palette */
+    html.theme-dark,
+    html.theme-black,
+    html.theme-auto.est-dark
+    {
+      /* Accents and interactive elements */
+      --color-url-font: #aab0c8; /* general links */
+      --color-result-link-font: #a78bfa; /* result titles */
+      --color-result-link-font-highlight: #c4b5fd;
+      --color-result-link-visited-font: #c4b5fd;
+      --color-categories-item-selected-font: #a78bfa;
+      --color-categories-item-border-selected: #a78bfa;
+      --color-btn-background: #6e62a6; /* Musai primary for buttons */
+      --color-btn-font: #ffffff;
+      --color-search-background: #2a2e42; /* search field surface */
+      --color-search-font: #ececf4; /* search field text */
+
+      /* Surfaces */
+      --color-header-background: #1e2030;
+      --color-sidebar-background: #2a2e42;
+      --color-result-background: #2a2e42;
+      --color-result-border: #3b3f57;
+      --color-result-url-font: #cbd5e1;
     }
     /* Mobile: swap categories row for a compact dropdown */
     #categories_mobile { display: none; }
@@ -356,14 +382,16 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       border-radius: 999px;
       background: var(--musai-primary);
       color: #ffffff;
       box-shadow: 0 3px 12px rgba(0,0,0,.28);
       border: 0;
+      font-size: 0;
     }
+    #backToTop a svg { width: 16px; height: 16px; }
     #backToTop a:hover { filter: brightness(1.1); }
     /* Align back-to-top with reduced bottom padding when collapsed */
     html.ai-chat-collapsed #backToTop {
