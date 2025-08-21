@@ -3,6 +3,193 @@
 {% block content %}
 <div class="index">
     <div class="title"><h1>MusaiSearch</h1></div>
+    <div id="default_search_prompt" class="default-search-prompt" style="display:none" role="region" aria-label="Default search engine prompt">
+        <div class="prompt-body">
+            <div class="prompt-title"><strong>{{ _('Make MusaiSearch your default search engine') }}</strong></div>
+            <div class="prompt-subtitle">{{ _('Quick access from your address bar, with privacy-first results.') }}</div>
+            <div class="prompt-actions">
+                <button id="addSearchBtn" class="btn-primary">{{ _('Add to browser') }}</button>
+                <a href="#" id="instructionsLink" class="link-muted">{{ _('How to set as default') }}</a>
+                <button id="dismissPrompt" class="btn-ghost" aria-label="{{ _('Dismiss') }}">{{ _('Dismiss') }}</button>
+            </div>
+            <div id="instructionsPanel" class="instructions" style="display:none">
+                <div class="instructions-inner">
+                    <div class="for-firefox" style="display:none">
+                        <strong>{{ _('Firefox') }}</strong>: {{ _('Click “Add to browser”, then confirm to add MusaiSearch. To make it default, open Preferences → Search and choose MusaiSearch.') }}
+                    </div>
+                    <div class="for-chromium" style="display:none">
+                        <strong>{{ _('Chrome / Edge / Brave') }}</strong>: {{ _('Open Settings → Search engine and pick MusaiSearch (it will appear automatically after your first search).') }}
+                    </div>
+                    <div class="for-safari" style="display:none">
+                        <strong>{{ _('Safari') }}</strong>: {{ _('Safari does not allow sites to set the default search. Use the address bar to search on MusaiSearch or add a shortcut.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     {% include 'simple/simple_search.html' %}
 </div>
+<style>
+    .default-search-prompt {
+        margin: 12px 0 18px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--musai-primary);
+        background: rgba(46,50,66,.6);
+    }
+    html.theme-light .default-search-prompt,
+    html.theme-auto.est-light .default-search-prompt {
+        background: rgba(255,255,255,.9);
+    }
+    .default-search-prompt .prompt-title {
+        margin-bottom: 4px;
+    }
+    .default-search-prompt .prompt-subtitle {
+        color: var(--musai-muted);
+        margin-bottom: 8px;
+    }
+    .default-search-prompt .prompt-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+    }
+    .default-search-prompt .btn-primary {
+        background: var(--musai-primary);
+        color: #fff;
+        border-radius: 10px;
+        border: 0;
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    .default-search-prompt .btn-primary:hover {
+        filter: brightness(1.1);
+    }
+    .default-search-prompt .btn-ghost {
+        background: transparent;
+        color: var(--musai-muted);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    html.theme-light .default-search-prompt .btn-ghost,
+    html.theme-auto.est-light .default-search-prompt .btn-ghost {
+        border-color: rgba(0,0,0,0.12);
+    }
+    .default-search-prompt .link-muted {
+        color: var(--musai-muted);
+        text-decoration: underline;
+    }
+    .default-search-prompt .instructions {
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 8px;
+    }
+    html.theme-light .default-search-prompt .instructions,
+    html.theme-auto.est-light .default-search-prompt .instructions {
+        border-top-color: rgba(0,0,0,0.1);
+    }
+    .default-search-prompt .instructions-inner {
+        display: grid;
+        gap: 6px;
+    }
+    @media (max-width: 640px)
+    {
+        .default-search-prompt { margin: 10px 0 14px; }
+    }
+</style>
+<script>
+    (function autonomyDefaultSearchNudge()
+    {
+        try
+        {
+            var STORAGE_KEY = 'musai_default_search_nudge_v1';
+            var prompt = document.getElementById('default_search_prompt');
+            if (!prompt)
+            {
+                return;
+            }
+
+            if (window.localStorage && localStorage.getItem(STORAGE_KEY) === 'dismissed')
+            {
+                return;
+            }
+
+            var ua = navigator.userAgent || '';
+            var isFirefox = /Firefox\//.test(ua) && !/Seamonkey\//.test(ua);
+            var isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+            var isChromium = /Chrome\//.test(ua) || /Edg\//.test(ua) || /Brave\//.test(ua);
+
+            var addBtn = document.getElementById('addSearchBtn');
+            var dismissBtn = document.getElementById('dismissPrompt');
+            var instructionsLink = document.getElementById('instructionsLink');
+            var instructionsPanel = document.getElementById('instructionsPanel');
+            var forFirefox = instructionsPanel && instructionsPanel.querySelector('.for-firefox');
+            var forChromium = instructionsPanel && instructionsPanel.querySelector('.for-chromium');
+            var forSafari = instructionsPanel && instructionsPanel.querySelector('.for-safari');
+
+            if (forFirefox) { forFirefox.style.display = isFirefox ? 'block' : 'none'; }
+            if (forChromium) { forChromium.style.display = isChromium ? 'block' : 'none'; }
+            if (forSafari) { forSafari.style.display = isSafari ? 'block' : 'none'; }
+
+            var supportsFirefoxAdd = !!(window.external && typeof window.external.AddSearchProvider === 'function');
+
+            if (isFirefox && supportsFirefoxAdd)
+            {
+                addBtn.style.display = 'inline-block';
+                addBtn.textContent = (addBtn.textContent || 'Add to browser');
+                addBtn.addEventListener('click', function()
+                {
+                    try
+                    {
+                        window.external.AddSearchProvider('{{ opensearch_url }}');
+                    }
+                    catch (e)
+                    {
+                        instructionsPanel.style.display = 'block';
+                    }
+                });
+            }
+            else
+            {
+                addBtn.style.display = 'none';
+            }
+
+            if (instructionsLink)
+            {
+                instructionsLink.addEventListener('click', function(e)
+                {
+                    e.preventDefault();
+                    if (instructionsPanel.style.display === 'none')
+                    {
+                        instructionsPanel.style.display = 'block';
+                    }
+                    else
+                    {
+                        instructionsPanel.style.display = 'none';
+                    }
+                });
+            }
+
+            if (dismissBtn)
+            {
+                dismissBtn.addEventListener('click', function()
+                {
+                    if (window.localStorage)
+                    {
+                        localStorage.setItem(STORAGE_KEY, 'dismissed');
+                    }
+                    prompt.style.display = 'none';
+                });
+            }
+
+            prompt.style.display = 'block';
+        }
+        catch (e)
+        {
+            /* no-op */
+        }
+    })();
+</script>
 {% endblock %}

@@ -104,7 +104,7 @@ server:
   # POST queries are more secure as they don't show up in history but may cause
   # problems when using Firefox containers.
   # Is overwritten by ${SEARXNG_METHOD}
-  method: "POST"
+  method: "GET"
   default_http_headers:
     X-Content-Type-Options: nosniff
     X-Download-Options: noopen
@@ -130,7 +130,7 @@ ui:
   # ui theme
   default_theme: simple
   # center the results ?
-  center_alignment: true
+  center_alignment: false
   # URL prefix of the internet archive, don't forget trailing slash (if needed).
   # cache_url: "https://webcache.googleusercontent.com/search?q=cache:"
   # Default interface locale - leave blank to detect from browser information or
@@ -148,6 +148,8 @@ ui:
   hotkeys: default
   # URL formatting: pretty, full or host
   url_formatting: pretty
+  # When true, show a small Musai icon next to each result to open it in an in-page iframe with chat
+  allow_musairesult_iframes: true
 
 # Lock arbitrary settings on the preferences page.
 #

@@ -32,6 +32,7 @@
     const aiToggle = document.getElementById('ai_chat_toggle');
     const rootHtml = document.documentElement;
     const collapseStorageKey = 'musai_ai_chat_collapsed';
+    let chatBusy = false;
     // Initialize collapsed state from persistence
     try {
       const isCollapsed = localStorage.getItem(collapseStorageKey) === '1';
@@ -146,6 +147,7 @@
       aiSend.disabled = true;
       aiStatus.textContent = '';
       aiOut.hidden = true;
+      chatBusy = true;
 
       // Render Musai-style typing indicator
       try {
@@ -190,6 +192,10 @@
         : '';
       const combinedQuery = contextBlock ? (contextBlock + '\n\n' + userPrompt) : userPrompt;
 
+      // If overlay is open, include that URL explicitly
+      var overlayUrl = '';
+      try { overlayUrl = (window.musaiOverlayAPI && window.musaiOverlayAPI.isOpen()) ? (window.musaiOverlayAPI.currentUrl() || '') : ''; } catch (_) {}
+
       const payload = {
         sessionId: sessionId,
         query: combinedQuery,
@@ -201,7 +207,7 @@
           time_range: ds.timeRange || '',
           language: ds.language || '',
           safesearch: ds.safesearch || ''
-        }, contextResults: contextResults })
+        }, contextResults: contextResults, overlayUrl: overlayUrl })
       };
 
       try {
@@ -310,8 +316,51 @@
         // Re-enable controls
         aiInput.disabled = false;
         aiSend.disabled = false;
+        chatBusy = false;
       }
     });
+
+    // Prevent accidental navigation while Musai is thinking
+    window.addEventListener('beforeunload', function (e) {
+      if (chatBusy) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    // Intercept clicks on in-origin links and submissions while chat is busy
+    document.addEventListener('click', function (e) {
+      if (!chatBusy) { return; }
+      var anchor = e.target && (e.target.closest ? e.target.closest('a[href]') : null);
+      if (anchor) {
+        try {
+          var href = anchor.getAttribute('href') || '';
+          var isHashLink = href.charAt(0) === '#';
+          if (isHashLink) { return; }
+          var originMatches = false;
+          try { originMatches = (anchor.origin === window.location.origin); } catch (_) {}
+          var isSameOrigin = originMatches || href.indexOf(window.location.origin) === 0 || href.indexOf('/') === 0;
+          if (isSameOrigin) {
+            var ok = window.confirm('Musai is thinking. Navigating away will cancel the response. Continue?');
+            if (!ok) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+          }
+        } catch (_) { /* no-op */ }
+      }
+    }, true);
+
+    // Intercept any form submissions (e.g., categories, pagination) while busy
+    document.addEventListener('submit', function (e) {
+      if (!chatBusy) { return; }
+      var ok = window.confirm('Musai is thinking. Submitting will cancel the response. Continue?');
+      if (!ok) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
   </script>
 </section>
 

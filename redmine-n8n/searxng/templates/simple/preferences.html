@@ -148,12 +148,200 @@
   {%- endif -%}
 {%- endmacro -%}
 
-{%- block head -%}{%- endblock -%}
+{%- block head -%}
+<style>
+  /* Scope to preferences page */
+  #main_preferences {
+    position: relative;
+  }
+  /* Frosted veil covering below the tab headers */
+  #musai_veil_overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: 0; /* dynamically adjusted by script to sit below the tabs */
+    background: rgba(30,32,48,0.35);
+    -webkit-backdrop-filter: saturate(1.4) blur(8px);
+    backdrop-filter: saturate(1.4) blur(8px);
+    z-index: 500; /* above content, below global UI */
+    display: none; /* shown by script when locked */
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 24px;
+    pointer-events: auto;
+  }
+  .musai-veil-card {
+    background: rgba(46,50,74,0.92);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    box-shadow: 0 6px 28px rgba(0,0,0,.35);
+    color: var(--musai-text);
+    width: min(560px, calc(100% - 28px));
+    padding: 16px;
+  }
+  .musai-veil-card h2 {
+    margin: 0 0 8px 0;
+    font-size: 1.25rem;
+  }
+  .musai-veil-card p {
+    margin: 0 0 12px 0;
+    opacity: .9;
+  }
+  .musai-veil-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .musai-veil-row input[type="password"],
+  .musai-veil-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    border: 1px solid var(--musai-primary);
+    background: rgba(0,0,0,0.15);
+    color: var(--musai-text);
+  }
+  .musai-veil-row button {
+    height: 40px;
+    padding: 0 14px;
+    background: var(--musai-primary);
+    color: #fff;
+    border-radius: 10px;
+    border: 0;
+    cursor: pointer;
+  }
+  .musai-veil-row button:hover { filter: brightness(1.1); }
+  .musai-veil-error {
+    color: #fecaca; /* light red */
+    margin-top: 8px;
+    display: none;
+  }
+  @media (prefers-color-scheme: light) {
+    html.theme-auto #musai_veil_overlay .musai-veil-card,
+    html.theme-light #musai_veil_overlay .musai-veil-card {
+      background: rgba(255,255,255,0.96);
+      color: #222222;
+    }
+  }
+</style>
+<script>
+  (function musaiVeilOfUncertainty()
+  {
+    try
+    {
+      var storageKey = 'musaiVeilUnlocked';
+      var unlocked = false;
+      try { unlocked = window.sessionStorage && window.sessionStorage.getItem(storageKey) === '1'; } catch (e) { unlocked = false; }
+
+      var main = document.getElementById('main_preferences');
+      if (!main) { return; }
+
+      function ensureOverlay()
+      {
+        var ov = document.getElementById('musai_veil_overlay');
+        if (ov) { return ov; }
+        ov = document.createElement('div');
+        ov.id = 'musai_veil_overlay';
+        ov.setAttribute('aria-hidden', 'true');
+        ov.innerHTML = '\n  <div class="musai-veil-card" role="dialog" aria-modal="true" aria-labelledby="veil_title">\n    <h2 id="veil_title">Musai\'s Vail of Uncertainty</h2>\n    <p>Protective fog is active. Enter the password to gain perspective and adjust preferences.</p>\n    <div class="musai-veil-row">\n      <input id="musai_veil_input" type="password" placeholder="Enter password" autocomplete="off" aria-label="Password">\n      <button id="musai_veil_unlock" type="button">Unveil</button>\n    </div>\n    <div id="musai_veil_error" class="musai-veil-error">That does not align with perspective. Try again.</div>\n  </div>\n';
+        main.appendChild(ov);
+        return ov;
+      }
+
+      function computeOverlayTop()
+      {
+        var overlay = document.getElementById('musai_veil_overlay');
+        if (!overlay) { return; }
+        var labels = main.querySelectorAll('.tabs > label[role="tab"]');
+        var mainRect = main.getBoundingClientRect();
+        var maxBottom = 0;
+        for (var i = 0; i < labels.length; i++)
+        {
+          var r = labels[i].getBoundingClientRect();
+          if (r.bottom > maxBottom) { maxBottom = r.bottom; }
+        }
+        var topOffset = 0;
+        if (maxBottom > 0) { topOffset = Math.max(0, Math.round(maxBottom - mainRect.top)); }
+        overlay.style.top = topOffset + 'px';
+      }
+
+      function lock()
+      {
+        var overlay = ensureOverlay();
+        overlay.style.display = 'flex';
+        computeOverlayTop();
+        var input = document.getElementById('musai_veil_input');
+        if (input) { setTimeout(function(){ try { input.focus(); } catch (e) {} }, 0); }
+      }
+
+      function unlock()
+      {
+        var overlay = document.getElementById('musai_veil_overlay');
+        if (overlay) { overlay.style.display = 'none'; overlay.parentNode && overlay.parentNode.removeChild(overlay); }
+        try { window.sessionStorage && window.sessionStorage.setItem(storageKey, '1'); } catch (e) {}
+      }
+
+      function onSubmit()
+      {
+        var input = document.getElementById('musai_veil_input');
+        var error = document.getElementById('musai_veil_error');
+        if (!input) { return; }
+        var val = (input.value || '').trim().toLowerCase();
+        if (val === 'perspective')
+        {
+          if (error) { error.style.display = 'none'; }
+          unlock();
+        }
+        else
+        {
+          if (error) { error.style.display = 'block'; }
+        }
+      }
+
+      if (!unlocked)
+      {
+        // Initialize overlay and handlers
+        lock();
+        var clickHandler = function(e)
+        {
+          if (!e) { return; }
+          var t = e.target;
+          if (t && t.id === 'musai_veil_unlock') { onSubmit(); }
+        };
+        var keyHandler = function(e)
+        {
+          if (!e) { return; }
+          if (e.key === 'Enter')
+          {
+            var input = document.getElementById('musai_veil_input');
+            if (document.activeElement === input) { e.preventDefault(); onSubmit(); }
+          }
+        };
+        document.addEventListener('click', clickHandler);
+        document.addEventListener('keydown', keyHandler);
+        window.addEventListener('resize', computeOverlayTop, { passive: true });
+        // Recompute once images/fonts layout settle
+        setTimeout(computeOverlayTop, 0);
+        setTimeout(computeOverlayTop, 250);
+        setTimeout(computeOverlayTop, 1000);
+      }
+    }
+    catch (e)
+    {
+      /* no-op */
+    }
+  })();
+</script>
+{%- endblock -%}
 {%- block linkto_preferences -%}{%- endblock -%}
 
 {%- block content -%}
 
   <h1>{{ _('Preferences') }}</h1>
+  {# Musai's Vail of Uncertainty overlay is injected by script and scoped to this page #}
 
   <form id="search_form" method="post" action="{{ url_for('preferences') }}" autocomplete="off">
     {{- tabs_open() -}}
