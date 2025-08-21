@@ -300,6 +300,13 @@
       align-items: center;
       column-gap: 16px;
     }
+    /* Home page: stack logo above the search bar and center them */
+    #main_index #search_header
+    {
+      flex-direction: column;
+      align-items: center;
+      row-gap: 12px;
+    }
     /* Search page only: gently nudge the logo for better visual alignment */
     #main_search #search_logo
     {
@@ -311,6 +318,12 @@
     #main_results #search_header
     {
       padding-bottom: 16px;
+    }
+    /* Results page (desktop): allow the search input to span available width */
+    @media (min-width: 641px) {
+      #main_results #search_view { flex: 1 1 auto; min-width: 240px; }
+      #main_results #search_view .search_box { width: 100%; }
+      #main_results #search_view #q { width: 100%; }
     }
     /* Results page only: reduce logo size by ~30% from baseline (106px → 74px) */
     #main_results #search_logo img,
@@ -348,10 +361,13 @@
     }
     #send_search:hover { filter: brightness(1.1); }
     footer { color: var(--musai-muted); }
-    /* Add breathing room below the categories (General, Images, Videos, etc.) */
+    /* Add breathing room and slightly lower the categories (General, Images, Videos, etc.) */
     #categories {
+      margin-top: 6px; /* nudge down to avoid feeling too high */
       padding-bottom: 12px;
     }
+    /* Allow search types to wrap to a second line if needed to avoid crowding */
+    #categories_container { flex-wrap: wrap; }
     /* Dark-mode tuning: harmonize default SearXNG variables to Musai palette */
     html.theme-dark,
     html.theme-black,
@@ -400,6 +416,10 @@
         border-radius: 10px;
       }
     }
+    /* On mobile results pages, hide the top search field to avoid duplication with bottom bar */
+    @media (max-width: 640px) {
+      #main_results #search_view { display: none; }
+    }
     /* Keep categories/search types away from the top-right utility links */
     @media (min-width: 1025px) {
       #search_header,
@@ -411,6 +431,13 @@
       #search_header,
       #categories {
         padding-right: 110px;
+      }
+    }
+    /* Small landscape tablets / narrow laptops: reserve room for top-right links */
+    @media (min-width: 641px) and (max-width: 767px) {
+      #search_header,
+      #categories {
+        padding-right: 88px;
       }
     }
     /* AI chat area — docked at the bottom as a floating bar */
@@ -492,6 +519,20 @@
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
     html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
     #ai_chat form { flex: 1; display: flex; align-items: center; gap: 8px; margin: 0; }
+    /* Mode selector (mobile) to switch between Chat and Search */
+    #ai_chat #ai_mode {
+      background: var(--musai-primary);
+      color: #fff;
+      border-radius: 10px;
+      border: 0;
+      height: 40px;
+      padding: 0 10px;
+      flex: 0 0 auto;
+    }
+    /* Hide the mode selector on larger screens (desktop keeps top search bar) */
+    @media (min-width: 641px) {
+      #ai_chat #ai_mode { display: none; }
+    }
     #ai_chat input[type="text"],
     #ai_chat textarea {
       flex: 1;
@@ -539,7 +580,13 @@
       cursor: pointer;
       flex: 0 0 auto;
     }
+    /* Ensure the up-arrow icon is visible and sized correctly */
+    #ai_chat #ai_backToTop svg { width: 18px; height: 18px; display: block; }
     #ai_chat #ai_backToTop:hover { filter: brightness(1.1); }
+    /* When Musai overlay is open, hide AI dock to avoid covering iframe content */
+    html.musai-overlay-open #ai_chat {
+      display: none !important;
+    }
     #ai_chat input[type="text"][disabled],
     #ai_chat textarea[disabled],
     #ai_chat button[disabled] {
@@ -827,6 +874,7 @@
         {
           return;
         }
+        var rootHtml = document.documentElement;
         var frame = document.getElementById('musaiOverlayFrame');
         var btnCloseReturn = document.getElementById('musaiOverlayCloseReturn');
         var searchForm = document.getElementById('musaiOverlaySearch');
@@ -867,6 +915,7 @@
         var openOverlay = function(url, originId)
         {
           overlay.setAttribute('aria-hidden', 'false');
+          try { rootHtml && rootHtml.classList.add('musai-overlay-open'); } catch (_) { /* no-op */ }
           if (originId) { overlay.dataset.originId = originId; }
           try { frame.src = url; } catch (_) { frame.src = 'about:blank'; }
           try { lastKnownUrl = url || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
@@ -880,6 +929,7 @@
         var closeOverlay = function()
         {
           overlay.setAttribute('aria-hidden', 'true');
+          try { rootHtml && rootHtml.classList.remove('musai-overlay-open'); } catch (_) { /* no-op */ }
           try { frame.src = 'about:blank'; } catch (_) {}
           // Restore error dialog visibility when leaving overlay
           if (errorDialog) { errorDialog.style.display = ''; }

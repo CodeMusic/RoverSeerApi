@@ -16,6 +16,10 @@
   <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
   <span class="ai-brand" aria-hidden="true">Musai</span>
   <form id="ai_chat_form" aria-label="Ask Musai..." action="#">
+    <select id="ai_mode" aria-label="Mode">
+      <option value="chat" selected>Chat</option>
+      <option value="search">Search</option>
+    </select>
     <textarea id="ai_chat_input" rows="1" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai"></textarea>
     <button id="ai_chat_send" type="submit" title="Send" aria-label="Send">↵</button>
     <small id="ai_chat_status" aria-live="polite"></small>
@@ -33,6 +37,7 @@
     const aiSection = document.getElementById('ai_chat');
     const aiSend = document.getElementById('ai_chat_send');
     const aiToggle = document.getElementById('ai_chat_toggle');
+    const aiMode = document.getElementById('ai_mode');
     const rootHtml = document.documentElement;
     const collapseStorageKey = 'musai_ai_chat_collapsed';
     let chatBusy = false;
@@ -169,6 +174,80 @@
     })();
     let typingEl = null;
 
+    // Render a readable, dismissible error toast in the AI area
+    function showAiErrorToast(message)
+    {
+      try
+      {
+        if (!aiSection) { return; }
+        // Remove any existing toast to avoid stacking
+        var existing = aiSection.querySelector('.ai-error-toast');
+        if (existing && existing.parentNode) { existing.parentNode.removeChild(existing); }
+
+        var toast = document.createElement('div');
+        toast.className = 'ai-error-toast mystical-glow';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.style.cssText = 'position:absolute;right:12px;bottom:12px;max-width:74%;background:rgba(64,38,94,.95);color:#ffffff;padding:10px 12px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.35);display:flex;align-items:center;gap:10px;z-index:1000;';
+
+        var label = document.createElement('span');
+        label.textContent = message || 'An error occurred.';
+        label.style.cssText = 'color:#ffffff;';
+
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'ai-toast-close';
+        close.setAttribute('aria-label', 'Dismiss');
+        close.textContent = '×';
+        close.style.cssText = 'background:transparent;color:#ffffff;border:none;font-size:18px;cursor:pointer;line-height:1;padding:0;margin-left:auto;';
+        close.addEventListener('click', function(ev)
+        {
+          ev.preventDefault();
+          if (toast && toast.parentNode) { toast.parentNode.removeChild(toast); }
+        });
+
+        // Ensure the section can anchor absolute children
+        if (!aiSection.style.position) { aiSection.style.position = 'relative'; }
+
+        toast.appendChild(label);
+        toast.appendChild(close);
+        aiSection.appendChild(toast);
+      }
+      catch (_) { /* no-op */ }
+    }
+
+    // Mode-aware placeholder and enter key hints (mobile bottom bar)
+    (function wireModeUX()
+    {
+      try
+      {
+        if (!aiMode || !aiInput) { return; }
+        var apply = function()
+        {
+          var mode = (aiMode.value || 'chat');
+          if (mode === 'search')
+          {
+            aiInput.placeholder = 'Search for...';
+            aiInput.enterKeyHint = 'search';
+            aiInput.setAttribute('inputmode', 'search');
+            aiSend.setAttribute('aria-label', 'Search');
+            aiSend.title = 'Search';
+          }
+          else
+          {
+            aiInput.placeholder = 'Ask Musai...';
+            aiInput.enterKeyHint = 'send';
+            aiInput.setAttribute('inputmode', 'text');
+            aiSend.setAttribute('aria-label', 'Send');
+            aiSend.title = 'Send';
+          }
+        };
+        aiMode.addEventListener('change', apply);
+        apply();
+      }
+      catch (_) { /* no-op */ }
+    })();
+
     // Submit on Enter, newline on Shift+Enter
     aiInput?.addEventListener('keydown', function (ev)
     {
@@ -238,6 +317,7 @@
     aiForm?.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
+      const mode = (aiMode && aiMode.value) || 'chat';
       // If currently collapsed, expand to accept input
       if (aiSection.classList.contains('collapsed'))
       {
@@ -249,6 +329,56 @@
       const userPrompt = aiInput.value.trim();
       if (!userPrompt) {
         return;
+      }
+
+      // If Search mode, perform a search instead of calling AI
+      if (mode === 'search')
+      {
+        try
+        {
+          const hasScheme = function(value) { return /^(?:[a-z][a-z0-9+.-]*):\/\//i.test(value); };
+          const looksLikeUrl = function(value)
+          {
+            if (!value || /\s/.test(value)) { return false; }
+            if (hasScheme(value)) { return true; }
+            if (/^www\./i.test(value)) { return true; }
+            if (/^(?:localhost)(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return true; }
+            if (/^(?:\d{1,3})(?:\.\d{1,3}){3}(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return true; }
+            return /^[^\s]+\.[a-z]{2,}(?:[\/?#].*)?$/i.test(value);
+          };
+          const normalizeUrl = function(value)
+          {
+            if (!value) { return value; }
+            if (hasScheme(value)) { return value; }
+            if (/^www\./i.test(value)) { return 'https://' + value; }
+            if (/^(?:localhost|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return 'http://' + value; }
+            return 'https://' + value;
+          };
+
+          if (looksLikeUrl(userPrompt))
+          {
+            const finalUrl = normalizeUrl(userPrompt);
+            try { window.musaiAI && typeof window.musaiAI.markInternalNav === 'function' && window.musaiAI.markInternalNav(); } catch (_) {}
+            if (window.musaiOverlayAPI && typeof window.musaiOverlayAPI.open === 'function')
+            {
+              window.musaiOverlayAPI.open(finalUrl, 'ai-mode-search-url');
+            }
+            else
+            {
+              try { window.open(finalUrl, '_blank', 'noopener'); } catch (_) {}
+            }
+            return;
+          }
+
+          // Navigate to results with q and existing categories if present
+          const ds = aiSection?.dataset || {};
+          const categories = (ds.categories || '').split(',').filter(Boolean).join(',');
+          const base = '{{ url_for('search') }}';
+          const url = base + '?q=' + encodeURIComponent(userPrompt) + (categories ? ('&categories=' + encodeURIComponent(categories)) : '');
+          try { window.location.href = url; } catch (_) {}
+          return;
+        }
+        catch (_) { return; }
       }
 
       // Disable input & send to prevent duplicate submissions
@@ -507,8 +637,11 @@
 
         aiOut.hidden = false;
       } catch (err) {
-        aiOut.textContent = 'Error contacting AI service.';
-        aiOut.hidden = false;
+        try { if (typingEl && typingEl.parentNode) { typingEl.parentNode.removeChild(typingEl); } } catch (_) { /* no-op */ }
+        typingEl = null;
+        // Show a high-contrast, dismissible error toast instead of plain text
+        showAiErrorToast('Error contacting AI service.');
+        aiOut.hidden = true;
       } finally {
         aiStatus.textContent = '';
         // Re-enable controls
