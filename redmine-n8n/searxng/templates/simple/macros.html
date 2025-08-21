@@ -35,7 +35,7 @@
     {{ result_link(result.url, result.title|safe) }}
     {% if get_setting('ui.allow_musairesult_iframes') %}
     <button type="button" class="musai-open-iframe" data-musai-open="1" data-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay">
-      <img class="musai-inline-icon" src="/branding/img/logo_musai_symbol.png" alt="Musai">
+      <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
     </button>
     {% endif %}
   </h3>

@@ -5,12 +5,12 @@
     <div class="title"><h1>MusaiSearch</h1></div>
     <div id="default_search_prompt" class="default-search-prompt" style="display:none" role="region" aria-label="Default search engine prompt">
         <div class="prompt-body">
+            <button id="dismissPrompt" class="prompt-close" aria-label="{{ _('Dismiss') }}" title="{{ _('Dismiss') }}">×</button>
             <div class="prompt-title"><strong>{{ _('Make MusaiSearch your default search engine') }}</strong></div>
             <div class="prompt-subtitle">{{ _('Quick access from your address bar, with privacy-first results.') }}</div>
             <div class="prompt-actions">
                 <button id="addSearchBtn" class="btn-primary">{{ _('Add to browser') }}</button>
                 <a href="#" id="instructionsLink" class="link-muted">{{ _('How to set as default') }}</a>
-                <button id="dismissPrompt" class="btn-ghost" aria-label="{{ _('Dismiss') }}">{{ _('Dismiss') }}</button>
             </div>
             <div id="instructionsPanel" class="instructions" style="display:none">
                 <div class="instructions-inner">
@@ -31,11 +31,17 @@
 </div>
 <style>
     .default-search-prompt {
-        margin: 12px 0 18px;
-        padding: 12px;
+        position: fixed;
+        top: 68px; /* keep clear of the top links */
+        right: 12px;
+        z-index: 900;
+        width: 360px;
+        max-width: calc(100vw - 24px);
+        padding: 12px 14px 12px 12px;
         border-radius: 12px;
         border: 1px solid var(--musai-primary);
         background: rgba(46,50,66,.6);
+        box-shadow: 0 6px 28px rgba(0,0,0,.35);
     }
     html.theme-light .default-search-prompt,
     html.theme-auto.est-light .default-search-prompt {
@@ -66,18 +72,24 @@
     .default-search-prompt .btn-primary:hover {
         filter: brightness(1.1);
     }
-    .default-search-prompt .btn-ghost {
+    .default-search-prompt .prompt-close {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 0;
         background: transparent;
         color: var(--musai-muted);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 10px;
-        padding: 8px 12px;
         cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
     }
-    html.theme-light .default-search-prompt .btn-ghost,
-    html.theme-auto.est-light .default-search-prompt .btn-ghost {
-        border-color: rgba(0,0,0,0.12);
-    }
+    .default-search-prompt .prompt-close:hover { color: var(--musai-text); background: rgba(255,255,255,0.08); }
     .default-search-prompt .link-muted {
         color: var(--musai-muted);
         text-decoration: underline;
@@ -96,7 +108,12 @@
     }
     @media (max-width: 640px)
     {
-        .default-search-prompt { margin: 10px 0 14px; }
+        .default-search-prompt {
+            top: 8px;
+            right: 8px;
+            width: calc(100vw - 16px);
+            max-width: none;
+        }
     }
 </style>
 <script>

@@ -149,6 +149,22 @@
     document.documentElement.classList.add('js');
   </script>
   <script>
+    (function detectInIframe()
+    {
+      try
+      {
+        if (window.top !== window.self)
+        {
+          document.documentElement.classList.add('in-iframe');
+        }
+      }
+      catch (e)
+      {
+        document.documentElement.classList.add('in-iframe');
+      }
+    })();
+  </script>
+  <script>
     (function applyEstAutoTheme()
     {
       try
@@ -404,6 +420,11 @@
     #ai_chat.collapsed {
       padding: 6px 10px;
       gap: 8px;
+      white-space: nowrap;
+    }
+    /* When embedded inside an iframe, collapse to minimal intrinsic width */
+    html.in-iframe #ai_chat.collapsed {
+      width: auto;
     }
     #ai_chat.collapsed form,
     #ai_chat.collapsed #ai_chat_output {
@@ -636,6 +657,11 @@
       /* Larger touch targets and readable text to avoid auto-zoom */
       #ai_chat input[type="text"] { height: 44px; font-size: 16px; }
       #ai_chat #ai_chat_send { height: 44px; width: 48px; font-size: 18px; }
+      #ai_chat .ai-toggle { height: 44px; width: 48px; font-size: 18px; }
+      /* When collapsed on small screens, tighten spacing to fit the label neatly */
+      #ai_chat.collapsed { padding: 4px 8px; gap: 6px; }
+      /* Inside an iframe, keep collapsed bar to intrinsic width */
+      html.in-iframe #ai_chat.collapsed { width: auto; }
 
       /* Ensure output bubble fits and breathes on small screens */
       #ai_chat_output { max-width: min(92vw, 560px); right: 8px; }
@@ -731,12 +757,11 @@
   <div id="musaiOverlay" aria-hidden="true" data-origin-id="">
     <div id="musaiOverlayTopbar">
       <a class="musai-logo" href="https://search.codemusic.ca" title="Back to MusaiSearch">
-        <img src="/branding/img/logo_musai_symbol.png" alt="Musai">
+        <img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
         <span>Musai</span>
       </a>
       <div class="toolbar-spacer"></div>
-      <button type="button" id="musaiOverlayReturn" title="Return to results">Return</button>
-      <button type="button" id="musaiOverlayClose" title="Close">Close</button>
+      <button type="button" id="musaiOverlayCloseReturn" title="Close and return to results">Close &amp; Return</button>
     </div>
     <iframe id="musaiOverlayFrame" src="about:blank" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
   </div>
@@ -829,20 +854,24 @@
           return;
         }
         var frame = document.getElementById('musaiOverlayFrame');
-        var btnClose = document.getElementById('musaiOverlayClose');
-        var btnReturn = document.getElementById('musaiOverlayReturn');
+        var btnCloseReturn = document.getElementById('musaiOverlayCloseReturn');
 
+        var errorDialog = document.querySelector('.dialog-error');
         var openOverlay = function(url, originId)
         {
           overlay.setAttribute('aria-hidden', 'false');
           if (originId) { overlay.dataset.originId = originId; }
           try { frame.src = url; } catch (_) { frame.src = 'about:blank'; }
+          // Suppress any page-level error dialog so its close (×) does not float above the iframe
+          if (errorDialog) { errorDialog.style.display = 'none'; }
           // Ensure AI dock remains visible; content padding already accounts for it
         };
         var closeOverlay = function()
         {
           overlay.setAttribute('aria-hidden', 'true');
           try { frame.src = 'about:blank'; } catch (_) {}
+          // Restore error dialog visibility when leaving overlay
+          if (errorDialog) { errorDialog.style.display = ''; }
         };
 
         document.addEventListener('click', function(e)
@@ -855,11 +884,7 @@
           if (url) { openOverlay(url, originId); }
         });
 
-        btnClose && btnClose.addEventListener('click', function()
-        {
-          closeOverlay();
-        });
-        btnReturn && btnReturn.addEventListener('click', function()
+        var performCloseReturn = function()
         {
           var originId = overlay.dataset.originId || '';
           closeOverlay();
@@ -871,7 +896,8 @@
               el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }
-        });
+        };
+        btnCloseReturn && btnCloseReturn.addEventListener('click', performCloseReturn);
 
         // ESC closes overlay
         document.addEventListener('keydown', function(e)
@@ -879,7 +905,7 @@
           if (overlay.getAttribute('aria-hidden') === 'false' && (e.key === 'Escape' || e.keyCode === 27))
           {
             e.preventDefault();
-            closeOverlay();
+            performCloseReturn();
           }
         });
 

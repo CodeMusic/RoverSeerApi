@@ -192,7 +192,7 @@
         : '';
       const combinedQuery = contextBlock ? (contextBlock + '\n\n' + userPrompt) : userPrompt;
 
-      // If overlay is open, include that URL explicitly
+      // If overlay is open, capture that URL to send as a dedicated param
       var overlayUrl = '';
       try { overlayUrl = (window.musaiOverlayAPI && window.musaiOverlayAPI.isOpen()) ? (window.musaiOverlayAPI.currentUrl() || '') : ''; } catch (_) {}
 
@@ -200,6 +200,7 @@
         sessionId: sessionId,
         query: combinedQuery,
         action: 'webhookChat',
+        url: overlayUrl,
         meta: JSON.stringify({ search: {
           q: ds.q || '',
           selected_categories: (ds.categories || '').split(',').filter(Boolean),
@@ -207,7 +208,7 @@
           time_range: ds.timeRange || '',
           language: ds.language || '',
           safesearch: ds.safesearch || ''
-        }, contextResults: contextResults, overlayUrl: overlayUrl })
+        }, contextResults: contextResults })
       };
 
       try {
