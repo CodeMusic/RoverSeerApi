@@ -2,7 +2,9 @@
 {% from 'simple/icons.html' import icon_big %}
 {% block content %}
 <div class="index">
-    <div class="title"><h1>MusaiSearch</h1></div>
+    <div class="title_logo">
+        <img src="{{ url_for('static', filename='img/searxng.png') }}" alt="MusaiSearch">
+    </div>
     <div id="default_search_prompt" class="default-search-prompt" style="display:none" role="region" aria-label="Default search engine prompt">
         <div class="prompt-body">
             <button id="dismissPrompt" class="prompt-close" aria-label="{{ _('Dismiss') }}" title="{{ _('Dismiss') }}">×</button>
@@ -30,6 +32,22 @@
     {% include 'simple/simple_search.html' %}
 </div>
 <style>
+    .index .title_logo
+    {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 4rem auto;
+        min-height: 4rem;
+    }
+
+    .index .title_logo img
+    {
+        width: 80%;
+        height: auto;
+        max-width: 720px;
+    }
+
     .default-search-prompt {
         position: fixed;
         top: 68px; /* keep clear of the top links */

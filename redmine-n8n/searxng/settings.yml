@@ -91,7 +91,7 @@ server:
   limiter: false
   # enable features designed only for public instances.
   # Is overwritten by ${SEARXNG_PUBLIC_INSTANCE}
-  public_instance: false
+  public_instance: true
 
   # If your instance owns a /etc/searxng/settings.yml file, then set the following
   # values there.
@@ -436,13 +436,13 @@ engines:
     shortcut: ans
     disabled: true
 
-  # - name: annas articles
-  #   engine: annas_archive
-  #   shortcut: aaa
-  #   # https://docs.searxng.org/dev/engines/online/annas_archive.html
-  #   aa_content: 'magazine' # book_fiction, book_unknown, book_nonfiction, book_comic
-  #   aa_ext: 'pdf'  # pdf, epub, ..
-  #   aa_sort: oldest'  # newest, oldest, largest, smallest
+  - name: annas articles
+    engine: annas_archive
+    shortcut: aaa
+    # https://docs.searxng.org/dev/engines/online/annas_archive.html
+    aa_content: 'magazine' # book_fiction, book_unknown, book_nonfiction, book_comic
+    aa_ext: 'pdf'  # pdf, epub, ..
+    aa_sort: oldest'  # newest, oldest, largest, smallest
 
   - name: apk mirror
     engine: apkmirror
