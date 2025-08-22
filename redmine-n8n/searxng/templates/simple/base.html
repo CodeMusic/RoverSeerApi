@@ -1697,5 +1697,31 @@
       catch (e) { /* no-op */ }
     })();
   </script>
+  <script>
+    (function guardMusaiOverlayAndAIDock()
+    {
+      try
+      {
+        var overlay = document.getElementById('musaiOverlay');
+        var html = document.documentElement;
+        if (!overlay || overlay.getAttribute('aria-hidden') !== 'false')
+        {
+          try { html.classList.remove('musai-overlay-open'); } catch (_) { /* no-op */ }
+        }
+      }
+      catch (_) { /* no-op */ }
+      try
+      {
+        var ai = document.getElementById('ai_chat');
+        if (!ai) { return; }
+        var display = (window.getComputedStyle ? window.getComputedStyle(ai).display : ai.style.display) || '';
+        if (display === 'none')
+        {
+          ai.style.display = 'flex';
+        }
+      }
+      catch (_) { /* no-op */ }
+    })();
+  </script>
 </body>
 </html>
