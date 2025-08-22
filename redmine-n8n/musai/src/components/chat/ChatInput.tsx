@@ -24,6 +24,10 @@ interface ChatInputProps {
   prefixText?: string;
   /** Whether to show the controls row (stream/effects). Defaults to true */
   showControls?: boolean;
+  /** Enable/disable Perspective Thinking (POV) mode */
+  perspectiveEnabled?: boolean;
+  /** Toggle handler for Perspective Thinking (POV) */
+  onTogglePerspective?: (enabled: boolean) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -37,7 +41,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder,
   theme,
   prefixText,
-  showControls = true
+  showControls = true,
+  perspectiveEnabled = false,
+  onTogglePerspective
 }) => {
   const [input, setInput] = useState('');
   const [selectedMood, setSelectedMood] = useState<string>('');
@@ -129,7 +135,36 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {/* Controls Row */}
       {showControls && (
         <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
-          <div className="hidden sm:block" />
+          {/* POV toggle (Quick vs Perspective Thinking) */}
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            <div className="inline-flex rounded-md border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => onTogglePerspective && onTogglePerspective(false)}
+                className={cn(
+                  "px-3 py-1 text-xs",
+                  !perspectiveEnabled ? "bg-accent text-accent-foreground" : "bg-background"
+                )}
+                aria-pressed={!perspectiveEnabled}
+                aria-label="Quick mode"
+              >
+                Quick
+              </button>
+              <button
+                type="button"
+                onClick={() => onTogglePerspective && onTogglePerspective(true)}
+                className={cn(
+                  "px-3 py-1 text-xs border-l",
+                  perspectiveEnabled ? "bg-accent text-accent-foreground" : "bg-background"
+                )}
+                aria-pressed={perspectiveEnabled}
+                aria-label="Perspective Thinking mode"
+              >
+                Perspective Thinking
+              </button>
+            </div>
+            <span className="hidden sm:inline text-muted-foreground">POV</span>
+          </div>
           <div className="inline-flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-end">
             <label className="inline-flex items-center gap-2 whitespace-nowrap">
               <span>Stream</span>

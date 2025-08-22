@@ -1151,6 +1151,10 @@
       display: none !important;
     }
   </style>
+  <style>
+    /* Home page: dock AI chat to the bottom edge of the viewport */
+    body.index_endpoint #ai_chat { bottom: calc(0px + env(safe-area-inset-bottom)); }
+  </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
   <main id="main_{{  self._TemplateReference__context.name|replace("simple/", "")|replace(".html", "") }}" class="{{body_class}}">
@@ -1752,14 +1756,21 @@
             // Loading succeeded (at least at the browser level); cancel fallback
             try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
             loadCount += 1;
-            // Hide loading veil after first successful load
-            try {
-              if (!initialLoadDone) { overlay.removeAttribute('data-loading'); }
-            } catch (_) { /* no-op */ }
+            // Determine current iframe src
+            var srcNow = (frame && frame.src) || '';
+            var isBlank = !srcNow || srcNow === 'about:blank';
+            // Hide loading veil only after the first non-blank load
+            try
+            {
+              if (!initialLoadDone && !isBlank)
+              {
+                overlay.removeAttribute('data-loading');
+              }
+            }
+            catch (_) { /* no-op */ }
             // If the loaded page is a Morty URL, attempt to hide Morty UI chrome inside the iframe
             try
             {
-              var srcNow = (frame && frame.src) || '';
               if (isMortyUrl(srcNow))
               {
                 try
@@ -1814,8 +1825,12 @@
             try { reflectProxyState(lastKnownUrl || (frame && frame.src) || ''); } catch (_) { /* no-op */ }
             if (!initialLoadDone)
             {
-              initialLoadDone = true;
-              return;
+              // Consider initial load complete only once a real (non-blank) URL has loaded
+              if (!isBlank)
+              {
+                initialLoadDone = true;
+                return;
+              }
             }
             // Any subsequent load implies navigation away from the original page
             try

@@ -85,6 +85,25 @@ export const useMessageSender = (
       return `${N8N_ENDPOINTS.BASE_URL}${wantStream ? N8N_ENDPOINTS.CHAT.SEND_MESSAGE_STREAM : N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
     })();
 
+    // Append perspective=true as a query param if POV is enabled
+    const finalPostUrl = (() => {
+      try {
+        const enablePerspective = (window as any).__musai_perspective_enabled === true;
+        const url = new URL(chatPostUrl);
+        if (enablePerspective) {
+          url.searchParams.set('perspective', 'true');
+        }
+        return url.toString();
+      } catch {
+        // Fallback if URL constructor fails: append manually if needed
+        const enablePerspective = (window as any).__musai_perspective_enabled === true;
+        if (enablePerspective) {
+          return chatPostUrl + (chatPostUrl.includes('?') ? '&' : '?') + 'perspective=true';
+        }
+        return chatPostUrl;
+      }
+    })();
+
     let retryCount = 0;
 
     while (retryCount <= MAX_RETRIES) {
@@ -129,7 +148,7 @@ export const useMessageSender = (
 
         const streamToken = `stream-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const response = await queuedFetch(
-          chatPostUrl,
+          finalPostUrl,
           {
             method: "POST",
             headers: {
@@ -141,9 +160,13 @@ export const useMessageSender = (
               sessionId: buildThreadSessionId(sessionId),
               // Send original full text (with mood tag if present) to backend so workflows can parse it
               query: input,
+              // Mirror POV flag at top-level for workflows that inspect body directly
+              ...( (window as any).__musai_perspective_enabled === true ? { perspective: 'true' } : {} ),
               params: {
                 module: MUSAI_MODULES.CHAT,
                 debug: true,
+                // Duplicate perspective flag into body for workflows expecting it in payload
+                perspective: (window as any).__musai_perspective_enabled === true ? 'true' : undefined,
                 ...(fileData && {
                   data: fileData.data,
                   mimeType: fileData.mimeType,

@@ -100,6 +100,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   } | null>(null);
   const [streamEnabled, setStreamEnabled] = useState<boolean>(true);
   const [effectsEnabled, setEffectsEnabled] = useState<boolean>(true);
+  const [perspectiveEnabled, setPerspectiveEnabled] = useState<boolean>(() => {
+    try { return (window as any).__musai_perspective_enabled === true; } catch { return false; }
+  });
 
   const theme = getChatTheme(module);
   const { processAIResponse } = useEmotionEffects();
@@ -248,6 +251,11 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             theme={theme}
             prefixText={prefixText}
             showControls={showControls}
+            perspectiveEnabled={perspectiveEnabled}
+            onTogglePerspective={(enabled) => {
+              setPerspectiveEnabled(enabled);
+              try { (window as any).__musai_perspective_enabled = enabled; } catch {}
+            }}
           />
         </div>
       )}
