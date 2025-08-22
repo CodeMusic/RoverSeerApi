@@ -71,6 +71,8 @@
       padding: calc(8px + env(safe-area-inset-top)) 12px 8px 12px;
       background: var(--musai-bg-2);
       border-bottom: 1px solid var(--musai-primary);
+      position: relative;
+      z-index: 2; /* keep above loading veil */
     }
     #musaiOverlayTopbar .musai-logo {
       display: inline-flex;
@@ -81,6 +83,31 @@
       font-weight: 600;
     }
     #musaiOverlayTopbar .musai-logo img { width: 18px; height: 18px; }
+    /* Gradient wordmark for MusaiSearch in overlay */
+    #musaiOverlayTopbar .musai-logo .wordmark
+    {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 2px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+    #musaiOverlayTopbar .musai-logo .wordmark .musai
+    {
+      background: linear-gradient(90deg, #0ea5a3 0%, #22c55e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+    #musaiOverlayTopbar .musai-logo .wordmark .search
+    {
+      background: linear-gradient(90deg, #f59e0b 0%, #84cc16 60%, #22c55e 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
     #musaiOverlayTopbar form.musai-search {
       display: flex;
       align-items: center;
@@ -122,6 +149,23 @@
       flex: 1;
       border: 0;
       width: 100%;
+    }
+    /* Mystical loading veil shown while iframe is fetching */
+    #musaiOverlayLoading {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 50% 40%, rgba(107,91,149,.18), rgba(30,32,48,.88));
+      pointer-events: none; /* keep toolbar interactive */
+      z-index: 1; /* above iframe */
+    }
+    #musaiOverlay[data-loading="true"] #musaiOverlayLoading { display: flex; }
+    /* Harmonize bubble colors over the veil */
+    #musaiOverlayLoading .ai-typing-bubble {
+      background: rgba(107,91,149,.18);
+      border-color: rgba(107,91,149,.45);
     }
   </style>
   <script>
@@ -387,12 +431,47 @@
       border: 1px solid var(--musai-primary);
       box-shadow: 0 4px 24px rgba(0,0,0,.35);
       border-radius: 14px;
+      /* Layout for input, clear affordance, and submit button */
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      column-gap: 8px;
+      padding: 6px 8px;
     }
     @media (prefers-color-scheme: light) { html.theme-auto .search_box { background: rgba(255,255,255,.9); } }
     html.theme-light .search_box { background: rgba(255,255,255,.9); }
     /* Use theme-aware input text color to ensure readability on light/dark */
     #q { color: var(--color-search-font); }
     #q::placeholder { color: #aab0c8; opacity: .9; }
+    /* Room for the clear affordance when inline */
+    #q
+    {
+      width: 100%;
+      min-width: 0;
+    }
+    /* Clear button positioning and affordance */
+    #clear_search
+    {
+      background: transparent;
+      color: var(--musai-muted);
+      border: 0;
+      padding: 2px 6px;
+      font-size: 18px;
+      line-height: 1;
+      border-radius: 8px;
+      cursor: pointer;
+      opacity: .9;
+      align-self: center;
+    }
+    #clear_search:hover { color: var(--musai-text); background: rgba(255,255,255,0.06); opacity: 1; }
+    #clear_search.empty
+    {
+      width: 0;
+      padding: 0;
+      margin: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
     /* Prevent iOS Safari auto-zoom on focus */
     @media (max-width: 640px) {
       #q { font-size: 16px; }
@@ -899,7 +978,7 @@
     <div id="musaiOverlayTopbar">
       <a class="musai-logo" href="https://search.codemusic.ca" title="Back to MusaiSearch">
         <img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
-        <span>Musai</span>
+        <span class="wordmark"><span class="musai">Musai</span><span class="search">Search</span></span>
       </a>
       <form id="musaiOverlaySearch" class="musai-search" method="GET" action="{{ url_for('search') }}" role="search">
         <input id="musaiOverlayQ" name="q" type="text" placeholder="{{ _('Search for...') }}" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" dir="auto">
@@ -907,6 +986,15 @@
       </form>
       <div class="toolbar-spacer"></div>
       <button type="button" id="musaiOverlayCloseReturn" title="Close and return to results">Close &amp; Return</button>
+    </div>
+    <div id="musaiOverlayLoading" aria-hidden="true">
+      <div class="ai-typing-bubble mystical-glow">
+        <span class="ai-typing-icon"><img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt=""></span>
+        <span class="ai-typing-label">{{ _('Summoning portal') }}</span>
+        <span class="ai-typing-dot mystical-dots"></span>
+        <span class="ai-typing-dot mystical-dots" style="animation-delay:.2s"></span>
+        <span class="ai-typing-dot mystical-dots" style="animation-delay:.4s"></span>
+      </div>
     </div>
     <iframe id="musaiOverlayFrame" src="about:blank" sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
   </div>
@@ -925,6 +1013,7 @@
         }
         var rootHtml = document.documentElement;
         var frame = document.getElementById('musaiOverlayFrame');
+        var loadingVeil = document.getElementById('musaiOverlayLoading');
         var btnCloseReturn = document.getElementById('musaiOverlayCloseReturn');
         var searchForm = document.getElementById('musaiOverlaySearch');
         var searchInput = document.getElementById('musaiOverlayQ');
@@ -1192,6 +1281,7 @@
         var openOverlay = function(url, originId)
         {
           overlay.setAttribute('aria-hidden', 'false');
+          try { overlay.setAttribute('data-loading', 'true'); } catch (_) { /* no-op */ }
           try { rootHtml && rootHtml.classList.add('musai-overlay-open'); } catch (_) { /* no-op */ }
           if (originId) { overlay.dataset.originId = originId; }
           try { frame.src = 'about:blank'; } catch (_) {}
@@ -1255,6 +1345,7 @@
         var closeOverlay = function()
         {
           overlay.setAttribute('aria-hidden', 'true');
+          try { overlay.removeAttribute('data-loading'); } catch (_) { /* no-op */ }
           try { rootHtml && rootHtml.classList.remove('musai-overlay-open'); } catch (_) { /* no-op */ }
           try { frame.src = 'about:blank'; } catch (_) {}
           // Clear any pending fallback since we're closing
@@ -1295,6 +1386,10 @@
             // Loading succeeded (at least at the browser level); cancel fallback
             try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
             loadCount += 1;
+            // Hide loading veil after first successful load
+            try {
+              if (!initialLoadDone) { overlay.removeAttribute('data-loading'); }
+            } catch (_) { /* no-op */ }
             // If the loaded page is a Morty URL, attempt to hide Morty UI chrome inside the iframe
             try
             {
@@ -1497,6 +1592,46 @@
             try { return lastKnownUrl || ''; }
             catch (_) { return ''; }
           },
+          // Extract salient, symbol-trimmed text from the same-origin iframe document
+          readableText: function(options)
+          {
+            try
+            {
+              var maxChars = (options && options.maxChars) || 2000;
+              // Ensure same-origin access is permitted
+              try { if (!frame || !frame.contentWindow) { return ''; } frame.contentWindow.location.href; } catch (_) { return ''; }
+              var doc = null;
+              try { doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document) || null; } catch (__) { doc = null; }
+              if (!doc || !doc.body) { return ''; }
+              var raw = '';
+              try { raw = (doc.body.innerText || doc.body.textContent || ''); } catch (___) { raw = ''; }
+              if (!raw) { return ''; }
+              // Normalize whitespace early to reduce cognitive load
+              var normalized = raw.replace(/\s+/g, ' ').trim();
+              // Strip non-informational symbols while preserving core punctuation
+              try { normalized = normalized.replace(/[^\p{L}\p{N}\s\.,;:\-\(\)\!\?\'\"]/gu, ' '); } catch (_) { normalized = normalized.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?\'\"]/g, ' '); }
+              normalized = normalized.replace(/\s{2,}/g, ' ').trim();
+              if (maxChars > 0 && normalized.length > maxChars)
+              {
+                normalized = normalized.slice(0, Math.max(0, maxChars - 1)) + '…';
+              }
+              return normalized;
+            }
+            catch (_) { return ''; }
+          },
+          // Build a bracketed context block for AI consumption
+          contextBlock: function(options)
+          {
+            try
+            {
+              var text = this.readableText(options || {});
+              if (!text) { return ''; }
+              var url = '';
+              try { url = lastKnownUrl || (frame && frame.src) || ''; } catch (_) { url = ''; }
+              return '[Current Context:\n' + text + '\nURL: ' + url + '\n]';
+            }
+            catch (_) { return ''; }
+          },
           open: function(url, originId)
           {
             try { openOverlay(url, originId); } catch (_) {}
@@ -1580,12 +1715,20 @@
             var s = url || '';
             if (!s || !isMortyUrl(s)) { return s; }
             var u = new URL(s, window.location.href);
+            // Prefer query-param style first (e.g., /morty/?mortyurl=...)
+            try
+            {
+              var mu = (u.searchParams && u.searchParams.get) ? (u.searchParams.get('mortyurl') || '') : '';
+              if (mu) { return mu; }
+            }
+            catch (_) { /* no-op */ }
+            // Fallback: path-style /morty/https/...
             var path = u.pathname || '';
             var base = mortyPrefixPath || '/morty/';
             var i = path.indexOf(base);
             var suffix = (i >= 0) ? path.slice(i + base.length) : path;
-            if (suffix.indexOf('https/') === 0) { return 'https://' + suffix.slice(6) + (u.search ? '' : ''); }
-            if (suffix.indexOf('http/') === 0) { return 'http://' + suffix.slice(5) + (u.search ? '' : ''); }
+            if (suffix.indexOf('https/') === 0) { return 'https://' + suffix.slice(6); }
+            if (suffix.indexOf('http/') === 0) { return 'http://' + suffix.slice(5); }
             return s;
           }
           catch (_) { return url; }
@@ -1827,7 +1970,8 @@
           try
           {
             var scope = root || document;
-            var anchors = scope.querySelectorAll('a.proxy-badge');
+            // Process all anchors so media links proxied by server can be unwrapped
+            var anchors = scope.querySelectorAll('a[href]');
             for (var i = 0; i < anchors.length; i++) { upgradeAnchor(anchors[i]); }
             var buttons = scope.querySelectorAll('button.musai-open-iframe');
             for (var j = 0; j < buttons.length; j++) { upgradeButton(buttons[j]); }

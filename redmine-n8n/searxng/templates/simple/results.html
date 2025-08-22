@@ -20,6 +20,8 @@
       <option value="chat" selected>Chat</option>
       <option value="search">Search</option>
     </select>
+    <input id="ai_perspective" type="checkbox" checked aria-label="Perspective Thinking">
+    <label for="ai_perspective" title="Perspective Thinking (POV)">POV</label>
     <textarea id="ai_chat_input" rows="1" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai"></textarea>
     <button id="ai_chat_send" type="submit" title="Send" aria-label="Send">↵</button>
     <small id="ai_chat_status" aria-live="polite"></small>
@@ -38,6 +40,7 @@
     const aiSend = document.getElementById('ai_chat_send');
     const aiToggle = document.getElementById('ai_chat_toggle');
     const aiMode = document.getElementById('ai_mode');
+    const aiPerspective = document.getElementById('ai_perspective');
     const rootHtml = document.documentElement;
     const collapseStorageKey = 'musai_ai_chat_collapsed';
     let chatBusy = false;
@@ -314,6 +317,21 @@
       return items;
     }
 
+    // Normalize and strip non-informational symbols for concise context blocks
+    function sanitizeForContext(value)
+    {
+      try
+      {
+        var s = String(value || '');
+        s = s.replace(/\s+/g, ' ').trim();
+        try { s = s.replace(/[^\p{L}\p{N}\s\.,;:\-\(\)\!\?'\"]/gu, ' '); }
+        catch (_) { s = s.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?'\"]/g, ' '); }
+        s = s.replace(/\s{2,}/g, ' ').trim();
+        return s;
+      }
+      catch (_) { return (value || '').toString(); }
+    }
+
     aiForm?.addEventListener('submit', async function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -427,13 +445,59 @@
       const ds = aiSection?.dataset || {};
       // Build search-contextual payload
       const contextResults = collectTopResultsContext(5);
-      const contextBlock = contextResults.length
-        ? ('[ascontext]\n' + contextResults.map(function (r, idx)
+
+      // If the overlay iframe is same-origin, extract a readable text context
+      let overlayContextBlock = '';
+      try
+      {
+        if (window.musaiOverlayAPI && typeof window.musaiOverlayAPI.isOpen === 'function' && window.musaiOverlayAPI.isOpen())
+        {
+          if (typeof window.musaiOverlayAPI.contextBlock === 'function')
           {
-            return (idx + 1) + ') ' + (r.title || r.url || 'Untitled') + (r.url ? (' — ' + r.url) : '') + (r.snippet ? ('\n   ' + r.snippet) : '');
-          }).join('\n'))
-        : '';
-      const combinedQuery = contextBlock ? (contextBlock + '\n\n' + userPrompt) : userPrompt;
+            overlayContextBlock = window.musaiOverlayAPI.contextBlock({ maxChars: 2000 }) || '';
+          }
+        }
+      }
+      catch (_) { /* no-op */ }
+
+      // Build a labeled context block for search results; label as previous when overlay is active
+      let resultsBlock = '';
+      try
+      {
+        if (contextResults && contextResults.length)
+        {
+          const lines = contextResults.map(function (r, idx)
+          {
+            const title = sanitizeForContext(r.title || r.url || 'Untitled');
+            const snippet = sanitizeForContext(r.snippet || '');
+            const url = (r.url || '').trim();
+            return (idx + 1) + ') ' + title + (url ? (' — ' + url) : '') + (snippet ? ('\n   ' + snippet) : '');
+          }).join('\n');
+          if (overlayContextBlock)
+          {
+            resultsBlock = '[Previous User Search Results Context:\n' + lines + '\n]';
+          }
+          else
+          {
+            resultsBlock = '[User Search Results Context:\n' + lines + '\n]';
+          }
+        }
+      }
+      catch (_) { /* no-op */ }
+
+      let combinedQuery = userPrompt;
+      if (resultsBlock && overlayContextBlock)
+      {
+        combinedQuery = resultsBlock + '\n\n' + overlayContextBlock + '\n\n' + userPrompt;
+      }
+      else if (overlayContextBlock)
+      {
+        combinedQuery = overlayContextBlock + '\n\n' + userPrompt;
+      }
+      else if (resultsBlock)
+      {
+        combinedQuery = resultsBlock + '\n\n' + userPrompt;
+      }
 
       // Detect if userPrompt looks like a direct URL; used when overlay is closed
       function inferUrlFromPrompt(prompt)
@@ -504,6 +568,11 @@
         }, contextResults: contextResults, overlay: overlayState })
       };
 
+      // Read POV toggle and attach as perspective=true/false
+      const povEnabled = !!(aiPerspective && aiPerspective.checked);
+      const povParam = povEnabled ? 'true' : 'false';
+      try { payload.perspective = povParam; } catch (_) { /* no-op */ }
+
       try {
         // Add last_known_url as an explicit parameter on the webhook URL
         let lastKnownForParam = '';
@@ -513,7 +582,10 @@
         }
         catch (_) { /* no-op */ }
         const webhookBase = 'https://n8n.codemusic.ca/webhook/chat/message';
-        const webhookUrl = webhookBase + (lastKnownForParam ? ('?url=' + encodeURIComponent(lastKnownForParam)) : '');
+        const qsParts = [];
+        if (lastKnownForParam) { qsParts.push('url=' + encodeURIComponent(lastKnownForParam)); }
+        qsParts.push('perspective=' + povParam);
+        const webhookUrl = webhookBase + (qsParts.length ? ('?' + qsParts.join('&')) : '');
         const res = await fetch(webhookUrl, {
           method: 'POST',
           headers: Object.assign(
