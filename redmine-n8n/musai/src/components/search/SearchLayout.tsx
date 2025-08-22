@@ -55,7 +55,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const musaiIframeSrc = useMemo(() => {
     try {
       const url = new URL("https://search.codemusic.ca");
-      url.searchParams.set("theme", String(preference));
+      url.searchParams.set("simple_style", String(preference));
       return url.toString();
     } catch {
       return `https://search.codemusic.ca?theme=${encodeURIComponent(String(preference))}`;
