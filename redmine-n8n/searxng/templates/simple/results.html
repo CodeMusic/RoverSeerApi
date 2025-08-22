@@ -324,15 +324,8 @@
       {
         var s = String(value || '');
         s = s.replace(/\s+/g, ' ').trim();
-        try
-        {
-          var unicodeClean = new RegExp("[^\\\\p{L}\\\\p{N}\\\\s\\\\.,;:\\\-\\\\(\\\\)\\\\!\\\\?\\\\'\\\\\"]","gu");
-          s = s.replace(unicodeClean, ' ');
-        }
-        catch (_)
-        {
-          s = s.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?'\"]/g, ' ');
-        }
+        try { s = s.replace(/[^\p{L}\p{N}\s\.,;:\-\(\)\!\?'\"]/gu, ' '); }
+        catch (_) { s = s.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?'\"]/g, ' '); }
         s = s.replace(/\s{2,}/g, ' ').trim();
         return s;
       }
