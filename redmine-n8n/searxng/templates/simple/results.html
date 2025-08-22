@@ -12,7 +12,7 @@
 {% block content %}
 {% include 'simple/search.html' %}
 
-<section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}">
+<section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}" data-logo="{{ url_for('static', filename='img/logo_musai_symbol.png') }}">
   <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
   <span class="ai-brand" aria-hidden="true">Musai</span>
   <form id="ai_chat_form" aria-label="Ask Musai..." action="javascript:void(0)">
@@ -92,9 +92,6 @@
     {% if not results and not answers %}
         {% include 'simple/messages/no_results.html' %}
     {% endif %}
-    </div>
-    <div id="backToTop">
-      <a href="#" aria-label="{{ _('Back to top') }}">{{ icon_small('navigate-up') }}</a>
     </div>
     {% if paging %}
     <nav id="pagination" role="navigation">

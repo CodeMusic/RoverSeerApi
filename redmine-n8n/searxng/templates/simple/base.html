@@ -692,6 +692,8 @@
       padding: 6px 10px;
       gap: 8px;
       white-space: nowrap;
+      /* Shrink the dock to its intrinsic content width when collapsed */
+      width: auto;
     }
     /* When embedded inside an iframe, collapse to minimal intrinsic width */
     html.in-iframe #ai_chat.collapsed {
@@ -930,9 +932,10 @@
       background: #7c3aed;
       color: #ffffff;
     }
-    /* Show the Perspective header only when collapsed */
+    /* Show the Perspective header when either collapse mode is active */
     .ai-pov-toggle.violet { display: none; }
-    html.ai-chat-collapsed .ai-pov-toggle.violet { display: inline-flex; }
+    html.ai-chat-collapsed .ai-pov-toggle.violet,
+    html.ai-chat-output-collapsed .ai-pov-toggle.violet { display: inline-flex; }
     .ai-pov-toggle.violet.active {
       background: #6d28d9;
       box-shadow: inset 0 0 0 1px #4c1d95;
@@ -962,8 +965,12 @@
     }
 
     /* Collapsible AI response bubble behavior when clicking outside */
-    /* When collapsed, keep the output container visible but reduce it to header-only */
-    html.ai-chat-collapsed #ai_chat_output {
+    /* Two collapse modes:
+       - ai-chat-collapsed: whole toolbar shrinks (via toggle)
+       - ai-chat-output-collapsed: only the response bubble collapses to header
+    */
+    html.ai-chat-collapsed #ai_chat_output,
+    html.ai-chat-output-collapsed #ai_chat_output {
       background: transparent;
       border: 0;
       box-shadow: none;
@@ -972,10 +979,13 @@
       overflow: visible;
     }
     html.ai-chat-collapsed #ai_chat_output .ai-main-bubble,
-    html.ai-chat-collapsed #ai_chat_output .ai-pov-panel {
+    html.ai-chat-collapsed #ai_chat_output .ai-pov-panel,
+    html.ai-chat-output-collapsed #ai_chat_output .ai-main-bubble,
+    html.ai-chat-output-collapsed #ai_chat_output .ai-pov-panel {
       display: none !important;
     }
-    html.ai-chat-collapsed #ai_chat_output .ai-pov-toggle-group {
+    html.ai-chat-collapsed #ai_chat_output .ai-pov-toggle-group,
+    html.ai-chat-output-collapsed #ai_chat_output .ai-pov-toggle-group {
       margin: 0;
     }
     /* Mobile refinements for iPhone widths */
@@ -996,6 +1006,8 @@
       #ai_chat .ai-toggle { height: 44px; width: 48px; font-size: 18px; }
       /* When collapsed on small screens, tighten spacing to fit the label neatly */
       #ai_chat.collapsed { padding: 4px 8px; gap: 6px; }
+      /* On mobile, also force intrinsic width so the bar doesn't span full width */
+      #ai_chat.collapsed { width: auto; }
       /* Inside an iframe, keep collapsed bar to intrinsic width */
       html.in-iframe #ai_chat.collapsed { width: auto; }
 
@@ -1715,7 +1727,7 @@
           });
         }
 
-        // Guard navigation via logo when AI busy
+        // Guard navigation via logo when AI busy: return & exit instead of leaving
         if (logoLink)
         {
           logoLink.addEventListener('click', function(e)
@@ -1724,12 +1736,11 @@
             {
               if (window.musaiAI && typeof window.musaiAI.isBusy === 'function' && window.musaiAI.isBusy())
               {
-                var proceed = window.confirm('Musai is thinking. Navigating home will cancel the response. Continue?');
-                if (!proceed)
-                {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
+                e.preventDefault();
+                e.stopPropagation();
+                // Follow the same path as the Close & Return button
+                try { performCloseReturn(); } catch (_) { /* no-op */ }
+                return;
               }
             }
             catch (_) { /* no-op */ }

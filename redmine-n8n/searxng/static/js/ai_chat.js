@@ -26,12 +26,15 @@
     var aiMode = document.getElementById('ai_mode');
     var aiPerspective = document.getElementById('ai_perspective');
     var aiBackTop = document.getElementById('ai_backToTop');
+    var aiLogo = (aiSection && (aiSection.getAttribute('data-logo') || '').trim()) || '/static/img/logo_musai_symbol.png';
     function expandAI()
     {
       try
       {
         aiSection.classList.remove('collapsed');
         rootHtml.classList.remove('ai-chat-collapsed');
+        // Also clear the output-only collapsed state
+        try { rootHtml.classList.remove('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
         try { localStorage.setItem(collapseStorageKey, '0'); } catch (_) { /* no-op */ }
         if (aiToggle)
         {
@@ -93,6 +96,8 @@
       var willCollapse = !aiSection.classList.contains('collapsed');
       aiSection.classList.toggle('collapsed', willCollapse);
       rootHtml.classList.toggle('ai-chat-collapsed', willCollapse);
+      // Any explicit toggle clears the output-only collapsed header state
+      try { rootHtml.classList.remove('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
       try { localStorage.setItem(collapseStorageKey, willCollapse ? '1' : '0'); } catch (_) { /* no-op */ }
       if (aiToggle)
       {
@@ -102,7 +107,7 @@
       }
     });
 
-    /** Outside click collapses the output bubble */
+    /** Outside click collapses the output bubble to header-only (not the whole bar) */
     (function attachOutsideCollapse()
     {
       try
@@ -118,15 +123,8 @@
           {
             return;
           }
-          aiSection.classList.add('collapsed');
-          rootHtml.classList.add('ai-chat-collapsed');
-          try { localStorage.setItem(collapseStorageKey, '1'); } catch (_) { /* no-op */ }
-          if (aiToggle)
-          {
-            aiToggle.setAttribute('aria-label', 'Expand AI assistant');
-            aiToggle.title = 'Expand';
-            aiToggle.textContent = '▸';
-          }
+          // Collapse only the output bubble to show the POV header
+          try { rootHtml.classList.add('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
         }, true);
       }
       catch (_) { /* no-op */ }
@@ -343,10 +341,13 @@
         ev.preventDefault();
         ev.stopPropagation();
         var mode = (aiMode && aiMode.value) || 'chat';
+        // Ensure any collapsed states are cleared when engaging
+        try { rootHtml.classList.remove('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
         if (aiSection.classList.contains('collapsed'))
         {
           aiSection.classList.remove('collapsed');
           rootHtml.classList.remove('ai-chat-collapsed');
+          try { rootHtml.classList.remove('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
           try { localStorage.setItem(collapseStorageKey, '0'); } catch (_) { /* no-op */ }
           if (aiToggle)
           {
@@ -422,7 +423,7 @@
             typingEl.setAttribute('role', 'status');
             typingEl.setAttribute('aria-live', 'polite');
             typingEl.innerHTML = (
-              '<span class="ai-typing-icon" aria-hidden="true"><img src="/static/img/logo_musai_symbol.png" alt=""></span>' +
+              '<span class="ai-typing-icon" aria-hidden="true"><img src="' + aiLogo + '" alt=""></span>' +
               '<span class="ai-typing-label">Musai is thinking</span>' +
               '<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;">' +
               '  <span class="ai-typing-dot mystical-dots" style="animation-delay:0ms"></span>' +
@@ -686,18 +687,21 @@
             redBtn.addEventListener('click', function()
             {
               if (aiSection.classList.contains('collapsed')) { expandAI(); }
+              try { if (rootHtml.classList.contains('ai-chat-output-collapsed')) { rootHtml.classList.remove('ai-chat-output-collapsed'); } } catch (_) { /* no-op */ }
               if (redBtn.disabled) { return; }
               setActive(!redBtn.classList.contains('active') ? 'red' : null);
             });
             blueBtn.addEventListener('click', function()
             {
               if (aiSection.classList.contains('collapsed')) { expandAI(); }
+              try { if (rootHtml.classList.contains('ai-chat-output-collapsed')) { rootHtml.classList.remove('ai-chat-output-collapsed'); } } catch (_) { /* no-op */ }
               if (blueBtn.disabled) { return; }
               setActive(!blueBtn.classList.contains('active') ? 'blue' : null);
             });
             violetBtn.addEventListener('click', function()
             {
               if (aiSection.classList.contains('collapsed')) { expandAI(); }
+              try { if (rootHtml.classList.contains('ai-chat-output-collapsed')) { rootHtml.classList.remove('ai-chat-output-collapsed'); } } catch (_) { /* no-op */ }
               if (violetBtn.disabled) { return; }
               setActive(!violetBtn.classList.contains('active') ? 'violet' : null);
             });
