@@ -493,6 +493,7 @@
       padding: 8px;
       /* Docked, centered */
       position: fixed;
+      top: auto;
       left: 50%;
       transform: translateX(-50%);
       bottom: calc(30px + env(safe-area-inset-bottom));
@@ -846,6 +847,13 @@
     html.theme-auto.est-dark .search_box { background: rgba(46,50,66,.6); }
     html.theme-auto.est-light #ai_chat { background: rgba(255,255,255,.9); }
     html.theme-auto.est-dark #ai_chat { background: rgba(46,50,74,.9); }
+  </style>
+  <style>
+    /* Hide banner element */
+    #banner
+    {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
