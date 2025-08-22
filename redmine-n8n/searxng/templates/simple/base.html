@@ -930,6 +930,9 @@
       background: #7c3aed;
       color: #ffffff;
     }
+    /* Show the Perspective header only when collapsed */
+    .ai-pov-toggle.violet { display: none; }
+    html.ai-chat-collapsed .ai-pov-toggle.violet { display: inline-flex; }
     .ai-pov-toggle.violet.active {
       background: #6d28d9;
       box-shadow: inset 0 0 0 1px #4c1d95;
@@ -959,8 +962,21 @@
     }
 
     /* Collapsible AI response bubble behavior when clicking outside */
+    /* When collapsed, keep the output container visible but reduce it to header-only */
     html.ai-chat-collapsed #ai_chat_output {
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      padding: 0;
+      max-height: none;
+      overflow: visible;
+    }
+    html.ai-chat-collapsed #ai_chat_output .ai-main-bubble,
+    html.ai-chat-collapsed #ai_chat_output .ai-pov-panel {
       display: none !important;
+    }
+    html.ai-chat-collapsed #ai_chat_output .ai-pov-toggle-group {
+      margin: 0;
     }
     /* Mobile refinements for iPhone widths */
     @media (max-width: 640px) {
@@ -1398,7 +1414,7 @@
               try { showUrlInSearchInput(deMortyUrl(finalUrl || url || '')); } catch (_) { /* no-op */ }
               try
               {
-                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilized.'); overlay && overlay.removeAttribute('data-direct'); }
+                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilizing...'); overlay && overlay.removeAttribute('data-direct'); }
                 else { setLoadingMessage('No portal key provided — DTouring to direct link…'); overlay && overlay.setAttribute('data-direct', 'true'); }
                 reflectProxyState(finalUrl || '');
               }

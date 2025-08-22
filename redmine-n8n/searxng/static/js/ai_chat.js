@@ -26,6 +26,22 @@
     var aiMode = document.getElementById('ai_mode');
     var aiPerspective = document.getElementById('ai_perspective');
     var aiBackTop = document.getElementById('ai_backToTop');
+    function expandAI()
+    {
+      try
+      {
+        aiSection.classList.remove('collapsed');
+        rootHtml.classList.remove('ai-chat-collapsed');
+        try { localStorage.setItem(collapseStorageKey, '0'); } catch (_) { /* no-op */ }
+        if (aiToggle)
+        {
+          aiToggle.setAttribute('aria-label', 'Collapse AI assistant');
+          aiToggle.title = 'Collapse';
+          aiToggle.textContent = '▾';
+        }
+      }
+      catch (_) { /* no-op */ }
+    }
     var rootHtml = document.documentElement;
     var collapseStorageKey = 'musai_ai_chat_collapsed';
     var chatBusy = false;
@@ -196,7 +212,6 @@
           ev.preventDefault();
           if (toast && toast.parentNode) { toast.parentNode.removeChild(toast); }
         });
-        if (!aiSection.style.position) { aiSection.style.position = 'relative'; }
         toast.appendChild(label);
         toast.appendChild(close);
         aiSection.appendChild(toast);
@@ -603,7 +618,6 @@
 
           var main = document.createElement('div');
           main.className = 'ai-main-bubble';
-          main.textContent = responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : '');
 
           var logicalThought = '';
           var creativeThought = '';
@@ -671,16 +685,19 @@
 
             redBtn.addEventListener('click', function()
             {
+              if (aiSection.classList.contains('collapsed')) { expandAI(); }
               if (redBtn.disabled) { return; }
               setActive(!redBtn.classList.contains('active') ? 'red' : null);
             });
             blueBtn.addEventListener('click', function()
             {
+              if (aiSection.classList.contains('collapsed')) { expandAI(); }
               if (blueBtn.disabled) { return; }
               setActive(!blueBtn.classList.contains('active') ? 'blue' : null);
             });
             violetBtn.addEventListener('click', function()
             {
+              if (aiSection.classList.contains('collapsed')) { expandAI(); }
               if (violetBtn.disabled) { return; }
               setActive(!violetBtn.classList.contains('active') ? 'violet' : null);
             });
@@ -691,6 +708,7 @@
               toggles.appendChild(redBtn);
               toggles.appendChild(blueBtn);
               toggles.appendChild(violetBtn);
+              main.textContent = perspectiveThought ? perspectiveThought : (responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : ''));
               aiOut.appendChild(main);
               aiOut.appendChild(redPanel);
               aiOut.appendChild(bluePanel);
