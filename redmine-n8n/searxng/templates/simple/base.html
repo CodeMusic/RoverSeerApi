@@ -95,6 +95,8 @@
       background: #1e2030;
       color: #ececf4;
     }
+    /* Reserve gutter to prevent layout shifts when scrollbar appears/disappears */
+    html { scrollbar-gutter: stable both-edges; }
     html.theme-light,
     html.theme-light body {
       background: #eafaf7;
@@ -150,6 +152,9 @@
       z-index: 980; /* below AI chat (999) but above rest */
       display: none;
       flex-direction: column;
+      /* Prevent outer-page scroll chaining and shifts */
+      overscroll-behavior: contain;
+      overflow: hidden;
     }
     #musaiOverlay[aria-hidden="false"] { display: flex; }
     #musaiOverlayTopbar {
@@ -293,6 +298,8 @@
       flex: 1;
       border: 0;
       width: 100%;
+      display: block; /* avoid inline baseline layout quirks */
+      transform: translateZ(0); /* layer promotion for stability */
     }
     /* When overlay is visible and not loading, give iframe a gentle shimmer */
     #musaiOverlay[aria-hidden="false"]:not([data-loading="true"]) #musaiOverlayFrame
@@ -1330,7 +1337,8 @@
               'footer, .footer, #footer { display: none !important; }',
               '.morty-footer, .morty-bottombar, #morty-bottombar, .morty-banner, .morty-notice, .morty-bottom { display: none !important; }',
               '.fixed-bottom, .sticky-bottom { display: none !important; }',
-              'body { margin-top: 0 !important; margin-bottom: 0 !important; }'
+              'body { margin-top: 0 !important; margin-bottom: 0 !important; }',
+              'html { scrollbar-gutter: stable both-edges; }'
             ].join('\n');
             doc.head.appendChild(style);
           }
