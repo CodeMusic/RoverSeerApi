@@ -324,8 +324,16 @@
       {
         var s = String(value || '');
         s = s.replace(/\s+/g, ' ').trim();
-        try { s = s.replace(/[^\p{L}\p{N}\s\.,;:\-\(\)\!\?'\"]/gu, ' '); }
-        catch (_) { s = s.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?'\"]/g, ' '); }
+        var unicodeStrip = null;
+        try { unicodeStrip = new RegExp("[^\\p{L}\\p{N}\\s\\.,;:\\-\\(\\)\\!\\?\\'\\\"]", "gu"); } catch (_) { unicodeStrip = null; }
+        if (unicodeStrip)
+        {
+          s = s.replace(unicodeStrip, ' ');
+        }
+        else
+        {
+          s = s.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?'\"]/g, ' ');
+        }
         s = s.replace(/\s{2,}/g, ' ').trim();
         return s;
       }

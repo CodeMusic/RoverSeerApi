@@ -136,6 +136,8 @@
       border: 1px solid var(--musai-primary);
       background: rgba(0,0,0,0.15);
       color: var(--musai-text);
+      -webkit-appearance: none;
+      appearance: none;
     }
     #musaiOverlayTopbar form.musai-search button[type="submit"] {
       background: var(--musai-primary);
@@ -147,6 +149,24 @@
       cursor: pointer;
       flex: 0 0 auto;
     }
+    /* Clear button in overlay search/address bar */
+    #musaiOverlayTopbar #musaiOverlayClear {
+      background: transparent;
+      color: var(--musai-muted);
+      border: 0;
+      height: 36px;
+      padding: 0 6px;
+      font-size: 18px;
+      line-height: 1;
+      border-radius: 8px;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+    #musaiOverlayTopbar #musaiOverlayClear:hover { color: var(--musai-text); background: rgba(255,255,255,0.06); }
+    #musaiOverlayTopbar #musaiOverlayClear.hidden { display: none; }
+    /* Neutralize any native clear affordances that may render oddly in iframes */
+    #musaiOverlayTopbar input::-webkit-search-cancel-button { -webkit-appearance: none; }
+    #musaiOverlayTopbar input::-ms-clear { display: none; width: 0; height: 0; }
     /* Portal affordance when iframe is proxied through Morty */
     #musaiOverlayTopbar form.musai-search input[type="text"].is-proxied
     {
@@ -199,6 +219,12 @@
     #musaiOverlayLoading .ai-typing-bubble {
       background: rgba(107,91,149,.18);
       border-color: rgba(107,91,149,.45);
+    }
+    /* When no portal key is provided (direct open), make bubble opaque for readability */
+    #musaiOverlay[data-direct="true"] #musaiOverlayLoading .ai-typing-bubble {
+      background: rgba(10,12,20,1);
+      border-color: rgba(107,91,149,.60);
+      box-shadow: 0 8px 28px rgba(0,0,0,.45);
     }
   </style>
   <script>
@@ -1047,6 +1073,7 @@
       </a>
       <form id="musaiOverlaySearch" class="musai-search" method="GET" action="{{ url_for('search') }}" role="search">
         <input id="musaiOverlayQ" name="q" type="text" placeholder="{{ _('Search for...') }}" autocomplete="off" autocapitalize="none" spellcheck="false" autocorrect="off" dir="auto">
+        <button id="musaiOverlayClear" type="button" title="{{ _('Clear') }}" aria-label="{{ _('Clear') }}">×</button>
         <button id="musaiOverlaySubmit" type="submit" aria-label="{{ _('search') }}">{{ _('Search') }}</button>
       </form>
       <div class="toolbar-spacer"></div>
@@ -1082,6 +1109,7 @@
         var btnCloseReturn = document.getElementById('musaiOverlayCloseReturn');
         var searchForm = document.getElementById('musaiOverlaySearch');
         var searchInput = document.getElementById('musaiOverlayQ');
+        var searchClearBtn = document.getElementById('musaiOverlayClear');
         var logoLink = document.querySelector('#musaiOverlayTopbar .musai-logo');
         // Fallback state to recover if the iframe can't load (X-Frame-Options / CSP)
         var currentTargetUrl = '';
@@ -1116,6 +1144,17 @@
           }
           catch (_) { /* no-op */ }
         };
+        function reflectClearButton()
+        {
+          try
+          {
+            if (!searchInput || !searchClearBtn) { return; }
+            var hasValue = !!(searchInput.value && searchInput.value.length);
+            if (hasValue) { searchClearBtn.classList.remove('hidden'); }
+            else { searchClearBtn.classList.add('hidden'); }
+          }
+          catch (_) { /* no-op */ }
+        }
         var showUrlInSearchInput = function(url)
         {
           try
@@ -1124,6 +1163,7 @@
             var value = '';
             try { value = deMortyUrl(url || '') || url || ''; } catch (_) { value = url || ''; }
             if (value) { searchInput.value = value; }
+            reflectClearButton();
           }
           catch (_) { /* no-op */ }
         };
@@ -1336,6 +1376,7 @@
           navigatedAway = false;
           try { setLoadingMessage('Opening portal…'); } catch (_) { /* no-op */ }
           try { searchInput && searchInput.classList.remove('is-proxied'); } catch (_) { /* no-op */ }
+          try { reflectClearButton(); } catch (_) { /* no-op */ }
           // Clear any previous fallback timer
           try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
           // Suppress any page-level error dialog so its close (×) does not float above the iframe
@@ -1357,8 +1398,8 @@
               try { showUrlInSearchInput(deMortyUrl(finalUrl || url || '')); } catch (_) { /* no-op */ }
               try
               {
-                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilized.'); }
-                else { setLoadingMessage('No portal key provided — DTouring to direct link…'); }
+                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilized.'); overlay && overlay.removeAttribute('data-direct'); }
+                else { setLoadingMessage('No portal key provided — DTouring to direct link…'); overlay && overlay.setAttribute('data-direct', 'true'); }
                 reflectProxyState(finalUrl || '');
               }
               catch (_) { /* no-op */ }
@@ -1393,7 +1434,7 @@
             }
             else
             {
-              try { setLoadingMessage('No portal key provided — DTouring to direct link…'); } catch (_) { /* no-op */ }
+              try { setLoadingMessage('No portal key provided — DTouring to direct link…'); overlay && overlay.setAttribute('data-direct', 'true'); } catch (_) { /* no-op */ }
               loadFinal(candidate || url || '');
             }
           }
@@ -1404,6 +1445,7 @@
         {
           overlay.setAttribute('aria-hidden', 'true');
           try { overlay.removeAttribute('data-loading'); } catch (_) { /* no-op */ }
+          try { overlay.removeAttribute('data-direct'); } catch (_) { /* no-op */ }
           try { rootHtml && rootHtml.classList.remove('musai-overlay-open'); } catch (_) { /* no-op */ }
           try { frame.src = 'about:blank'; } catch (_) {}
           // Clear any pending fallback since we're closing
@@ -1444,6 +1486,27 @@
         };
         btnCloseReturn && btnCloseReturn.addEventListener('click', performCloseReturn);
 
+        // Clear button behavior for overlay search/address field
+        try
+        {
+          if (searchInput)
+          {
+            searchInput.addEventListener('input', function(){ try { reflectClearButton(); } catch (_) {} });
+          }
+          if (searchClearBtn)
+          {
+            searchClearBtn.addEventListener('click', function()
+            {
+              try { searchInput.value = ''; } catch (_) {}
+              try { searchInput.focus(); } catch (_) {}
+              try { reflectClearButton(); } catch (_) {}
+            });
+            // Initialize visibility on first load
+            try { reflectClearButton(); } catch (_) {}
+          }
+        }
+        catch (_) { /* no-op */ }
+
         // Track iframe navigations: same-origin via contentWindow, cross-origin via src
         try {
           frame && frame.addEventListener('load', function()
@@ -1470,7 +1533,7 @@
                     var style = doc.createElement('style');
                     style.textContent = [
                       'header, .header, #header { display: none !important; }',
-                      '.morty-header, .morty-topbar, .morty-toolbar { display: none !important; }',
+                      '.morty-header, .morty-topbar, .morty-toolbar, #mortyheader, #morty-header, #mortyHeader, .mortyheader { display: none !important; }',
                       '#topbar, .topbar, .toolbar { display: none !important; }',
                       // Common Morty/footer/banner selectors observed across deployments
                       'footer, .footer, #footer { display: none !important; }',
@@ -1480,7 +1543,7 @@
                     ].join('\n');
                     doc.head && doc.head.appendChild(style);
                     // Also remove any element that contains the “Morty” label commonly shown by proxies
-                    var maybeHeaders = doc.querySelectorAll('header, .header, #header, .morty-header, .morty-topbar, .morty-toolbar, #topbar, .topbar, .toolbar');
+                    var maybeHeaders = doc.querySelectorAll('header, .header, #header, .morty-header, .morty-topbar, .morty-toolbar, #mortyheader, #morty-header, #mortyHeader, .mortyheader, #topbar, .topbar, .toolbar');
                     for (var i = 0; i < maybeHeaders.length; i++)
                     {
                       var el = maybeHeaders[i];
@@ -1722,7 +1785,7 @@
               {
                 // Construct regex at runtime to avoid parse-time errors in browsers without Unicode property escapes
                 var unicodeStrip;
-                try { unicodeStrip = new RegExp("[^\\\\p{L}\\\\p{N}\\\\s\\\\.,;:\\\\-\\\\(\\\\)\\\\!\\\\?\\\\'\\\\\"]", "gu"); }
+                try { unicodeStrip = new RegExp("[^\\p{L}\\p{N}\\s\\.,;:\\-\\(\\)\\!\\?\\'\\\"]", "gu"); }
                 catch (_) { unicodeStrip = null; }
                 if (unicodeStrip)
                 {
@@ -1774,6 +1837,7 @@
   </script>
   {% endif %}
   <script type="module" src="{{ url_for('static', filename='js/searxng.core.min.js') }}" client_settings="{{ client_settings }}"></script>
+  <script src="{{ url_for('static', filename='js/ai_chat.js') }}" defer></script>
   <script>
     (function ensureMortyLinksAreSigned()
     {
