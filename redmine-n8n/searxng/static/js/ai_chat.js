@@ -27,6 +27,53 @@
     var aiPerspective = document.getElementById('ai_perspective');
     var aiBackTop = document.getElementById('ai_backToTop');
     var aiLogo = (aiSection && (aiSection.getAttribute('data-logo') || '').trim()) || '/static/img/logo_musai_symbol.png';
+    function getPerspectiveValue()
+    {
+      try
+      {
+        return (aiPerspective && aiPerspective.checked) ? 'true' : 'false';
+      }
+      catch (_)
+      {
+        return 'false';
+      }
+    }
+    function buildMusaiChatUrl(baseUrl, extraParams)
+    {
+      try
+      {
+        var url = new URL(baseUrl, window.location.href);
+        var params = url.searchParams;
+        if (extraParams && typeof extraParams === 'object')
+        {
+          Object.keys(extraParams).forEach(function(k)
+          {
+            var v = extraParams[k];
+            if (v !== undefined && v !== null && v !== '')
+            {
+              params.set(k, String(v));
+            }
+          });
+        }
+        params.set('perspective', getPerspectiveValue());
+        url.search = params.toString();
+        return url.toString();
+      }
+      catch (_)
+      {
+        var parts = [];
+        try
+        {
+          if (extraParams && extraParams.url)
+          {
+            parts.push('url=' + encodeURIComponent(extraParams.url));
+          }
+        }
+        catch (__) { /* no-op */ }
+        parts.push('perspective=' + getPerspectiveValue());
+        return baseUrl + (parts.length ? ('?' + parts.join('&')) : '');
+      }
+    }
     function createHideButton()
     {
       try
@@ -178,6 +225,10 @@
       {
         internalNavInProgress = true;
         setTimeout(function() { internalNavInProgress = false; }, 3000);
+      };
+      window.musaiAI.buildChatUrl = function(baseUrl, extraParams)
+      {
+        return buildMusaiChatUrl(baseUrl, extraParams || {});
       };
     }
     catch (_) { /* no-op */ }
@@ -633,8 +684,7 @@
           }, contextResults: contextResults, overlay: overlayState })
         };
 
-        var povEnabled = !!(aiPerspective && aiPerspective.checked);
-        var povParam = povEnabled ? 'true' : 'false';
+        var povParam = getPerspectiveValue();
         try { payload.perspective = povParam; } catch (_) { /* no-op */ }
 
         try
@@ -642,10 +692,10 @@
           var lastKnownForParam = '';
           try { lastKnownForParam = (overlayState && overlayState.lastKnownUrl) || overlayUrl || ''; } catch (_) { /* no-op */ }
           var webhookBase = 'https://n8n.codemusic.ca/webhook/chat/message';
-          var qsParts = [];
-          if (lastKnownForParam) { qsParts.push('url=' + encodeURIComponent(lastKnownForParam)); }
-          qsParts.push('perspective=' + povParam);
-          var webhookUrl = webhookBase + (qsParts.length ? ('?' + qsParts.join('&')) : '');
+          var webhookUrl = buildMusaiChatUrl(
+            webhookBase,
+            lastKnownForParam ? { url: lastKnownForParam } : {}
+          );
           var res = await fetch(webhookUrl,
           {
             method: 'POST',

@@ -85,22 +85,18 @@ export const useMessageSender = (
       return `${N8N_ENDPOINTS.BASE_URL}${wantStream ? N8N_ENDPOINTS.CHAT.SEND_MESSAGE_STREAM : N8N_ENDPOINTS.CHAT.SEND_MESSAGE}`;
     })();
 
-    // Append perspective=true as a query param if POV is enabled
+    // Append perspective=true/false as a query param (always present)
     const finalPostUrl = (() => {
       try {
-        const enablePerspective = (window as any).__musai_perspective_enabled === true;
+        const pov = (window as any).__musai_perspective_enabled === true ? 'true' : 'false';
         const url = new URL(chatPostUrl);
-        if (enablePerspective) {
-          url.searchParams.set('perspective', 'true');
-        }
+        url.searchParams.set('perspective', pov);
         return url.toString();
       } catch {
-        // Fallback if URL constructor fails: append manually if needed
-        const enablePerspective = (window as any).__musai_perspective_enabled === true;
-        if (enablePerspective) {
-          return chatPostUrl + (chatPostUrl.includes('?') ? '&' : '?') + 'perspective=true';
-        }
-        return chatPostUrl;
+        // Fallback if URL constructor fails: append manually
+        const pov = (window as any).__musai_perspective_enabled === true ? 'true' : 'false';
+        const sep = chatPostUrl.includes('?') ? '&' : '?';
+        return chatPostUrl + sep + `perspective=${pov}`;
       }
     })();
 
@@ -137,7 +133,9 @@ export const useMessageSender = (
         const headers: HeadersInit = {
           'Content-Type': 'application/json',
           // Default chat mode uses POV (logic + creative + fusion)
-          'X-Musai-Task-Label': 'chat-bicameral-pov'
+          'X-Musai-Task-Label': 'chat-bicameral-pov',
+          // Always communicate perspective state
+          'X-Musai-Perspective': (window as any).__musai_perspective_enabled === true ? 'true' : 'false'
         };
 
         console.log('Sending message to webhook:', {
@@ -160,13 +158,13 @@ export const useMessageSender = (
               sessionId: buildThreadSessionId(sessionId),
               // Send original full text (with mood tag if present) to backend so workflows can parse it
               query: input,
-              // Mirror POV flag at top-level for workflows that inspect body directly
-              ...( (window as any).__musai_perspective_enabled === true ? { perspective: 'true' } : {} ),
+              // Always mirror POV flag at top-level for workflows that inspect body directly
+              perspective: (window as any).__musai_perspective_enabled === true ? 'true' : 'false',
               params: {
                 module: MUSAI_MODULES.CHAT,
                 debug: true,
                 // Duplicate perspective flag into body for workflows expecting it in payload
-                perspective: (window as any).__musai_perspective_enabled === true ? 'true' : undefined,
+                perspective: (window as any).__musai_perspective_enabled === true ? 'true' : 'false',
                 ...(fileData && {
                   data: fileData.data,
                   mimeType: fileData.mimeType,

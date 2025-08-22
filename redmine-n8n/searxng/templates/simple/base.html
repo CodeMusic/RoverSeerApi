@@ -2421,6 +2421,11 @@
         {
           ai.style.display = 'flex';
         }
+        // Ensure AI dock is expanded and above other layers
+        try { ai.classList.remove('collapsed'); } catch (_) { /* no-op */ }
+        try { document.documentElement.classList.remove('ai-chat-collapsed'); } catch (_) { /* no-op */ }
+        try { localStorage.setItem('musai_ai_chat_collapsed', '0'); } catch (_) { /* no-op */ }
+        try { ai.style.zIndex = '10000'; } catch (_) { /* no-op */ }
       }
       catch (_) { /* no-op */ }
     })();

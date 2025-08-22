@@ -330,6 +330,18 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // POV toggle (Quick vs Perspective Thinking) available pre-chat
+  const [povEnabled, setPovEnabled] = useState<boolean>(() =>
+  {
+    try { return (window as any).__musai_perspective_enabled !== false; }
+    catch { return true; }
+  });
+
+  useEffect(() =>
+  {
+    try { (window as any).__musai_perspective_enabled = povEnabled; }
+    catch {}
+  }, [povEnabled]);
 
   // Announce PreMusai visibility so the base layout can hide the sidebar hamburger
   useEffect(() => {
@@ -795,6 +807,41 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                 </div>
               )}
             </form>
+          )}
+
+          {/* PreMusai POV control for MusaiChat */}
+          {type === 'chat' && (
+            <div className="flex items-center justify-start text-xs text-muted-foreground flex-wrap gap-2">
+              <div className="w-full sm:w-auto flex items-center gap-2">
+                <div className="inline-flex rounded-full border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setPovEnabled(false)}
+                    className={cn(
+                      "px-3 py-1 text-xs",
+                      !povEnabled ? "bg-primary text-primary-foreground" : "bg-background text-foreground/70"
+                    )}
+                    aria-pressed={!povEnabled}
+                    aria-label="Quick mode"
+                  >
+                    Quick
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPovEnabled(true)}
+                    className={cn(
+                      "px-3 py-1 text-xs border-l",
+                      povEnabled ? "bg-primary text-primary-foreground" : "bg-background text-foreground/70"
+                    )}
+                    aria-pressed={povEnabled}
+                    aria-label="Perspective Thinking mode"
+                  >
+                    Perspective Thinking
+                  </button>
+                </div>
+                <span className="hidden sm:inline text-muted-foreground">POV</span>
+              </div>
+            </div>
           )}
 
           {/* Suggestions */}
