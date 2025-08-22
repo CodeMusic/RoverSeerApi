@@ -924,6 +924,9 @@
         var searchForm = document.getElementById('musaiOverlaySearch');
         var searchInput = document.getElementById('musaiOverlayQ');
         var logoLink = document.querySelector('#musaiOverlayTopbar .musai-logo');
+        // Fallback state to recover if the iframe can't load (X-Frame-Options / CSP)
+        var currentTargetUrl = '';
+        var fallbackTimer = null;
         var lastKnownUrl = '';
         var initialOverlayUrl = '';
         var initialLoadDone = false;
@@ -1120,6 +1123,8 @@
           initialLoadDone = false;
           loadCount = 0;
           navigatedAway = false;
+          // Clear any previous fallback timer
+          try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
           // Suppress any page-level error dialog so its close (×) does not float above the iframe
           if (errorDialog) { errorDialog.style.display = 'none'; }
           // Compute proxied + signed URL for Morty (if configured), then load
@@ -1129,8 +1134,28 @@
             var loadFinal = function(finalUrl)
             {
               try { console.debug('[MusaiOverlay] load iframe', { finalUrl: finalUrl, hasHash: /[?&]hash=/.test(finalUrl || '') }); } catch (_) {}
+              // Track the intended target for fallbacks
+              try { currentTargetUrl = finalUrl || url || ''; } catch (_) { currentTargetUrl = finalUrl || ''; }
               try { frame.src = finalUrl || 'about:blank'; } catch (_) { frame.src = 'about:blank'; }
               try { lastKnownUrl = finalUrl || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
+              // If the iframe fails to load (common when a site forbids embedding),
+              // open the URL in a new tab and close the overlay to avoid a blank screen
+              try {
+                if (fallbackTimer) { clearTimeout(fallbackTimer); }
+                fallbackTimer = setTimeout(function()
+                {
+                  try
+                  {
+                    if (overlay.getAttribute('aria-hidden') === 'false' && !initialLoadDone && loadCount === 0)
+                    {
+                      try { window.open(currentTargetUrl || url || finalUrl || '', '_blank', 'noopener'); } catch (_) {}
+                      try { console.warn('[MusaiOverlay] iframe likely blocked; opened in new tab and closed overlay'); } catch (_) {}
+                      try { closeOverlay(); } catch (_) {}
+                    }
+                  }
+                  catch (_) { /* no-op */ }
+                }, 2500);
+              } catch (_) { /* no-op */ }
             };
             if (mortyPrefix && candidate)
             {
@@ -1150,6 +1175,8 @@
           overlay.setAttribute('aria-hidden', 'true');
           try { rootHtml && rootHtml.classList.remove('musai-overlay-open'); } catch (_) { /* no-op */ }
           try { frame.src = 'about:blank'; } catch (_) {}
+          // Clear any pending fallback since we're closing
+          try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
           // Restore error dialog visibility when leaving overlay
           if (errorDialog) { errorDialog.style.display = ''; }
         };
@@ -1183,6 +1210,8 @@
         try {
           frame && frame.addEventListener('load', function()
           {
+            // Loading succeeded (at least at the browser level); cancel fallback
+            try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
             loadCount += 1;
             // Update last known URL when possible
             try { updateLastKnownUrl(); } catch (_) { /* no-op */ }
