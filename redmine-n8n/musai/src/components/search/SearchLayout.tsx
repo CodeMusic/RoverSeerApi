@@ -723,7 +723,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const researchTitleNode = (
     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold pb-2">
       <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-400">Musai</span>
-      <span className="mx-1 text-black dark:text-black animate-pulse">RE</span>
+      <span className="mx-1 text-black dark:text-white animate-pulse">RE</span>
       <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-emerald-500">Search</span>
     </h1>
   );
