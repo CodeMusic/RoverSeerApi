@@ -11,6 +11,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="format-detection" content="telephone=no">
   <meta name="theme-color" content="#1e2030">
+  <script>
+    (function synchronizeThemeFromQuery()
+    {
+      try
+      {
+        var root = document.documentElement;
+        var search = window.location.search || '';
+        var cognitiveThemeParam = null;
+        if (search.length > 1)
+        {
+          var params = new URLSearchParams(search);
+          var raw = params.get('theme');
+          if (raw)
+          {
+            raw = String(raw).toLowerCase();
+            if (raw === 'light' || raw === 'dark' || raw === 'auto' || raw === 'black')
+            {
+              cognitiveThemeParam = raw;
+            }
+          }
+        }
+
+        var memoryThemeKey = 'searxng.theme';
+        var perceivedTheme = cognitiveThemeParam || (function()
+        {
+          try { return localStorage.getItem(memoryThemeKey); }
+          catch (_) { return null; }
+        })();
+
+        if (perceivedTheme)
+        {
+          var cls = root.className || '';
+          cls = cls.replace(/(^|\s)theme-(auto|light|dark|black)(?=\s|$)/, ' ').replace(/\s{2,}/g, ' ').trim();
+          root.className = (cls ? cls + ' ' : '') + 'theme-' + perceivedTheme;
+          try { localStorage.setItem(memoryThemeKey, perceivedTheme); } catch (_) { /* no-op */ }
+
+          var meta = document.querySelector('meta[name="theme-color"]');
+          var color = '#1e2030';
+          if (perceivedTheme === 'light') { color = '#eafaf7'; }
+          else if (perceivedTheme === 'black') { color = '#000000'; }
+          else if (perceivedTheme === 'auto')
+          {
+            var localHour = (new Date()).getHours();
+            var isDark = !(localHour >= 7 && localHour < 19);
+            color = isDark ? '#1e2030' : '#eafaf7';
+          }
+          if (meta) { meta.setAttribute('content', color); }
+          root.style.backgroundColor = color;
+          try { if (document.body) { document.body.style.backgroundColor = color; } } catch (_) { /* no-op */ }
+        }
+      }
+      catch (_) { /* no-op */ }
+    })();
+  </script>
   <style>
     /* Paint-safe fallback to avoid white flash before CSS loads */
     html,
@@ -234,31 +288,23 @@
       {
         var cls = document.documentElement.className || '';
         var isAuto = /(^|\s)theme-auto(\s|$)/.test(cls);
-        var getESTHour = function()
-        {
-          try
-          {
-            return parseInt(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/New_York' }).format(new Date()), 10);
-          }
-          catch (e)
-          {
-            return (new Date()).getUTCHours();
-          }
-        };
-        var prefersLight = isAuto
-          ? (function(){ var h = getESTHour(); return h >= 7 && h < 19; })()
-          : (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
         var light = '#eafaf7';
         var dark = '#1e2030';
         var black = '#000000';
         var color = dark;
-        if ((/(^|\s)theme-light(\s|$)/.test(cls)) || (isAuto && prefersLight))
+        if (/(^|\s)theme-light(\s|$)/.test(cls))
         {
           color = light;
         }
-        if (/(^|\s)theme-black(\s|$)/.test(cls))
+        else if (/(^|\s)theme-black(\s|$)/.test(cls))
         {
           color = black;
+        }
+        else if (isAuto)
+        {
+          var localHour = (new Date()).getHours();
+          var isDark = !(localHour >= 7 && localHour < 19);
+          color = isDark ? dark : light;
         }
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) { meta.setAttribute('content', color); }
@@ -325,30 +371,19 @@
     })();
   </script>
   <script>
-    (function applyEstAutoTheme()
+    (function applyLocalAutoTheme()
     {
       try
       {
         var root = document.documentElement;
         if (!/(^|\s)theme-auto(\s|$)/.test(root.className)) { return; }
-        var getESTHour = function()
-        {
-          try
-          {
-            return parseInt(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/New_York' }).format(new Date()), 10);
-          }
-          catch (e)
-          {
-            return (new Date()).getUTCHours();
-          }
-        };
         var apply = function()
         {
-          var hour = getESTHour();
-          var estLight = hour >= 7 && hour < 19;
+          var hour = (new Date()).getHours();
+          var isDark = !(hour >= 7 && hour < 19);
           root.classList.remove('est-light', 'est-dark');
-          root.classList.add(estLight ? 'est-light' : 'est-dark');
-          var color = estLight ? '#eafaf7' : '#1e2030';
+          root.classList.add(isDark ? 'est-dark' : 'est-light');
+          var color = isDark ? '#1e2030' : '#eafaf7';
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) { meta.setAttribute('content', color); }
         };

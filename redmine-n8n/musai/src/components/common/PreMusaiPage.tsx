@@ -22,6 +22,7 @@ interface PreMusaiPageProps {
   skipDynamicContent?: boolean;
   // For customization
   title?: string;
+  titleNode?: React.ReactNode;
   subtitle?: string;
   placeholder?: string;
   suggestions?: string[];
@@ -316,6 +317,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   onModeChange,
   skipDynamicContent,
   title: customTitle,
+  titleNode,
   subtitle: customSubtitle,
   placeholder: customPlaceholder,
   suggestions: customSuggestions,
@@ -652,9 +654,13 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
               </>
             )}
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
-              {title}
-            </h1>
+            {titleNode ? (
+              titleNode
+            ) : (
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
+                {title}
+              </h1>
+            )}
           </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             {subtitle}

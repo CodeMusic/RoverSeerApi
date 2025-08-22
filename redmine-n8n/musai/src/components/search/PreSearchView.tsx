@@ -9,6 +9,7 @@ interface PreSearchViewProps {
   onViewPreviousSearches?: () => void;
   onShowTrendingTopics?: () => void;
   onQuickAnswers?: () => void;
+  titleNode?: React.ReactNode;
 }
 
 export const PreSearchView = ({ 
@@ -17,7 +18,8 @@ export const PreSearchView = ({
   onClose, 
   onViewPreviousSearches, 
   onShowTrendingTopics,
-  onQuickAnswers 
+  onQuickAnswers,
+  titleNode
 }: PreSearchViewProps) => {
   const [mode, setMode] = useState<SearchMode>('standard');
   const [sources, setSources] = useState<SearchSource[]>(['web']);
@@ -58,6 +60,7 @@ export const PreSearchView = ({
       onSubmit={(input) => onSearch(input)}
       onQuickAction={handleQuickAction}
       isLoading={isLoading}
+      titleNode={titleNode}
     />
   );
 };

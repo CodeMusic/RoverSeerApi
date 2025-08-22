@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search/SearchInput";
 import { SearchResults } from "@/components/search/SearchResults";
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SearchSession extends SearchSessionModel {}
 
@@ -37,6 +38,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const isMobile = useIsMobile();
+  const { preference } = useTheme();
 
   // MuseEyeSearch parameters
   const [mode, setMode] = useState<SearchMode>('standard');
@@ -44,6 +46,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
   const hasSearched = currentSessionId !== null;
+  const isResearchMode = mode === 'research';
   // Desktop: show based solely on collapse state; Mobile: show when explicitly opened
   const shouldShowSidebar = (!isMobile && !isSidebarCollapsed) || (isMobile && isSidebarOpen);
   const sidebarOpenForChild = isMobile ? isSidebarOpen : true;
@@ -705,6 +708,15 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   // Scroll container for keeping controls visible and scrolling results
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
+  // PreMusai custom title for Research mode
+  const researchTitleNode = (
+    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold pb-2">
+      <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-teal-400">Musai</span>
+      <span className="mx-1 text-black dark:text-black animate-pulse">RE</span>
+      <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-emerald-500">Search</span>
+    </h1>
+  );
+
   return (
     <div className="flex h-[100dvh] relative bg-background overflow-x-hidden">
       {/* Mobile hamburger: show only when sidebar not visible */}
@@ -721,8 +733,8 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
 
       {/* Desktop: rely on sidebar header arrow and the rail opener; no floating hamburger */}
 
-      {/* Search Sidebar */}
-      {shouldShowSidebar && (
+      {/* Search Sidebar (only in Research mode) */}
+      {isResearchMode && shouldShowSidebar && (
         <div className={cn(
           "transition-all duration-300 h-[100dvh] min-h-0 overflow-hidden",
           // On mobile, render as overlay so it doesn't push content width
@@ -757,26 +769,17 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {/* Main Content Area */}
       <div ref={mainScrollRef} className={cn(
         "flex-1 min-h-0 flex flex-col bg-background h-[100dvh] overflow-y-auto transition-all duration-300",
-        hasSearched && !isMobile && !isSidebarCollapsed ? "ml-0" : "ml-0"
+        isResearchMode && hasSearched && !isMobile && !isSidebarCollapsed ? "ml-0" : "ml-0"
       )}>
-        {/* Always show header */}
-        <ToolHeader
-          icon={Search}
-          title={APP_TERMS.SEARCH}
-          badge={APP_TERMS.SEARCH_BADGE}
-          badgeIcon={Zap}
-          description={APP_TERMS.SEARCH_DESCRIPTION}
-          size="compact"
-        />
-        {/* Search controls: show after first search so PreMusai sits higher initially */}
-        {hasSearched && (
-          <div className="sticky top-0 z-30 px-6 pt-2 pb-1 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ paddingTop: 'max(env(safe-area-inset-top), 8px)' }}>
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
-                <Switch id="mode-switch" checked={mode === 'research'} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} disabled={isLoading} aria-label="Toggle research mode" />
-                <Badge variant="secondary">{mode}</Badge>
-              </div>
+        {/* Mode Toggle Header - always visible */}
+        <div className="sticky top-0 z-30 px-6 pt-3 pb-2 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
+              <Switch id="mode-switch" checked={isResearchMode} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} disabled={isLoading} aria-label="Toggle research mode" />
+              <Badge variant="secondary">{isResearchMode ? 'research' : 'search'}</Badge>
+            </div>
+            {isResearchMode && (
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs text-muted-foreground">Sources:</span>
                 {(['web','news','academic','github','docs','redmine','social'] as SearchSource[]).map((s) => (
@@ -797,54 +800,77 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
                   </label>
                 ))}
               </div>
-            </div>
+            )}
           </div>
-        )}
-        
-        {!hasSearched ? (
-          <PreSearchView 
-            onSearch={handleSearch}
-            isLoading={isLoading}
-            onClose={onClose}
-            onViewPreviousSearches={handleViewPreviousSearches}
-            onShowTrendingTopics={handleShowTrendingTopics}
-            onQuickAnswers={handleQuickAnswers}
-          />
-        ) : currentSession ? (
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <SearchResults
-              session={currentSession}
-              onFollowUp={handleFollowUp}
-              onNewSearch={handleNewSearch}
-              onExport={handleExportSession}
-              isLoading={isLoading}
-              onClose={onClose}
-              onRetryInitial={handleRetryInitial}
+        </div>
+
+        {/* Standard Search mode: show only iframe */}
+        {!isResearchMode && (
+          <div className="flex-1 min-h-0">
+            <iframe
+              src={useMemo(() => {
+                try {
+                  const url = new URL("https://search.codemusic.ca");
+                  url.searchParams.set("theme", String(preference));
+                  return url.toString();
+                } catch {
+                  return `https://search.codemusic.ca?theme=${encodeURIComponent(String(preference))}`;
+                }
+              }, [preference])}
+              title="MusaiSearch"
+              className="w-full h-full border-0"
             />
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                <Search className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold">Select a Search</h2>
-                <p className="text-muted-foreground">
-                  Choose a previous search from the sidebar or start a new one
-                </p>
-              </div>
-              <Button onClick={handleNewSearch} className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                New Search
-              </Button>
+        )}
+
+        {/* Research mode: existing behavior with PreMusai and sessions/results */}
+        {isResearchMode && (
+          !hasSearched ? (
+            <PreSearchView 
+              onSearch={handleSearch}
+              isLoading={isLoading}
+              onClose={onClose}
+              onViewPreviousSearches={handleViewPreviousSearches}
+              onShowTrendingTopics={handleShowTrendingTopics}
+              onQuickAnswers={handleQuickAnswers}
+              titleNode={researchTitleNode}
+            />
+          ) : currentSession ? (
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <SearchResults
+                session={currentSession}
+                onFollowUp={handleFollowUp}
+                onNewSearch={handleNewSearch}
+                onExport={handleExportSession}
+                isLoading={isLoading}
+                onClose={onClose}
+                onRetryInitial={handleRetryInitial}
+              />
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                  <Search className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-semibold">Select a Search</h2>
+                  <p className="text-muted-foreground">
+                    Choose a previous search from the sidebar or start a new one
+                  </p>
+                </div>
+                <Button onClick={handleNewSearch} className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  New Search
+                </Button>
+              </div>
+            </div>
+          )
         )}
       </div>
 
-      {/* Mobile sidebar overlay */}
-      {isMobile && isSidebarOpen && (
+      {/* Mobile sidebar overlay (only in Research mode) */}
+      {isResearchMode && isMobile && isSidebarOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30"
           onClick={() => setIsSidebarOpen(false)}
