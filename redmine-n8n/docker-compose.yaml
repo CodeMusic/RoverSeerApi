@@ -61,7 +61,7 @@ services:
       - N8N_WEBHOOK_URL=https://n8n.codemusic.ca/
       - WEBHOOK_URL=https://n8n.codemusic.ca/
       - WEBHOOK_TUNNEL_URL=https://n8n.codemusic.ca/
-      - MORTY_SIGN_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+      - MORTY_SIGN_KEY=q9ofLSY/cc96sOWKqpttFYEfHBD8nhxIun/NfOon2qA=
       - TAVILY_API_KEY=tvly-dev-insert-key
     volumes:
       - n8n_data:/home/node/.n8n
@@ -121,7 +121,7 @@ services:
 #      - SEARXNG_BIND_ADDRESS=0.0.0.0:8080
 #      - AUTOCOMPLETE=duckduckgo
 #      - MORTY_URL=http://morty:3000/
-#      - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+#      - MORTY_KEY=q9ofLSY/cc96sOWKqpttFYEfHBD8nhxIun/NfOon2qA=
     depends_on:
       - morty
     networks:
@@ -151,8 +151,9 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - MORTY_KEY=1104f5733a2d133ee277663a1b5fbd0e702663c7cec85c999554516191060b39
+      - MORTY_KEY=q9ofLSY/cc96sOWKqpttFYEfHBD8nhxIun/NfOon2qA=
       - MORTY_ADDRESS=0.0.0.0:3000
+      - DEBUG=true
     networks:
       - ai_net
     healthcheck:

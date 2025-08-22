@@ -976,7 +976,7 @@
         try { console.debug('[MortySign] config', { mortyPrefix: mortyPrefix, mortyPrefixPath: mortyPrefixPath }); } catch (_) {}
         var hasMortyHash = function(url)
         {
-          try { return /[?&]hash=/.test(url); } catch (_) { return false; }
+          try { return /[?&](?:mortyhash|hash)=/.test(url); } catch (_) { return false; }
         };
         var isMortyUrl = function(url)
         {
@@ -1002,8 +1002,11 @@
           {
             if (!mortyPrefix || !url) { return url; }
             if (isMortyUrl(url)) { return url; }
-            if (url.indexOf('https://') === 0) { return mortyPrefix + 'https/' + url.slice(8); }
-            if (url.indexOf('http://') === 0) { return mortyPrefix + 'http/' + url.slice(7); }
+            if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0)
+            {
+              var sep = (mortyPrefix.indexOf('?') === -1) ? '?' : '&';
+              return mortyPrefix + sep + 'mortyurl=' + encodeURIComponent(url);
+            }
             return url;
           }
           catch (_) { return url; }
@@ -1015,12 +1018,16 @@
             var s = url || '';
             if (!s || !isMortyUrl(s)) { return s; }
             var u = new URL(s, window.location.href);
+            // Prefer query-param style
+            var mu = u.searchParams && u.searchParams.get ? (u.searchParams.get('mortyurl') || '') : '';
+            if (mu) { return mu; }
+            // Fallback: path-style /morty/https/...
             var path = u.pathname || '';
             var base = mortyPrefixPath || '/morty/';
             var i = path.indexOf(base);
             var suffix = (i >= 0) ? path.slice(i + base.length) : path;
-            if (suffix.indexOf('https/') === 0) { return 'https://' + suffix.slice(6) + (u.search ? '' : ''); }
-            if (suffix.indexOf('http/') === 0) { return 'http://' + suffix.slice(5) + (u.search ? '' : ''); }
+            if (suffix.indexOf('https/') === 0) { return 'https://' + suffix.slice(6); }
+            if (suffix.indexOf('http/') === 0) { return 'http://' + suffix.slice(5); }
             return s;
           }
           catch (_) { return url; }
@@ -1034,7 +1041,26 @@
           return new Promise(function(resolve)
           {
             var candidate = stableUrlString(url);
-            if (!candidate || !isMortyUrl(candidate) || hasMortyHash(candidate))
+            if (!candidate)
+            {
+              resolve(candidate);
+              return;
+            }
+            // Always sign the plain target URL; if Morty-style passed, extract mortyurl first
+            var plainTarget = isMortyUrl(candidate) ? deMortyUrl(candidate) : candidate;
+            var buildMorty = function(target, hash)
+            {
+              try
+              {
+                var sep = (mortyPrefix.indexOf('?') === -1) ? '?' : '&';
+                var signed = mortyPrefix + sep + 'mortyurl=' + encodeURIComponent(target);
+                if (hash) { signed += '&mortyhash=' + String(hash).toLowerCase(); }
+                return signed;
+              }
+              catch (_) { return candidate; }
+            };
+            // If already has mortyhash, keep as-is
+            if (isMortyUrl(candidate) && hasMortyHash(candidate))
             {
               resolve(candidate);
               return;
@@ -1044,73 +1070,56 @@
             {
               if (didResolve) { return; }
               didResolve = true;
-              resolve(value || candidate);
+              resolve(value || buildMorty(plainTarget));
             };
             try
             {
               fetch(SIGN_WEBHOOK, {
                 method: 'POST',
                 headers: Object.assign({ 'Content-Type': 'application/json' }, (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }),
-                body: JSON.stringify({ url: candidate })
+                body: JSON.stringify({ url: plainTarget })
               }).then(function(r)
               {
                 if (!r.ok) { throw new Error('HTTP ' + r.status); }
-                return r.json().catch(function(){ return { url: candidate }; });
+                return r.json().catch(function(){ return { url: plainTarget }; });
               }).then(function(data)
               {
-                var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                var nextUrl = (data && data.signed_url) || '';
+                var mh = (data && (data.mortyhash || data.hash)) || '';
                 if (!nextUrl)
                 {
-                  var mh = (data && (data.hash || data.mortyhash)) || '';
-                  if (mh)
-                  {
-                    try { var u = new URL(candidate, window.location.href); u.searchParams.set('hash', mh); u.searchParams.set('mortyhash', mh); nextUrl = u.toString(); }
-                    catch (_) { nextUrl = candidate; }
-                  }
+                  nextUrl = buildMorty(plainTarget, mh);
                 }
-                try { console.debug('[MusaiOverlay] signer POST result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                // If still Morty without hash, fall back to original non-Morty URL
-                if (!nextUrl || (isMortyUrl(nextUrl) && !hasMortyHash(nextUrl)))
-                {
-                  try { console.warn('[MusaiOverlay] fallback to non-Morty URL (no hash)'); } catch (_) {}
-                  nextUrl = deMortyUrl(nextUrl || candidate);
-                }
-                settle(nextUrl || candidate);
+                try { console.debug('[MusaiOverlay] signer POST result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
+                // If key is unset on Morty, mortyhash may be omitted; that's fine
+                settle(nextUrl || buildMorty(plainTarget, mh));
               }).catch(function()
               {
-                var urlParam = encodeURIComponent(candidate);
+                var urlParam = encodeURIComponent(plainTarget);
                 fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
                   headers: (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
                 }).then(function(r)
                 {
                   if (!r.ok) { throw new Error('HTTP ' + r.status); }
-                  return r.json().catch(function(){ return { url: candidate }; });
+                  return r.json().catch(function(){ return { url: plainTarget }; });
                 }).then(function(data)
                 {
-                  var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                  var nextUrl = (data && data.signed_url) || '';
+                  var mh = (data && (data.mortyhash || data.hash)) || '';
                   if (!nextUrl)
                   {
-                    var mh = (data && (data.hash || data.mortyhash)) || '';
-                    if (mh)
-                    {
-                      try { var u = new URL(candidate, window.location.href); u.searchParams.set('hash', mh); u.searchParams.set('mortyhash', mh); nextUrl = u.toString(); }
-                      catch (_) { nextUrl = candidate; }
-                    }
+                    nextUrl = buildMorty(plainTarget, mh);
                   }
-                  try { console.debug('[MusaiOverlay] signer GET result', { candidate: candidate, data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                  if (!nextUrl || (isMortyUrl(nextUrl) && !hasMortyHash(nextUrl)))
-                  {
-                    try { console.warn('[MusaiOverlay] fallback to non-Morty URL (no hash)'); } catch (_) {}
-                    nextUrl = deMortyUrl(nextUrl || candidate);
-                  }
-                  settle(nextUrl || candidate);
+                  try { console.debug('[MusaiOverlay] signer GET result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
+                  settle(nextUrl || buildMorty(plainTarget, mh));
                 }).catch(function()
                 {
-                  settle(candidate);
+                  // Fallback: unsigned open (works when MORTY_KEY is unset)
+                  settle(buildMorty(plainTarget));
                 });
               });
             }
-            catch (_) { settle(candidate); }
+            catch (_) { settle(buildMorty(plainTarget)); }
           });
         };
         var openOverlay = function(url, originId)
@@ -1417,7 +1426,7 @@
         {
           try
           {
-            return /[?&]hash=/.test(url);
+            return /[?&](?:mortyhash|hash)=/.test(url);
           }
           catch (_) { return false; }
         };
@@ -1478,20 +1487,36 @@
           {
             var candidate = stableUrlString(url);
             try { console.debug('[MortySign] signUrl start', { candidate: candidate }); } catch (_) {}
-            if (!candidate || !isMortyUrl(candidate) || hasMortyHash(candidate))
+            if (!candidate)
             {
-              try { console.debug('[MortySign] signUrl skip', { reason: (!candidate ? 'no-candidate' : (!isMortyUrl(candidate) ? 'not-morty' : 'already-has-hash')), candidate: candidate }); } catch (_) {}
+              resolve(candidate);
+              return;
+            }
+            var plainTarget = isMortyUrl(candidate) ? deMortyUrl(candidate) : candidate;
+            var buildMorty = function(target, hash)
+            {
+              try
+              {
+                var sep = (mortyPrefix.indexOf('?') === -1) ? '?' : '&';
+                var built = mortyPrefix + sep + 'mortyurl=' + encodeURIComponent(target);
+                if (hash) { built += '&mortyhash=' + String(hash).toLowerCase(); }
+                return built;
+              }
+              catch (_) { return candidate; }
+            };
+            // If already Morty with hash, keep as-is
+            if (isMortyUrl(candidate) && hasMortyHash(candidate))
+            {
               resolve(candidate);
               return;
             }
 
-            // Primary: POST JSON { url }
             var didResolve = false;
             var settle = function(value)
             {
               if (didResolve) { return; }
               didResolve = true;
-              resolve(value || candidate);
+              resolve(value || buildMorty(plainTarget));
             };
 
             try
@@ -1499,39 +1524,28 @@
               fetch(SIGN_WEBHOOK, {
                 method: 'POST',
                 headers: Object.assign({ 'Content-Type': 'application/json' }, (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }),
-                body: JSON.stringify({ url: candidate })
+                body: JSON.stringify({ url: plainTarget })
               }).then(function(r)
               {
                 if (!r.ok) { throw new Error('HTTP ' + r.status); }
                 return r.json().catch(function()
                 {
-                  return { url: candidate };
+                  return { url: plainTarget };
                 });
               }).then(function(data)
               {
-                var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                var nextUrl = (data && data.signed_url) || '';
+                var mh = (data && (data.mortyhash || data.hash)) || '';
                 if (!nextUrl)
                 {
-                  // Fallback: try to extract hash from payload
-                  var mh = (data && (data.hash || data.mortyhash)) || '';
-                  if (mh)
-                  {
-                    try
-                    {
-                      var u = new URL(candidate, window.location.href);
-                      u.searchParams.set('hash', mh);
-                      u.searchParams.set('mortyhash', mh);
-                      nextUrl = u.toString();
-                    }
-                    catch (_) { nextUrl = candidate; }
-                  }
+                  nextUrl = buildMorty(plainTarget, mh);
                 }
-                try { console.debug('[MortySign] signUrl POST result', { data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                settle(nextUrl || candidate);
+                try { console.debug('[MortySign] signUrl POST result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
+                settle(nextUrl || buildMorty(plainTarget, mh));
               }).catch(function()
               {
                 // Secondary: GET ?url=...
-                var urlParam = encodeURIComponent(candidate);
+                var urlParam = encodeURIComponent(plainTarget);
                 fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
                   headers: (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
                 }).then(function(r)
@@ -1539,37 +1553,27 @@
                   if (!r.ok) { throw new Error('HTTP ' + r.status); }
                   return r.json().catch(function()
                   {
-                    return { url: candidate };
+                    return { url: plainTarget };
                   });
                 }).then(function(data)
                 {
-                  var nextUrl = (data && (data.signed_url || data.url || data.href)) || '';
+                  var nextUrl = (data && data.signed_url) || '';
+                  var mh = (data && (data.mortyhash || data.hash)) || '';
                   if (!nextUrl)
                   {
-                    var mh = (data && (data.hash || data.mortyhash)) || '';
-                    if (mh)
-                    {
-                      try
-                      {
-                        var u = new URL(candidate, window.location.href);
-                        u.searchParams.set('hash', mh);
-                        u.searchParams.set('mortyhash', mh);
-                        nextUrl = u.toString();
-                      }
-                      catch (_) { nextUrl = candidate; }
-                    }
+                    nextUrl = buildMorty(plainTarget, mh);
                   }
-                  try { console.debug('[MortySign] signUrl GET result', { data: data, chosen: nextUrl, hasHash: /[?&]hash=/.test(nextUrl), hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                  settle(nextUrl || candidate);
+                  try { console.debug('[MortySign] signUrl GET result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
+                  settle(nextUrl || buildMorty(plainTarget, mh));
                 }).catch(function()
                 {
-                  settle(candidate);
+                  settle(buildMorty(plainTarget));
                 });
               });
             }
             catch (_)
             {
-              settle(candidate);
+              settle(buildMorty(plainTarget));
             }
           });
         };
@@ -1592,7 +1596,7 @@
                 if (signed && typeof signed === 'string')
                 {
                   var finalHref = signed;
-                  if (isMortyUrl(finalHref) && !hasMortyHash(finalHref)) { finalHref = deMortyUrl(finalHref); }
+                  // If Morty key is set, finalHref should contain mortyhash; if not, keep mortyurl-only (key unset)
                   a.setAttribute('href', finalHref);
                 }
               }
@@ -1628,14 +1632,13 @@
                 if (signed && typeof signed === 'string')
                 {
                   var finalUrl = signed;
-                  if (isMortyUrl(finalUrl) && !hasMortyHash(finalUrl)) { finalUrl = deMortyUrl(finalUrl); }
                   btn.setAttribute('data-url', finalUrl);
                 }
               }
               catch (_) {}
               btn.dataset.mortySigned = '1';
               try { btn.removeAttribute('disabled'); } catch (_) {}
-              try { console.debug('[MortySign] upgradeButton after', { signed: signed, hasHash: /[?&]hash=/.test(signed || '') }); } catch (_) {}
+              try { console.debug('[MortySign] upgradeButton after', { signed: signed, hasMortyhash: /[?&]mortyhash=/.test(signed || '') }); } catch (_) {}
             });
           }
           catch (_) { /* no-op */ }
