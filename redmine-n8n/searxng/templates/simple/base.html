@@ -1203,6 +1203,7 @@
     {% block content %}
     {% endblock %}
   </main>
+  {% if endpoint != 'index' %}
   <section id="ai_chat" aria-label="AI assistant"
     data-q="{{ (q or '')|e }}"
     data-categories="{{ (selected_categories and selected_categories|join(',') or '')|e }}"
@@ -1229,6 +1230,7 @@
     </button>
     <div id="ai_chat_output" hidden></div>
   </section>
+  {% endif %}
   <footer>
     <p>
       <a href="https://musai.codemusic.ca"><strong>MusaiSearch</strong></a> — powered by SearXNG, N8N, Redmine, and Ollama<br>

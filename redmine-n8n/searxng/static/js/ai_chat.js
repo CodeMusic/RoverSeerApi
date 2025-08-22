@@ -27,6 +27,44 @@
     var aiPerspective = document.getElementById('ai_perspective');
     var aiBackTop = document.getElementById('ai_backToTop');
     var aiLogo = (aiSection && (aiSection.getAttribute('data-logo') || '').trim()) || '/static/img/logo_musai_symbol.png';
+    /** Ensure the dock remains perceptually visible within the viewport */
+    var scheduleAIDockRepositionPending = false;
+    function keepAIDockVisible()
+    {
+      try
+      {
+        if (!aiSection) { return; }
+        var rect = aiSection.getBoundingClientRect();
+        var viewportBottom = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+        var overflow = rect.bottom - viewportBottom;
+        if (overflow > 0)
+        {
+          var cs = (window.getComputedStyle ? window.getComputedStyle(aiSection) : null);
+          var currentBottom = 0;
+          try { currentBottom = cs ? (parseFloat(cs.bottom) || 0) : (parseFloat(aiSection.style.bottom) || 0); } catch (_) { currentBottom = 0; }
+          var next = Math.max(8, currentBottom + overflow + 8);
+          aiSection.style.bottom = next + 'px';
+        }
+      }
+      catch (_) { /* no-op */ }
+    }
+    function scheduleAIDockReposition()
+    {
+      if (scheduleAIDockRepositionPending) { return; }
+      scheduleAIDockRepositionPending = true;
+      try
+      {
+        (window.requestAnimationFrame || window.setTimeout)(function()
+        {
+          try { keepAIDockVisible(); } catch (_) { /* no-op */ }
+          scheduleAIDockRepositionPending = false;
+        }, 16);
+      }
+      catch (_)
+      {
+        scheduleAIDockRepositionPending = false;
+      }
+    }
     function getPerspectiveValue()
     {
       try
@@ -165,6 +203,9 @@
         };
         aiInput.addEventListener('input', adjust);
         adjust();
+        // Maintain perceptual visibility as the input grows and on load
+        try { aiInput.addEventListener('input', scheduleAIDockReposition, { passive: true }); } catch (_) { /* no-op */ }
+        try { window.addEventListener('load', scheduleAIDockReposition, { once: true }); } catch (_) { /* no-op */ }
       }
       catch (_) { /* no-op */ }
     })();
@@ -201,6 +242,8 @@
         aiToggle.title = willCollapse ? 'Expand' : 'Collapse';
         aiToggle.textContent = willCollapse ? '▸' : '▾';
       }
+      // Recalculate position after changing the dock's height/state
+      scheduleAIDockReposition();
     });
 
     /** Outside interaction collapses the output bubble to header-only (not the whole bar) */
@@ -613,6 +656,8 @@
             aiOut.hidden = true;
             aiOut.innerHTML = '';
           }
+          // Reflect position after adding typing indicator
+          scheduleAIDockReposition();
         }
         catch (_) { /* no-op */ }
 
@@ -777,9 +822,36 @@
           });
           if (!res.ok)
           {
-            throw new Error('HTTP ' + res.status);
+            // Try to read error body for context without throwing yet
+            var errText = '';
+            try { errText = await res.text(); } catch (_) { errText = ''; }
+            var msg = 'Service error (HTTP ' + res.status + ').';
+            if (errText && errText.trim())
+            {
+              // Show only first ~240 chars to avoid overwhelming the UI
+              var trimmed = errText.replace(/\s+/g, ' ').trim();
+              if (trimmed.length > 240) { trimmed = trimmed.slice(0, 239) + '…'; }
+              msg += ' ' + trimmed;
+            }
+            throw new Error(msg);
           }
-          var data = await res.json();
+          // Accept JSON or plain text payloads
+          var contentType = (res.headers && res.headers.get ? (res.headers.get('content-type') || '') : '');
+          var data = null;
+          if (/json/i.test(contentType))
+          {
+            try { data = await res.json(); }
+            catch (_) { data = null; }
+          }
+          if (!data)
+          {
+            try
+            {
+              var text = await res.text();
+              data = text ? { response: text } : {};
+            }
+            catch (_) { data = {}; }
+          }
           var record = Array.isArray(data) ? (data[0] || {}) : (data || {});
           var responseText = record.response || '';
           var pov = Array.isArray(record.pov) ? record.pov : [];
@@ -908,12 +980,17 @@
             (function(){ try { if (aiOut) { var hideBtn2 = createHideButton(); if (hideBtn2) { aiOut.appendChild(hideBtn2); } } } catch (_) { /* no-op */ } })();
           }
           if (aiOut) { aiOut.hidden = false; }
+          // Ensure the dock is visible after rendering output bubbles
+          scheduleAIDockReposition();
         }
         catch (err)
         {
           try { if (typingEl && typingEl.parentNode) { typingEl.parentNode.removeChild(typingEl); } } catch (_) { /* no-op */ }
           typingEl = null;
-          showAiErrorToast('Error contacting AI service.');
+          var emsg = '';
+          try { emsg = (err && (err.message || err.toString())) || ''; } catch (_) { emsg = ''; }
+          if (!emsg || /\[object Object\]/.test(emsg)) { emsg = 'Error contacting AI service.'; }
+          showAiErrorToast(emsg);
           if (aiOut) { aiOut.hidden = true; }
         }
         finally
@@ -1010,6 +1087,14 @@
         e.stopPropagation();
       }
     }, true);
+
+    /**
+     * Maintain perceptual visibility on environmental changes
+     * (e.g., nested iframe constraints, orientation changes, resizes)
+     */
+    try { window.addEventListener('resize', scheduleAIDockReposition, { passive: true }); } catch (_) { /* no-op */ }
+    try { window.addEventListener('orientationchange', scheduleAIDockReposition, { passive: true }); } catch (_) { /* no-op */ }
+    try { window.addEventListener('load', scheduleAIDockReposition, { once: true }); } catch (_) { /* no-op */ }
 
     /** Mark wired */
     try { aiSection.dataset.wired = '1'; } catch (_) { /* no-op */ }
