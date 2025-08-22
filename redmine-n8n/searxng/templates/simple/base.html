@@ -1167,6 +1167,22 @@
     /* Home page: keep AI chat visible but slightly above the edge */
     body.index_endpoint #ai_chat { bottom: clamp(4px, 5vh, 48px); }
   </style>
+  <style>
+    /* Elevate the AI dock further on results and embedded contexts */
+    body.search_endpoint #ai_chat,
+    body.results_endpoint #ai_chat
+    {
+      bottom: clamp(12px, 10vh, 88px);
+    }
+    html.in-iframe #ai_chat
+    {
+      bottom: clamp(16px, 12vh, 96px);
+    }
+    html.musai-overlay-open #ai_chat
+    {
+      bottom: clamp(16px, 14vh, 112px);
+    }
+  </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
   <main id="main_{{  self._TemplateReference__context.name|replace("simple/", "")|replace(".html", "") }}" class="{{body_class}}">
@@ -2413,46 +2429,6 @@
       catch (e) { /* no-op */ }
     })();
   </script>
-  <script>
-    (function guardMusaiOverlayAndAIDock()
-    {
-      try
-      {
-        var overlay = document.getElementById('musaiOverlay');
-        var html = document.documentElement;
-        if (!overlay || overlay.getAttribute('aria-hidden') !== 'false')
-        {
-          try { html.classList.remove('musai-overlay-open'); } catch (_) { /* no-op */ }
-        }
-      }
-      catch (_) { /* no-op */ }
-      try
-      {
-        var ai = document.getElementById('ai_chat');
-        if (!ai) { return; }
-        var display = (window.getComputedStyle ? window.getComputedStyle(ai).display : ai.style.display) || '';
-        if (display === 'none')
-        {
-          ai.style.display = 'flex';
-        }
-        // Ensure AI dock is expanded and above other layers
-        try { ai.classList.remove('collapsed'); } catch (_) { /* no-op */ }
-        try { document.documentElement.classList.remove('ai-chat-collapsed'); } catch (_) { /* no-op */ }
-        try { localStorage.setItem('musai_ai_chat_collapsed', '0'); } catch (_) { /* no-op */ }
-        try { ai.style.zIndex = '10000'; } catch (_) { /* no-op */ }
-        // Ensure the dock is within viewport after layout
-        try {
-          var rect = ai.getBoundingClientRect();
-          var overflowBottom = (rect.bottom - window.innerHeight);
-          if (overflowBottom > 0)
-          {
-            var currentBottom = parseFloat(window.getComputedStyle(ai).bottom) || 0;
-            ai.style.bottom = Math.max(8, currentBottom + overflowBottom + 8) + 'px';
-          }
-        } catch (_) { /* no-op */ }
-      }
-      catch (_) { /* no-op */ }
-    })();
-  </script>
+  
 </body>
 </html>

@@ -870,6 +870,14 @@
           }
           catch (_) { /* no-op */ }
 
+          // Ensure the main bubble has content even when there are no POV items
+          try
+          {
+            var primaryText = perspectiveThought ? perspectiveThought : (responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : ''));
+            main.textContent = primaryText;
+          }
+          catch (_) { /* no-op */ }
+
           var logicalThought = '';
           var creativeThought = '';
           var perspectiveThought = '';
@@ -963,6 +971,7 @@
               toggles.appendChild(redBtn);
               toggles.appendChild(blueBtn);
               toggles.appendChild(violetBtn);
+              // Content already set above; set again defensively in the POV path
               main.textContent = perspectiveThought ? perspectiveThought : (responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : ''));
               aiOut.appendChild(main);
               aiOut.appendChild(redPanel);
@@ -979,6 +988,9 @@
             // Add hide control (X) for the simple output case
             (function(){ try { if (aiOut) { var hideBtn2 = createHideButton(); if (hideBtn2) { aiOut.appendChild(hideBtn2); } } } catch (_) { /* no-op */ } })();
           }
+          // Ensure any prior collapsed state is cleared when showing fresh content
+          try { expandAI(); } catch (_) { /* no-op */ }
+          try { rootHtml.classList.remove('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
           if (aiOut) { aiOut.hidden = false; }
           // Ensure the dock is visible after rendering output bubbles
           scheduleAIDockReposition();
