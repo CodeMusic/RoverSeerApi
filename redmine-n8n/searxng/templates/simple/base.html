@@ -1136,6 +1136,32 @@
     {% block content %}
     {% endblock %}
   </main>
+  <section id="ai_chat" aria-label="AI assistant"
+    data-q="{{ (q or '')|e }}"
+    data-categories="{{ (selected_categories and selected_categories|join(',') or '')|e }}"
+    data-pageno="{{ (pageno or 1) }}"
+    data-time-range="{{ (time_range or '')|e }}"
+    data-language="{{ (current_language or '')|e }}"
+    data-safesearch="{{ (safesearch or '')|e }}"
+    data-logo="{{ url_for('static', filename='img/logo_musai_symbol.png') }}">
+    <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
+    <span class="ai-brand" aria-hidden="true">Musai</span>
+    <form id="ai_chat_form" aria-label="Ask Musai..." action="javascript:void(0)">
+      <select id="ai_mode" aria-label="Mode">
+        <option value="chat" selected>Chat</option>
+        <option value="search">Search</option>
+      </select>
+      <input id="ai_perspective" type="checkbox" checked aria-label="Perspective Thinking">
+      <label for="ai_perspective" title="Perspective Thinking (POV)">POV</label>
+      <textarea id="ai_chat_input" rows="1" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai"></textarea>
+      <button id="ai_chat_send" type="submit" title="Send" aria-label="Send">↵</button>
+      <small id="ai_chat_status" aria-live="polite"></small>
+    </form>
+    <button id="ai_backToTop" type="button" title="Back to top" aria-label="Back to top" hidden>
+      {% from 'simple/icons.html' import icon_big %}{{ icon_big('navigate-up') }}
+    </button>
+    <div id="ai_chat_output" hidden></div>
+  </section>
   <footer>
     <p>
       <a href="https://musai.codemusic.ca"><strong>MusaiSearch</strong></a> — powered by SearXNG, N8N, Redmine, and Ollama<br>

@@ -12,26 +12,6 @@
 {% block content %}
 {% include 'simple/search.html' %}
 
-<section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}" data-logo="{{ url_for('static', filename='img/logo_musai_symbol.png') }}">
-  <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
-  <span class="ai-brand" aria-hidden="true">Musai</span>
-  <form id="ai_chat_form" aria-label="Ask Musai..." action="javascript:void(0)">
-    <select id="ai_mode" aria-label="Mode">
-      <option value="chat" selected>Chat</option>
-      <option value="search">Search</option>
-    </select>
-    <input id="ai_perspective" type="checkbox" checked aria-label="Perspective Thinking">
-    <label for="ai_perspective" title="Perspective Thinking (POV)">POV</label>
-    <textarea id="ai_chat_input" rows="1" autocomplete="off" placeholder="Ask Musai..." inputmode="text" enterkeyhint="send" autocapitalize="sentences" aria-label="Ask Musai"></textarea>
-    <button id="ai_chat_send" type="submit" title="Send" aria-label="Send">↵</button>
-    <small id="ai_chat_status" aria-live="polite"></small>
-  </form>
-  <button id="ai_backToTop" type="button" title="Back to top" aria-label="Back to top" hidden>
-    {{ icon_big('navigate-up') }}
-  </button>
-  <div id="ai_chat_output" hidden></div>
-</section>
-
 {% if results and results|map(attribute='template')|unique|list|count == 1 %}
   {% set only_template = 'only_template_' + results[0]['template']|default('default')|replace('.html', '') %}
 {% else %}
@@ -106,7 +86,6 @@
                   <input type="hidden" name="language" value="{{ current_language }}" >
                   <input type="hidden" name="time_range" value="{{ time_range }}" >
                   <input type="hidden" name="safesearch" value="{{ safesearch }}" >
-                  <input type="hidden" name="theme" value="{{ theme }}" >
                   {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
                   {{- engine_data_form(engine_data) -}}
                   <button role="link" type="submit">{{ icon_small('navigate-left') }} {{ _('Previous page') }}</button>
@@ -124,7 +103,6 @@
                 <input type="hidden" name="language" value="{{ current_language }}" >
                 <input type="hidden" name="time_range" value="{{ time_range }}" >
                 <input type="hidden" name="safesearch" value="{{ safesearch }}" >
-                <input type="hidden" name="theme" value="{{ theme }}" >
                 {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
                 {{- engine_data_form(engine_data) -}}
                 <button role="link"  type="submit">{{ _('Next page') }} {{ icon_small('navigate-right') }}</button>
@@ -149,7 +127,6 @@
                 <input type="hidden" name="language" value="{{ current_language }}" >
                 <input type="hidden" name="time_range" value="{{ time_range }}" >
                 <input type="hidden" name="safesearch" value="{{ safesearch }}" >
-                <input type="hidden" name="theme" value="{{ theme }}" >
                 {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
                 {{- engine_data_form(engine_data) -}}
                 {% if pageno == x %}

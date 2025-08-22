@@ -51,6 +51,17 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const shouldShowSidebar = (!isMobile && !isSidebarCollapsed) || (isMobile && isSidebarOpen);
   const sidebarOpenForChild = isMobile ? isSidebarOpen : true;
 
+  // Compute iframe src for standard mode (must not be inside conditional to respect Rules of Hooks)
+  const musaiIframeSrc = useMemo(() => {
+    try {
+      const url = new URL("https://search.codemusic.ca");
+      url.searchParams.set("theme", String(preference));
+      return url.toString();
+    } catch {
+      return `https://search.codemusic.ca?theme=${encodeURIComponent(String(preference))}`;
+    }
+  }, [preference]);
+
   const handleSidebarHeaderToggle = useCallback(() => {
     if (isMobile)
     {
@@ -808,15 +819,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
         {!isResearchMode && (
           <div className="flex-1 min-h-0">
             <iframe
-              src={useMemo(() => {
-                try {
-                  const url = new URL("https://search.codemusic.ca");
-                  url.searchParams.set("theme", String(preference));
-                  return url.toString();
-                } catch {
-                  return `https://search.codemusic.ca?theme=${encodeURIComponent(String(preference))}`;
-                }
-              }, [preference])}
+              src={musaiIframeSrc}
               title="MusaiSearch"
               className="w-full h-full border-0"
             />
