@@ -1151,19 +1151,24 @@
               // open the URL in a new tab and close the overlay to avoid a blank screen
               try {
                 if (fallbackTimer) { clearTimeout(fallbackTimer); }
-                fallbackTimer = setTimeout(function()
+                var targetForFallback = currentTargetUrl || url || finalUrl || '';
+                // Do not set any fallback timer for Morty URLs; they must remain in-frame
+                if (!isMortyUrl(targetForFallback))
                 {
-                  try
+                  fallbackTimer = setTimeout(function()
                   {
-                    if (overlay.getAttribute('aria-hidden') === 'false' && !initialLoadDone && loadCount === 0)
+                    try
                     {
-                      try { window.open(currentTargetUrl || url || finalUrl || '', '_blank', 'noopener'); } catch (_) {}
-                      try { console.warn('[MusaiOverlay] iframe likely blocked; opened in new tab and closed overlay'); } catch (_) {}
-                      try { closeOverlay(); } catch (_) {}
+                      if (overlay.getAttribute('aria-hidden') === 'false' && !initialLoadDone && loadCount === 0)
+                      {
+                        try { window.open(targetForFallback, '_blank', 'noopener'); } catch (_) {}
+                        try { console.warn('[MusaiOverlay] iframe likely blocked; opened in new tab and closed overlay'); } catch (_) {}
+                        try { closeOverlay(); } catch (_) {}
+                      }
                     }
-                  }
-                  catch (_) { /* no-op */ }
-                }, 2500);
+                    catch (_) { /* no-op */ }
+                  }, 2500);
+                }
               } catch (_) { /* no-op */ }
             };
             if (mortyPrefix && candidate)
