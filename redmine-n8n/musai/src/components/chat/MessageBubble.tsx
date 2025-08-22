@@ -96,6 +96,35 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const styling = getModuleSpecificStyling();
   const [activePov, setActivePov] = React.useState<'logical' | 'creative' | null>(null);
 
+  // Entangled color styling overrides (POP / Quick Mode logic)
+  const entangledStyling = (() =>
+  {
+    const color = (message as any).bubbleColor as ('purple' | 'red' | 'blue' | undefined);
+    if (!color) return null;
+    if (color === 'purple')
+    {
+      return {
+        bubble: 'bg-purple-100 dark:bg-purple-900/35 border-purple-200 dark:border-purple-600',
+        text: 'text-purple-900 dark:text-purple-100'
+      };
+    }
+    if (color === 'red')
+    {
+      return {
+        bubble: 'bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-700',
+        text: 'text-red-900 dark:text-red-200'
+      };
+    }
+    if (color === 'blue')
+    {
+      return {
+        bubble: 'bg-blue-100 dark:bg-blue-900/35 border-blue-200 dark:border-blue-700',
+        text: 'text-blue-900 dark:text-blue-200'
+      };
+    }
+    return null;
+  })();
+
   // Map mood to bubble/text classes (therapy user messages only)
   const getMoodStyling = getTherapyMoodStyling;
 
@@ -122,13 +151,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   } : undefined;
 
   const PovPanels: React.FC<{ message: Message; active: 'logical' | 'creative' | null; setActive: React.Dispatch<React.SetStateAction<'logical' | 'creative' | null>> }> = ({ message, active, setActive }) => {
-    const logical = (message as any).logicalThought as string | undefined
-      || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
-    const creative = (message as any).creativeThought as string | undefined
-      || (Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('creativ'))?.thought : undefined);
+    const sanitize = (v?: string) => {
+      const t = (v || '').trim();
+      if (!t) return undefined;
+      const l = t.toLowerCase();
+      if (l === 'unknown' || l === 'n/a' || l === 'none') return undefined;
+      return t;
+    };
+    const logical = sanitize((message as any).logicalThought as string | undefined)
+      || sanitize(Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('logic'))?.thought : undefined);
+    const creative = sanitize((message as any).creativeThought as string | undefined)
+      || sanitize(Array.isArray((message as any).pov) ? (message as any).pov.find((p: any) => String(p?.type || '').toLowerCase().includes('creativ'))?.thought : undefined);
     const hasLogical = Boolean(logical);
     const hasCreative = Boolean(creative);
+    const nothingToShow = !hasLogical && !hasCreative;
     return (
+      nothingToShow ? null : (
       <div className="w-full mb-2">
         <div className="flex items-center gap-2 mb-2">
           <button
@@ -176,7 +214,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <div className="whitespace-pre-wrap">{creative}</div>
           </div>
         )}
-      </div>
+      </div>)
     );
   };
 
@@ -239,11 +277,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {/* Message Bubble */}
         <div className={cn(
-          "rounded-lg px-4 py-2 border-2 imsg-bubble",
-          isUser ? cn(moodStyling?.userBubble || styling.userBubble, "imsg-user", effectiveMood && "mood-shimmer", effectiveMood && `mood-${String(effectiveMood).toLowerCase()}`, effectiveMood && "mood-active") : cn(styling.assistantBubble, "imsg-ai"),
+          "rounded-lg px-4 py-2 border-2 imsg-bubble entangle-flash",
+          isUser ? 
+            cn(
+              entangledStyling?.bubble || moodStyling?.userBubble || styling.userBubble,
+              "imsg-user",
+              effectiveMood && "mood-shimmer",
+              effectiveMood && `mood-${String(effectiveMood).toLowerCase()}`,
+              effectiveMood && "mood-active"
+            )
+            : cn(entangledStyling?.bubble || styling.assistantBubble, "imsg-ai"),
           isTyping && "animate-pulse",
           isTyping && !isUser && "flex items-center justify-center"
-        )} style={isUser ? (moodStyling ? undefined : userBubbleStyle) : undefined}>
+        )} style={{
+          ...(isUser ? ((entangledStyling || moodStyling) ? {} : (userBubbleStyle || {})) : {}),
+          // Drive flash color via CSS var; purple default
+          ['--entangle-rgb' as any]: ((): string => {
+            const c = (message as any).bubbleColor as ('purple' | 'red' | 'blue' | undefined);
+            if (c === 'red') return '239, 68, 68';
+            if (c === 'blue') return '59, 130, 246';
+            return '139, 92, 246';
+          })()
+        } as React.CSSProperties}>
           {/* Mood indicator badge (appears on hover) */}
           {isUser && effectiveMood && (
             <div
@@ -265,8 +320,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           )}
           <div className={cn(
             isUser 
-              ? cn(moodStyling?.userText || styling.userText, "text-[1.2rem] md:text-[1.28rem] leading-8 font-user-sans") 
-              : cn(styling.assistantText, "text-[1rem] md:text-[1.06rem] leading-7 font-ai-mono")
+              ? cn(entangledStyling?.text || moodStyling?.userText || styling.userText, "text-[1.2rem] md:text-[1.28rem] leading-8 font-user-sans") 
+              : cn(entangledStyling?.text || styling.assistantText, "text-[1rem] md:text-[1.06rem] leading-7 font-ai-mono")
           )}>
             {isTyping && !isUser ? (
               <div className="w-full flex items-center justify-center py-1" aria-label="Musai is thinking">
@@ -323,7 +378,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       {isUser && (
         <div className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-          styling.userBubble,
+          entangledStyling?.bubble || styling.userBubble,
           "border"
         )}>
           <User className="w-4 h-4" />

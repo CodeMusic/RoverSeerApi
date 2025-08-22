@@ -38,6 +38,27 @@
         return 'false';
       }
     }
+    /**
+     * Cognitive entanglement — decide red/blue duality or unified violet
+     * Returns a pair { user: 'red'|'blue'|'violet', ai: 'red'|'blue'|'violet' }
+     */
+    function resolveEntangledBubbleColors(perspectiveOn, lastUserChoice)
+    {
+      try
+      {
+        if (perspectiveOn)
+        {
+          return { user: 'violet', ai: 'violet' };
+        }
+        var userColor = lastUserChoice || (Math.random() > 0.5 ? 'red' : 'blue');
+        var aiColor = userColor === 'red' ? 'blue' : 'red';
+        return { user: userColor, ai: aiColor };
+      }
+      catch (_)
+      {
+        return { user: 'violet', ai: 'violet' };
+      }
+    }
     function buildMusaiChatUrl(baseUrl, extraParams)
     {
       try
@@ -438,6 +459,39 @@
       catch (_) { return (value || '').toString(); }
     }
 
+    /** Determine if a POV thought has meaningful cognitive content */
+    function isMeaningfulThought(value)
+    {
+      try
+      {
+        var s = (value == null ? '' : String(value)).trim();
+        if (!s) { return false; }
+        // Treat common sentinel values as non-meaningful
+        if (/^(unknown|n\/a|none|null|undefined)$/i.test(s)) { return false; }
+        // Reject strings that are just punctuation/dashes
+        if (/^[-–—_.,:;!?'"\s]+$/.test(s)) { return false; }
+        return true;
+      }
+      catch (_)
+      {
+        return false;
+      }
+    }
+
+    /** Normalize a POV thought to either a cleaned string or empty when not meaningful */
+    function normalizeThought(value)
+    {
+      try
+      {
+        var s = (value == null ? '' : String(value)).replace(/\s+/g, ' ').trim();
+        return isMeaningfulThought(s) ? s : '';
+      }
+      catch (_)
+      {
+        return '';
+      }
+    }
+
     /** Submit handler */
     var typingEl = null;
     aiForm && aiForm.addEventListener('submit', function(ev)
@@ -522,6 +576,10 @@
 
         try
         {
+          // Decide the entangled color pairing for this message
+          var perspectiveOn = (getPerspectiveValue() === 'true');
+          var entangled = resolveEntangledBubbleColors(perspectiveOn, null);
+          // Reflect chosen AI color on typing indicator (created below)
           if (!typingEl)
           {
             typingEl = document.createElement('div');
@@ -538,6 +596,14 @@
               '</span>'
             );
           }
+          try
+          {
+            typingEl.classList.remove('red', 'blue', 'violet');
+            typingEl.classList.add(entangled.ai);
+            typingEl.dataset.userBubbleColor = entangled.user;
+            typingEl.dataset.aiBubbleColor = entangled.ai;
+          }
+          catch (_) { /* no-op */ }
           if (typingEl.parentNode !== aiForm && aiForm)
           {
             try { aiForm.insertBefore(typingEl, aiInput); } catch (_) { /* no-op */ }
@@ -724,6 +790,13 @@
 
           var main = document.createElement('div');
           main.className = 'ai-main-bubble';
+          try
+          {
+            main.classList.add(entangled.ai);
+            main.dataset.userBubbleColor = entangled.user;
+            main.dataset.aiBubbleColor = entangled.ai;
+          }
+          catch (_) { /* no-op */ }
 
           var logicalThought = '';
           var creativeThought = '';
@@ -732,9 +805,10 @@
           {
             var p = pov[i] || {};
             var t = (p && (p.type || p.name) || '').toString().toLowerCase();
-            if (!logicalThought && (t === 'logical' || /logic/.test(t)) && typeof p.thought === 'string') { logicalThought = p.thought; }
-            if (!creativeThought && (t === 'creative' || /creativ/.test(t)) && typeof p.thought === 'string') { creativeThought = p.thought; }
-            if (!perspectiveThought && (t === 'perspective' || /perspective|perspec/.test(t)) && typeof p.thought === 'string') { perspectiveThought = p.thought; }
+            var thoughtStr = (typeof p.thought === 'string') ? normalizeThought(p.thought) : '';
+            if (!logicalThought && (t === 'logical' || /logic/.test(t)) && thoughtStr) { logicalThought = thoughtStr; }
+            if (!creativeThought && (t === 'creative' || /creativ/.test(t)) && thoughtStr) { creativeThought = thoughtStr; }
+            if (!perspectiveThought && (t === 'perspective' || /perspective|perspec/.test(t)) && thoughtStr) { perspectiveThought = thoughtStr; }
           }
 
           if (logicalThought || creativeThought || perspectiveThought)

@@ -3,6 +3,9 @@ export interface Message {
   content: string;
   role: 'user' | 'assistant';
   timestamp: number;
+  // Quantum entanglement bubble color assignment for rendering and exports
+  // 'purple' when Perspective Mode is ON; otherwise 'red' or 'blue'.
+  bubbleColor?: 'purple' | 'red' | 'blue';
   // Optional user affect tag for UI theming (e.g., Happy, Sad).
   mood?: string;
   thoughts?: string; // AI internal thoughts for think tags

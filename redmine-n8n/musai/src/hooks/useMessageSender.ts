@@ -33,6 +33,28 @@ export const useMessageSender = (
     currentMessages: Message[],
     file?: File
   ) => {
+    // Normalize POV thoughts: treat empty or 'unknown' (and similar) as undefined
+    const sanitizePovThought = (value?: string): string | undefined =>
+    {
+      const trimmed = (value || '').trim();
+      if (!trimmed) return undefined;
+      const lower = trimmed.toLowerCase();
+      if (lower === 'unknown' || lower === 'n/a' || lower === 'none') return undefined;
+      return trimmed;
+    };
+
+    const sanitizePovArray = (pov: any): any =>
+    {
+      if (!Array.isArray(pov)) return pov;
+      const cleaned = pov
+        .map((p) => {
+          if (!p) return p;
+          const thought = sanitizePovThought(p.thought);
+          return thought ? { ...p, thought } : null;
+        })
+        .filter(Boolean);
+      return cleaned.length > 0 ? cleaned : undefined;
+    };
     // First, immediately add the user message to trigger UI transition
     console.log('Processing file for message:', file ? {
       name: file.name,
@@ -49,11 +71,21 @@ export const useMessageSender = (
     const uiMood = moodMatch ? (moodMatch[1] || '').trim() : undefined;
     const uiContent = moodMatch ? (moodMatch[2] || '') : input;
 
+    // Determine entangled polarity colors for this message pair
+    const isPerspectiveOn = (window as any).__musai_perspective_enabled === true;
+    const userPolarity: 'purple' | 'red' | 'blue' = isPerspectiveOn
+      ? 'purple'
+      : (Math.random() > 0.5 ? 'red' : 'blue');
+    const assistantPolarity: 'purple' | 'red' | 'blue' = isPerspectiveOn
+      ? 'purple'
+      : (userPolarity === 'red' ? 'blue' : 'red');
+
     const userMessage: Message = {
       id: uuidv4(),
       content: uiContent,
       role: "user",
       timestamp: Date.now(),
+      bubbleColor: userPolarity,
       ...(uiMood ? { mood: uiMood } : {}),
       ...(fileData && { imageData: fileData })
     };
@@ -196,7 +228,9 @@ export const useMessageSender = (
             id: placeholderId,
             content: '',
             role: 'assistant',
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            // Mirror complementary polarity for entanglement when POP is off
+            bubbleColor: assistantPolarity
           };
           assistantMessageId = placeholderId;
           workingMessages = [...workingMessages, placeholder];
@@ -228,11 +262,14 @@ export const useMessageSender = (
                 if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
               }
             }
+            logicalThought = sanitizePovThought(logicalThought);
+            creativeThought = sanitizePovThought(creativeThought);
+            const filteredPov = sanitizePovArray(responsePov);
 
             updateAssistantMessage({
               ...(responseContent ? { content: workingMessages.find(m => m.id === assistantMessageId)?.content || responseContent } : {}),
               ...(responseThoughts ? { thoughts: responseThoughts } : {}),
-              ...(responsePov ? { pov: responsePov } : {}),
+              ...(filteredPov ? { pov: filteredPov } : {}),
               ...(logicalThought ? { logicalThought } : {}),
               ...(creativeThought ? { creativeThought } : {})
             });
@@ -269,9 +306,12 @@ export const useMessageSender = (
                     if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
                   }
                 }
+                logicalThought = sanitizePovThought(logicalThought);
+                creativeThought = sanitizePovThought(creativeThought);
+                const filteredPov = sanitizePovArray(responsePov);
                 updateAssistantMessage({
                   ...(responseThoughts ? { thoughts: responseThoughts } : {}),
-                  ...(responsePov ? { pov: responsePov } : {}),
+                  ...(filteredPov ? { pov: filteredPov } : {}),
                   ...(logicalThought ? { logicalThought } : {}),
                   ...(creativeThought ? { creativeThought } : {}),
                   // keep streamed content; don't overwrite
@@ -301,10 +341,13 @@ export const useMessageSender = (
                   if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
                 }
               }
+              logicalThought = sanitizePovThought(logicalThought);
+              creativeThought = sanitizePovThought(creativeThought);
+              const filteredPov = sanitizePovArray(responsePov);
               updateAssistantMessage({
                 content: responseContent,
                 ...(responseThoughts ? { thoughts: responseThoughts } : {}),
-                ...(responsePov ? { pov: responsePov } : {}),
+                ...(filteredPov ? { pov: filteredPov } : {}),
                 ...(logicalThought ? { logicalThought } : {}),
                 ...(creativeThought ? { creativeThought } : {})
               });
@@ -344,13 +387,18 @@ export const useMessageSender = (
           }
         }
 
+        logicalThought = sanitizePovThought(logicalThought);
+        creativeThought = sanitizePovThought(creativeThought);
+        const filteredPov = sanitizePovArray(responsePov);
+
         const assistantMessage: Message = {
           id: uuidv4(),
           content: responseContent,
           role: "assistant",
           timestamp: Date.now(),
+          bubbleColor: assistantPolarity,
           ...(responseThoughts && { thoughts: responseThoughts }),
-          ...(responsePov && { pov: responsePov }),
+          ...(filteredPov && { pov: filteredPov }),
           ...(logicalThought && { logicalThought }),
           ...(creativeThought && { creativeThought })
         };
@@ -405,11 +453,18 @@ export const useMessageSender = (
         }
 
         // Append witty assistant reply to let the user know it didn't work
+        // On failure, still produce an entangled assistant color opposite the last user message
+        const lastUser = [...newMessages].reverse().find(m => m.role === 'user');
+        const fallbackAssistantPolarity: 'purple' | 'red' | 'blue' = isPerspectiveOn
+          ? 'purple'
+          : (lastUser?.bubbleColor === 'red' ? 'blue' : lastUser?.bubbleColor === 'blue' ? 'red' : assistantPolarity);
+
         const wittyAssistant: Message = {
           id: uuidv4(),
           content: getRandomWittyError(),
           role: 'assistant',
           timestamp: Date.now(),
+          bubbleColor: fallbackAssistantPolarity
         };
         const finalMessages = [...newMessages, wittyAssistant];
         updateSession(sessionId, finalMessages);

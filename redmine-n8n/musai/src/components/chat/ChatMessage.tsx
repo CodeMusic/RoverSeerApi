@@ -67,6 +67,35 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
     return stripCodeAndResultsBlocks(base);
   })();
 
+  // Entangled color classes for gradient bubble
+  const entangledBubble = (() =>
+  {
+    const c = (message as any).bubbleColor as ('purple' | 'red' | 'blue' | undefined);
+    if (!c) return null;
+    if (c === 'purple')
+    {
+      return {
+        bubble: 'bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 border border-violet-200/50 dark:border-violet-700/30',
+        shadow: '0 4px 6px -1px rgba(139, 92, 246, 0.15), 0 2px 4px -1px rgba(139, 92, 246, 0.1), 0 8px 24px -4px rgba(139, 92, 246, 0.15)'
+      };
+    }
+    if (c === 'red')
+    {
+      return {
+        bubble: 'bg-gradient-to-br from-rose-100 to-red-100 dark:from-rose-900 dark:to-red-900 border border-red-200/50 dark:border-red-700/30',
+        shadow: '0 4px 6px -1px rgba(244, 63, 94, 0.15), 0 2px 4px -1px rgba(244, 63, 94, 0.1), 0 8px 24px -4px rgba(244, 63, 94, 0.15)'
+      };
+    }
+    if (c === 'blue')
+    {
+      return {
+        bubble: 'bg-gradient-to-br from-sky-100 to-blue-100 dark:from-sky-900 dark:to-blue-900 border border-blue-200/50 dark:border-blue-800/30',
+        shadow: '0 4px 6px -1px rgba(59, 130, 246, 0.15), 0 2px 4px -1px rgba(59, 130, 246, 0.1), 0 8px 24px -4px rgba(59, 130, 246, 0.15)'
+      };
+    }
+    return null;
+  })();
+
   return (
     <div
       className={cn(
@@ -76,17 +105,26 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
     >
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-4 py-3 transition-all duration-200 backdrop-blur-sm hover:-translate-y-1 relative",
-          isAssistant
-            ? "bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900 border border-blue-100/50 dark:border-blue-800/30"
-            : "bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 text-slate-900 dark:text-white border border-violet-200/50 dark:border-violet-700/30"
+          "max-w-[85%] rounded-2xl px-4 py-3 transition-all duration-200 backdrop-blur-sm hover:-translate-y-1 relative entangle-flash",
+          entangledBubble?.bubble || (
+            isAssistant
+              ? "bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-900 border border-blue-100/50 dark:border-blue-800/30"
+              : "bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 text-slate-900 dark:text-white border border-violet-200/50 dark:border-violet-700/30"
+          )
         )}
         style={{
           transformStyle: 'preserve-3d',
           perspective: '1000px',
-          boxShadow: isAssistant 
+          boxShadow: entangledBubble?.shadow || (isAssistant 
             ? '0 4px 6px -1px rgba(148, 163, 184, 0.2), 0 2px 4px -1px rgba(148, 163, 184, 0.1), 0 8px 24px -4px rgba(148, 163, 184, 0.15)'
-            : '0 4px 6px -1px rgba(139, 92, 246, 0.15), 0 2px 4px -1px rgba(139, 92, 246, 0.1), 0 8px 24px -4px rgba(139, 92, 246, 0.15)'
+            : '0 4px 6px -1px rgba(139, 92, 246, 0.15), 0 2px 4px -1px rgba(139, 92, 246, 0.1), 0 8px 24px -4px rgba(139, 92, 246, 0.15)')
+          ,
+          ['--entangle-rgb' as any]: ((): string => {
+            const c = (message as any).bubbleColor as ('purple' | 'red' | 'blue' | undefined);
+            if (c === 'red') return '239, 68, 68';
+            if (c === 'blue') return '59, 130, 246';
+            return '139, 92, 246';
+          })()
         }}
       >
         {isAssistant && (

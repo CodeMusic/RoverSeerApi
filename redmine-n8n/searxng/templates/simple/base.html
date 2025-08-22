@@ -738,7 +738,8 @@
       top: auto;
       left: 50%;
       transform: translateX(-50%);
-      bottom: calc(30px + env(safe-area-inset-bottom));
+      /* Keep the dock comfortably inside the viewport across environments */
+      bottom: clamp(8px, 6vh, 56px);
       width: min(900px, calc(100vw - 28px));
       z-index: 999;
       margin: 0;
@@ -803,7 +804,7 @@
       }
     }
     @media (max-width: 1024px) {
-      #ai_chat { bottom: calc(8px + env(safe-area-inset-bottom)); width: calc(100% - 16px); }
+      #ai_chat { bottom: clamp(6px, 6vh, 48px); width: calc(100% - 16px); }
     }
     @media (prefers-color-scheme: light) { html.theme-auto #ai_chat { background: rgba(255,255,255,.9); } }
     html.theme-light #ai_chat { background: rgba(255,255,255,.9); }
@@ -954,6 +955,13 @@
       border-radius: 999px;
       background: #a78bfa; /* purple-400 */
     }
+    /* Quantum-mode typing bubble color variants */
+    .ai-typing-bubble.red { background: rgba(220,38,38,.10); border-color: rgba(185,28,28,.55); }
+    .ai-typing-bubble.red .ai-typing-dot { background: #ef4444; }
+    .ai-typing-bubble.blue { background: rgba(37,99,235,.10); border-color: rgba(29,78,216,.55); }
+    .ai-typing-bubble.blue .ai-typing-dot { background: #60a5fa; }
+    .ai-typing-bubble.violet { background: rgba(124,58,237,.10); border-color: rgba(109,40,217,.55); }
+    .ai-typing-bubble.violet .ai-typing-dot { background: #a78bfa; }
     html.theme-light .ai-typing-bubble {
       background: rgba(20,184,166,.10);
       border-color: rgba(20,184,166,.45);
@@ -984,6 +992,10 @@
       margin-bottom: 8px;
       white-space: pre-wrap;
     }
+    /* Quantum-mode main bubble color variants (applied per message) */
+    .ai-main-bubble.red { background: #dc2626; border-color: #b91c1c; color: #ffffff; }
+    .ai-main-bubble.blue { background: #2563eb; border-color: #1d4ed8; color: #ffffff; }
+    .ai-main-bubble.violet { background: #7c3aed; border-color: #6d28d9; color: #ffffff; }
     /* POV toggles and panels (red = logical, blue = creative) */
     .ai-pov-toggle-group {
       display: flex;
@@ -1152,8 +1164,8 @@
     }
   </style>
   <style>
-    /* Home page: dock AI chat to the bottom edge of the viewport */
-    body.index_endpoint #ai_chat { bottom: calc(0px + env(safe-area-inset-bottom)); }
+    /* Home page: keep AI chat visible but slightly above the edge */
+    body.index_endpoint #ai_chat { bottom: clamp(4px, 5vh, 48px); }
   </style>
 </head>
 <body class="{{ endpoint }}_endpoint" >
@@ -2426,6 +2438,16 @@
         try { document.documentElement.classList.remove('ai-chat-collapsed'); } catch (_) { /* no-op */ }
         try { localStorage.setItem('musai_ai_chat_collapsed', '0'); } catch (_) { /* no-op */ }
         try { ai.style.zIndex = '10000'; } catch (_) { /* no-op */ }
+        // Ensure the dock is within viewport after layout
+        try {
+          var rect = ai.getBoundingClientRect();
+          var overflowBottom = (rect.bottom - window.innerHeight);
+          if (overflowBottom > 0)
+          {
+            var currentBottom = parseFloat(window.getComputedStyle(ai).bottom) || 0;
+            ai.style.bottom = Math.max(8, currentBottom + overflowBottom + 8) + 'px';
+          }
+        } catch (_) { /* no-op */ }
       }
       catch (_) { /* no-op */ }
     })();
