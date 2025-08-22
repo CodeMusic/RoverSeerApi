@@ -824,6 +824,21 @@
       -webkit-overflow-scrolling: touch;
       white-space: pre-wrap;
     }
+    /* Hide control positioned in the output bubble corner */
+    #ai_chat_output .ai-hide {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: transparent;
+      color: #ffffff;
+      border: 0;
+      padding: 2px 6px;
+      line-height: 1;
+      font-size: 18px;
+      cursor: pointer;
+      opacity: .85;
+    }
+    #ai_chat_output .ai-hide:hover { opacity: 1; }
     /* Typing indicator bubble (Musai-style) */
     .ai-typing-bubble {
       display: inline-flex;
@@ -1138,6 +1153,7 @@
         var searchForm = document.getElementById('musaiOverlaySearch');
         var searchInput = document.getElementById('musaiOverlayQ');
         var searchClearBtn = document.getElementById('musaiOverlayClear');
+        var searchSubmitBtn = document.getElementById('musaiOverlaySubmit');
         var logoLink = document.querySelector('#musaiOverlayTopbar .musai-logo');
         // Fallback state to recover if the iframe can't load (X-Frame-Options / CSP)
         var currentTargetUrl = '';
@@ -1183,6 +1199,41 @@
           }
           catch (_) { /* no-op */ }
         }
+        // Cognitive affordance: reflect intent (Search vs Go) based on perceived URL-ness
+        var hasScheme = function(value)
+        {
+          try { return /^(?:[a-z][a-z0-9+.-]*):\/\//i.test(value || ''); }
+          catch (_) { return false; }
+        };
+        var looksLikeUrl = function(value)
+        {
+          try
+          {
+            var s = (value || '').trim();
+            if (!s || /\s/.test(s)) { return false; }
+            if (hasScheme(s)) { return true; }
+            if (/^www\./i.test(s)) { return true; }
+            if (/^(?:localhost)(?::\d+)?(?:[\/?#].*)?$/i.test(s)) { return true; }
+            if (/^(?:\d{1,3})(?:\.\d{1,3}){3}(?::\d+)?(?:[\/?#].*)?$/i.test(s)) { return true; }
+            return /^[^\s]+\.[a-z]{2,}(?:[\/?#].*)?$/i.test(s);
+          }
+          catch (_) { return false; }
+        };
+        var reflectSubmitAffordance = function()
+        {
+          try
+          {
+            if (!searchInput || !searchSubmitBtn) { return; }
+            var q = (searchInput.value || '').trim();
+            var go = looksLikeUrl(q);
+            var label = go ? 'Go' : 'Search';
+            searchSubmitBtn.textContent = label;
+            searchSubmitBtn.setAttribute('aria-label', label.toLowerCase());
+            try { searchInput.setAttribute('enterkeyhint', go ? 'go' : 'search'); } catch (_) { /* no-op */ }
+          }
+          catch (_) { /* no-op */ }
+        };
+
         var showUrlInSearchInput = function(url)
         {
           try
@@ -1192,6 +1243,7 @@
             try { value = deMortyUrl(url || '') || url || ''; } catch (_) { value = url || ''; }
             if (value) { searchInput.value = value; }
             reflectClearButton();
+            reflectSubmitAffordance();
           }
           catch (_) { /* no-op */ }
         };
@@ -1405,6 +1457,7 @@
           try { setLoadingMessage('Opening portal…'); } catch (_) { /* no-op */ }
           try { searchInput && searchInput.classList.remove('is-proxied'); } catch (_) { /* no-op */ }
           try { reflectClearButton(); } catch (_) { /* no-op */ }
+          try { reflectSubmitAffordance(); } catch (_) { /* no-op */ }
           // Clear any previous fallback timer
           try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
           // Suppress any page-level error dialog so its close (×) does not float above the iframe
@@ -1519,7 +1572,11 @@
         {
           if (searchInput)
           {
-            searchInput.addEventListener('input', function(){ try { reflectClearButton(); } catch (_) {} });
+            searchInput.addEventListener('input', function()
+            {
+              try { reflectClearButton(); } catch (_) { /* no-op */ }
+              try { reflectSubmitAffordance(); } catch (_) { /* no-op */ }
+            });
           }
           if (searchClearBtn)
           {
@@ -1528,9 +1585,11 @@
               try { searchInput.value = ''; } catch (_) {}
               try { searchInput.focus(); } catch (_) {}
               try { reflectClearButton(); } catch (_) {}
+              try { reflectSubmitAffordance(); } catch (_) { /* no-op */ }
             });
             // Initialize visibility on first load
             try { reflectClearButton(); } catch (_) {}
+            try { reflectSubmitAffordance(); } catch (_) { /* no-op */ }
           }
         }
         catch (_) { /* no-op */ }
@@ -1681,16 +1740,7 @@
               ev.stopPropagation();
               var q = (searchInput.value || '').trim();
               if (!q) { return; }
-              var hasScheme = function(value) { return /^(?:[a-z][a-z0-9+.-]*):\/\//i.test(value); };
-              var looksLikeUrl = function(value)
-              {
-                if (!value || /\s/.test(value)) { return false; }
-                if (hasScheme(value)) { return true; }
-                if (/^www\./i.test(value)) { return true; }
-                if (/^(?:localhost)(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return true; }
-                if (/^(?:\d{1,3})(?:\.\d{1,3}){3}(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return true; }
-                return /^[^\s]+\.[a-z]{2,}(?:[\/?#].*)?$/i.test(value);
-              };
+              // Use affordance heuristics defined above
               var normalizeUrl = function(value)
               {
                 if (!value) { return value; }

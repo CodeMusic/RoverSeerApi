@@ -27,6 +27,34 @@
     var aiPerspective = document.getElementById('ai_perspective');
     var aiBackTop = document.getElementById('ai_backToTop');
     var aiLogo = (aiSection && (aiSection.getAttribute('data-logo') || '').trim()) || '/static/img/logo_musai_symbol.png';
+    function createHideButton()
+    {
+      try
+      {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ai-hide';
+        btn.setAttribute('aria-label', 'Hide AI output');
+        btn.title = 'Hide';
+        btn.textContent = '×';
+        btn.addEventListener('click', function(ev)
+        {
+          try
+          {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (aiSection.classList.contains('collapsed'))
+            {
+              return;
+            }
+            try { rootHtml.classList.add('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
+          }
+          catch (_) { /* no-op */ }
+        });
+        return btn;
+      }
+      catch (_) { return null; }
+    }
     function expandAI()
     {
       try
@@ -107,25 +135,33 @@
       }
     });
 
-    /** Outside click collapses the output bubble to header-only (not the whole bar) */
+    /** Outside interaction collapses the output bubble to header-only (not the whole bar) */
     (function attachOutsideCollapse()
     {
       try
       {
-        document.addEventListener('click', function(e)
+        var handler = function(e)
         {
-          if (aiSection && (e.target === aiSection || (e.target.closest && e.target.closest('#ai_chat'))))
+          try
           {
-            return;
+            if (aiSection && (e.target === aiSection || (e.target.closest && e.target.closest('#ai_chat'))))
+            {
+              return;
+            }
+            var outputVisible = aiOut && !aiOut.hidden && aiOut.innerHTML.trim() !== '';
+            if (!outputVisible)
+            {
+              return;
+            }
+            try { rootHtml.classList.add('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
           }
-          var outputVisible = aiOut && !aiOut.hidden && aiOut.innerHTML.trim() !== '';
-          if (!outputVisible)
-          {
-            return;
-          }
-          // Collapse only the output bubble to show the POV header
-          try { rootHtml.classList.add('ai-chat-output-collapsed'); } catch (_) { /* no-op */ }
-        }, true);
+          catch (_) { /* no-op */ }
+        };
+        var types = ['pointerdown', 'touchstart', 'mousedown', 'click'];
+        for (var i = 0; i < types.length; i++)
+        {
+          document.addEventListener(types[i], handler, true);
+        }
       }
       catch (_) { /* no-op */ }
     })();
@@ -155,7 +191,26 @@
         aiBackTop.addEventListener('click', function(e)
         {
           e.preventDefault();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          // Always scroll the outer page to the very top (keep any overlay as-is)
+          try
+          {
+            var se = document.scrollingElement || document.documentElement || document.body;
+            if (se && typeof se.scrollTo === 'function')
+            {
+              se.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            else
+            {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }
+          catch (_)
+          {
+            try { window.scrollTo(0, 0); } catch (__) { /* no-op */ }
+          }
+          // Hard fallbacks for stubborn mobile browsers
+          try { document.documentElement && (document.documentElement.scrollTop = 0); } catch (_) { /* no-op */ }
+          try { document.body && (document.body.scrollTop = 0); } catch (_) { /* no-op */ }
         });
 
         var lastY = window.scrollY || window.pageYOffset || 0;
@@ -717,12 +772,16 @@
               aiOut.appendChild(redPanel);
               aiOut.appendChild(bluePanel);
               aiOut.appendChild(violetPanel);
+              // Add hide control (X) to collapse output-only
+              (function(){ try { var hideBtn = createHideButton(); if (hideBtn) { aiOut.appendChild(hideBtn); } } catch (_) { /* no-op */ } })();
             }
             setActive(null);
           }
           else
           {
             if (aiOut) { aiOut.appendChild(main); }
+            // Add hide control (X) for the simple output case
+            (function(){ try { if (aiOut) { var hideBtn2 = createHideButton(); if (hideBtn2) { aiOut.appendChild(hideBtn2); } } } catch (_) { /* no-op */ } })();
           }
           if (aiOut) { aiOut.hidden = false; }
         }
