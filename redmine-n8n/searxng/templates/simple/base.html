@@ -1344,6 +1344,39 @@
           if (url) { openOverlay(url, originId, { sourceUrl: sourceUrl }); }
         });
 
+        // Capture-phase safeguard: if a stretched link overlays the button, treat clicks
+        // occurring within the button's bounding box as button clicks.
+        document.addEventListener('click', function(e)
+        {
+          try
+          {
+            // If the native target was the button (or inside it), let the bubbling handler run
+            if (e.target && e.target.closest && e.target.closest('button.musai-open-iframe'))
+            {
+              return;
+            }
+            var x = (typeof e.clientX === 'number') ? e.clientX : -1;
+            var y = (typeof e.clientY === 'number') ? e.clientY : -1;
+            if (x < 0 || y < 0) { return; }
+            var buttons = document.querySelectorAll('button.musai-open-iframe');
+            for (var i = 0; i < buttons.length; i++)
+            {
+              var b = buttons[i];
+              var r = b.getBoundingClientRect();
+              if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)
+              {
+                e.preventDefault();
+                var url = b.getAttribute('data-url') || '';
+                var sourceUrl = b.getAttribute('data-source-url') || '';
+                var originId = b.getAttribute('data-origin-id') || '';
+                if (url) { openOverlay(url, originId, { sourceUrl: sourceUrl }); }
+                break;
+              }
+            }
+          }
+          catch (_) { /* no-op */ }
+        }, true);
+
         var performCloseReturn = function()
         {
           var originId = overlay.dataset.originId || '';
@@ -1616,7 +1649,16 @@
               // Normalize whitespace early to reduce cognitive load
               var normalized = raw.replace(/\s+/g, ' ').trim();
               // Strip non-informational symbols while preserving core punctuation
-              try { normalized = normalized.replace(/[^\p{L}\p{N}\s\.,;:\-\(\)\!\?\'\"]/gu, ' '); } catch (_) { normalized = normalized.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?\'\"]/g, ' '); }
+              try
+              {
+                // Build Unicode property regex at runtime to avoid parse-time errors on older engines
+                var unicodeClean = new RegExp("[^\\\\p{L}\\\\p{N}\\\\s\\\\.,;:\\\-\\\\(\\\\)\\\\!\\\\?\\\\'\\\\\"]","gu");
+                normalized = normalized.replace(unicodeClean, ' ');
+              }
+              catch (_)
+              {
+                normalized = normalized.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?\'\"]/g, ' ');
+              }
               normalized = normalized.replace(/\s{2,}/g, ' ').trim();
               if (maxChars > 0 && normalized.length > maxChars)
               {
@@ -1877,12 +1919,7 @@
             if (!isMortyUrl(url) || hasMortyHash(url))
             {
               btn.dataset.mortySigned = '1';
-              try { btn.removeAttribute('disabled'); } catch (_) {}
               return;
-            }
-            if (needsSigning)
-            {
-              try { btn.setAttribute('disabled', 'disabled'); } catch (_) {}
             }
             try { console.debug('[MortySign] upgradeButton before', { url: url }); } catch (_) {}
             signUrl(url).then(function(signed)
@@ -1897,7 +1934,6 @@
               }
               catch (_) {}
               btn.dataset.mortySigned = '1';
-              try { btn.removeAttribute('disabled'); } catch (_) {}
               try { console.debug('[MortySign] upgradeButton after', { signed: signed, hasMortyhash: /[?&]mortyhash=/.test(signed || '') }); } catch (_) {}
             });
           }
