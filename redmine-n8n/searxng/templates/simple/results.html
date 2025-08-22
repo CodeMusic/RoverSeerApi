@@ -456,21 +456,6 @@
           {
             overlayContextBlock = window.musaiOverlayAPI.contextBlock({ maxChars: 2000 }) || '';
           }
-          // Fallback: when the iframe is cross-origin or otherwise unreadable, provide a clear placeholder
-          try
-          {
-            if (!overlayContextBlock)
-            {
-              var lk = (window.musaiOverlayAPI && typeof window.musaiOverlayAPI.lastKnownUrl === 'function') ? (window.musaiOverlayAPI.lastKnownUrl() || '') : '';
-              if (!lk) {
-                lk = '';
-              }
-
-              overlayContextBlock = '[Current Context:\nUnable to view this page content.\nURL: ' + lk + '\n]';
-              
-            }
-          }
-          catch (_) { /* no-op */ }
         }
       }
       catch (_) { /* no-op */ }
