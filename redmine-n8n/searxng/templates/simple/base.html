@@ -684,8 +684,7 @@
     @media (min-width: 641px) {
       #ai_chat #ai_mode { display: none; }
     }
-    #ai_chat input[type="text"],
-    #ai_chat textarea {
+    #ai_chat input[type="text"] {
       flex: 1;
       min-width: 0;
       height: 40px;
@@ -694,8 +693,22 @@
       border: 1px solid var(--musai-primary);
       background: rgba(0,0,0,0.15);
       color: var(--musai-text);
+      line-height: 1.4;
+    }
+    #ai_chat textarea {
+      flex: 1;
+      min-width: 0;
+      /* Start as a single line and grow via JS autosize */
+      height: auto;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid var(--musai-primary);
+      background: rgba(0,0,0,0.15);
+      color: var(--musai-text);
       resize: none;
       line-height: 1.4;
+      overflow-y: auto;
     }
     /* Style the send button only so POV toggles can have their own colors */
     #ai_chat #ai_chat_send {
@@ -911,7 +924,8 @@
       .page_with_header img.logo { height: 148px; }
 
       /* Larger touch targets and readable text to avoid auto-zoom */
-      #ai_chat input[type="text"], #ai_chat textarea { height: 44px; font-size: 16px; }
+      #ai_chat input[type="text"] { height: 44px; font-size: 16px; }
+      #ai_chat textarea { min-height: 44px; height: auto; font-size: 16px; }
       #ai_chat #ai_chat_send { height: 44px; width: 48px; font-size: 18px; }
       #ai_chat .ai-toggle { height: 44px; width: 48px; font-size: 18px; }
       /* When collapsed on small screens, tighten spacing to fit the label neatly */
@@ -1338,7 +1352,11 @@
         {
           console.log('click musai: ', e);
           var trigger = e.target.closest && e.target.closest('button.musai-open-iframe');
-          if (!trigger) { return; }
+          if (!trigger)
+          {
+            console.log('no trigger');
+            return;
+          }
           e.preventDefault();
           try { e.stopPropagation(); } catch (_) { /* no-op */ }
           var url = trigger.getAttribute('data-url') || '';
@@ -1619,7 +1637,25 @@
               // Normalize whitespace early to reduce cognitive load
               var normalized = raw.replace(/\s+/g, ' ').trim();
               // Strip non-informational symbols while preserving core punctuation
-              try { normalized = normalized.replace(/[^\p{L}\p{N}\s\.,;:\-\(\)\!\?\'\"]/gu, ' '); } catch (_) { normalized = normalized.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?\'\"]/g, ' '); }
+              try
+              {
+                // Construct regex at runtime to avoid parse-time errors in browsers without Unicode property escapes
+                var unicodeStrip;
+                try { unicodeStrip = new RegExp("[^\\\\p{L}\\\\p{N}\\\\s\\\\.,;:\\\\-\\\\(\\\\)\\\\!\\\\?\\\\'\\\\\"]", "gu"); }
+                catch (_) { unicodeStrip = null; }
+                if (unicodeStrip)
+                {
+                  normalized = normalized.replace(unicodeStrip, ' ');
+                }
+                else
+                {
+                  normalized = normalized.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?\'\"]/g, ' ');
+                }
+              }
+              catch (_)
+              {
+                normalized = normalized.replace(/[^A-Za-z0-9\s\.,;:\-\(\)\!\?\'\"]/g, ' ');
+              }
               normalized = normalized.replace(/\s{2,}/g, ' ').trim();
               if (maxChars > 0 && normalized.length > maxChars)
               {

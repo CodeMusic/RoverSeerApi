@@ -15,7 +15,7 @@
 <section id="ai_chat" aria-label="AI assistant" data-q="{{ q|e }}" data-categories="{{ selected_categories|join(',')|e }}" data-pageno="{{ pageno }}" data-time-range="{{ time_range|e }}" data-language="{{ current_language|e }}" data-safesearch="{{ safesearch|e }}">
   <button id="ai_chat_toggle" class="ai-toggle" type="button" aria-label="Collapse AI assistant" title="Collapse">▾</button>
   <span class="ai-brand" aria-hidden="true">Musai</span>
-  <form id="ai_chat_form" aria-label="Ask Musai..." action="#">
+  <form id="ai_chat_form" aria-label="Ask Musai..." action="javascript:void(0)">
     <select id="ai_mode" aria-label="Mode">
       <option value="chat" selected>Chat</option>
       <option value="search">Search</option>
@@ -391,7 +391,7 @@
           // Navigate to results with q and existing categories if present
           const ds = aiSection?.dataset || {};
           const categories = (ds.categories || '').split(',').filter(Boolean).join(',');
-          const base = '{{ url_for('search') }}';
+          const base = "{{ url_for('search') }}";
           const url = base + '?q=' + encodeURIComponent(userPrompt) + (categories ? ('&categories=' + encodeURIComponent(categories)) : '');
           try { window.location.href = url; } catch (_) {}
           return;
@@ -609,8 +609,13 @@
               ? window.musaiN8N.getAuthHeader()
               : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
           ),
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          credentials: 'omit',
+          cache: 'no-store'
         });
+        if (!res.ok) {
+          throw new Error('HTTP ' + res.status);
+        }
         const data = await res.json();
         // Normalize to first record shape { response, pov }
         const record = Array.isArray(data) ? (data[0] || {}) : (data || {});
