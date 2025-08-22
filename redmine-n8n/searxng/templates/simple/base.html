@@ -1128,12 +1128,74 @@
           }
           catch (_) { return false; }
         };
+        // Decide whether a URL should be proxied via Morty based on file extension and allowed inline MIME types
+        var shouldUseMortyForUrl = function(url)
+        {
+          try
+          {
+            var s = String(url || '');
+            if (!s) { return true; }
+            // Strip query and fragment
+            var clean = s.split('#')[0].split('?')[0];
+            var lastSlash = clean.lastIndexOf('/');
+            var lastDot = clean.lastIndexOf('.');
+            // No extension → treat as unknown type → allow Morty
+            if (lastDot <= lastSlash) { return true; }
+            var ext = clean.slice(lastDot + 1).toLowerCase();
+            // Map common extensions to MIME. Only map those we care about; unknown → allow Morty
+            var extToMime = {
+              // HTML
+              'html': 'text/html', 'htm': 'text/html', 'xhtml': 'application/xhtml+xml',
+              // CSS
+              'css': 'text/css',
+              // Images
+              'gif': 'image/gif', 'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'pjpeg': 'image/pjpeg', 'webp': 'image/webp',
+              'tif': 'image/tiff', 'tiff': 'image/tiff', 'ico': 'image/vnd.microsoft.icon', 'cur': 'image/x-icon', 'bmp': 'image/bmp', 'dib': 'image/x-ms-bmp',
+              // Fonts
+              'otf': 'application/font-otf', 'ttf': 'application/font-ttf', 'woff': 'application/font-woff', 'eot': 'application/vnd.ms-fontobject',
+              // Common media we want to bypass Morty for (map so we can disallow)
+              'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'flac': 'audio/flac', 'm4a': 'audio/mp4', 'ogg': 'audio/ogg', 'oga': 'audio/ogg',
+              'mp4': 'video/mp4', 'm4v': 'video/mp4', 'webm': 'video/webm', 'ogv': 'video/ogg', 'mkv': 'video/x-matroska',
+              // Other common download types we should not proxy inside the iframe
+              'pdf': 'application/pdf', 'zip': 'application/zip', 'gz': 'application/gzip', 'rar': 'application/vnd.rar'
+            };
+            var allowedInline = {
+              'text/html': true,
+              'application/xhtml+xml': true,
+              'text/css': true,
+              'image/gif': true,
+              'image/png': true,
+              'image/jpeg': true,
+              'image/pjpeg': true,
+              'image/webp': true,
+              'image/tiff': true,
+              'image/vnd.microsoft.icon': true,
+              'image/bmp': true,
+              'image/x-ms-bmp': true,
+              'image/x-icon': true,
+              'application/font-otf': true,
+              'application/font-ttf': true,
+              'application/font-woff': true,
+              'application/vnd.ms-fontobject': true
+            };
+            console.log('extToMime: ', extToMime);
+            var mime = extToMime[ext] || '';
+            // Unknown type → allow Morty; Known and allowed → allow Morty; Known and not allowed → bypass Morty
+            if (!mime) { return true; }
+            return !!allowedInline[mime];
+          }
+          catch (_)
+          {
+            return true;
+          }
+        };
         var mortyProxify = function(url)
         {
           try
           {
             if (!mortyPrefix || !url) { return url; }
-            // Defer eligibility to backend signer
+            // Respect eligibility: bypass Morty for disallowed media types
+            if (!shouldUseMortyForUrl(url)) { return url; }
             if (isMortyUrl(url)) { return url; }
             if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0)
             {
@@ -1275,7 +1337,8 @@
           {
             var forceNoMorty = options && options.forceNoMorty === true;
             var sourceUrl = options && options.sourceUrl ? String(options.sourceUrl) : '';
-            var candidate = forceNoMorty ? (url || '') : mortyProxify(url || '');
+            var allowMorty = forceNoMorty ? false : shouldUseMortyForUrl(sourceUrl || (url || ''));
+            var candidate = allowMorty ? mortyProxify(url || '') : (url || '');
             var loadFinal = function(finalUrl)
             {
               try { console.debug('[MusaiOverlay] load iframe', { finalUrl: finalUrl, hasHash: /[?&]hash=/.test(finalUrl || '') }); } catch (_) {}
@@ -1308,7 +1371,7 @@
                 }
               } catch (_) { /* no-op */ }
             };
-            if (!forceNoMorty && mortyPrefix && candidate)
+            if (allowMorty && mortyPrefix && candidate)
             {
               try { signMortyUrl(candidate).then(loadFinal).catch(function(){ loadFinal(candidate); }); }
               catch (_) { loadFinal(candidate); }
@@ -1743,6 +1806,56 @@
           catch (_) { return url; }
         };
 
+        // Decide whether a URL should be proxied via Morty based on file extension and allowed inline MIME types
+        var shouldUseMortyForUrl = function(url)
+        {
+          try
+          {
+            var s = String(url || '');
+            if (!s) { return true; }
+            var clean = s.split('#')[0].split('?')[0];
+            var lastSlash = clean.lastIndexOf('/');
+            var lastDot = clean.lastIndexOf('.');
+            if (lastDot <= lastSlash) { return true; }
+            var ext = clean.slice(lastDot + 1).toLowerCase();
+            var extToMime = {
+              'html': 'text/html', 'htm': 'text/html', 'xhtml': 'application/xhtml+xml',
+              'css': 'text/css',
+              'gif': 'image/gif', 'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'pjpeg': 'image/pjpeg', 'webp': 'image/webp',
+              'tif': 'image/tiff', 'tiff': 'image/tiff', 'ico': 'image/vnd.microsoft.icon', 'cur': 'image/x-icon', 'bmp': 'image/bmp', 'dib': 'image/x-ms-bmp',
+              'otf': 'application/font-otf', 'ttf': 'application/font-ttf', 'woff': 'application/font-woff', 'eot': 'application/vnd.ms-fontobject',
+              'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'flac': 'audio/flac', 'm4a': 'audio/mp4', 'ogg': 'audio/ogg', 'oga': 'audio/ogg',
+              'mp4': 'video/mp4', 'm4v': 'video/mp4', 'webm': 'video/webm', 'ogv': 'video/ogg', 'mkv': 'video/x-matroska',
+              'pdf': 'application/pdf', 'zip': 'application/zip', 'gz': 'application/gzip', 'rar': 'application/vnd.rar'
+            };
+            var allowedInline = {
+              'text/html': true,
+              'application/xhtml+xml': true,
+              'text/css': true,
+              'image/gif': true,
+              'image/png': true,
+              'image/jpeg': true,
+              'image/pjpeg': true,
+              'image/webp': true,
+              'image/tiff': true,
+              'image/vnd.microsoft.icon': true,
+              'image/bmp': true,
+              'image/x-ms-bmp': true,
+              'image/x-icon': true,
+              'application/font-otf': true,
+              'application/font-ttf': true,
+              'application/font-woff': true,
+              'application/vnd.ms-fontobject': true
+            };
+            var mime = extToMime[ext] || '';
+            if (!mime) { return true; }
+            return !!allowedInline[mime];
+          }
+          catch (_)
+          {
+            return true;
+          }
+        };
 
         var signUrl = function(url)
         {
@@ -1756,7 +1869,8 @@
               return;
             }
             var plainTarget = isMortyUrl(candidate) ? deMortyUrl(candidate) : candidate;
-            // Defer eligibility and signing to backend
+            // If target should not be proxied by Morty (e.g., media), return direct URL
+            try { if (!shouldUseMortyForUrl(plainTarget)) { resolve(plainTarget); return; } } catch (_) {}
             var buildMorty = function(target, hash)
             {
               try
@@ -1854,7 +1968,12 @@
               if (isMortyUrl(href))
               {
                 var plain = deMortyUrl(href);
-                /* let backend decide; keep Morty link */
+                if (!shouldUseMortyForUrl(plain))
+                {
+                  a.setAttribute('href', plain);
+                  a.dataset.mortySigned = '1';
+                  return;
+                }
               }
             }
             catch (_) { /* no-op */ }
