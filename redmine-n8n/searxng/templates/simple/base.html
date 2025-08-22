@@ -135,7 +135,7 @@
       cursor: pointer;
       flex: 0 0 auto;
     }
-    #musaiOverlayTopbar .toolbar-spacer { flex: 1; }
+    #musaiOverlayTopbar .toolbar-spacer { flex: 0 0 auto; width: 0; }
     #musaiOverlayTopbar button {
       background: var(--musai-primary);
       color: #fff;
@@ -543,23 +543,30 @@
     @media (max-width: 640px) {
       #main_results #search_view { display: none; }
     }
-    /* Keep categories/search types away from the top-right utility links */
+    /* Keep categories/search types away from the top-right utility links
+       (apply on search and results pages only; not on the home page) */
     @media (min-width: 1025px) {
-      #search_header,
-      #categories {
+      #main_search #search_header,
+      #main_results #search_header,
+      #main_search #categories,
+      #main_results #categories {
         padding-right: 160px; /* space for About / Preferences */
       }
     }
     @media (min-width: 768px) and (max-width: 1024px) {
-      #search_header,
-      #categories {
+      #main_search #search_header,
+      #main_results #search_header,
+      #main_search #categories,
+      #main_results #categories {
         padding-right: 110px;
       }
     }
     /* Small landscape tablets / narrow laptops: reserve room for top-right links */
     @media (min-width: 641px) and (max-width: 767px) {
-      #search_header,
-      #categories {
+      #main_search #search_header,
+      #main_results #search_header,
+      #main_search #categories,
+      #main_results #categories {
         padding-right: 88px;
       }
     }
@@ -1051,6 +1058,17 @@
           }
           catch (_) { /* no-op */ }
         };
+        var showUrlInSearchInput = function(url)
+        {
+          try
+          {
+            if (!searchInput) { return; }
+            var value = '';
+            try { value = deMortyUrl(url || '') || url || ''; } catch (_) { value = url || ''; }
+            if (value) { searchInput.value = value; }
+          }
+          catch (_) { /* no-op */ }
+        };
 
         var errorDialog = document.querySelector('.dialog-error');
         // Morty helpers to ensure iframe URLs are proxied and signed with hash
@@ -1278,7 +1296,7 @@
             catch (_) { settle(buildMorty(plainTarget)); }
           });
         };
-        var openOverlay = function(url, originId)
+        var openOverlay = function(url, originId, options)
         {
           overlay.setAttribute('aria-hidden', 'false');
           try { overlay.setAttribute('data-loading', 'true'); } catch (_) { /* no-op */ }
@@ -1296,7 +1314,9 @@
           // Compute proxied + signed URL for Morty (if configured), then load
           try
           {
-            var allowMorty = shouldUseMortyForUrl(url || '');
+            var forceNoMorty = options && options.forceNoMorty === true;
+            var sourceUrl = options && options.sourceUrl ? String(options.sourceUrl) : '';
+            var allowMorty = forceNoMorty ? false : shouldUseMortyForUrl(sourceUrl || (url || ''));
             var candidate = allowMorty ? mortyProxify(url || '') : (url || '');
             var loadFinal = function(finalUrl)
             {
@@ -1305,6 +1325,7 @@
               try { currentTargetUrl = finalUrl || url || ''; } catch (_) { currentTargetUrl = finalUrl || ''; }
               try { frame.src = finalUrl || 'about:blank'; } catch (_) { frame.src = 'about:blank'; }
               try { lastKnownUrl = finalUrl || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
+              try { showUrlInSearchInput(deMortyUrl(finalUrl || url || '')); } catch (_) { /* no-op */ }
               // If the iframe fails to load (common when a site forbids embedding),
               // open the URL in a new tab and close the overlay to avoid a blank screen
               try {
@@ -1360,8 +1381,9 @@
           if (!trigger) { return; }
           e.preventDefault();
           var url = trigger.getAttribute('data-url') || '';
+          var sourceUrl = trigger.getAttribute('data-source-url') || '';
           var originId = trigger.getAttribute('data-origin-id') || '';
-          if (url) { openOverlay(url, originId); }
+          if (url) { openOverlay(url, originId, { sourceUrl: sourceUrl }); }
         });
 
         var performCloseReturn = function()
@@ -1429,6 +1451,7 @@
             catch (_) { /* no-op */ }
             // Update last known URL when possible
             try { updateLastKnownUrl(); } catch (_) { /* no-op */ }
+            try { showUrlInSearchInput(lastKnownUrl || (frame && frame.src) || ''); } catch (_) { /* no-op */ }
             if (!initialLoadDone)
             {
               initialLoadDone = true;
@@ -1488,6 +1511,7 @@
               {
                 try { candidate = new URL(candidate, lastKnownUrl || (frame && frame.src) || window.location.href).href; } catch (_) { /* no-op */ }
                 lastKnownUrl = candidate;
+                try { showUrlInSearchInput(candidate); } catch (_) { /* no-op */ }
               }
             }
             catch (_) { /* no-op */ }
@@ -1506,6 +1530,24 @@
               ev.stopPropagation();
               var q = (searchInput.value || '').trim();
               if (!q) { return; }
+              var hasScheme = function(value) { return /^(?:[a-z][a-z0-9+.-]*):\/\//i.test(value); };
+              var looksLikeUrl = function(value)
+              {
+                if (!value || /\s/.test(value)) { return false; }
+                if (hasScheme(value)) { return true; }
+                if (/^www\./i.test(value)) { return true; }
+                if (/^(?:localhost)(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return true; }
+                if (/^(?:\d{1,3})(?:\.\d{1,3}){3}(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return true; }
+                return /^[^\s]+\.[a-z]{2,}(?:[\/?#].*)?$/i.test(value);
+              };
+              var normalizeUrl = function(value)
+              {
+                if (!value) { return value; }
+                if (hasScheme(value)) { return value; }
+                if (/^www\./i.test(value)) { return 'https://' + value; }
+                if (/^(?:localhost|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?(?:[\/?#].*)?$/i.test(value)) { return 'http://' + value; }
+                return 'https://' + value;
+              };
               // If AI is currently thinking, confirm before navigating away
               try
               {
@@ -1516,7 +1558,14 @@
                 }
               }
               catch (_) { /* no-op */ }
-              // Close overlay and redirect to search results
+              // If input looks like a URL, navigate inside overlay directly without Morty
+              if (looksLikeUrl(q))
+              {
+                var dest = normalizeUrl(q);
+                try { openOverlay(dest, '', { forceNoMorty: true }); } catch (_) { /* no-op */ }
+                return;
+              }
+              // Otherwise, close overlay and redirect to search results
               try { closeOverlay(); } catch (_) { /* no-op */ }
               try { if (window.musaiAI && typeof window.musaiAI.markInternalNav === 'function') { window.musaiAI.markInternalNav(); } } catch (_) { /* no-op */ }
               var base = searchForm.getAttribute('action') || "{{ url_for('search') }}";
