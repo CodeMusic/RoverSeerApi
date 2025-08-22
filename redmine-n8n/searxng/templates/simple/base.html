@@ -1178,6 +1178,7 @@
               'application/font-woff': true,
               'application/vnd.ms-fontobject': true
             };
+            console.log('extToMime: ', extToMime);
             var mime = extToMime[ext] || '';
             // Unknown type → allow Morty; Known and allowed → allow Morty; Known and not allowed → bypass Morty
             if (!mime) { return true; }
@@ -1397,14 +1398,16 @@
 
         document.addEventListener('click', function(e)
         {
+          console.log('click musai: ', e);
           var trigger = e.target.closest && e.target.closest('button.musai-open-iframe');
           if (!trigger) { return; }
           e.preventDefault();
+          try { e.stopPropagation(); } catch (_) { /* no-op */ }
           var url = trigger.getAttribute('data-url') || '';
           var sourceUrl = trigger.getAttribute('data-source-url') || '';
           var originId = trigger.getAttribute('data-origin-id') || '';
           if (url) { openOverlay(url, originId, { sourceUrl: sourceUrl }); }
-        });
+        }, true);
 
         var performCloseReturn = function()
         {
