@@ -74,7 +74,7 @@
       </a>
     {% endif %}
     {% if allow_iframe %}
-    <button type="button" class="musai-open-iframe" data-musai-open="1" data-url="{{ proxied_link }}" data-source-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay">
+    <button type="button" class="musai-open-iframe" data-musai-open="1" data-url="{{ proxied_link }}" data-source-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay" onclick="try{if(window.musaiOverlayAPI&&typeof window.musaiOverlayAPI.open==='function'){window.musaiOverlayAPI.open(this.getAttribute('data-url')||'',this.getAttribute('data-origin-id')||'');}else{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}}catch(_){try{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}catch(__){}} return false;">
       <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
     </button>
     {% endif %}

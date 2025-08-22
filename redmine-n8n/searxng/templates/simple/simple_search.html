@@ -18,3 +18,30 @@
   <input type="hidden" name="theme" value="{{ theme }}" >
   {% if timeout_limit %}<input type="hidden" name="timeout_limit" value="{{ timeout_limit|e }}" >{% endif %}
 </form>
+<script>
+  (function wireHomeClearButton()
+  {
+    try
+    {
+      var q = document.getElementById('q');
+      var clear = document.getElementById('clear_search');
+      if (!q || !clear) { return; }
+
+      var sync = function()
+      {
+        try { clear.classList.toggle('empty', (q.value || '').length === 0); }
+        catch (_) { /* no-op */ }
+      };
+
+      sync();
+      clear.addEventListener('click', function(e)
+      {
+        e.preventDefault();
+        try { q.value = ''; q.focus(); } catch (_) { /* no-op */ }
+        sync();
+      });
+      q.addEventListener('input', sync, { passive: true });
+    }
+    catch (_) { /* no-op */ }
+  })();
+</script>

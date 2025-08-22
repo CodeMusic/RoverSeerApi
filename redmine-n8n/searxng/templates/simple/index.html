@@ -3,7 +3,9 @@
 {% block content %}
 <div class="index">
     <div class="title_logo">
-        <img src="{{ url_for('static', filename='img/searxng.png') }}" alt="MusaiSearch">
+        <a href="https://search.codemusic.ca" title="{{ _('Refresh MusaiSearch') }}" aria-label="{{ _('Refresh MusaiSearch') }}">
+            <img src="{{ url_for('static', filename='img/searxng.png') }}" alt="MusaiSearch">
+        </a>
     </div>
     <div id="default_search_prompt" class="default-search-prompt" style="display:none" role="region" aria-label="Default search engine prompt">
         <div class="prompt-body">

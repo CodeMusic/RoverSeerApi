@@ -73,8 +73,6 @@
       z-index: 980; /* below AI chat (999) but above rest */
       display: none;
       flex-direction: column;
-      /* Reserve space for the docked AI chat + iPhone home indicator */
-      padding-bottom: calc(120px + env(safe-area-inset-bottom));
     }
     #musaiOverlay[aria-hidden="false"] { display: flex; }
     #musaiOverlayTopbar {
@@ -148,6 +146,27 @@
       padding: 0 10px;
       cursor: pointer;
       flex: 0 0 auto;
+    }
+    /* Portal affordance when iframe is proxied through Morty */
+    #musaiOverlayTopbar form.musai-search input[type="text"].is-proxied
+    {
+      border-color: rgba(34,197,94,.85); /* green-500 */
+      background-image: linear-gradient(90deg, rgba(34,197,94,.25), rgba(250,204,21,.25)); /* green → yellow */
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
+      box-shadow: 0 0 0 2px rgba(34,197,94,.35), 0 0 18px rgba(250,204,21,.35);
+      animation: portalFlow 2.2s ease-in-out infinite, portalPulse 3.6s ease-in-out infinite;
+    }
+    @keyframes portalFlow
+    {
+      0%   { box-shadow: 0 0 0 2px rgba(34,197,94,.35), 0 0 12px rgba(250,204,21,.25); }
+      50%  { box-shadow: 0 0 0 2px rgba(250,204,21,.45), 0 0 18px rgba(34,197,94,.35); }
+      100% { box-shadow: 0 0 0 2px rgba(34,197,94,.35), 0 0 12px rgba(250,204,21,.25); }
+    }
+    @keyframes portalPulse
+    {
+      0%, 100% { filter: saturate(1) brightness(1); }
+      50%      { filter: saturate(1.15) brightness(1.05); }
     }
     #musaiOverlayTopbar .toolbar-spacer { flex: 0 0 auto; width: 0; }
     #musaiOverlayTopbar button {
@@ -457,6 +476,11 @@
       align-items: center;
       column-gap: 8px;
       padding: 6px 8px;
+    }
+    /* Aesthetic: subtle focus ring when typing for attentional feedback */
+    .search_box:focus-within {
+      box-shadow: 0 6px 28px rgba(0,0,0,.45), 0 0 0 2px rgba(167,139,250,.35);
+      border-color: #a78bfa;
     }
     @media (prefers-color-scheme: light) { html.theme-auto .search_box { background: rgba(255,255,255,.9); } }
     html.theme-light .search_box { background: rgba(255,255,255,.9); }
@@ -1031,7 +1055,7 @@
     <div id="musaiOverlayLoading" aria-hidden="true">
       <div class="ai-typing-bubble mystical-glow">
         <span class="ai-typing-icon"><img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt=""></span>
-        <span class="ai-typing-label">{{ _('Summoning portal') }}</span>
+        <span class="ai-typing-label">{{ _('Opening portal…') }}</span>
         <span class="ai-typing-dot mystical-dots"></span>
         <span class="ai-typing-dot mystical-dots" style="animation-delay:.2s"></span>
         <span class="ai-typing-dot mystical-dots" style="animation-delay:.4s"></span>
@@ -1100,6 +1124,36 @@
             var value = '';
             try { value = deMortyUrl(url || '') || url || ''; } catch (_) { value = url || ''; }
             if (value) { searchInput.value = value; }
+          }
+          catch (_) { /* no-op */ }
+        };
+        // Adjust loading narrative to reflect portal state
+        var setLoadingMessage = function(text)
+        {
+          try
+          {
+            var label = document.querySelector('#musaiOverlayLoading .ai-typing-label');
+            if (label && typeof text === 'string' && text)
+            {
+              label.textContent = text;
+            }
+          }
+          catch (_) { /* no-op */ }
+        };
+        // Visual salience: make proxy state cognitively obvious on the input field
+        var reflectProxyState = function(url)
+        {
+          try
+          {
+            if (!searchInput) { return; }
+            if (isMortyUrl(url || ''))
+            {
+              searchInput.classList.add('is-proxied');
+            }
+            else
+            {
+              searchInput.classList.remove('is-proxied');
+            }
           }
           catch (_) { /* no-op */ }
         };
@@ -1280,6 +1334,8 @@
           initialLoadDone = false;
           loadCount = 0;
           navigatedAway = false;
+          try { setLoadingMessage('Opening portal…'); } catch (_) { /* no-op */ }
+          try { searchInput && searchInput.classList.remove('is-proxied'); } catch (_) { /* no-op */ }
           // Clear any previous fallback timer
           try { if (fallbackTimer) { clearTimeout(fallbackTimer); fallbackTimer = null; } } catch (_) { /* no-op */ }
           // Suppress any page-level error dialog so its close (×) does not float above the iframe
@@ -1299,6 +1355,13 @@
               try { frame.src = finalUrl || 'about:blank'; } catch (_) { frame.src = 'about:blank'; }
               try { lastKnownUrl = finalUrl || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
               try { showUrlInSearchInput(deMortyUrl(finalUrl || url || '')); } catch (_) { /* no-op */ }
+              try
+              {
+                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilized.'); }
+                else { setLoadingMessage('No portal key provided — DTouring to direct link…'); }
+                reflectProxyState(finalUrl || '');
+              }
+              catch (_) { /* no-op */ }
               // If the iframe fails to load (common when a site forbids embedding),
               // open the URL in a new tab and close the overlay to avoid a blank screen
               try {
@@ -1330,6 +1393,7 @@
             }
             else
             {
+              try { setLoadingMessage('No portal key provided — DTouring to direct link…'); } catch (_) { /* no-op */ }
               loadFinal(candidate || url || '');
             }
           }
@@ -1408,7 +1472,11 @@
                       'header, .header, #header { display: none !important; }',
                       '.morty-header, .morty-topbar, .morty-toolbar { display: none !important; }',
                       '#topbar, .topbar, .toolbar { display: none !important; }',
-                      'body { margin-top: 0 !important; }'
+                      // Common Morty/footer/banner selectors observed across deployments
+                      'footer, .footer, #footer { display: none !important; }',
+                      '.morty-footer, .morty-bottombar, #morty-bottombar, .morty-banner, .morty-notice, .morty-bottom { display: none !important; }',
+                      '.fixed-bottom, .sticky-bottom { display: none !important; }',
+                      'body { margin-top: 0 !important; margin-bottom: 0 !important; }'
                     ].join('\n');
                     doc.head && doc.head.appendChild(style);
                     // Also remove any element that contains the “Morty” label commonly shown by proxies
@@ -1422,6 +1490,17 @@
                         try { el.parentNode && el.parentNode.removeChild(el); } catch (_) { /* no-op */ }
                       }
                     }
+                    // Remove bottom banners/footers that announce proxified views
+                    var maybeFooters = doc.querySelectorAll('footer, .footer, #footer, .morty-footer, .morty-bottombar, #morty-bottombar, .morty-banner, .morty-notice, .morty-bottom, .bottom, #bottom, .fixed-bottom, .sticky-bottom');
+                    for (var j = 0; j < maybeFooters.length; j++)
+                    {
+                      var el2 = maybeFooters[j];
+                      var txt2 = (el2 && (el2.innerText || el2.textContent) || '').toLowerCase();
+                      if (txt2.indexOf('morty') !== -1 || txt2.indexOf('proxy') !== -1 || txt2.indexOf('proxified') !== -1 || txt2.indexOf('original site') !== -1)
+                      {
+                        try { el2.parentNode && el2.parentNode.removeChild(el2); } catch (_) { /* no-op */ }
+                      }
+                    }
                   }
                 }
                 catch (_) { /* cross-origin or CSP; ignore */ }
@@ -1431,6 +1510,7 @@
             // Update last known URL when possible
             try { updateLastKnownUrl(); } catch (_) { /* no-op */ }
             try { showUrlInSearchInput(lastKnownUrl || (frame && frame.src) || ''); } catch (_) { /* no-op */ }
+            try { reflectProxyState(lastKnownUrl || (frame && frame.src) || ''); } catch (_) { /* no-op */ }
             if (!initialLoadDone)
             {
               initialLoadDone = true;
@@ -1491,6 +1571,7 @@
                 try { candidate = new URL(candidate, lastKnownUrl || (frame && frame.src) || window.location.href).href; } catch (_) { /* no-op */ }
                 lastKnownUrl = candidate;
                 try { showUrlInSearchInput(candidate); } catch (_) { /* no-op */ }
+                try { reflectProxyState(candidate); } catch (_) { /* no-op */ }
               }
             }
             catch (_) { /* no-op */ }
@@ -1921,10 +2002,7 @@
               try { btn.removeAttribute('disabled'); } catch (_) {}
               return;
             }
-            if (needsSigning)
-            {
-              try { btn.setAttribute('disabled', 'disabled'); } catch (_) {}
-            }
+            // Never disable the button; allow user to click even while signing
             try { console.debug('[MortySign] upgradeButton before', { url: url }); } catch (_) {}
             signUrl(url).then(function(signed)
             {
