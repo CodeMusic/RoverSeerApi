@@ -42,28 +42,14 @@
       border-radius: 6px;
       cursor: pointer;
       vertical-align: middle;
-      /* Ensure this sits above any row-wide overlay link */
-      position: relative;
-      z-index: 5;
-      pointer-events: auto;
     }
     /* Remove morty border indicators from Musai button */
     .musai-inline-icon {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       opacity: .88;
-      transition: transform .15s ease, opacity .15s ease, filter .15s ease;
     }
-    .musai-open-iframe:hover .musai-inline-icon {
-      opacity: 1;
-      transform: scale(1.15);
-      filter: brightness(1.15);
-    }
-
-    /* Create a stacking context so the inline button can layer above stretched links */
-    .result h3 { position: relative; }
-    /* Lower the z-index of the row overlay compared to the Musai button (if any is set) */
-    .result .url_header { z-index: 1; }
+    .musai-open-iframe:hover .musai-inline-icon { opacity: 1; }
 
     /* Fullscreen overlay to host iframe + top bar */
     #musaiOverlay {
@@ -408,12 +394,6 @@
       flex-direction: column;
       align-items: center;
       row-gap: 12px;
-    }
-    /* Home page: center the search input and set a sensible width */
-    #main_index #search_view .search_box
-    {
-      width: min(900px, calc(100vw - 56px));
-      margin: 0 auto;
     }
     /* Search page only: gently nudge the logo for better visual alignment */
     #main_search #search_logo
