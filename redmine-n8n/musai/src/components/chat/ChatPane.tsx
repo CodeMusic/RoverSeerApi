@@ -101,7 +101,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const [streamEnabled, setStreamEnabled] = useState<boolean>(true);
   const [effectsEnabled, setEffectsEnabled] = useState<boolean>(true);
   const [perspectiveEnabled, setPerspectiveEnabled] = useState<boolean>(() => {
-    try { return (window as any).__musai_perspective_enabled === true; } catch { return false; }
+    // Default ON for Perspective Thinking
+    try { return (window as any).__musai_perspective_enabled !== false; } catch { return true; }
   });
 
   const theme = getChatTheme(module);
@@ -127,6 +128,11 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     if (!queueMetrics) return false;
     return queueMetrics.activeCount >= queueMetrics.maxConcurrent;
   }, [queueMetrics]);
+
+  // Keep global POV flag in sync (read by sender)
+  useEffect(() => {
+    try { (window as any).__musai_perspective_enabled = perspectiveEnabled; } catch {}
+  }, [perspectiveEnabled]);
 
   // Trigger Musai effects after streaming completes and content is finalized
   useEffect(() => {

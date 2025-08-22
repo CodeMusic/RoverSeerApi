@@ -10,6 +10,9 @@ interface ChatInterfaceProps {
   onSendMessage: (message: string, file?: File) => Promise<void>;
   className?: string;
   placeholder?: string;
+  // Enable Perspective Thinking toggle in generic chat usage
+  perspectiveEnabled?: boolean;
+  onTogglePerspective?: (enabled: boolean) => void;
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -18,7 +21,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isLoading = false,
   onSendMessage,
   className = "",
-  placeholder
+  placeholder,
+  perspectiveEnabled = true,
+  onTogglePerspective
 }) => {
   const [input, setInput] = useState("");
 
@@ -47,12 +52,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
       <div className="w-full">
         <ChatInput
-          input={input}
+          module="chat"
+          onMessageSend={onSendMessage}
           isLoading={isLoading}
-          onInputChange={setInput}
-          onSend={handleSend}
-          onImageSelect={handleImageSelect}
+          streamEnabled={true}
+          onToggleStream={(v) => { try { (window as any).__musai_stream_enabled = v; } catch {} }}
+          effectsEnabled={true}
+          onToggleEffects={(v) => { try { (window as any).__musai_effects_enabled = v; } catch {} }}
           placeholder={placeholder}
+          theme={{ container: 'bg-white dark:bg-gray-900', accent: 'text-black dark:text-white', border: 'border-gray-200 dark:border-gray-700' }}
+          perspectiveEnabled={perspectiveEnabled}
+          onTogglePerspective={onTogglePerspective}
         />
       </div>
     </div>

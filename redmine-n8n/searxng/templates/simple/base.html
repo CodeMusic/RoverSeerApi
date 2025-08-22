@@ -1241,7 +1241,7 @@
     <div id="musaiOverlayLoading" aria-hidden="true">
       <div class="ai-typing-bubble mystical-glow">
         <span class="ai-typing-icon"><img src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt=""></span>
-        <span class="ai-typing-label">{{ _('Opening portal…') }}</span>
+        <span class="ai-typing-label">{{ _('Establishing Portal…') }}</span>
         <span class="ai-typing-dot mystical-dots"></span>
         <span class="ai-typing-dot mystical-dots" style="animation-delay:.2s"></span>
         <span class="ai-typing-dot mystical-dots" style="animation-delay:.4s"></span>
@@ -1597,7 +1597,7 @@
           initialLoadDone = false;
           loadCount = 0;
           navigatedAway = false;
-          try { setLoadingMessage('Opening portal…'); } catch (_) { /* no-op */ }
+          try { setLoadingMessage('Portal stabilizing…'); } catch (_) { /* no-op */ }
           try { searchInput && searchInput.classList.remove('is-proxied'); } catch (_) { /* no-op */ }
           try { reflectClearButton(); } catch (_) { /* no-op */ }
           try { reflectSubmitAffordance(); } catch (_) { /* no-op */ }
@@ -1634,8 +1634,8 @@
               catch (_) { /* no-op */ }
               try
               {
-                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilizing...'); overlay && overlay.removeAttribute('data-direct'); }
-                else { setLoadingMessage('No portal key provided — DTouring to direct link…'); overlay && overlay.setAttribute('data-direct', 'true'); }
+                if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilizing…'); overlay && overlay.removeAttribute('data-direct'); }
+                else { setLoadingMessage('Portal stabilizing…'); overlay && overlay.setAttribute('data-direct', 'true'); }
                 reflectProxyState(finalUrl || '');
               }
               catch (_) { /* no-op */ }
@@ -1665,12 +1665,28 @@
             };
             if (allowMorty && mortyPrefix && candidate)
             {
-              try { signMortyUrl(candidate).then(loadFinal).catch(function(){ loadFinal(candidate); }); }
-              catch (_) { loadFinal(candidate); }
+              // Optimistic load for faster perceived performance; upgrade to signed URL when ready
+              loadFinal(candidate);
+              try {
+                signMortyUrl(candidate).then(function(signed)
+                {
+                  try
+                  {
+                    if (signed && typeof signed === 'string' && signed !== candidate)
+                    {
+                      try { frame.src = signed; } catch (_) { /* no-op */ }
+                      try { showUrlInSearchInput(deMortyUrl(signed)); } catch (_) { /* no-op */ }
+                      try { reflectProxyState(signed); } catch (_) { /* no-op */ }
+                    }
+                  }
+                  catch (_) { /* no-op */ }
+                }).catch(function(){ /* keep optimistic load */ });
+              }
+              catch (_) { /* keep optimistic load */ }
             }
             else
             {
-              try { setLoadingMessage('No portal key provided — DTouring to direct link…'); overlay && overlay.setAttribute('data-direct', 'true'); } catch (_) { /* no-op */ }
+              try { setLoadingMessage('Portal stabilizing…'); overlay && overlay.setAttribute('data-direct', 'true'); } catch (_) { /* no-op */ }
               loadFinal(candidate || url || '');
             }
           }
@@ -1692,16 +1708,12 @@
 
         document.addEventListener('click', function(e)
         {
-          console.log('click musai: ', e);
-          var trigger = e.target.closest && e.target.closest('button.musai-open-iframe');
-          if (!trigger)
-          {
-            console.log('no trigger');
-            return;
-          }
+          var trigger = e.target.closest && e.target.closest('.musai-open-iframe');
+          if (!trigger) { return; }
           e.preventDefault();
           try { e.stopPropagation(); } catch (_) { /* no-op */ }
-          var url = trigger.getAttribute('data-url') || '';
+          var url = '';
+          try { url = (trigger.tagName === 'A') ? (trigger.getAttribute('href') || '') : (trigger.getAttribute('data-url') || ''); } catch (_) { url = trigger.getAttribute('data-url') || ''; }
           var sourceUrl = trigger.getAttribute('data-source-url') || '';
           var originId = trigger.getAttribute('data-origin-id') || '';
           if (url) { openOverlay(url, originId, { sourceUrl: sourceUrl }); }

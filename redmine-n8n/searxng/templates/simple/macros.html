@@ -69,7 +69,7 @@
 
     {# Swap behaviors: when iframes are allowed, title opens overlay and badge is direct link #}
     {% if allow_iframe %}
-      <a href="{{ proxied_link }}" class="result-link musai-open-iframe" data-musai-open="1" data-url="{{ proxied_link }}" data-source-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay" onclick="try{if(window.musaiOverlayAPI&&typeof window.musaiOverlayAPI.open==='function'){window.musaiOverlayAPI.open(this.getAttribute('data-url')||'',this.getAttribute('data-origin-id')||'');}else{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}}catch(_){try{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}catch(__){}} return false;">{{ result.title|safe }}</a>
+      <a href="{{ proxied_link }}" class="result-link musai-open-iframe" data-musai-open="1" data-source-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay" onclick="try{var u=this.getAttribute('href')||'';if(window.musaiOverlayAPI&&typeof window.musaiOverlayAPI.open==='function'){window.musaiOverlayAPI.open(u,this.getAttribute('data-origin-id')||'');}else{window.open(u, '_blank','noopener');}}catch(_){try{window.open(this.getAttribute('href')||'', '_blank','noopener');}catch(__){}} return false;">{{ result.title|safe }}</a>
       <a href="{{ result.url }}" class="direct-link-badge" {% if results_on_new_tab %}target="_blank" rel="noopener noreferrer"{% else %}rel="noreferrer"{% endif %} title="Open directly" aria-label="Open directly">{{ icon_small('external-link') }}</a>
     {% else %}
       {{ result_link(result.url, result.title|safe) }}

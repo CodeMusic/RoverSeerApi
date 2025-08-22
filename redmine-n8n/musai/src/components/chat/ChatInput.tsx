@@ -137,13 +137,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
           {/* POV toggle (Quick vs Perspective Thinking) */}
           <div className="w-full sm:w-auto flex items-center gap-2">
-            <div className="inline-flex rounded-md border overflow-hidden">
+            <div className="inline-flex rounded-full border overflow-hidden">
               <button
                 type="button"
                 onClick={() => onTogglePerspective && onTogglePerspective(false)}
                 className={cn(
                   "px-3 py-1 text-xs",
-                  !perspectiveEnabled ? "bg-accent text-accent-foreground" : "bg-background"
+                  !perspectiveEnabled ? "bg-primary text-primary-foreground" : "bg-background text-foreground/70"
                 )}
                 aria-pressed={!perspectiveEnabled}
                 aria-label="Quick mode"
@@ -155,7 +155,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 onClick={() => onTogglePerspective && onTogglePerspective(true)}
                 className={cn(
                   "px-3 py-1 text-xs border-l",
-                  perspectiveEnabled ? "bg-accent text-accent-foreground" : "bg-background"
+                  perspectiveEnabled ? "bg-primary text-primary-foreground" : "bg-background text-foreground/70"
                 )}
                 aria-pressed={perspectiveEnabled}
                 aria-label="Perspective Thinking mode"

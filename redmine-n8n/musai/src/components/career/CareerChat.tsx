@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { TrendingUp, Sparkles, Calendar, AlertCircle } from 'lucide-react';
 import { ChatMessages } from '@/components/chat/ChatMessages';
 import { ChatInput } from '@/components/chat/ChatInput';
@@ -18,6 +19,13 @@ export const CareerChat: React.FC<CareerChatProps> = ({
   onNewChat
 }) => {
   const [input, setInput] = useState('');
+  // POV toggle (default ON)
+  const [perspectiveEnabled, setPerspectiveEnabled] = useState<boolean>(() => {
+    try { return (window as any).__musai_perspective_enabled !== false; } catch { return true; }
+  });
+  useEffect(() => {
+    try { (window as any).__musai_perspective_enabled = perspectiveEnabled; } catch {}
+  }, [perspectiveEnabled]);
   const [careerContext, setCareerContext] = useState({
     currentRole: '',
     targetRole: '',
@@ -151,10 +159,17 @@ Always provide actionable, specific advice and consider the user's context when 
       {/* Chat Input */}
       <div className="p-4 border-t">
         <ChatInput
-          input={input}
+          module="career"
+          onMessageSend={async (text) => handleSendMessage(text)}
           isLoading={isTyping}
-          onInputChange={handleInputChange}
-          onSend={handleSend}
+          streamEnabled={true}
+          onToggleStream={(v) => { try { (window as any).__musai_stream_enabled = v; } catch {} }}
+          effectsEnabled={true}
+          onToggleEffects={(v) => { try { (window as any).__musai_effects_enabled = v; } catch {} }}
+          placeholder={"Ask about your career, job search, or professional development..."}
+          theme={{ container: 'bg-blue-50 dark:bg-blue-950/20', accent: 'text-blue-800 dark:text-blue-200', border: 'border-blue-200 dark:border-blue-800' }}
+          perspectiveEnabled={perspectiveEnabled}
+          onTogglePerspective={(enabled) => setPerspectiveEnabled(enabled)}
         />
       </div>
     </div>
