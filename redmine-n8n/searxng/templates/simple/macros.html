@@ -53,8 +53,7 @@
   {{- result_close_link() -}}
   {%- if result.thumbnail %}{{ result_open_link(result.url) }}<img class="thumbnail" src="{{ image_proxify(result.thumbnail) }}" title="{{ result.title|striptags }}" loading="lazy">{{ result_close_link() }}{% endif -%}
   <h3>
-    {{ result_link(result.url, result.title|safe) }}
-    {# Proxy badge: only this badge and the Musai overlay use the Morty URL #}
+    {# Resolve proxy/iframe settings first #}
     {% set morty_prefix = (get_setting('server.result_proxy.url') or '') %}
     {% set morty_prefix = morty_prefix.strip() %}
     {% set is_morty = false %}
@@ -67,16 +66,19 @@
     {% endif %}
     {% set proxied_link = morty_proxify(result.url) %}
     {% set allow_iframe = get_setting('ui.allow_musairesult_iframes') %}
-    {# Show either the proxy badge OR the Musai iframe button; not both #}
-    {% if morty_prefix and not allow_iframe %}
-      <a href="{{ proxied_link }}" class="proxy-badge" {% if results_on_new_tab %}target="_blank" rel="noopener noreferrer"{% else %}rel="noreferrer"{% endif %} title="Proxied via Musai" aria-label="Proxied via Musai">
-        <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Proxy">
-      </a>
-    {% endif %}
+
+    {# Swap behaviors: when iframes are allowed, title opens overlay and badge is direct link #}
     {% if allow_iframe %}
-    <button type="button" class="musai-open-iframe" data-musai-open="1" data-url="{{ proxied_link }}" data-source-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay" onclick="try{if(window.musaiOverlayAPI&&typeof window.musaiOverlayAPI.open==='function'){window.musaiOverlayAPI.open(this.getAttribute('data-url')||'',this.getAttribute('data-origin-id')||'');}else{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}}catch(_){try{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}catch(__){}} return false;">
-      <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Musai">
-    </button>
+      <a href="{{ proxied_link }}" class="result-link musai-open-iframe" data-musai-open="1" data-url="{{ proxied_link }}" data-source-url="{{ result.url }}" data-origin-id="result-item-{{ index }}" title="Open in Musai overlay" aria-label="Open in Musai overlay" onclick="try{if(window.musaiOverlayAPI&&typeof window.musaiOverlayAPI.open==='function'){window.musaiOverlayAPI.open(this.getAttribute('data-url')||'',this.getAttribute('data-origin-id')||'');}else{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}}catch(_){try{window.open(this.getAttribute('data-url')||'', '_blank','noopener');}catch(__){}} return false;">{{ result.title|safe }}</a>
+      <a href="{{ result.url }}" class="direct-link-badge" {% if results_on_new_tab %}target="_blank" rel="noopener noreferrer"{% else %}rel="noreferrer"{% endif %} title="Open directly" aria-label="Open directly">{{ icon_small('external-link') }}</a>
+    {% else %}
+      {{ result_link(result.url, result.title|safe) }}
+      {# If iframes are disabled, keep showing the proxy badge when Morty is configured #}
+      {% if morty_prefix %}
+        <a href="{{ proxied_link }}" class="proxy-badge" {% if results_on_new_tab %}target="_blank" rel="noopener noreferrer"{% else %}rel="noreferrer"{% endif %} title="Proxied via Musai" aria-label="Proxied via Musai">
+          <img class="musai-inline-icon" src="{{ url_for('static', filename='img/logo_musai_symbol.png') }}" alt="Proxy">
+        </a>
+      {% endif %}
     {% endif %}
   </h3>
 {%- endmacro -%}

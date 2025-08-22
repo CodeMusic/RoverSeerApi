@@ -58,7 +58,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       url.searchParams.set("simple_style", String(preference));
       return url.toString();
     } catch {
-      return `https://search.codemusic.ca?theme=${encodeURIComponent(String(preference))}`;
+      return `https://search.codemusic.ca?simple_style=${encodeURIComponent(String(preference))}`;
     }
   }, [preference]);
 

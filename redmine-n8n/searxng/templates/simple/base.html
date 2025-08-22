@@ -34,17 +34,40 @@
         }
 
         var memoryThemeKey = 'searxng.theme';
-        var perceivedTheme = cognitiveThemeParam || (function()
+        var storedTheme = null;
+        try { storedTheme = localStorage.getItem(memoryThemeKey); } catch (_) { storedTheme = null; }
+        var serverTheme = (function()
         {
-          try { return localStorage.getItem(memoryThemeKey); }
+          try
+          {
+            var match = (root.className || '').match(/\btheme-(auto|light|dark|black)\b/);
+            return match ? match[1] : null;
+          }
           catch (_) { return null; }
         })();
+        var endpoint = (function()
+        {
+          try
+          {
+            var m = document.querySelector('meta[name="endpoint"]');
+            return m ? m.getAttribute('content') || '' : '';
+          }
+          catch (_) { return ''; }
+        })();
+
+        // Resolve theme precedence:
+        // 1) URL param wins
+        // 2) On preferences page, server wins (so user changes apply) and update storage
+        // 3) Elsewhere, localStorage wins to keep experience consistent across navigation
+        var preferServer = endpoint === 'preferences';
+        var perceivedTheme = cognitiveThemeParam || (preferServer ? (serverTheme || storedTheme) : (storedTheme || serverTheme));
 
         if (perceivedTheme)
         {
           var cls = root.className || '';
           cls = cls.replace(/(^|\s)theme-(auto|light|dark|black)(?=\s|$)/, ' ').replace(/\s{2,}/g, ' ').trim();
           root.className = (cls ? cls + ' ' : '') + 'theme-' + perceivedTheme;
+          // Persist resolved theme so subsequent navigations (e.g., after search) stay consistent
           try { localStorage.setItem(memoryThemeKey, perceivedTheme); } catch (_) { /* no-op */ }
 
           var meta = document.querySelector('meta[name="theme-color"]');
@@ -1253,6 +1276,33 @@
         var loadCount = 0;
         var navigatedAway = false;
 
+        // Cognitive hygiene: hide Morty chrome as early as possible
+        var hideMortyChromeEarly = function(targetFrame)
+        {
+          try
+          {
+            var f = targetFrame || frame;
+            if (!f) { return; }
+            var doc = f.contentDocument || (f.contentWindow && f.contentWindow.document) || null;
+            if (!doc || !doc.head) { return; }
+            // If we already injected, skip
+            if (doc.getElementById('musai-morty-suppress')) { return; }
+            var style = doc.createElement('style');
+            style.id = 'musai-morty-suppress';
+            style.textContent = [
+              'header, .header, #header { display: none !important; }',
+              '.morty-header, .morty-topbar, .morty-toolbar, #mortyheader, #morty-header, #mortyHeader, .mortyheader { display: none !important; }',
+              '#topbar, .topbar, .toolbar { display: none !important; }',
+              'footer, .footer, #footer { display: none !important; }',
+              '.morty-footer, .morty-bottombar, #morty-bottombar, .morty-banner, .morty-notice, .morty-bottom { display: none !important; }',
+              '.fixed-bottom, .sticky-bottom { display: none !important; }',
+              'body { margin-top: 0 !important; margin-bottom: 0 !important; }'
+            ].join('\n');
+            doc.head.appendChild(style);
+          }
+          catch (_) { /* cross-origin or CSP; ignore */ }
+        };
+
         var updateLastKnownUrl = function()
         {
           try
@@ -1566,6 +1616,18 @@
               try { frame.src = finalUrl || 'about:blank'; } catch (_) { frame.src = 'about:blank'; }
               try { lastKnownUrl = finalUrl || ''; initialOverlayUrl = lastKnownUrl; } catch (_) { /* no-op */ }
               try { showUrlInSearchInput(deMortyUrl(finalUrl || url || '')); } catch (_) { /* no-op */ }
+              // Begin early, repeated attempts to inject Morty suppression until load event
+              try
+              {
+                var earlyTries = 0;
+                var earlyTimer = setInterval(function()
+                {
+                  earlyTries += 1;
+                  try { hideMortyChromeEarly(frame); } catch (_) { /* no-op */ }
+                  if (earlyTries > 20) { clearInterval(earlyTimer); }
+                }, 100);
+              }
+              catch (_) { /* no-op */ }
               try
               {
                 if (isMortyUrl(finalUrl || '')) { setLoadingMessage('Portal stabilizing...'); overlay && overlay.removeAttribute('data-direct'); }
