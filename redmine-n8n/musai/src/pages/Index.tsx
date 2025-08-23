@@ -883,6 +883,14 @@ const Index = () => {
         <PreMusaiPage
           type={getPreMusaiType()}
           onSubmit={(input, file) => {
+            // University: route to course creation with topic; that screen calls n8n immediately
+            if (currentTab === APP_TERMS.TAB_UNIVERSITY) {
+              const topic = (input || '').trim();
+              if (topic) {
+                navigate(`${ROUTES.UNIVERSITY_COURSE_NEW}?topic=${encodeURIComponent(topic)}`, { state: { initialTopic: topic } });
+                return;
+              }
+            }
             // Special handling for Medical: go to UI and call n8n in background
             if (currentTab === APP_TERMS.TAB_MEDICAL) {
               setIsProcessingMedical(true);
