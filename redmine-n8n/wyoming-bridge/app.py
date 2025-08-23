@@ -150,22 +150,51 @@ async def tts(payload: dict):
     if not text:
         raise HTTPException(400, "Missing text")
 
-    voice_value = payload.get("voice")  # optional
-    voice_obj = _parse_voice(voice_value)  # robust across wyoming versions
+    # If you pass "voice", we'll try to honor it. If you omit it,
+    # we don't send a voice at all and Piper uses its default.
+    voice_value = payload.get("voice", None)
+    voice_obj = _parse_voice(voice_value) if voice_value else None
 
     client = await connect_rw(PIPER_HOST, PIPER_PORT)
     out = io.BytesIO()
+    piper_error: str | None = None
 
     try:
-        await client.write_event(Synthesize(text=text, voice=voice_obj))
+        synth = Synthesize(text=text, voice=voice_obj) if voice_obj else Synthesize(text=text)
+        await client.write_event(synth)
 
         async for ev in client.events():
+            # Happy path
             if isinstance(ev, AudioChunk):
                 out.write(ev.audio)
-            elif isinstance(ev, AudioStop):
+                continue
+            if isinstance(ev, AudioStop):
                 break
+
+            # Try to capture a structured error from Piper (varies by version)
+            etype = ev.__class__.__name__
+            if etype.lower().find("error") >= 0 or etype.lower().find("fail") >= 0:
+                try:
+                    # best-effort to pull readable info from the event
+                    if hasattr(ev, "to_dict"):
+                        piper_error = str(ev.to_dict())
+                    elif hasattr(ev, "__dict__"):
+                        piper_error = str(ev.__dict__)
+                    else:
+                        piper_error = etype
+                except Exception:
+                    piper_error = etype
+
+        if out.tell() == 0:
+            # No audio came back
+            msg = piper_error or "no audio produced (check Piper logs/voice)"
+            raise HTTPException(502, f"TTS upstream error: {msg}")
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(502, f"TTS upstream error: {e}")
+        # Show full detail to make debugging easier
+        raise HTTPException(502, f"TTS upstream error: {repr(e)}")
     finally:
         try:
             await client.close()
@@ -175,3 +204,5 @@ async def tts(payload: dict):
     out.seek(0)
     return StreamingResponse(out, media_type="audio/wav",
                              headers={"Cache-Control": "no-store"})
+
+

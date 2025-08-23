@@ -75,6 +75,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [consoleIndex, setConsoleIndex] = useState(0);
   const [consoleText, setConsoleText] = useState('');
   const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
+  const [fogOn, setFogOn] = useState(false);
+  const [floodOn, setFloodOn] = useState(false);
   const previewRunRef = useRef(false);
 
   const today = useMemo(() => yyyymmdd(now), [now]);
@@ -187,6 +189,9 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     }
 
     previewRunRef.current = true;
+    setFogOn(false);
+    // Begin with a subtle fog fade for readability before typing starts
+    const fogTimer = window.setTimeout(() => setFogOn(true), 10) as unknown as number;
 
     const LINES = [
       'Wake up...',
@@ -204,6 +209,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     let linePauseTimer: number | undefined;
     let floodTimer: number | undefined;
     let enterTimer: number | undefined;
+    let startTypingTimer: number | undefined;
 
     const typeNextLine = (lineIdx: number) =>
     {
@@ -218,8 +224,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
         if (i < line.length)
         {
-          // Cadence similar to console typing
-          charTimer = window.setTimeout(tick, 45) as unknown as number;
+          // Slower cadence for readability (matrix-like console typing)
+          charTimer = window.setTimeout(tick, 95) as unknown as number;
         }
         else
         {
@@ -236,23 +242,27 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
             {
               // Begin glyph flood
               setPreviewPhase(2);
+              setFloodOn(false);
+              // allow layout to mount then trigger progressive reveal
+              window.setTimeout(() => setFloodOn(true), 30);
               // Allow flood to render and intensify, then enter app
               floodTimer = window.setTimeout(() =>
               {
                 enterTimer = window.setTimeout(() =>
                 {
                   finishUnlock();
-                }, 600);
-              }, 700);
+                }, 900);
+              }, 1100);
             }
-          }, 220) as unknown as number;
+          }, 520) as unknown as number;
         }
       };
 
       tick();
     };
 
-    typeNextLine(0);
+    // Small delay so the fog can become perceptible before typing starts
+    startTypingTimer = window.setTimeout(() => typeNextLine(0), 380) as unknown as number;
 
     return () =>
     {
@@ -260,6 +270,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       if (linePauseTimer) window.clearTimeout(linePauseTimer);
       if (floodTimer) window.clearTimeout(floodTimer);
       if (enterTimer) window.clearTimeout(enterTimer);
+      if (startTypingTimer) window.clearTimeout(startTypingTimer);
+      if (fogTimer) window.clearTimeout(fogTimer);
     };
   }, [gateMode, isAuthorized]);
 
@@ -645,18 +657,23 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       {/* Preview unlock overlay */}
       {gateMode === 'preview' && !isAuthorized && (
         <div className="pointer-events-none fixed inset-0 z-[10002]">
+          {/* Blackish fog for readability (fades in) */}
+          <div
+            className="absolute inset-0 transition-opacity duration-700"
+            style={{ backgroundColor: 'rgba(0,0,0,0.72)', opacity: fogOn ? 1 : 0 }}
+          />
           {/* Console typing overlay */}
           {previewPhase === 1 && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[90%] max-w-3xl rounded-lg bg-black/65 border border-white/10 p-6 shadow-xl" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
-                <div className="text-xs text-white/60 mb-2">musai://veil/console</div>
-                <div className="space-y-1 text-[15px] leading-6 text-purple-200">
+              <div className="relative w-[92%] max-w-4xl rounded-xl bg-black/70 border border-emerald-400/20 p-7 shadow-2xl" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+                <div className="text-xs text-emerald-300/60 mb-3">musai://veil/console</div>
+                <div className="space-y-2 text-2xl md:text-3xl lg:text-4xl leading-8 md:leading-9 lg:leading-[2.75rem] font-extrabold" style={{ color: '#39ff14' }}>
                   {consoleHistory.map((line, idx) => (
                     <div key={idx} className="whitespace-pre">{line}</div>
                   ))}
                   <div className="whitespace-pre">
                     {consoleText}
-                    <span className="inline-block w-2 h-5 bg-purple-300 align-middle ml-1 animate-pulse" />
+                    <span className="inline-block w-2 h-6 bg-emerald-300 align-middle ml-2 animate-pulse" />
                   </div>
                 </div>
               </div>
@@ -666,21 +683,35 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
           {/* Glyph flood overlay */}
           {previewPhase === 2 && (
             <div className="absolute inset-0">
-              <div className="absolute inset-0 grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-3 p-4">
-                {Array.from({ length: 160 }).map((_, i) =>
+              <div className="absolute inset-0 grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-2.5 p-4">
+                {Array.from({ length: 192 }).map((_, i) =>
                 {
                   const Icon = [MessageSquare, Search, Eye, Code, GraduationCap, Theater, TrendingUp, Heart, Stethoscope, Sparkles, Bot, Music][i % 12];
-                  const tone = MUSAI_CHROMATIC_12[i % MUSAI_CHROMATIC_12.length];
-                  const size = 18 + ((i * 7) % 14);
-                  const opacity = 0.4 + ((i * 13) % 50) / 100;
+                  const tone = MUSAI_CHROMATIC_12[(i * 5) % MUSAI_CHROMATIC_12.length];
+                  const size = 16 + ((i * 11) % 16);
+                  const delay = ((i % 12) * 70) + (Math.floor(i / 12) * 45) + Math.floor(Math.random() * 140);
+                  const matrixChars = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789@#$%&*()_+-=[]{}|;:,.<>?';
+                  const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
                   return (
-                    <div key={i} className="flex items-center justify-center">
-                      <Icon style={{ color: tone.hex, width: size, height: size, opacity }} />
+                    <div key={i} className="relative flex items-center justify-center h-8 select-none">
+                      {/* Veil text behind */}
+                      <div
+                        className="transition-opacity duration-500 text-[13px] md:text-[14px]"
+                        style={{ color: 'rgba(99, 255, 179, 0.55)', opacity: floodOn ? 0.25 : 0.85, transitionDelay: `${delay}ms` }}
+                      >
+                        {char}
+                      </div>
+                      {/* Progressive symbol replacement */}
+                      <div
+                        className="absolute inset-0 flex items-center justify-center transition-opacity duration-500"
+                        style={{ opacity: floodOn ? 1 : 0, transitionDelay: `${delay}ms` }}
+                      >
+                        <Icon style={{ color: tone.hex, width: size, height: size, filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.25))' }} />
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              <div className="absolute inset-0 bg-black/20 animate-[fadeIn_300ms_ease]" />
             </div>
           )}
         </div>
