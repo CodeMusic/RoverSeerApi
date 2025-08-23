@@ -103,31 +103,53 @@ async def tts(payload: dict):
     if not text:
         raise HTTPException(400, "Missing text")
 
-    voice_name = (payload.get("voice") or
-                  os.environ.get("DEFAULT_PIPER_VOICE") or
-                  "en_US-GlaDOS-medium")
-
+    voice_name = payload.get("voice") or DEFAULT_PIPER_VOICE
     try:
         model_path, config_path = _resolve_voice_paths(voice_name)
     except FileNotFoundError as e:
         raise HTTPException(400, str(e))
 
     try:
-        # Load voice (consider caching if performance matters)
         voice = PiperVoice.load(model_path, config_path)
 
-        # Synthesize returns int16 PCM samples as a NumPy array
-        samples = voice.synthesize(text)
-
-        # Write to WAV in-memory
+        # prefer streaming to keep memory small
         out = io.BytesIO()
         with wave.open(out, "wb") as wf:
             wf.setnchannels(1)
-            wf.setsampwidth(2)  # 16-bit
+            wf.setsampwidth(2)  # 16-bit PCM
             wf.setframerate(voice.config.sample_rate)
-            wf.writeframes(samples.tobytes())
-        out.seek(0)
 
+            # Try stream API if available
+            if hasattr(voice, "synthesize_stream_raw"):
+                for chunk in voice.synthesize_stream_raw(
+                    text,
+                    speaker_id=payload.get("speaker"),
+                    length_scale=float(payload.get("length_scale", 1.0)),
+                    noise_scale=float(payload.get("noise_scale", 0.667)),
+                    noise_w=float(payload.get("noise_w", 0.8)),
+                ):
+                    # chunk is already bytes for raw PCM int16
+                    wf.writeframes(chunk)
+            else:
+                # Fallback: non-stream API; returns a NumPy int16 array (or bytes)
+                samples = voice.synthesize(
+                    text,
+                    speaker_id=payload.get("speaker"),
+                    length_scale=float(payload.get("length_scale", 1.0)),
+                    noise_scale=float(payload.get("noise_scale", 0.667)),
+                    noise_w=float(payload.get("noise_w", 0.8)),
+                )
+                # samples may be numpy.ndarray(int16) or bytes
+                if hasattr(samples, "tobytes"):
+                    wf.writeframes(samples.tobytes())
+                elif isinstance(samples, (bytes, bytearray)):
+                    wf.writeframes(samples)
+                else:
+                    # last-resort: iterate if it's an iterable of chunks
+                    for ch in samples:
+                        wf.writeframes(ch if isinstance(ch, (bytes, bytearray)) else bytes(ch))
+
+        out.seek(0)
         return StreamingResponse(out, media_type="audio/wav",
                                  headers={"Cache-Control": "no-store"})
 
@@ -168,6 +190,8 @@ async def chat_completions(body: Dict):
         ],
         "model": OLLAMA_MODEL,
     }
+
+
 
 
 
