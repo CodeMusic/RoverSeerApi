@@ -731,6 +731,14 @@ const Index = () => {
         return createNewDevSession();
       case APP_TERMS.TAB_CAREER:
         return createNewCareerSession();
+      case APP_TERMS.TAB_UNIVERSITY: {
+        // For University, use the PreMusai flow. Do not create a chat session.
+        // Ensure we're on the University tab so PreMusai is visible, then wait for user input.
+        if (currentTab !== APP_TERMS.TAB_UNIVERSITY) {
+          handleTabChange(APP_TERMS.TAB_UNIVERSITY);
+        }
+        return;
+      }
       case APP_TERMS.TAB_NARRATIVE: {
         // Show PreMusai first; when user submits, we call n8n to create a narrative
         // This path is handled via PreMusai onSubmit below

@@ -47,12 +47,12 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
     const shouldAutoGenerate = Boolean(initialTopic && topic.trim() && !generatedData && !isGenerating);
     if (shouldAutoGenerate) 
     {
-      handleGenerateCourse();
+      handleGenerateCourseDraft();
     }
   // We intentionally depend on these to re-evaluate when topic/prop changes
   }, [initialTopic, topic, generatedData, isGenerating]);
 
-  const handleGenerateCourse = async () => 
+  const handleGenerateCourseDraft = async () => 
   {
     if (!topic.trim()) return;
 
@@ -188,10 +188,10 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g., Quantum Physics, Machine Learning, Ancient History..."
                   className="flex-1"
-                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateCourse()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateCourseDraft()}
                 />
                 <Button
-                  onClick={handleGenerateCourse}
+                  onClick={handleGenerateCourseDraft}
                   disabled={!topic.trim() || isGenerating}
                   className="bg-purple-600 hover:bg-purple-700 text-white"
                 >
@@ -330,24 +330,101 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                   Course Syllabus
                 </h4>
                 <div className="space-y-3">
-                  {generatedData.syllabus.map((lecture, index) => (
+                  {(isEditing ? (editedData?.syllabus || []) : generatedData.syllabus).map((lecture, index) => (
                     <div key={index} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                       <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-600 dark:text-purple-300">
                         {index + 1}
                       </div>
                       <div className="flex-1">
-                        <h5 className="font-medium">{lecture.title}</h5>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {lecture.summary}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {lecture.duration}
-                          </Badge>
-                        </div>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={lecture.title}
+                              onChange={(e) => setEditedData(prev => {
+                                if (!prev) return prev;
+                                const next = { ...prev } as any;
+                                next.syllabus = [...next.syllabus];
+                                next.syllabus[index] = { ...next.syllabus[index], title: e.target.value };
+                                return next;
+                              })}
+                              placeholder="Lecture title"
+                            />
+                            <Textarea
+                              value={lecture.summary}
+                              onChange={(e) => setEditedData(prev => {
+                                if (!prev) return prev;
+                                const next = { ...prev } as any;
+                                next.syllabus = [...next.syllabus];
+                                next.syllabus[index] = { ...next.syllabus[index], summary: e.target.value };
+                                return next;
+                              })}
+                              placeholder="Lecture summary"
+                              rows={2}
+                            />
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs text-muted-foreground">Duration</Label>
+                              <Input
+                                value={lecture.duration}
+                                onChange={(e) => setEditedData(prev => {
+                                  if (!prev) return prev;
+                                  const next = { ...prev } as any;
+                                  next.syllabus = [...next.syllabus];
+                                  next.syllabus[index] = { ...next.syllabus[index], duration: e.target.value };
+                                  return next;
+                                })}
+                                className="w-32"
+                                placeholder="e.g., 45m"
+                              />
+                              <div className="ml-auto flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditedData(prev => {
+                                    if (!prev) return prev;
+                                    const next = { ...prev } as any;
+                                    next.syllabus = next.syllabus.filter((_, i: number) => i !== index);
+                                    return next;
+                                  })}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <h5 className="font-medium">{lecture.title}</h5>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {lecture.summary}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {lecture.duration}
+                              </Badge>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
+                  {isEditing && (
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditedData(prev => {
+                          if (!prev) return prev;
+                          const next = { ...prev } as any;
+                          next.syllabus = [...next.syllabus, { title: 'New lecture', summary: '', duration: '30m' }];
+                          return next;
+                        })}
+                      >
+                        Add Syllabus Item
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
