@@ -153,7 +153,7 @@ async def tts(request: Request, payload: dict):
         # Use compat voice object
         voice_obj = make_voice(voice_name)
 
-        await client.write_event(Synthesize(text=text, voice=voice_obj))
+        await client.write_event(Synthesize(text=text, voice=voice_obj).event())
 
         async for ev in client.events():
             if hasattr(ev, "audio"):  # AudioChunk
@@ -177,3 +177,5 @@ async def tts(request: Request, payload: dict):
         raise HTTPException(status_code=502, detail=f"TTS upstream error: {e}")
     finally:
         await _safe_disconnect(client)
+
+
