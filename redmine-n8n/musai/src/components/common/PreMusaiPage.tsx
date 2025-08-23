@@ -376,11 +376,14 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
 
   const config = getPageConfig(type);
   const useContent = dynamicContent || config;
+  const hasDynamic = Boolean(dynamicContent);
+  const showLoadingSkeleton = isLoadingContent && !hasDynamic;
   
   const title = customTitle || useContent.title;
   const subtitle = customSubtitle || useContent.subtitle;
   const placeholder = customPlaceholder || useContent.placeholder;
-  const suggestions = customSuggestions || (dynamicContent ? dynamicContent.examples.map(ex => ex.text) : config.suggestions);
+  // Only show suggestions once dynamic content is available (or custom provided). Avoid static until fallback is explicitly used.
+  const suggestions = customSuggestions || (dynamicContent ? dynamicContent.examples.map(ex => ex.text) : []);
   const showModeSelector = config.showModeSelector && type === 'home';
 
   // Map icon names to actual icon components
@@ -666,17 +669,25 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
               </>
             )}
             
-            {titleNode ? (
-              titleNode
+            {showLoadingSkeleton ? (
+              <div className="h-10 w-64 md:w-96 rounded-lg bg-muted/50 animate-pulse" />
             ) : (
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
-                {title}
-              </h1>
+              titleNode ? (
+                titleNode
+              ) : (
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent border-b-2 border-purple-200 dark:border-purple-800 pb-2">
+                  {title}
+                </h1>
+              )
             )}
           </div>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            {subtitle}
-          </p>
+          {showLoadingSkeleton ? (
+            <div className="mt-3 h-4 w-80 md:w-[28rem] rounded bg-muted/40 animate-pulse" />
+          ) : (
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              {subtitle}
+            </p>
+          )}
         </MusaiShimmer>
 
         {/* Input/Form Area */}
@@ -845,31 +856,47 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
           )}
 
           {/* Suggestions */}
-          {suggestions && suggestions.length > 0 && (
+          {showLoadingSkeleton ? (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">Try asking:</p>
+              <p className="text-sm text-muted-foreground text-center">Preparing suggestions…</p>
               <div className="flex flex-wrap justify-center gap-2">
-                {suggestions.map((suggestion, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="text-sm hover:bg-sidebar-accent/50 transition-all duration-200"
-                    disabled={isLoading}
-                  >
-                    {suggestion}
-                  </Button>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-8 w-28 rounded-md bg-muted/40 animate-pulse" />
                 ))}
               </div>
             </div>
+          ) : (
+            suggestions && suggestions.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground text-center">Try asking:</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  {suggestions.map((suggestion, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="text-sm hover:bg-sidebar-accent/50 transition-all duration-200"
+                      disabled={isLoading}
+                    >
+                      {suggestion}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )
           )}
 
           {/* Quick Actions */}
-          {((customQuickActions && customQuickActions.length > 0) || (dynamicContent && dynamicContent.quickActions.length > 0)) && (
+          {showLoadingSkeleton ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-28 rounded-xl border bg-muted/20 animate-pulse" />
+              ))}
+            </div>
+          ) : ((customQuickActions && customQuickActions.length > 0) || (dynamicContent && dynamicContent.quickActions.length > 0)) && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl">
               {customQuickActions ? (
-                // Use custom quick actions (legacy support)
                 customQuickActions.map((action, index) => {
                   const Icon = action.icon;
                   return (
@@ -889,9 +916,8 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                   );
                 })
               ) : (
-                // Use static or dynamic quick actions
-                (dynamicContent?.quickActions || config.quickActions || []).map((action, index) => {
-                  // Handle both string icon names (from dynamic content) and React components (from static config)
+                // Use dynamic quick actions only; canned quick actions appear only if service returns default fallback
+                (dynamicContent?.quickActions || []).map((action, index) => {
                   const Icon = typeof action.icon === 'string' ? getIconComponent(action.icon) : action.icon;
                   return (
                     <Button

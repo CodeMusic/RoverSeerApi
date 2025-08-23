@@ -112,21 +112,25 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     );
   })() as BaseSession[];
 
-  // Set initial sidebar state based on user preferences
+  // Set initial sidebar state based on user preferences (expanded by default for all tools)
   useEffect(() => {
-    // For Chat, keep the session list open by default
+    // Determine desired collapsed state
+    let desiredCollapsed = false;
+
     if (currentTab === APP_TERMS.TAB_CHAT) {
-      setIsSidebarCollapsed(false);
-      return;
+      desiredCollapsed = false; // Always open by default for Chat
+    } else if (filteredSessions.length > 0) {
+      // Respect user preference when sessions exist
+      desiredCollapsed = preferences.autoSelectFirstItem;
+    } else {
+      // No sessions yet: keep expanded by default (previously collapsed)
+      desiredCollapsed = false;
     }
 
-    if (filteredSessions.length > 0) {
-      // If user prefers auto-select, collapse the sidebar; otherwise keep it open
-      setIsSidebarCollapsed(preferences.autoSelectFirstItem);
-    } else {
-      setIsSidebarCollapsed(true);
-    }
-  }, [currentTab, filteredSessions.length, preferences.autoSelectFirstItem]);
+    setIsSidebarCollapsed(desiredCollapsed);
+    // On mobile, also slide the sidebar in when not collapsed
+    setIsSidebarOpen(!desiredCollapsed && isMobile);
+  }, [currentTab, filteredSessions.length, preferences.autoSelectFirstItem, isMobile]);
 
   // Listen for search sidebar visibility changes
   useEffect(() => {

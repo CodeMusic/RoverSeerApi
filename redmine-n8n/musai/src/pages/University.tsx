@@ -197,26 +197,6 @@ const University = () => {
                 navigate(`/university/course/new?topic=${encodeURIComponent(input)}`);
               }}
               isLoading={false}
-              quickActions={[
-                {
-                  icon: GraduationCap,
-                  title: "Create Course",
-                  description: "Build a structured learning path",
-                   action: () => navigate(ROUTES.MAIN_APP, { state: { switchToTab: 'university', initialQuery: 'course:new' } })
-                },
-                {
-                  icon: BookOpen,
-                  title: "Create Lecture",
-                  description: "Design individual lessons",
-                  action: () => navigate('/university/lecture/new')
-                },
-                {
-                  icon: Sparkles,
-                  title: "Standalone Lecture",
-                  description: "Independent learning content",
-                  action: () => navigate('/university/standalone/new')
-                }
-              ]}
             />
           </div>
         ) : (

@@ -306,22 +306,43 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   const shouldShowPreMusai = sessions.length === 0 || !currentSession;
 
   const handleQuickAction = (actionId: string, actionType: string, actionData?: any) => {
-    switch (actionId) {
+    switch (actionId)
+    {
       case 'code-chat':
       case 'code-new':
       case 'code-playground':
+      {
         createNewSession();
-        break;
+        return;
+      }
       case 'code-templates':
-        if (actionData) {
+      {
+        if (actionData)
+        {
           createNewSession();
           setTimeout(() => {
             applyExternalCode(String(actionData), 'comment-and-prepend');
           }, 100);
         }
-        break;
+        return;
+      }
       default:
+      {
+        // Generic fallback for dynamic actions: if it's a submit with data, send to chat
+        if (actionType === 'submit' && actionData)
+        {
+          const payload = String(actionData);
+          createNewSession();
+          setTimeout(async () => {
+            setIsChatOpen(true);
+            setIsTyping(true);
+            try { await onSendMessage(payload); }
+            finally { setIsTyping(false); }
+          }, 100);
+          return;
+        }
         console.log('Code quick action:', actionId, actionType, actionData);
+      }
     }
   };
 
@@ -349,7 +370,6 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
             <div className="flex-1 flex flex-col">
               <PreMusaiPage
                 type="code"
-                skipDynamicContent
                 onSubmit={(input) => {
                   // Create session, then enter main interface with chat pre-seeded and loading
                   const trimmed = (input || '').trim();
