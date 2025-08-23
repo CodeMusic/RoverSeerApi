@@ -384,8 +384,9 @@ class PreMusaiApiService {
       }, 5000); // 5 second timeout
 
       if (response.ok) {
-        const data = await response.json();
-        return this.validateAndCleanContent(data);
+        const raw = await response.json();
+        const normalized = this.assimilateResponseSchema(raw);
+        return this.validateAndCleanContent(normalized);
       }
     } catch (error) {
       console.warn(`Failed to fetch PreMusai content from n8n for ${type}:`, error);
@@ -415,15 +416,79 @@ class PreMusaiApiService {
     }
   }
 
+  // n8n often returns arrays and/or stringified JSON in an "output" field.
+  // This routine normalizes the payload into a plain object the UI expects.
+  private assimilateResponseSchema(raw: any): any {
+    const tryParse = (value: unknown): any => {
+      if (typeof value !== 'string')
+      {
+        return value;
+      }
+      try
+      {
+        return JSON.parse(value);
+      }
+      catch
+      {
+        return value;
+      }
+    };
+
+    // Case 1: Array wrapper
+    if (Array.isArray(raw) && raw.length > 0)
+    {
+      const first = raw[0];
+      if (first && typeof first === 'object')
+      {
+        if ('output' in first)
+        {
+          return tryParse((first as any).output);
+        }
+        if ('content' in first)
+        {
+          return tryParse((first as any).content);
+        }
+        return first;
+      }
+      if (typeof first === 'string')
+      {
+        return tryParse(first);
+      }
+    }
+
+    // Case 2: Direct object with output/content
+    if (raw && typeof raw === 'object')
+    {
+      const obj = raw as any;
+      if (obj.output !== undefined)
+      {
+        return tryParse(obj.output);
+      }
+      if (obj.content !== undefined)
+      {
+        return tryParse(obj.content);
+      }
+      return obj;
+    }
+
+    // Case 3: Plain JSON string
+    if (typeof raw === 'string')
+    {
+      return tryParse(raw);
+    }
+
+    return raw;
+  }
+
   private validateAndCleanContent(data: any): PreMusaiContent {
     // Ensure data has required structure
     return {
-      type: data.type || 'chat',
-      title: data.title || 'Musai',
-      subtitle: data.subtitle || 'AI-powered assistant',
-      placeholder: data.placeholder || 'What can I help you with?',
-      examples: Array.isArray(data.examples) ? data.examples.map(this.validateExample) : [],
-      quickActions: Array.isArray(data.quickActions) ? data.quickActions.map(this.validateQuickAction) : []
+      type: (data && data.type) || 'chat',
+      title: (data && data.title) || 'Musai',
+      subtitle: (data && data.subtitle) || 'AI-powered assistant',
+      placeholder: (data && data.placeholder) || 'What can I help you with?',
+      examples: Array.isArray(data?.examples) ? data.examples.map(this.validateExample) : [],
+      quickActions: Array.isArray(data?.quickActions) ? data.quickActions.map(this.validateQuickAction) : []
     };
   }
 
