@@ -3,8 +3,9 @@ FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 
-# Pin to a good version to avoid missing VERSION file
-RUN pip install --no-cache-dir fastapi uvicorn[standard] "wyoming==1.4.2"
+# Get FastAPI + uvicorn and the latest Wyoming with messages support
+RUN pip install --no-cache-dir fastapi uvicorn[standard] \
+    "git+https://github.com/rhasspy/wyoming@v1.6.0"
 
 COPY app.py /app/app.py
 EXPOSE 8000
