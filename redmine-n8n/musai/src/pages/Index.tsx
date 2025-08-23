@@ -662,6 +662,12 @@ const Index = () => {
       }, 0);
       return;
     }
+    if (currentTab === APP_TERMS.TAB_UNIVERSITY)
+    {
+      // University: route to course creation with the topic
+      navigate(`${ROUTES.UNIVERSITY_COURSE_NEW}?topic=${encodeURIComponent(initialMessage)}`, { state: { initialTopic: initialMessage } });
+      return;
+    }
     if (currentTab === APP_TERMS.TAB_MEDICAL)
     {
       // Show processing screen, then call n8n in background
@@ -687,7 +693,7 @@ const Index = () => {
       return;
     }
 
-    // Non-narrative/non-task: ensure chat UI while session spins and message is sent
+    // Non-narrative/non-task/university: ensure chat UI while session spins and message is sent
     setForceChatUI(true);
     const existingSession = getCurrentSessionForTab();
     if (!existingSession) {
@@ -931,8 +937,33 @@ const Index = () => {
             }
           }}
           onQuickAction={(actionId, actionType, actionData) => {
-            console.log('Quick action:', actionId, actionType, actionData);
-            if (actionData) {
+            // Handle common server-driven actions first
+            if (actionType === 'navigate' && actionData && typeof actionData === 'object' && typeof actionData.path === 'string') {
+              navigate(actionData.path);
+              return;
+            }
+
+            // University-specific quick actions
+            if (currentTab === APP_TERMS.TAB_UNIVERSITY) {
+              switch (actionId) {
+                case 'uni-browse':
+                  // Stay on dashboard (no-op)
+                  return;
+                case 'uni-create':
+                  navigate(ROUTES.UNIVERSITY_COURSE_NEW);
+                  return;
+                case 'uni-continue': {
+                  // Let dedicated University view handle smart resume; here just open main U page
+                  navigate('/university');
+                  return;
+                }
+                default:
+                  break;
+              }
+            }
+
+            // Fallback: submit provided text (if any) into the current module's chat
+            if (actionData && typeof actionData === 'string') {
               if (!currentSession) {
                 handleNewSession();
                 setTimeout(() => sendMessage(actionData), 100);

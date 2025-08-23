@@ -150,51 +150,32 @@ async def tts(payload: dict):
     if not text:
         raise HTTPException(400, "Missing text")
 
-    # If you pass "voice", we'll try to honor it. If you omit it,
-    # we don't send a voice at all and Piper uses its default.
-    voice_value = payload.get("voice", None)
-    voice_obj = _parse_voice(voice_value) if voice_value else None
+    # Connect directly to Piper (avoids the writer=None assertion)
+    try:
+        r, w = await asyncio.open_connection(PIPER_HOST, PIPER_PORT)
+    except Exception as e:
+        raise HTTPException(502, f"TTS upstream error: {e}")
 
-    client = await connect_rw(PIPER_HOST, PIPER_PORT)
-    out = io.BytesIO()
-    piper_error: str | None = None
+    client = AsyncTcpClient(r, w)
+
+    # If caller provided a voice, pass it through; otherwise let Piper use its --voice
+    voice_raw = payload.get("voice", None)
+    if voice_raw is not None:
+        voice_obj = _parse_voice(voice_raw)   # accepts "en_US-GlaDOS-medium" or {"name": "..."}
+        synth = Synthesize(text=text, voice=voice_obj)
+    else:
+        synth = Synthesize(text=text)
 
     try:
-        synth = Synthesize(text=text, voice=voice_obj) if voice_obj else Synthesize(text=text)
         await client.write_event(synth)
-
+        out = io.BytesIO()
         async for ev in client.events():
-            # Happy path
             if isinstance(ev, AudioChunk):
                 out.write(ev.audio)
-                continue
-            if isinstance(ev, AudioStop):
+            elif isinstance(ev, AudioStop):
                 break
-
-            # Try to capture a structured error from Piper (varies by version)
-            etype = ev.__class__.__name__
-            if etype.lower().find("error") >= 0 or etype.lower().find("fail") >= 0:
-                try:
-                    # best-effort to pull readable info from the event
-                    if hasattr(ev, "to_dict"):
-                        piper_error = str(ev.to_dict())
-                    elif hasattr(ev, "__dict__"):
-                        piper_error = str(ev.__dict__)
-                    else:
-                        piper_error = etype
-                except Exception:
-                    piper_error = etype
-
-        if out.tell() == 0:
-            # No audio came back
-            msg = piper_error or "no audio produced (check Piper logs/voice)"
-            raise HTTPException(502, f"TTS upstream error: {msg}")
-
-    except HTTPException:
-        raise
     except Exception as e:
-        # Show full detail to make debugging easier
-        raise HTTPException(502, f"TTS upstream error: {repr(e)}")
+        raise HTTPException(502, f"TTS upstream error: {e}")
     finally:
         try:
             await client.close()
