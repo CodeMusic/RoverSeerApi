@@ -9,7 +9,28 @@ from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
 from wyoming.client import AsyncTcpClient
 from wyoming.audio import AudioStart, AudioChunk, AudioStop
 from wyoming.asr import Transcribe, Transcript
-from wyoming.tts import Synthesize, Voice
+from wyoming.tts import Synthesize
+
+# -----------------------------------------------------------------------------
+# Voice compatibility shim
+# -----------------------------------------------------------------------------
+try:
+    # Newer wyoming versions (if available)
+    from wyoming.tts import Voice as _WyomingVoice  # type: ignore
+except Exception:
+    _WyomingVoice = None  # not available
+
+class _VoiceShim:
+    """Minimal object that matches what Wyoming calls: .to_dict() -> {'name': ...}"""
+    def __init__(self, name: str):
+        self.name = name
+    def to_dict(self):
+        return {"name": self.name}
+
+def make_voice(name: str):
+    if _WyomingVoice is not None:
+        return _WyomingVoice(name=name)
+    return _VoiceShim(name)
 
 # -----------------------------------------------------------------------------
 # Logging
@@ -30,14 +51,14 @@ app = FastAPI()
 WHISPER_HOST, WHISPER_PORT = "wyoming-whisper", 10300
 PIPER_HOST,   PIPER_PORT   = "wyoming-piper",   10200
 
-DEFAULT_VOICE = "en_US-GlaDOS-medium"  # <- as requested
+DEFAULT_VOICE = "en_US-GlaDOS-medium"
 
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
 async def _connect(host: str, port: int) -> AsyncTcpClient:
     client = AsyncTcpClient(host, port)
-    await client.connect()  # no args
+    await client.connect()  # NOTE: no args
     return client
 
 async def _safe_disconnect(client: Optional[AsyncTcpClient]) -> None:
@@ -46,11 +67,9 @@ async def _safe_disconnect(client: Optional[AsyncTcpClient]) -> None:
     try:
         await client.disconnect()
     except Exception:
-        # nothing else to do; just don't let cleanup explode
-        pass
+        pass  # best-effort cleanup
 
 def _peer_ip(request: Request) -> str:
-    # Starlette/FastAPI gives client in scope:
     client = request.client
     return getattr(client, "host", "unknown") if client else "unknown"
 
@@ -69,7 +88,7 @@ async def stt(request: Request, file: UploadFile = File(...)):
     data = await file.read()
     client: Optional[AsyncTcpClient] = None
 
-    if not data or len(data) <= 44:  # minimal WAV header length sanity
+    if not data or len(data) <= 44:
         raise HTTPException(400, "Empty/invalid WAV")
 
     ip = _peer_ip(request)
@@ -81,7 +100,6 @@ async def stt(request: Request, file: UploadFile = File(...)):
     try:
         client = await _connect(WHISPER_HOST, WHISPER_PORT)
 
-        # Tell Whisper the format, then stream audio
         await client.write_event(AudioStart(format="wav"))
 
         buf = io.BytesIO(data)
@@ -94,7 +112,6 @@ async def stt(request: Request, file: UploadFile = File(...)):
         await client.write_event(AudioStop())
         await client.write_event(Transcribe())
 
-        # Wait for transcript
         text = ""
         async for ev in client.events():
             if isinstance(ev, Transcript):
@@ -133,17 +150,14 @@ async def tts(request: Request, payload: dict):
     try:
         client = await _connect(PIPER_HOST, PIPER_PORT)
 
-        # IMPORTANT: Voice must be a Voice object, not a string
-        voice = Voice(name=voice_name)
+        # Use compat voice object
+        voice_obj = make_voice(voice_name)
 
-        await client.write_event(Synthesize(text=text, voice=voice))
+        await client.write_event(Synthesize(text=text, voice=voice_obj))
 
-        # Collect audio chunks until AudioStop
         async for ev in client.events():
-            # Wyoming sends audio as AudioChunk events
             if hasattr(ev, "audio"):  # AudioChunk
                 out.write(ev.audio)
-            # Stop on AudioStop
             if ev.__class__.__name__ == "AudioStop":
                 break
 
