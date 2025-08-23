@@ -19,9 +19,8 @@ from wyoming.tts import Synthesize
 WHISPER_HOST, WHISPER_PORT = "wyoming-whisper", 10300
 PIPER_HOST,   PIPER_PORT   = "wyoming-piper",   10200
 
-DEFAULT_TTS_VOICE = "en_US-GlaDOS-medium"  # <- your requested default
+DEFAULT_TTS_VOICE = "en_US-GlaDOS-medium"
 
-# WAV framing for sanity-check
 MIN_WAV_HEADER_LEN = 44
 CHUNK_SIZE = 8192
 
@@ -40,7 +39,7 @@ logger.addHandler(_handler)
 # ------------------------------------------------------------------------------
 # App
 # ------------------------------------------------------------------------------
-app = FastAPI(title="Wyoming Bridge", version="1.0.0")
+app = FastAPI(title="Wyoming Bridge", version="1.0.1")
 
 
 @app.get("/healthz", response_class=PlainTextResponse)
@@ -49,27 +48,40 @@ async def healthz():
 
 
 # ------------------------------------------------------------------------------
-# Helpers
+# Helpers for broad Wyoming version compatibility
 # ------------------------------------------------------------------------------
-async def _open_client(host: str, port: int) -> tuple[AsyncTcpClient, asyncio.StreamWriter]:
+async def _connect_client(host: str, port: int) -> AsyncTcpClient:
     """
-    Open a raw TCP connection and wrap it in AsyncTcpClient.
-    Returns (client, writer) so we can close the writer ourselves.
+    For wyoming>=1.4.x the idiom is:
+        client = AsyncTcpClient(host, port); await client.connect()
+    (connect() takes no args)
     """
-    reader, writer = await asyncio.open_connection(host, port)
-    client = AsyncTcpClient(reader, writer)
-    return client, writer
+    client = AsyncTcpClient(host, port)
+    await client.connect()  # IMPORTANT: no args in this wyoming version
+    return client
 
 
-async def _safe_close_writer(writer: Optional[asyncio.StreamWriter]) -> None:
-    if writer is not None:
+async def _safe_disconnect(client: Optional[AsyncTcpClient]) -> None:
+    if client is None:
+        return
+    # Newer versions might expose disconnect()
+    if hasattr(client, "disconnect") and callable(getattr(client, "disconnect")):
         try:
-            writer.close()
-        finally:
+            await client.disconnect()
+            return
+        except Exception:
+            pass
+    # Fallback: try to close underlying writer if exposed
+    try:
+        w = getattr(client, "_writer", None)
+        if w:
+            w.close()
             try:
-                await writer.wait_closed()
+                await w.wait_closed()
             except Exception:
                 pass
+    except Exception:
+        pass
 
 
 # ------------------------------------------------------------------------------
@@ -92,10 +104,9 @@ async def stt(request: Request, file: UploadFile = File(...)):
         raise HTTPException(400, "Empty/invalid WAV")
 
     client = None
-    writer = None
     try:
         # connect to whisper
-        client, writer = await _open_client(WHISPER_HOST, WHISPER_PORT)
+        client = await _connect_client(WHISPER_HOST, WHISPER_PORT)
 
         # send audio
         await client.write_event(AudioStart(format="wav"))
@@ -130,7 +141,7 @@ async def stt(request: Request, file: UploadFile = File(...)):
         logger.exception("[STT] error from=%s: %s", client_ip, e)
         raise HTTPException(502, f"STT upstream error: {e}")
     finally:
-        await _safe_close_writer(writer)
+        await _safe_disconnect(client)
 
 
 # ------------------------------------------------------------------------------
@@ -153,22 +164,20 @@ async def tts(request: Request, payload: dict):
         raise HTTPException(400, "Missing text")
 
     client = None
-    writer = None
     out = io.BytesIO()
     started = time.perf_counter()
 
     try:
         # connect to piper
-        client, writer = await _open_client(PIPER_HOST, PIPER_PORT)
+        client = await _connect_client(PIPER_HOST, PIPER_PORT)
 
         # ask to synthesize
         await client.write_event(Synthesize(text=text, voice=voice))
 
-        # collect audio frames
+        # collect audio frames (AudioChunk...) until AudioStop
         audio_bytes = 0
         async for ev in client.events():
-            # Piper emits AudioChunk(s) and then AudioStop
-            if hasattr(ev, "audio"):
+            if hasattr(ev, "audio"):  # AudioChunk
                 out.write(ev.audio)
                 audio_bytes += len(ev.audio)
             elif isinstance(ev, AudioStop):
@@ -185,7 +194,6 @@ async def tts(request: Request, payload: dict):
             media_type="audio/wav",
             headers={
                 "Cache-Control": "no-store",
-                # nice to suggest a name; client can ignore
                 "Content-Disposition": 'inline; filename="reply.wav"'
             },
         )
@@ -195,11 +203,11 @@ async def tts(request: Request, payload: dict):
                      client_ip, PIPER_HOST, PIPER_PORT)
         raise HTTPException(502, "TTS upstream unavailable")
     except AssertionError as e:
-        # This typically means write_event was called without a connected writer.
+        # This fires if write_event is called without a connected writer.
         logger.exception("[TTS] assertion error from=%s: %s", client_ip, e)
         raise HTTPException(502, f"TTS upstream error: {e}")
     except Exception as e:
         logger.exception("[TTS] error from=%s: %s", client_ip, e)
         raise HTTPException(502, f"TTS upstream error: {e}")
     finally:
-        await _safe_close_writer(writer)
+        await _safe_disconnect(client)
