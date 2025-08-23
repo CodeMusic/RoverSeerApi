@@ -111,13 +111,18 @@ services:
     ports:
       - "9000:9000"
     environment:
-      # STT
-      FASTER_WHISPER_MODEL: base.en
-      WHISPER_MODELS_DIR: /whisper-models
-
-      # TTS
-      DEFAULT_PIPER_VOICE: en_US-GlaDOS-medium
       VOICES_DIR: /voices
+      WHISPER_MODELS_DIR: /whisper-models
+      FASTER_WHISPER_MODEL: base.en
+      DEFAULT_PIPER_VOICE: en_US-GlaDOS-medium
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3
+    volumes:
+      - ./ai-model-cache/piper-voices:/voices:ro
+      - ./ai-model-cache/whisper-models:/whisper-models
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks: [ai_net]
 
       # LLM passthrough (optional)
       OLLAMA_BASE_URL: http://host.docker.internal:11434
@@ -130,7 +135,7 @@ services:
     networks:
       ai_net:
         aliases: [ musai-api ]
-        
+
   searxng:
     image: searxng/searxng:latest
     container_name: searxng
