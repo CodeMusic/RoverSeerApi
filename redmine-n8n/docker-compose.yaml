@@ -187,6 +187,18 @@ services:
     networks:
       - ai_net
 
+  wyoming-bridge:
+    build: ./wyoming-bridge
+    container_name: wyoming-bridge
+    restart: unless-stopped
+    ports:
+      - "18000:8000"
+    depends_on:
+      - wyoming-whisper
+      - wyoming-piper
+    networks:
+      - ai_net
+
   silverbullet:
     build:
       context: .

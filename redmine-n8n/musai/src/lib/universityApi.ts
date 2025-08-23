@@ -114,6 +114,109 @@ class UniversityApiService
 
   // ===== COURSE-BASED SYSTEM METHODS =====
 
+  // Normalize n8n-like payloads that may be arrays or contain stringified JSON in an "output" field
+  private parseN8nLikePayload(raw: any): any
+  {
+    const tryParse = (value: unknown): any =>
+    {
+      if (typeof value !== 'string')
+      {
+        return value;
+      }
+      try
+      {
+        return JSON.parse(value);
+      }
+      catch
+      {
+        return value;
+      }
+    };
+
+    if (Array.isArray(raw) && raw.length > 0)
+    {
+      const first = raw[0];
+      if (first && typeof first === 'object')
+      {
+        if ('output' in first)
+        {
+          return tryParse((first as any).output);
+        }
+        if ('content' in first)
+        {
+          return tryParse((first as any).content);
+        }
+        return first;
+      }
+      if (typeof first === 'string')
+      {
+        return tryParse(first);
+      }
+    }
+
+    if (raw && typeof raw === 'object')
+    {
+      const obj = raw as any;
+      if (obj.output !== undefined)
+      {
+        return tryParse(obj.output);
+      }
+      if (obj.content !== undefined)
+      {
+        return tryParse(obj.content);
+      }
+      return obj;
+    }
+
+    if (typeof raw === 'string')
+    {
+      return tryParse(raw);
+    }
+
+    return raw;
+  }
+
+  // Coerce arbitrary response shapes into the GeneratedCourseData structure the UI expects
+  private coerceCourseFromTopicSchema(data: any): {
+    title: string;
+    description: string;
+    instructor: string;
+    syllabus: Array<{ title: string; summary: string; duration: string }>;
+    estimatedDuration: string;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    tags: string[];
+  }
+  {
+    const title = (data?.title || data?.courseTitle || '').toString() || 'New Course';
+    const description = (data?.description || data?.summary || '').toString();
+    const instructor = (data?.instructor || 'Musai Instructor').toString();
+
+    const rawSyllabus = Array.isArray(data?.syllabus) ? data.syllabus
+      : Array.isArray(data?.lectures) ? data.lectures
+      : [];
+    const syllabus = rawSyllabus.map((item: any) =>
+    {
+      const t = (item?.title || item?.['lecture topic'] || item?.topic || 'Untitled').toString();
+      const s = (item?.summary || item?.description || '').toString();
+      const d = (item?.duration || item?.estimatedDuration || '45 min').toString();
+      return { title: t, summary: s, duration: d };
+    });
+
+    const estimatedDuration = (data?.estimatedDuration || (syllabus.length > 0 ? `${syllabus.length * 45} min` : '45 min')).toString();
+    const difficulty = (data?.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced';
+    const tags = Array.isArray(data?.tags) ? data.tags.map((t: any) => String(t)) : [];
+
+    return {
+      title,
+      description,
+      instructor,
+      syllabus,
+      estimatedDuration,
+      difficulty,
+      tags
+    };
+  }
+
   // Automation A: Course Creation
   async createCourse(request: CourseCreationRequest): Promise<Course> 
   {
@@ -205,7 +308,9 @@ class UniversityApiService
         includeSyllabus: true,
         includeMetadata: true
       });
-      return response.data;
+      const parsed = this.parseN8nLikePayload(response.data);
+      const normalized = this.coerceCourseFromTopicSchema(parsed);
+      return normalized;
     } 
     catch (error) 
     {
