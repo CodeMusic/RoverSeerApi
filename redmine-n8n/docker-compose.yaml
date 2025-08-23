@@ -104,6 +104,34 @@ services:
       - VITE_RIDDLE_GATE_MODE=preview
     networks: [ai_net]
 
+       
+  musai-api:
+    build: ./musai-api
+    container_name: musai-api
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      # STT
+      FASTER_WHISPER_MODEL: base.en
+      WHISPER_MODELS_DIR: /whisper-models
+
+      # TTS
+      DEFAULT_PIPER_VOICE: en_US-GlaDOS-medium
+      VOICES_DIR: /voices
+
+      # LLM (optional; future use)
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3
+    volumes:
+      - ./ai-model-cache/piper-voices:/voices:ro
+      - ./ai-model-cache/whisper-models:/whisper-models:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      ai_net:
+        aliases: [ musai-api ]
+
   searxng:
     image: searxng/searxng:latest
     container_name: searxng
@@ -178,23 +206,6 @@ services:
     networks:
       ai_net:
         aliases: [wyoming-piper]
-
-  wyoming-bridge:
-    build: ./wyoming-bridge
-    restart: unless-stopped
-    environment:
-      WHISPER_HOST: wyoming-whisper
-      WHISPER_PORT: "10300"
-      PIPER_HOST: wyoming-piper
-      PIPER_PORT: "10200"
-      DEFAULT_VOICE: en_US-GlaDOS-medium
-    ports: ["18000:8000"]
-    depends_on:
-      - wyoming-whisper
-      - wyoming-piper
-    networks:
-      ai_net:
-        aliases: [wyoming-bridge]
 
   silverbullet:
     build:
