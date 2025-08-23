@@ -1,6 +1,4 @@
-import os
-import io
-import wave
+import io, wave, os
 from typing import Optional, List, Dict
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
@@ -8,7 +6,6 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from piper.voice import PiperVoice
-
 from faster_whisper import WhisperModel
 import httpx
 
@@ -29,47 +26,54 @@ app.add_middleware(
 )
 
 # ---------- helpers ----------
+def _voice_config_path(base_no_ext: str) -> Optional[str]:
+    """Return the matching config path for a model base (with or without .onnx)."""
+    candidates = [base_no_ext + ".onnx.json", base_no_ext + ".json"]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return None
+
 def list_onnx_voices() -> List[Dict[str, str]]:
-    """Return available voices from /voices as [{"name":..., "model":..., "config":...}, ...]."""
-    names = []
+    """Return available voices as [{'name','model','config'}]. Only include complete pairs."""
+    out = []
     if not os.path.isdir(VOICES_DIR):
-        return names
-    files = os.listdir(VOICES_DIR)
-    onnx = [f for f in files if f.endswith(".onnx")]
-    for m in onnx:
-        base = m[:-5]  # strip ".onnx"
-        cfg_json = base + ".json"
-        model_path = os.path.join(VOICES_DIR, m)
-        cfg_path = os.path.join(VOICES_DIR, cfg_json)
-        names.append({
-            "name": base,               # we use base as the "voice name"
-            "model": model_path,
-            "config": cfg_path if os.path.exists(cfg_path) else "",
-        })
-    return names
+        return out
+    for fname in os.listdir(VOICES_DIR):
+        if not fname.endswith(".onnx"):
+            continue
+        model = os.path.join(VOICES_DIR, fname)
+        base = os.path.splitext(model)[0]  # remove .onnx
+        cfg = _voice_config_path(base)
+        if cfg:
+            out.append({"name": os.path.basename(base), "model": model, "config": cfg})
+    return sorted(out, key=lambda x: x["name"])
 
-def resolve_voice_paths(voice_name: Optional[str]):
-    """Map a voice name to onnx/config file paths in /voices."""
-    want = (voice_name or DEFAULT_PIPER_VOICE).strip()
-    for v in list_onnx_voices():
-        if v["name"] == want:
-            if not os.path.exists(v["model"]):
-                raise FileNotFoundError(f"Voice model not found: {v['model']}")
-            # config is optional but recommended
-            return v["model"], (v["config"] if v["config"] else None)
-    raise FileNotFoundError(f"Voice '{want}' not found in {VOICES_DIR}")
+def _resolve_voice_paths(voice_name: str):
+    base = os.path.join(VOICES_DIR, voice_name)
+    candidates = [
+        (base + ".onnx", base + ".onnx.json"),
+        (base + ".onnx", base + ".json"),
+        (base,           base + ".json"),
+    ]
+    for m, c in candidates:
+        if os.path.isfile(m) and os.path.isfile(c):
+            return m, c
+    raise FileNotFoundError(
+        f"Could not find model/config for voice '{voice_name}'. Looked for: {candidates}"
+    )
 
-def gen_wav_bytes(samples, sample_rate: int = 22050):
-    """Write float32 samples (-1..1) to a 16-bit PCM WAV stream."""
-    # piper returns int16 already, but we keep a simple WAV writer
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)  # 16-bit
-        wf.setframerate(sample_rate)
-        wf.writeframes(samples.tobytes())
-    buf.seek(0)
-    return buf
+# small cache to avoid reloading PiperVoice each request
+_VOICE_CACHE: Dict[str, PiperVoice] = {}
+
+def _get_piper_voice(voice_name: str) -> PiperVoice:
+    v = _VOICE_CACHE.get(voice_name)
+    if v:
+        return v
+    model_path, config_path = _resolve_voice_paths(voice_name)
+    v = PiperVoice.load(model_path, config_path)
+    _VOICE_CACHE[voice_name] = v
+    return v
 
 # Lazy-init STT model
 _whisper_model: Optional[WhisperModel] = None
@@ -94,42 +98,48 @@ def voices():
     return list_onnx_voices()
 
 @app.post("/tts")
-def tts(payload: Dict, voice: Optional[str] = Query(default=None, description="Voice name (base filename without extension)")):
+async def tts(payload: dict, voice: Optional[str] = Query(None)):
     text = (payload.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Missing text")
 
-    try:
-        model_path, config_path = resolve_voice_paths(voice)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    # precedence: ?voice= > payload["voice"] > env default
+    voice_name = voice or payload.get("voice") or DEFAULT_PIPER_VOICE
 
     try:
-        pv = PiperVoice.load(model_path, config_path if config_path else None)
-        # returns int16 numpy array (mono) and sample_rate
-        audio, sr = pv.synthesize(text)
+        v = _get_piper_voice(voice_name)
+        out = io.BytesIO()
+        with wave.open(out, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)  # 16-bit PCM
+            wf.setframerate(v.config.sample_rate)
+            for chunk in v.synthesize_stream_raw(
+                text,
+                length_scale=payload.get("length_scale", 1.0),
+                noise_scale=payload.get("noise_scale", 0.667),
+                noise_w=payload.get("noise_w", 0.8),
+                speaker_id=payload.get("speaker", None),
+            ):
+                wf.writeframes(chunk)
+        out.seek(0)
+        return StreamingResponse(out, media_type="audio/wav",
+                                 headers={"Cache-Control": "no-store"})
     except Exception as e:
         raise HTTPException(502, f"TTS failed: {e}")
-
-    wav_stream = gen_wav_bytes(audio, sr)
-    return StreamingResponse(wav_stream, media_type="audio/wav",
-                             headers={"Cache-Control": "no-store"})
 
 @app.post("/stt")
 async def stt(file: UploadFile = File(...)):
     data = await file.read()
     if not data or len(data) <= 44:
         raise HTTPException(400, "Empty/invalid WAV")
-
     try:
         segments, _ = get_whisper().transcribe(io.BytesIO(data), task="transcribe", language="en")
         text = "".join(seg.text for seg in segments).strip()
+        return JSONResponse({"text": text})
     except Exception as e:
         raise HTTPException(502, f"STT failed: {e}")
 
-    return JSONResponse({"text": text})
-
-# Minimal OpenAI-compatible chat completions proxy to Ollama (optional)
+# Minimal OpenAI-compatible chat completions proxy to Ollama
 @app.post("/v1/chat/completions")
 async def chat_completions(body: Dict):
     messages = body.get("messages") or []
@@ -142,7 +152,6 @@ async def chat_completions(body: Dict):
             out = r.json()
     except Exception as e:
         raise HTTPException(502, f"Ollama proxy failed: {e}")
-
     content = out.get("response", "")
     return {
         "id": "musai-chat-1",
