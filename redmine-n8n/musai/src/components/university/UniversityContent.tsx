@@ -21,6 +21,7 @@ export const UniversityContent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('courses');
   const [currentView, setCurrentView] = useState<'dashboard' | 'create-course' | 'create-lecture'>('dashboard');
+  const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -154,7 +155,7 @@ export const UniversityContent = () => {
           <p className="text-muted-foreground">Design a structured learning experience</p>
         </div>
         <CourseCreation 
-          initialTopic={searchParams.get('topic') || undefined}
+          initialTopic={pendingTopic || searchParams.get('topic') || undefined}
           onComplete={() => {
             setCurrentView('dashboard');
             loadData(); // Refresh the data
@@ -295,7 +296,8 @@ export const UniversityContent = () => {
                       <PreMusaiPage
               type="university"
               onSubmit={(input) => {
-                // Navigate to course creation with the topic
+                // Carry topic into the creation flow and trigger generation there
+                setPendingTopic(input);
                 setCurrentView('create-course');
               }}
               onQuickAction={(actionId, actionType, actionData) => {
