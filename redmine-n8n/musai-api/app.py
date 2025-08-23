@@ -98,33 +98,66 @@ def voices():
     return list_onnx_voices()
 
 @app.post("/tts")
-async def tts(payload: dict, voice: Optional[str] = Query(None)):
+async def tts(payload: dict):
     text = (payload.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Missing text")
 
-    # precedence: ?voice= > payload["voice"] > env default
-    voice_name = voice or payload.get("voice") or DEFAULT_PIPER_VOICE
+    voice_name = (
+        payload.get("voice")
+        or os.environ.get("DEFAULT_PIPER_VOICE")
+        or "en_US-GlaDOS-medium"
+    )
 
     try:
-        v = _get_piper_voice(voice_name)
-        out = io.BytesIO()
-        with wave.open(out, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)  # 16-bit PCM
-            wf.setframerate(v.config.sample_rate)
-            for chunk in v.synthesize_stream_raw(
-                text,
-                length_scale=payload.get("length_scale", 1.0),
-                noise_scale=payload.get("noise_scale", 0.667),
-                noise_w=payload.get("noise_w", 0.8),
-                speaker_id=payload.get("speaker", None),
-            ):
-                wf.writeframes(chunk)
-        out.seek(0)
-        return StreamingResponse(out, media_type="audio/wav",
-                                 headers={"Cache-Control": "no-store"})
+        model_path, config_path = _resolve_voice_paths(voice_name)
+    except FileNotFoundError as e:
+        raise HTTPException(400, str(e))
+
+    # synthesis params (optional)
+    kw = dict(
+        length_scale=float(payload.get("length_scale", 1.0)),
+        noise_scale=float(payload.get("noise_scale", 0.667)),
+        noise_w=float(payload.get("noise_w", 0.8)),
+        speaker_id=payload.get("speaker", None),
+    )
+
+    try:
+        voice = PiperVoice.load(model_path, config_path)
+
+        # 1) Preferred: write a WAV directly to a file-like object
+        if hasattr(voice, "synthesize"):
+            out = io.BytesIO()
+            voice.synthesize(text, out, **kw)  # produces a proper WAV
+            out.seek(0)
+            return StreamingResponse(out, media_type="audio/wav",
+                                     headers={"Cache-Control": "no-store"})
+
+        # 2) Some versions provide synthesize_stream (also writes WAV)
+        if hasattr(voice, "synthesize_stream"):
+            out = io.BytesIO()
+            voice.synthesize_stream(text, out, **kw)
+            out.seek(0)
+            return StreamingResponse(out, media_type="audio/wav",
+                                     headers={"Cache-Control": "no-store"})
+
+        # 3) Fallback: get raw PCM and wrap it in a WAV ourselves
+        if hasattr(voice, "synthesize_raw"):
+            pcm = voice.synthesize_raw(text, **kw)  # numpy int16 mono
+            buf = io.BytesIO()
+            with wave.open(buf, "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)  # 16-bit
+                wf.setframerate(voice.config.sample_rate)
+                wf.writeframes(pcm.tobytes())
+            buf.seek(0)
+            return StreamingResponse(buf, media_type="audio/wav",
+                                     headers={"Cache-Control": "no-store"})
+
+        raise RuntimeError("No compatible PiperVoice synthesis method found")
+
     except Exception as e:
+        # bubble up the real cause
         raise HTTPException(502, f"TTS failed: {e}")
 
 @app.post("/stt")
@@ -161,3 +194,5 @@ async def chat_completions(body: Dict):
         ],
         "model": OLLAMA_MODEL,
     }
+
+
