@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 import { MUSAI_CHROMATIC_7, MUSAI_CHROMATIC_12, ACCESS_GATES } from '@/config/constants';
+import { MessageSquare, Search, Eye, Code, GraduationCap, Theater, TrendingUp, Heart, Stethoscope, Sparkles, Bot, Music } from 'lucide-react';
 
 const PEPPER = 'm$pepper_v1';
 const MAX_ATTEMPTS = 5;
@@ -69,8 +70,11 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [lastFeedbackType, setLastFeedbackType] = useState<'near' | 'failure' | null>(null);
   const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
 
-  // Preview mode orchestration
+  // Preview mode orchestration (0: idle, 1: console typing, 2: glyph flood)
   const [previewPhase, setPreviewPhase] = useState<0 | 1 | 2 | 3>(0);
+  const [consoleIndex, setConsoleIndex] = useState(0);
+  const [consoleText, setConsoleText] = useState('');
+  const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
   const previewRunRef = useRef(false);
 
   const today = useMemo(() => yyyymmdd(now), [now]);
@@ -170,7 +174,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   };
 
-  // Preview mode auto-unlock sequence
+  // Preview mode auto-unlock sequence (console → glyph flood → enter)
   useEffect(() =>
   {
     if (gateMode !== 'preview')
@@ -181,13 +185,82 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     {
       return;
     }
-    // Begin sequence immediately upon entering the gate
+
     previewRunRef.current = true;
-    setPreviewPhase(1); // 🎁 appears
-    const t1 = setTimeout(() => setPreviewPhase(2), 600); // red+blue resolving
-    const t2 = setTimeout(() => setPreviewPhase(3), 1300); // symbols shimmer
-    const t3 = setTimeout(() => finishUnlock(), 2000); // unlock and enter
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+
+    const LINES = [
+      'Wake up...',
+      'See beyond the Veil...',
+      'Follow your inner Muse.',
+      'Get Ready!'
+    ];
+
+    setPreviewPhase(1); // start console
+    setConsoleIndex(0);
+    setConsoleText('');
+    setConsoleHistory([]);
+
+    let charTimer: number | undefined;
+    let linePauseTimer: number | undefined;
+    let floodTimer: number | undefined;
+    let enterTimer: number | undefined;
+
+    const typeNextLine = (lineIdx: number) =>
+    {
+      const line = LINES[lineIdx] || '';
+      let i = 0;
+      setConsoleText('');
+
+      const tick = () =>
+      {
+        i += 1;
+        setConsoleText(line.slice(0, i));
+
+        if (i < line.length)
+        {
+          // Cadence similar to console typing
+          charTimer = window.setTimeout(tick, 45) as unknown as number;
+        }
+        else
+        {
+          // Brief pause at end of line, then commit to history and proceed
+          linePauseTimer = window.setTimeout(() =>
+          {
+            setConsoleHistory(prev => [...prev, line]);
+            setConsoleIndex(lineIdx + 1);
+            if (lineIdx + 1 < LINES.length)
+            {
+              typeNextLine(lineIdx + 1);
+            }
+            else
+            {
+              // Begin glyph flood
+              setPreviewPhase(2);
+              // Allow flood to render and intensify, then enter app
+              floodTimer = window.setTimeout(() =>
+              {
+                enterTimer = window.setTimeout(() =>
+                {
+                  finishUnlock();
+                }, 600);
+              }, 700);
+            }
+          }, 220) as unknown as number;
+        }
+      };
+
+      tick();
+    };
+
+    typeNextLine(0);
+
+    return () =>
+    {
+      if (charTimer) window.clearTimeout(charTimer);
+      if (linePauseTimer) window.clearTimeout(linePauseTimer);
+      if (floodTimer) window.clearTimeout(floodTimer);
+      if (enterTimer) window.clearTimeout(enterTimer);
+    };
   }, [gateMode, isAuthorized]);
 
 
@@ -571,35 +644,45 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
       {/* Preview unlock overlay */}
       {gateMode === 'preview' && !isAuthorized && (
-        <div className="pointer-events-none fixed inset-0 z-[10002] flex items-center justify-center">
-          <div
-            className="absolute inset-0 transition-all duration-700"
-            style={{
-              background:
-                previewPhase === 1
-                  ? 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.15) 0%, transparent 40%)'
-                  : previewPhase === 2
-                    ? 'linear-gradient(90deg, rgba(239,68,68,0.22), rgba(147,51,234,0.22), rgba(59,130,246,0.22))'
-                    : previewPhase === 3
-                      ? 'radial-gradient(circle at 50% 50%, rgba(148,0,211,0.28) 0%, transparent 60%)'
-                      : 'transparent'
-            }}
-          />
-          <div className="relative flex flex-col items-center gap-4 select-none">
-            {previewPhase === 1 && (
-              <div className="text-7xl animate-pulse">🎁</div>
-            )}
-            {previewPhase === 2 && (
-              <div className="text-2xl md:text-3xl font-semibold text-foreground transition-opacity" style={{ opacity: 0.95 }}>
-                Resolving the Veil
+        <div className="pointer-events-none fixed inset-0 z-[10002]">
+          {/* Console typing overlay */}
+          {previewPhase === 1 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative w-[90%] max-w-3xl rounded-lg bg-black/65 border border-white/10 p-6 shadow-xl" style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace' }}>
+                <div className="text-xs text-white/60 mb-2">musai://veil/console</div>
+                <div className="space-y-1 text-[15px] leading-6 text-purple-200">
+                  {consoleHistory.map((line, idx) => (
+                    <div key={idx} className="whitespace-pre">{line}</div>
+                  ))}
+                  <div className="whitespace-pre">
+                    {consoleText}
+                    <span className="inline-block w-2 h-5 bg-purple-300 align-middle ml-1 animate-pulse" />
+                  </div>
+                </div>
               </div>
-            )}
-            {previewPhase === 3 && (
-              <div className="text-2xl md:text-3xl font-semibold text-foreground tracking-wider">
-                ☉ ✧ Ψ ∴ ⋈ ⊙ ᛝ Ϟ ∷ ☌
+            </div>
+          )}
+
+          {/* Glyph flood overlay */}
+          {previewPhase === 2 && (
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-3 p-4">
+                {Array.from({ length: 160 }).map((_, i) =>
+                {
+                  const Icon = [MessageSquare, Search, Eye, Code, GraduationCap, Theater, TrendingUp, Heart, Stethoscope, Sparkles, Bot, Music][i % 12];
+                  const tone = MUSAI_CHROMATIC_12[i % MUSAI_CHROMATIC_12.length];
+                  const size = 18 + ((i * 7) % 14);
+                  const opacity = 0.4 + ((i * 13) % 50) / 100;
+                  return (
+                    <div key={i} className="flex items-center justify-center">
+                      <Icon style={{ color: tone.hex, width: size, height: size, opacity }} />
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+              <div className="absolute inset-0 bg-black/20 animate-[fadeIn_300ms_ease]" />
+            </div>
+          )}
         </div>
       )}
 
