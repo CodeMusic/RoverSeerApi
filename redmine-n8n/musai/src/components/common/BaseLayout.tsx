@@ -79,6 +79,10 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   const hasRightContent = Boolean(rightContent);
   const clientIpHash = getStoredClientIpHash();
 
+  // Local storage keys for persisting user intent
+  const leftCollapseStorageKey = (tab: string, mobile: boolean) => `musai_left_collapsed_${mobile ? 'mobile_' : ''}${tab}`;
+  const rightCollapseStorageKey = (tab: string) => `musai_right_collapsed_${tab}`;
+
   // Filter sessions based on current tab and type compatibility
   const filteredSessions = sessions.filter(session => {
     const tabToSessionType: Record<string, string> = {
@@ -112,25 +116,43 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     );
   })() as BaseSession[];
 
-  // Set initial sidebar state based on user preferences (expanded by default for all tools)
+  // Initialize left and right sidebars from persisted state; default expanded on desktop, collapsed on mobile
   useEffect(() => {
-    // Determine desired collapsed state
-    let desiredCollapsed = false;
+    try
+    {
+      const leftKey = leftCollapseStorageKey(currentTab, isMobile);
+      const rightKey = rightCollapseStorageKey(currentTab);
 
-    if (currentTab === APP_TERMS.TAB_CHAT) {
-      desiredCollapsed = false; // Always open by default for Chat
-    } else if (filteredSessions.length > 0) {
-      // Respect user preference when sessions exist
-      desiredCollapsed = preferences.autoSelectFirstItem;
-    } else {
-      // No sessions yet: keep expanded by default (previously collapsed)
-      desiredCollapsed = false;
+      const storedLeft = localStorage.getItem(leftKey);
+      const storedRight = localStorage.getItem(rightKey);
+
+      const defaultLeftCollapsed = isMobile ? true : false;
+      const defaultRightCollapsed = false;
+
+      const nextLeftCollapsed = storedLeft != null ? storedLeft === 'true' : defaultLeftCollapsed;
+      const nextRightCollapsed = storedRight != null ? storedRight === 'true' : defaultRightCollapsed;
+
+      setIsSidebarCollapsed(nextLeftCollapsed);
+      setIsRightSidebarCollapsed(nextRightCollapsed);
+
+      // On mobile, avoid auto-opening overlay; only open when the user explicitly expands
+      if (isMobile)
+      {
+        setIsSidebarOpen(false);
+      }
+      else
+      {
+        // On desktop, if not collapsed, ensure visible; if collapsed, hidden
+        setIsSidebarOpen(!nextLeftCollapsed);
+      }
     }
-
-    setIsSidebarCollapsed(desiredCollapsed);
-    // On mobile, also slide the sidebar in when not collapsed
-    setIsSidebarOpen(!desiredCollapsed && isMobile);
-  }, [currentTab, filteredSessions.length, preferences.autoSelectFirstItem, isMobile]);
+    catch
+    {
+      // Fail safe: default desktop expanded, mobile collapsed
+      setIsSidebarCollapsed(isMobile);
+      setIsSidebarOpen(!isMobile);
+    }
+  }, [currentTab, isMobile]);
 
   // Listen for search sidebar visibility changes
   useEffect(() => {
@@ -146,8 +168,19 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
 
   // Global events to control the left sidebar (used by CodeMusai and others)
   useEffect(() => {
-    const collapse = () => { setIsSidebarCollapsed(true); setIsSidebarOpen(false); };
-    const expand = () => { setIsSidebarCollapsed(false); setIsSidebarOpen(true); };
+    const collapse = () =>
+    {
+      setIsSidebarCollapsed(true);
+      setIsSidebarOpen(false);
+      try { localStorage.setItem(leftCollapseStorageKey(currentTab, isMobile), 'true'); } catch {}
+    };
+
+    const expand = () =>
+    {
+      setIsSidebarCollapsed(false);
+      setIsSidebarOpen(isMobile ? true : true);
+      try { localStorage.setItem(leftCollapseStorageKey(currentTab, isMobile), 'false'); } catch {}
+    };
     const toggle = () => {
       setIsSidebarCollapsed(prev => !prev);
       setIsSidebarOpen(prev => !prev);
@@ -210,7 +243,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               "w-96 border-r border-border bg-background h-full",
               "transition-all duration-300 ease-in-out",
               // On mobile, render as overlay to avoid affecting layout width
-              isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg" : undefined,
+              isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg w-[85vw] max-w-[85vw] overflow-y-auto" : undefined,
               // Slide it offscreen when closed on mobile; fixed/absolute avoids layout shift
               isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
             )}>
@@ -243,7 +276,12 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                   onDeleteSession={onDeleteSession}
                   onRenameSession={onRenameSession}
                   onToggleFavorite={onToggleFavorite}
-                  onToggleCollapse={() => setIsSidebarCollapsed(true)}
+                  onToggleCollapse={() =>
+                  {
+                    setIsSidebarCollapsed(true);
+                    setIsSidebarOpen(false);
+                    try { localStorage.setItem(leftCollapseStorageKey(currentTab, isMobile), 'true'); } catch {}
+                  }}
                 />
               )}
             </div>
@@ -268,6 +306,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                     window.dispatchEvent(evt);
                   } else {
                     setIsSidebarCollapsed(false);
+                    setIsSidebarOpen(isMobile ? true : true);
+                    try { localStorage.setItem(leftCollapseStorageKey(currentTab, isMobile), 'false'); } catch {}
                   }
                 }}
                 className="p-3 hover:bg-accent hover:text-accent-foreground transition-colors text-muted-foreground"
@@ -289,7 +329,10 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               {!isRightSidebarCollapsed && (
                 <div className="w-80 border-l border-border bg-background relative">
                   <button
-                    onClick={() => setIsRightSidebarCollapsed(true)}
+                    onClick={() => {
+                      setIsRightSidebarCollapsed(true);
+                      try { localStorage.setItem(rightCollapseStorageKey(currentTab), 'true'); } catch {}
+                    }}
                     className="absolute left-0 -ml-3 top-3 w-3 h-8 rounded-l bg-background border border-border flex items-center justify-center hover:bg-accent"
                     title="Collapse Right Panel"
                   >
@@ -301,7 +344,10 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               {isRightSidebarCollapsed && (
                 <div className="w-3 border-l border-border bg-background flex flex-col items-stretch">
                   <button
-                    onClick={() => setIsRightSidebarCollapsed(false)}
+                    onClick={() => {
+                      setIsRightSidebarCollapsed(false);
+                      try { localStorage.setItem(rightCollapseStorageKey(currentTab), 'false'); } catch {}
+                    }}
                     className="h-12 hover:bg-accent"
                     title="Expand Right Panel"
                   >

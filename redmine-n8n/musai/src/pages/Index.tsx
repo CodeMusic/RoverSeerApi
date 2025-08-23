@@ -569,6 +569,9 @@ const Index = () => {
       // Enable debug bicamera agent flow temporarily in beta
       localStorage.setItem('musai-debug-bicamera', 'true');
       localStorage.setItem('musai-victory-shown', 'true');
+      // Subtle entry overlay when arriving from the Veil
+      setPortalPhase('enter');
+      setTimeout(() => setPortalPhase('none'), 700);
     }
 
     if (location.state?.newSession) {
