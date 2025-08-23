@@ -82,22 +82,44 @@ export const AgentArticle: React.FC<AgentArticleProps> = ({ html }) =>
 		);
 	}
 
+	// Show labels selectively for a more newspaper-like feel
+	const showLabelForIds = new Set<string>([
+		'analysis',
+		'points-of-conflict',
+		'bias-check',
+		'commentary',
+		'next-steps',
+	]);
+
 	return (
 		<article className="agent-article space-y-4">
 			{SECTION_DEFINITIONS.map((def) => {
 				const content = sections[def.id] || '<p>—</p>';
 				const isHeadline = def.id === 'headline';
 				const isSubhead = def.id === 'subhead';
+				const isLede = def.id === 'lede';
+
 				const bodyClass = isHeadline
-					? 'text-2xl font-bold'
+					? 'text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight'
 					: isSubhead
-					? 'text-lg font-semibold'
+					? 'text-xl sm:text-2xl font-semibold text-muted-foreground'
+					: isLede
+					? 'prose prose-sm dark:prose-invert max-w-none text-base first-letter:float-left first-letter:text-5xl first-letter:font-bold first-letter:mr-2 first-letter:leading-[0.8] first-letter:tracking-tight'
 					: 'prose prose-sm dark:prose-invert max-w-none text-sm';
+
+				const sectionClass = isHeadline || isSubhead
+					? 'p-0 border-0 bg-transparent'
+					: 'rounded border bg-card p-3';
+
+				const shouldShowLabel = showLabelForIds.has(def.id);
+
 				return (
-					<section key={def.id} id={def.id} className="rounded border bg-card p-3">
-						<div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
-							{def.label}
-						</div>
+					<section key={def.id} id={def.id} className={sectionClass}>
+						{shouldShowLabel && (
+							<div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2">
+								{def.label}
+							</div>
+						)}
 						<div className={bodyClass} dangerouslySetInnerHTML={{ __html: content }} />
 					</section>
 				);

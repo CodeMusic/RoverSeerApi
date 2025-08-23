@@ -169,10 +169,16 @@ export const SearchResults = ({
     }
   };
 
+  // Print/export: use print media to show a simplified article layout
+  const handleExport = () =>
+  {
+    window.print();
+  };
+
   return (
     <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col overflow-y-auto">
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30">
+      <div className="flex-shrink-0 flex items-center justify-between p-6 border-b-2 border-purple-200 dark:border-purple-800 bg-sidebar/30 musai-print-hide">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {(() => {
             const IconComponent = getIntentIcon(session.intent);
@@ -203,7 +209,7 @@ export const SearchResults = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onExport} className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport} className="flex items-center gap-2">
             <Download className="w-4 h-4" />
             Export
           </Button>
@@ -216,6 +222,19 @@ export const SearchResults = ({
             Back
           </Button>
         </div>
+      </div>
+
+      {/* Print-only simplified article layout */}
+      <div className="musai-print-only musai-print-container">
+        <h1 className="text-2xl font-extrabold mb-1">{session.query}</h1>
+        <div className="text-xs text-muted-foreground mb-4">{format(session.timestamp, 'PPP p')}</div>
+        {session.results.map((result: SearchResult, index) => (
+          typeof result.content === 'string' && /<article[\s>]/i.test(result.content.trim()) ? (
+            <div key={`print-${index}`} className="mb-6 agent-article">
+              <AgentArticle html={result.content} />
+            </div>
+          ) : null
+        ))}
       </div>
 
       {/* Loading indicator moved near the follow-up input (not shown at the top) */}
@@ -447,7 +466,7 @@ export const SearchResults = ({
       </div>
 
       {/* Sticky Follow-up Input at Bottom */}
-      <div className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 musai-print-hide">
         <div className="mx-auto max-w-5xl w-full p-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
           <form onSubmit={handleFollowUpSubmit} className="w-full">
             <div className="flex items-center gap-3 w-full">

@@ -77,6 +77,7 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [consoleHistory, setConsoleHistory] = useState<string[]>([]);
   const [fogOn, setFogOn] = useState(false);
   const [floodOn, setFloodOn] = useState(false);
+  const [staticOn, setStaticOn] = useState(false);
   const previewRunRef = useRef(false);
 
   const today = useMemo(() => yyyymmdd(now), [now]);
@@ -210,6 +211,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     let floodTimer: number | undefined;
     let enterTimer: number | undefined;
     let startTypingTimer: number | undefined;
+    let staticTimer: number | undefined;
+    let staticOffTimer: number | undefined;
 
     const typeNextLine = (lineIdx: number) =>
     {
@@ -261,8 +264,16 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       tick();
     };
 
-    // Small delay so the fog can become perceptible before typing starts
-    startTypingTimer = window.setTimeout(() => typeNextLine(0), 380) as unknown as number;
+    // Delay → brief static override → then start typing
+    staticTimer = window.setTimeout(() =>
+    {
+      setStaticOn(true);
+      staticOffTimer = window.setTimeout(() =>
+      {
+        setStaticOn(false);
+        startTypingTimer = window.setTimeout(() => typeNextLine(0), 180) as unknown as number;
+      }, 320) as unknown as number; // static duration
+    }, 360) as unknown as number; // initial delay before static
 
     return () =>
     {
@@ -272,6 +283,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       if (enterTimer) window.clearTimeout(enterTimer);
       if (startTypingTimer) window.clearTimeout(startTypingTimer);
       if (fogTimer) window.clearTimeout(fogTimer);
+      if (staticTimer) window.clearTimeout(staticTimer);
+      if (staticOffTimer) window.clearTimeout(staticOffTimer);
     };
   }, [gateMode, isAuthorized]);
 
@@ -677,6 +690,33 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Static override (brief) */}
+          {previewPhase === 1 && staticOn && (
+            <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.95 }}>
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.85)',
+                  mixBlendMode: 'normal'
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage:
+                    'repeating-linear-gradient(0deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 2px, transparent 3px, transparent 5px),\\\n                     repeating-linear-gradient(90deg, rgba(0,0,0,0.08) 0px, rgba(0,0,0,0.08) 1px, transparent 2px, transparent 4px)'
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.06), transparent 35%),\\\n                     radial-gradient(circle at 80% 70%, rgba(255,255,255,0.05), transparent 35%)'
+                }}
+              />
             </div>
           )}
 

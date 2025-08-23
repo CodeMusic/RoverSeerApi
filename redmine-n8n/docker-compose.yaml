@@ -168,13 +168,16 @@ services:
 
   wyoming-piper:
     image: rhasspy/wyoming-piper
-    container_name: wyoming-piper
+    container_name: wyoming-piper-jarvis
     restart: unless-stopped
     ports:
-      - "10200:10200"
+      - "10201:10200"
     volumes:
       - ./ai-model-cache/piper-voices:/voices
-    command: --voice en_US-GlaDOS-medium --uri tcp://0.0.0.0:10200
+    command: >
+      --model  /voices/en_US-GlaDOS-medium.onnx
+      --config /voices/een_US-GlaDOS-medium.json
+      --uri    tcp://0.0.0.0:10200
     networks: [ai_net]
 
   wyoming-bridge:

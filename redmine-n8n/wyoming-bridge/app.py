@@ -10,46 +10,48 @@ from wyoming.client import AsyncTcpClient
 from wyoming.audio import AudioStart, AudioChunk, AudioStop
 from wyoming.asr import Transcribe, Transcript
 from wyoming.tts import Synthesize
-import wyoming.tts as wy_tts  # module import works even if Voice isn’t exported
+import wyoming.tts as wy_tts  # Voice may/may not be exported depending on version
 
-app = FastAPI(title="Wyoming Bridge", version="1.0")
 
+app = FastAPI(title="Wyoming Bridge", version="1.1")
+
+# Upstream addresses (override via env)
 WHISPER_HOST = os.environ.get("WHISPER_HOST", "wyoming-whisper")
 WHISPER_PORT = int(os.environ.get("WHISPER_PORT", "10300"))
 PIPER_HOST   = os.environ.get("PIPER_HOST", "wyoming-piper")
 PIPER_PORT   = int(os.environ.get("PIPER_PORT", "10200"))
 
-DEFAULT_VOICE = os.environ.get("DEFAULT_VOICE", "en_US-amy-low")
+# This is only used to **construct** a Voice object when the client asks for one.
+# Fallback (no-voice) uses whatever Piper started with (your GLaDOS model/command).
+DEFAULT_VOICE_FOR_PARSE = os.environ.get("DEFAULT_VOICE", "en_US-GlaDOS-medium")
 
 
-# ---- utils ----
+# ---------- helpers ----------
 
-async def connect_rw(host: str, port: int) -> AsyncTcpClient:
-    reader, writer = await asyncio.open_connection(host, port)
-    return AsyncTcpClient(reader, writer)
+async def _connect(host: str, port: int) -> AsyncTcpClient:
+    r, w = await asyncio.open_connection(host, port)
+    return AsyncTcpClient(r, w)
 
-def _parse_voice(value: Any):
+def _mk_voice(value: Any):
     """
-    Build a Voice object for wyoming regardless of version:
-      - If wyoming.tts.Voice exists, use it
-      - Otherwise, return a shim that has .to_dict() with keys that Piper understands
+    Create a Voice object (or a shim with .to_dict()) that wyoming understands.
     Accepts:
       - "en_US-amy-low"
-      - {"name":"en_US-amy-low", "speaker": 0, "language": "en"}
+      - {"name":"en_US-amy-low", "speaker":0, "language":"en"}
     """
-    # Normalize to dict
     if value is None:
-        value = DEFAULT_VOICE
+        return None
+
     if isinstance(value, str):
         vd: Dict[str, Any] = {"name": value}
     elif isinstance(value, dict):
+        # Only pass keys Piper knows about
         vd = {k: v for k, v in value.items() if k in ("name", "speaker", "language")}
-        if "name" not in vd and DEFAULT_VOICE:
-            vd["name"] = DEFAULT_VOICE
+        if "name" not in vd and DEFAULT_VOICE_FOR_PARSE:
+            vd["name"] = DEFAULT_VOICE_FOR_PARSE
     else:
         vd = {"name": str(value)}
 
-    # Try real Voice class first
     VoiceCls = getattr(wy_tts, "Voice", None)
     if VoiceCls is not None:
         try:
@@ -59,14 +61,14 @@ def _parse_voice(value: Any):
                 language=vd.get("language"),
             )
         except Exception:
-            pass  # fall back to shim
+            pass
 
-    # Shim with to_dict(), enough for wyoming.tts.Synthesize.event()
     class _VoiceShim:
         def __init__(self, name=None, speaker=None, language=None):
             self.name = name
             self.speaker = speaker
             self.language = language
+
         def to_dict(self):
             d = {}
             if self.name: d["name"] = self.name
@@ -80,16 +82,43 @@ def _parse_voice(value: Any):
         language=vd.get("language"),
     )
 
+async def _speak_once(text: str, voice_obj=None) -> bytes:
+    """
+    Send a single Synthesize request. If voice_obj is None, Piper uses its startup voice.
+    Returns WAV bytes on success, raises on failure.
+    """
+    client = await _connect(PIPER_HOST, PIPER_PORT)
+    out = io.BytesIO()
+    try:
+        synth = Synthesize(text=text, voice=voice_obj) if voice_obj else Synthesize(text=text)
+        await client.write_event(synth)
+        async for ev in client.events():
+            # Import types loosely to avoid version-specific class imports
+            if hasattr(ev, "audio"):              # AudioChunk
+                out.write(ev.audio)
+            elif ev.__class__.__name__ == "AudioStop":
+                break
+    finally:
+        try:
+            await client.close()
+        except Exception:
+            pass
 
-# ---- health ----
+    data = out.getvalue()
+    if not data:
+        raise RuntimeError("No audio returned")
+    return data
+
+
+# ---------- health ----------
 
 @app.get("/healthz", response_class=PlainTextResponse)
 async def health():
     return "ok"
 
 
-# ---- STT ----
-# Accepts multipart (first file field) or raw wav body
+# ---------- STT ----------
+
 @app.post("/stt")
 async def stt(request: Request):
     data: Optional[bytes] = None
@@ -112,7 +141,7 @@ async def stt(request: Request):
     if not data or len(data) <= 44:
         raise HTTPException(400, "Empty/invalid WAV")
 
-    client = await connect_rw(WHISPER_HOST, WHISPER_PORT)
+    client = await _connect(WHISPER_HOST, WHISPER_PORT)
 
     try:
         await client.write_event(AudioStart(format="wav"))
@@ -141,49 +170,42 @@ async def stt(request: Request):
             pass
 
 
-# ---- TTS ----
-# JSON: { "text": "hello", "voice": "en_US-amy-low" }
-# or:   { "text": "hello", "voice": { "name":"en_US-amy-low", "speaker":0 } }
+# ---------- TTS with dynamic voice + fallback ----------
+
+# Accept voice from JSON body or from query param (?voice=en_US-amy-low)
 @app.post("/tts")
-async def tts(payload: dict):
-    text = (payload.get("text") or "").strip()
+async def tts(request: Request):
+    payload = {}
+    try:
+        if request.headers.get("content-type", "").startswith("application/json"):
+            payload = await request.json()
+    except Exception:
+        payload = {}
+
+    text = (payload.get("text") or request.query_params.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Missing text")
 
-    # Connect directly to Piper (avoids the writer=None assertion)
-    try:
-        r, w = await asyncio.open_connection(PIPER_HOST, PIPER_PORT)
-    except Exception as e:
-        raise HTTPException(502, f"TTS upstream error: {e}")
+    # Voice preference in this order: query param > JSON body; if none, we'll use fallback
+    voice_in = request.query_params.get("voice", None)
+    if voice_in is None:
+        voice_in = payload.get("voice", None)
 
-    client = AsyncTcpClient(r, w)
-
-    # If caller provided a voice, pass it through; otherwise let Piper use its --voice
-    voice_raw = payload.get("voice", None)
-    if voice_raw is not None:
-        voice_obj = _parse_voice(voice_raw)   # accepts "en_US-GlaDOS-medium" or {"name": "..."}
-        synth = Synthesize(text=text, voice=voice_obj)
-    else:
-        synth = Synthesize(text=text)
-
-    try:
-        await client.write_event(synth)
-        out = io.BytesIO()
-        async for ev in client.events():
-            if isinstance(ev, AudioChunk):
-                out.write(ev.audio)
-            elif isinstance(ev, AudioStop):
-                break
-    except Exception as e:
-        raise HTTPException(502, f"TTS upstream error: {e}")
-    finally:
+    # Try requested voice first (if provided)
+    if voice_in:
         try:
-            await client.close()
+            voice_obj = _mk_voice(voice_in)
+            wav = await _speak_once(text, voice_obj=voice_obj)
+            return StreamingResponse(io.BytesIO(wav), media_type="audio/wav",
+                                     headers={"Cache-Control": "no-store"})
         except Exception:
+            # fall through to default
             pass
 
-    out.seek(0)
-    return StreamingResponse(out, media_type="audio/wav",
-                             headers={"Cache-Control": "no-store"})
-
-
+    # Fallback: no voice => Piper uses its startup model (your GLaDOS)
+    try:
+        wav = await _speak_once(text, voice_obj=None)
+        return StreamingResponse(io.BytesIO(wav), media_type="audio/wav",
+                                 headers={"Cache-Control": "no-store"})
+    except Exception as e:
+        raise HTTPException(502, f"TTS upstream error: {e}")

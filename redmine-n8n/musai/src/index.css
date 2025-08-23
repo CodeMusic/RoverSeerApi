@@ -285,19 +285,20 @@ textarea, input, button {
   display: block;
 }
 .agent-article #headline h1 {
-  font-size: 1.625rem;
-  line-height: 1.25;
-  font-weight: 800;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.1;
+  font-weight: 900;
   margin: 0 0 0.5rem 0;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2; /* keep headline to max 2 lines */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .agent-article #subhead h2 {
-  font-size: 1.125rem;
-  line-height: 1.4;
+  font-size: clamp(1.125rem, 2.2vw, 1.625rem);
+  line-height: 1.35;
   color: hsl(var(--muted-foreground));
   margin: 0 0 1rem 0;
 }
@@ -308,6 +309,14 @@ textarea, input, button {
   font-weight: 500;
   margin-top: 0.25rem;
   margin-bottom: 1.25rem;
+}
+.agent-article #lede p:first-of-type::first-letter {
+  float: left;
+  font-size: clamp(2.5rem, 4.5vw, 3.5rem);
+  line-height: 0.8;
+  font-weight: 800;
+  margin-right: 0.5rem;
+  padding-top: 0.1rem;
 }
 .agent-article #lede,
 .agent-article #background,
@@ -364,6 +373,28 @@ textarea, input, button {
 .agent-article .conflict-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+/* Print helpers */
+.musai-print-only { display: none; }
+.musai-print-hide { display: block; }
+
+@media print {
+  .musai-print-only { display: block !important; }
+  .musai-print-hide { display: none !important; }
+}
+
+/* Print styles to preserve newspaper look */
+@media print {
+  body { background: white !important; }
+  .bg-background, .bg-card { background: white !important; }
+  .agent-article { color: black !important; }
+  .agent-article .border, .agent-article [class*="border-"] { border-color: #444 !important; }
+  /* Hide app chrome */
+  .sidebar, .navigation-bar, .sticky, .backdrop-blur, .chat-actions-visible, [role="dialog"], [data-radix-scroll-area-viewport] { display: none !important; }
+  /* Expand article spacing for print */
+  .agent-article { page-break-inside: avoid; }
+  .agent-article section { break-inside: avoid; page-break-inside: avoid; }
 }
 
 /* Play button pulse effect */
