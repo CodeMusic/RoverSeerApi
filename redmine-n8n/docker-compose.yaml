@@ -105,6 +105,7 @@ services:
       - VITE_N8N_WEBHOOK_USERNAME=codemusai
       - VITE_N8N_WEBHOOK_SECRET=R0V3RBY73
       - VITE_ASSISTANT_NAME=Musai
+      - VITE_RIDDLE_GATE_MODE=preview
     networks:
       - ai_net
 

@@ -100,7 +100,7 @@ server:
   # Proxy image results through SearXNG. Is overwritten by ${SEARXNG_IMAGE_PROXY}
   image_proxy: false
   # 1.0 and 1.1 are supported
-  http_protocol_version: "1.0"
+  http_protocol_version: "1.1"
 
   result_proxy:
     # Public path your browser will hit (reverse-proxied to the morty container)
@@ -117,6 +117,7 @@ server:
     X-Download-Options: noopen
     X-Robots-Tag: noindex, nofollow
     Referrer-Policy: no-referrer
+    Connection: keep-alive
 
 valkey:
   # URL to connect valkey database. Is overwritten by ${SEARXNG_VALKEY_URL}.
@@ -182,7 +183,7 @@ ui:
 #
 outgoing:
   # default timeout in seconds, can be override by engine
-  request_timeout: 3.0
+  request_timeout: 6.0
   # the maximum timeout in seconds
   # max_request_timeout: 10.0
   # suffix of searxng_useragent, could contain information like an email address

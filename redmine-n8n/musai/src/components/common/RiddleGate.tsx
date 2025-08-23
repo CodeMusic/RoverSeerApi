@@ -28,7 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
-import { MUSAI_CHROMATIC_7, MUSAI_CHROMATIC_12 } from '@/config/constants';
+import { MUSAI_CHROMATIC_7, MUSAI_CHROMATIC_12, ACCESS_GATES } from '@/config/constants';
 
 const PEPPER = 'm$pepper_v1';
 const MAX_ATTEMPTS = 5;
@@ -55,6 +55,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const navigate = useNavigate();
   const location = useLocation();
 
+  const gateMode = ACCESS_GATES.riddleGateMode;
+
   const [now, setNow] = useState(new Date());
   const [input, setInput] = useState('');
   const [hasTyped, setHasTyped] = useState(false);
@@ -66,6 +68,10 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
   const [hasJustUnlocked, setHasJustUnlocked] = useState(false);
   const [lastFeedbackType, setLastFeedbackType] = useState<'near' | 'failure' | null>(null);
   const [overlayMessage, setOverlayMessage] = useState<string | null>(null);
+
+  // Preview mode orchestration
+  const [previewPhase, setPreviewPhase] = useState<0 | 1 | 2 | 3>(0);
+  const previewRunRef = useRef(false);
 
   const today = useMemo(() => yyyymmdd(now), [now]);
   const storageKey = `musai_riddle_access_${today}`;
@@ -128,6 +134,61 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       // ignore storage errors
     }
   }, [isAuthorized, location.key]);
+
+  // Shared success pathway
+  const finishUnlock = () =>
+  {
+    activateRainbowWithPersistence(2);
+    localStorage.setItem(storageKey, 'ok');
+    setIsAuthorized(true);
+    localStorage.removeItem(failKey);
+    localStorage.removeItem(lockKey);
+    setError(null);
+    setLastFeedbackType(null);
+    setOverlayType('success');
+    setOverlayMessage('Welcome to Musai');
+    setIsOverlayVisible(true);
+    setHasJustUnlocked(true);
+    toggleParty();
+    setTimeout(() => setIsOverlayVisible(false), 1800);
+
+    try
+    {
+      const raw = sessionStorage.getItem('musai-pending-query');
+      const { query = '', mode = '' } = raw ? JSON.parse(raw) : { };
+      sessionStorage.removeItem('musai-pending-query');
+
+      const params = new URLSearchParams();
+      if (mode) params.set('mode', mode);
+      if (query) params.set('q', query);
+      params.set('victory', '1');
+      navigate(`${ROUTES.MAIN_APP}?${params.toString()}`, { replace: true, state: { switchToTab: mode || 'chat', initialQuery: query, justUnlocked: true } });
+    }
+    catch
+    {
+      // ignore
+    }
+  };
+
+  // Preview mode auto-unlock sequence
+  useEffect(() =>
+  {
+    if (gateMode !== 'preview')
+    {
+      return;
+    }
+    if (isAuthorized || previewRunRef.current)
+    {
+      return;
+    }
+    // Begin sequence immediately upon entering the gate
+    previewRunRef.current = true;
+    setPreviewPhase(1); // 🎁 appears
+    const t1 = setTimeout(() => setPreviewPhase(2), 600); // red+blue resolving
+    const t2 = setTimeout(() => setPreviewPhase(3), 1300); // symbols shimmer
+    const t3 = setTimeout(() => finishUnlock(), 2000); // unlock and enter
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [gateMode, isAuthorized]);
 
 
   const failCount = useMemo(() => parseInt(localStorage.getItem(failKey) || '0', 10), [failKey, now]);
@@ -257,6 +318,16 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
   const minutes = Math.floor(remainingMs / 60000);
   const seconds = Math.floor((remainingMs % 60000) / 1000);
+
+  // Bypass entirely when gate mode is off
+  if (gateMode === 'off')
+  {
+    return (
+      <>
+        {children}
+      </>
+    );
+  }
 
   return (
     <div className="relative min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-purple-50 via-background to-cyan-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
@@ -495,6 +566,40 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       {isAuthorized && (
         <div className="w-full h-full">
           {children}
+        </div>
+      )}
+
+      {/* Preview unlock overlay */}
+      {gateMode === 'preview' && !isAuthorized && (
+        <div className="pointer-events-none fixed inset-0 z-[10002] flex items-center justify-center">
+          <div
+            className="absolute inset-0 transition-all duration-700"
+            style={{
+              background:
+                previewPhase === 1
+                  ? 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.15) 0%, transparent 40%)'
+                  : previewPhase === 2
+                    ? 'linear-gradient(90deg, rgba(239,68,68,0.22), rgba(147,51,234,0.22), rgba(59,130,246,0.22))'
+                    : previewPhase === 3
+                      ? 'radial-gradient(circle at 50% 50%, rgba(148,0,211,0.28) 0%, transparent 60%)'
+                      : 'transparent'
+            }}
+          />
+          <div className="relative flex flex-col items-center gap-4 select-none">
+            {previewPhase === 1 && (
+              <div className="text-7xl animate-pulse">🎁</div>
+            )}
+            {previewPhase === 2 && (
+              <div className="text-2xl md:text-3xl font-semibold text-foreground transition-opacity" style={{ opacity: 0.95 }}>
+                Resolving the Veil
+              </div>
+            )}
+            {previewPhase === 3 && (
+              <div className="text-2xl md:text-3xl font-semibold text-foreground tracking-wider">
+                ☉ ✧ Ψ ∴ ⋈ ⊙ ᛝ Ϟ ∷ ☌
+              </div>
+            )}
+          </div>
         </div>
       )}
 

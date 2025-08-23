@@ -1574,13 +1574,44 @@
               didResolve = true;
               resolve(value || buildMorty(plainTarget));
             };
-            try
+            // Helper function to handle connection errors and retry with proper headers
+            var attemptSigning = function(usePost, attemptNumber)
             {
-              fetch(SIGN_WEBHOOK, {
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }),
-                body: JSON.stringify({ url: plainTarget })
-              }).then(function(r)
+              if (attemptNumber > 3) {
+                console.warn('[MortySign] Max retry attempts reached for', plainTarget);
+                settle(buildMorty(plainTarget));
+                return;
+              }
+
+              var headers = Object.assign(
+                { 'Content-Type': 'application/json' },
+                (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function')
+                  ? window.musaiN8N.getAuthHeader()
+                  : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
+              );
+
+              // For connection issues, add Connection: close header on retry attempts
+              if (attemptNumber > 1) {
+                headers['Connection'] = 'close';
+                console.debug('[MortySign] Adding Connection: close header for attempt', attemptNumber);
+              }
+
+              var fetchPromise;
+              if (usePost) {
+                fetchPromise = fetch(SIGN_WEBHOOK, {
+                  method: 'POST',
+                  headers: headers,
+                  body: JSON.stringify({ url: plainTarget })
+                });
+              } else {
+                var urlParam = encodeURIComponent(plainTarget);
+                fetchPromise = fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
+                  method: 'GET',
+                  headers: headers
+                });
+              }
+
+              fetchPromise.then(function(r)
               {
                 if (!r.ok) { throw new Error('HTTP ' + r.status); }
                 return r.json().catch(function(){ return { url: plainTarget }; });
@@ -1592,36 +1623,48 @@
                 {
                   nextUrl = buildMorty(plainTarget, mh);
                 }
-                try { console.debug('[MusaiOverlay] signer POST result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                // If key is unset on Morty, mortyhash may be omitted; that's fine
+                try {
+                  console.debug('[MortySign] signing success on attempt', attemptNumber, { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) });
+                } catch (_) {}
                 settle(nextUrl || buildMorty(plainTarget, mh));
-              }).catch(function()
+              }).catch(function(error)
               {
-                var urlParam = encodeURIComponent(plainTarget);
-                fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
-                  headers: (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
-                }).then(function(r)
-                {
-                  if (!r.ok) { throw new Error('HTTP ' + r.status); }
-                  return r.json().catch(function(){ return { url: plainTarget }; });
-                }).then(function(data)
-                {
-                  var nextUrl = (data && data.signed_url) || '';
-                  var mh = (data && (data.mortyhash || data.hash)) || '';
-                  if (!nextUrl)
-                  {
-                    nextUrl = buildMorty(plainTarget, mh);
+                var errorMsg = error.message || '';
+                var isConnectionError = errorMsg.includes('connection') ||
+                                       errorMsg.includes('ECONNRESET') ||
+                                       errorMsg.includes('closed') ||
+                                       errorMsg.includes('before returning the first response byte');
+
+                console.debug('[MortySign] attempt', attemptNumber, 'failed:', errorMsg, { isConnectionError: isConnectionError });
+
+                if (isConnectionError) {
+                  // Retry with different approach for connection errors
+                  if (usePost) {
+                    // First retry: switch to GET method
+                    setTimeout(function() {
+                      attemptSigning(false, attemptNumber + 1);
+                    }, 1000 * attemptNumber); // Exponential backoff
+                  } else {
+                    // Second retry: try POST again with Connection: close
+                    setTimeout(function() {
+                      attemptSigning(true, attemptNumber + 1);
+                    }, 1000 * attemptNumber);
                   }
-                  try { console.debug('[MusaiOverlay] signer GET result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                  settle(nextUrl || buildMorty(plainTarget, mh));
-                }).catch(function()
-                {
-                  // Fallback: unsigned open (works when MORTY_KEY is unset)
+                } else if (usePost) {
+                  // For non-connection errors, try GET fallback
+                  setTimeout(function() {
+                    attemptSigning(false, attemptNumber + 1);
+                  }, 500);
+                } else {
+                  // Final fallback: build unsigned URL
+                  console.warn('[MortySign] All signing attempts failed for', plainTarget, errorMsg);
                   settle(buildMorty(plainTarget));
-                });
+                }
               });
-            }
-            catch (_) { settle(buildMorty(plainTarget)); }
+            };
+
+            // Start with POST attempt
+            attemptSigning(true, 1);
           });
         };
         var openOverlay = function(url, originId, options)
@@ -2258,13 +2301,44 @@
               resolve(value || buildMorty(plainTarget));
             };
 
-            try
+            // Helper function to handle connection errors and retry with proper headers
+            var attemptSigning = function(usePost, attemptNumber)
             {
-              fetch(SIGN_WEBHOOK, {
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }),
-                body: JSON.stringify({ url: plainTarget })
-              }).then(function(r)
+              if (attemptNumber > 3) {
+                console.warn('[MortySign] Max retry attempts reached for', plainTarget);
+                settle(buildMorty(plainTarget));
+                return;
+              }
+
+              var headers = Object.assign(
+                { 'Content-Type': 'application/json' },
+                (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function')
+                  ? window.musaiN8N.getAuthHeader()
+                  : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
+              );
+
+              // For connection issues, add Connection: close header on retry attempts
+              if (attemptNumber > 1) {
+                headers['Connection'] = 'close';
+                console.debug('[MortySign] Adding Connection: close header for attempt', attemptNumber);
+              }
+
+              var fetchPromise;
+              if (usePost) {
+                fetchPromise = fetch(SIGN_WEBHOOK, {
+                  method: 'POST',
+                  headers: headers,
+                  body: JSON.stringify({ url: plainTarget })
+                });
+              } else {
+                var urlParam = encodeURIComponent(plainTarget);
+                fetchPromise = fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
+                  method: 'GET',
+                  headers: headers
+                });
+              }
+
+              fetchPromise.then(function(r)
               {
                 if (!r.ok) { throw new Error('HTTP ' + r.status); }
                 return r.json().catch(function()
@@ -2279,41 +2353,48 @@
                 {
                   nextUrl = buildMorty(plainTarget, mh);
                 }
-                try { console.debug('[MortySign] signUrl POST result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
+                try {
+                  console.debug('[MortySign] signing success on attempt', attemptNumber, { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) });
+                } catch (_) {}
                 settle(nextUrl || buildMorty(plainTarget, mh));
-              }).catch(function()
+              }).catch(function(error)
               {
-                // Secondary: GET ?url=...
-                var urlParam = encodeURIComponent(plainTarget);
-                fetch(SIGN_WEBHOOK + '?url=' + urlParam, {
-                  headers: (window.musaiN8N && typeof window.musaiN8N.getAuthHeader === 'function') ? window.musaiN8N.getAuthHeader() : { 'Authorization': 'Basic c2l0ZXVzZXI6Y29kZW11c2Fp' }
-                }).then(function(r)
-                {
-                  if (!r.ok) { throw new Error('HTTP ' + r.status); }
-                  return r.json().catch(function()
-                  {
-                    return { url: plainTarget };
-                  });
-                }).then(function(data)
-                {
-                  var nextUrl = (data && data.signed_url) || '';
-                  var mh = (data && (data.mortyhash || data.hash)) || '';
-                  if (!nextUrl)
-                  {
-                    nextUrl = buildMorty(plainTarget, mh);
+                var errorMsg = error.message || '';
+                var isConnectionError = errorMsg.includes('connection') ||
+                                       errorMsg.includes('ECONNRESET') ||
+                                       errorMsg.includes('closed') ||
+                                       errorMsg.includes('before returning the first response byte');
+
+                console.debug('[MortySign] attempt', attemptNumber, 'failed:', errorMsg, { isConnectionError: isConnectionError });
+
+                if (isConnectionError) {
+                  // Retry with different approach for connection errors
+                  if (usePost) {
+                    // First retry: switch to GET method
+                    setTimeout(function() {
+                      attemptSigning(false, attemptNumber + 1);
+                    }, 1000 * attemptNumber); // Exponential backoff
+                  } else {
+                    // Second retry: try POST again with Connection: close
+                    setTimeout(function() {
+                      attemptSigning(true, attemptNumber + 1);
+                    }, 1000 * attemptNumber);
                   }
-                  try { console.debug('[MortySign] signUrl GET result', { target: plainTarget, hasMortyhash: /[?&]mortyhash=/.test(nextUrl) }); } catch (_) {}
-                  settle(nextUrl || buildMorty(plainTarget, mh));
-                }).catch(function()
-                {
+                } else if (usePost) {
+                  // For non-connection errors, try GET fallback
+                  setTimeout(function() {
+                    attemptSigning(false, attemptNumber + 1);
+                  }, 500);
+                } else {
+                  // Final fallback: build unsigned URL
+                  console.warn('[MortySign] All signing attempts failed for', plainTarget, errorMsg);
                   settle(buildMorty(plainTarget));
-                });
+                }
               });
-            }
-            catch (_)
-            {
-              settle(buildMorty(plainTarget));
-            }
+            };
+
+            // Start with POST attempt
+            attemptSigning(true, 1);
           });
         };
 

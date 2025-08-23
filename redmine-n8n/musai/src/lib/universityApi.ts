@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
+import { withN8nAuthHeaders, ensureN8nSessionInBody } from '@/lib/n8nClient';
 import type { 
   Course, 
   CourseMetadata, 
@@ -82,6 +83,32 @@ class UniversityApiService
       headers: {
         'Content-Type': 'application/json',
       },
+    });
+
+    // Ensure Basic Auth and identity headers are applied for all requests to n8n
+    this.axiosInstance.interceptors.request.use((config) => {
+      config.headers = withN8nAuthHeaders(config.headers as any) as any;
+
+      // Inject sessionId into JSON body for non-GETs, mirroring chat behavior
+      const method = String(config.method || 'get').toLowerCase();
+      if (method !== 'get')
+      {
+        const contentType = (config.headers as any)?.['Content-Type'] || (config.headers as any)?.['content-type'] || 'application/json';
+        try
+        {
+          const originalBody = typeof config.data === 'string' ? config.data : JSON.stringify(config.data ?? {});
+          const { updatedBody, headerSessionId } = ensureN8nSessionInBody(originalBody, contentType);
+          // Update body
+          config.data = contentType.includes('application/json') ? JSON.parse(updatedBody) : updatedBody;
+          // Ensure header reflects the computed session id
+          (config.headers as any)['X-Musai-Session-Id'] = headerSessionId;
+        }
+        catch
+        {
+          // no-op; fall back to existing body if transformation fails
+        }
+      }
+      return config;
     });
   }
 

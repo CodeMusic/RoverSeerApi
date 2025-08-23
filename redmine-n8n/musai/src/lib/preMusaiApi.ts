@@ -1,5 +1,6 @@
 import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 import { N8N_ENDPOINTS } from '@/config/n8nEndpoints';
+import { getN8nSessionId } from '@/lib/n8nClient';
 
 // Clean object structures for PreMusai content
 export interface PreMusaiExample {
@@ -371,8 +372,11 @@ class PreMusaiApiService {
 
   async getPreMusaiContent(type: string): Promise<PreMusaiContent> {
     try {
-      // Try to fetch from n8n endpoint
-      const response = await fetchWithTimeout(`${this.baseUrl}/premusai/${type}`, {
+      // Unified endpoint: /premusai?musai={type}&sessionId={id}
+      const url = new URL(`${this.baseUrl}/premusai`);
+      url.searchParams.set('musai', type);
+      try { url.searchParams.set('sessionId', getN8nSessionId()); } catch {}
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -393,7 +397,10 @@ class PreMusaiApiService {
 
   async updatePreMusaiContent(type: string, content: PreMusaiContent): Promise<boolean> {
     try {
-      const response = await fetchWithTimeout(`${this.baseUrl}/premusai/${type}`, {
+      const url = new URL(`${this.baseUrl}/premusai`);
+      url.searchParams.set('musai', type);
+      try { url.searchParams.set('sessionId', getN8nSessionId()); } catch {}
+      const response = await fetchWithTimeout(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

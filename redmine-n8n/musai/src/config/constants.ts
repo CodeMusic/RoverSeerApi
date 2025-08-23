@@ -244,3 +244,12 @@ export const DEBUG_FLAGS = {
   // Default is false so the status bar only appears within the gated app experience.
   showStatusBarOutsideApp: (typeof window !== 'undefined' && (window as any).env?.VITE_SHOW_STATUS_BAR_OUTSIDE_APP) ?? import.meta.env.VITE_SHOW_STATUS_BAR_OUTSIDE_APP ?? 'false',
 };
+
+// Access gate configuration controlling the RiddleGate behavior
+// Mode can be 'on' (require solving), 'off' (bypass), or 'preview' (brief effect then auto-unlock)
+export const ACCESS_GATES = {
+  riddleGateMode:
+    ((typeof window !== 'undefined' && (window as any).env?.VITE_RIDDLE_GATE_MODE)
+      ?? import.meta.env.VITE_RIDDLE_GATE_MODE
+      ?? 'preview') as 'on' | 'off' | 'preview',
+} as const;
