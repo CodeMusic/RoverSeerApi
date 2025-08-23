@@ -1,12 +1,11 @@
-import io, asyncio
+import io
+import asyncio
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from wyoming.client import AsyncTcpClient
-from wyoming.messages import (
-    AudioStart, AudioChunk, AudioStop,
-    Transcribe, Transcript,
-    Synthesize
-)
+from wyoming.audio import AudioStart, AudioChunk, AudioStop
+from wyoming.asr import Transcribe, Transcript
+from wyoming.tts import Synthesize
 
 app = FastAPI()
 WHISPER_HOST, WHISPER_PORT = "wyoming-whisper", 10300
