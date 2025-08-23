@@ -157,32 +157,29 @@ services:
 
   wyoming-whisper:
     image: rhasspy/wyoming-whisper
-    container_name: wyoming-whisper
     restart: unless-stopped
     ports:
       - "10300:10300"
     volumes:
       - ./ai-model-cache/whisper-models:/models
     command: --model base.en --language en --uri tcp://0.0.0.0:10300
-    networks: [ai_net]
+    networks: { ai_net: { aliases: [wyoming-whisper] } }
 
   wyoming-piper:
     image: rhasspy/wyoming-piper
-    container_name: wyoming-piper-jarvis
     restart: unless-stopped
     ports:
-      - "10201:10200"
+      - "10200:10200"
     volumes:
       - ./ai-model-cache/piper-voices:/voices
     command: >
       --model  /voices/en_US-GlaDOS-medium.onnx
-      --config /voices/een_US-GlaDOS-medium.json
+      --config /voices/en_US-GlaDOS-medium.onnx.json
       --uri    tcp://0.0.0.0:10200
-    networks: [ai_net]
+    networks: { ai_net: { aliases: [wyoming-piper] } }
 
   wyoming-bridge:
     build: ./wyoming-bridge
-    container_name: wyoming-bridge
     restart: unless-stopped
     ports:
       - "18000:8000"
@@ -195,8 +192,8 @@ services:
     depends_on:
       - wyoming-whisper
       - wyoming-piper
-    networks: [ai_net]
-
+    networks: { ai_net: { aliases: [wyoming-bridge] } }
+    
   silverbullet:
     build:
       context: .
