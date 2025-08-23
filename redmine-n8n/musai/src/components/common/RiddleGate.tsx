@@ -191,8 +191,9 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
 
     previewRunRef.current = true;
     setFogOn(false);
-    // Begin with a subtle fog fade for readability before typing starts
-    const fogTimer = window.setTimeout(() => setFogOn(true), 10) as unknown as number;
+    // Timing parameters: brief arrival pause → dim screen → then begin console flow
+    const ARRIVAL_DELAY_MS = 450;
+    const FOG_FADE_MS = 700; // matches transition duration on fog overlay
 
     const LINES = [
       'Wake up...',
@@ -201,11 +202,6 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       'Get Ready!'
     ];
 
-    setPreviewPhase(1); // start console
-    setConsoleIndex(0);
-    setConsoleText('');
-    setConsoleHistory([]);
-
     let charTimer: number | undefined;
     let linePauseTimer: number | undefined;
     let floodTimer: number | undefined;
@@ -213,6 +209,8 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     let startTypingTimer: number | undefined;
     let staticTimer: number | undefined;
     let staticOffTimer: number | undefined;
+    let arrivalTimer: number | undefined;
+    let fogCompleteTimer: number | undefined;
 
     const typeNextLine = (lineIdx: number) =>
     {
@@ -264,16 +262,34 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       tick();
     };
 
-    // Delay → brief static override → then start typing
-    staticTimer = window.setTimeout(() =>
+    const beginConsoleFlow = () =>
     {
-      setStaticOn(true);
-      staticOffTimer = window.setTimeout(() =>
+      setPreviewPhase(1);
+      setConsoleIndex(0);
+      setConsoleText('');
+      setConsoleHistory([]);
+
+      // Brief static prelude, then typing begins
+      staticTimer = window.setTimeout(() =>
       {
-        setStaticOn(false);
-        startTypingTimer = window.setTimeout(() => typeNextLine(0), 180) as unknown as number;
-      }, 320) as unknown as number; // static duration
-    }, 360) as unknown as number; // initial delay before static
+        setStaticOn(true);
+        staticOffTimer = window.setTimeout(() =>
+        {
+          setStaticOn(false);
+          startTypingTimer = window.setTimeout(() => typeNextLine(0), 180) as unknown as number;
+        }, 320) as unknown as number; // static duration
+      }, 120) as unknown as number; // breath after full dim
+    };
+
+    // Arrival pause → start dim → after fog fade completes, begin console flow
+    arrivalTimer = window.setTimeout(() =>
+    {
+      setFogOn(true);
+      fogCompleteTimer = window.setTimeout(() =>
+      {
+        beginConsoleFlow();
+      }, FOG_FADE_MS + 40) as unknown as number;
+    }, ARRIVAL_DELAY_MS) as unknown as number;
 
     return () =>
     {
@@ -282,9 +298,10 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       if (floodTimer) window.clearTimeout(floodTimer);
       if (enterTimer) window.clearTimeout(enterTimer);
       if (startTypingTimer) window.clearTimeout(startTypingTimer);
-      if (fogTimer) window.clearTimeout(fogTimer);
       if (staticTimer) window.clearTimeout(staticTimer);
       if (staticOffTimer) window.clearTimeout(staticOffTimer);
+      if (arrivalTimer) window.clearTimeout(arrivalTimer);
+      if (fogCompleteTimer) window.clearTimeout(fogCompleteTimer);
     };
   }, [gateMode, isAuthorized]);
 

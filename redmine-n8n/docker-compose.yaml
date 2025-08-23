@@ -158,38 +158,43 @@ services:
   wyoming-whisper:
     image: rhasspy/wyoming-whisper
     restart: unless-stopped
-    ports: ["10300:10300"]
-    volumes:
-      - ./ai-model-cache/whisper-models:/models
     command: --model base.en --language en --uri tcp://0.0.0.0:10300
-    networks: { ai_net: { aliases: [wyoming-whisper] } }
+    ports: ["10300:10300"]
+    networks:
+      ai_net:
+        aliases: [wyoming-whisper]
 
   wyoming-piper:
     image: rhasspy/wyoming-piper
     restart: unless-stopped
-    ports: ["10200:10200"]
+    # use your local GLaDOS model files (the pair .onnx + .json must exist in ./ai-model-cache/piper-voices)
     volumes:
       - ./ai-model-cache/piper-voices:/voices
     command: >
       --model  /voices/en_US-GlaDOS-medium.onnx
       --config /voices/en_US-GlaDOS-medium.onnx.json
       --uri    tcp://0.0.0.0:10200
-    networks: { ai_net: { aliases: [wyoming-piper] } }
+    ports: ["10200:10200"]
+    networks:
+      ai_net:
+        aliases: [wyoming-piper]
 
   wyoming-bridge:
     build: ./wyoming-bridge
     restart: unless-stopped
-    ports: ["18000:8000"]
     environment:
-      - WHISPER_HOST=wyoming-whisper
-      - WHISPER_PORT=10300
-      - PIPER_HOST=wyoming-piper
-      - PIPER_PORT=10200
-      - DEFAULT_VOICE=en_US-GlaDOS-medium
+      WHISPER_HOST: wyoming-whisper
+      WHISPER_PORT: "10300"
+      PIPER_HOST: wyoming-piper
+      PIPER_PORT: "10200"
+      DEFAULT_VOICE: en_US-GlaDOS-medium
+    ports: ["18000:8000"]
     depends_on:
       - wyoming-whisper
       - wyoming-piper
-    networks: { ai_net: { aliases: [wyoming-bridge] } }
+    networks:
+      ai_net:
+        aliases: [wyoming-bridge]
 
   silverbullet:
     build:
