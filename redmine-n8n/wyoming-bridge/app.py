@@ -1,83 +1,82 @@
 import io
+import os
 import asyncio
 import logging
 from typing import Optional
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
-from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from wyoming.client import AsyncTcpClient
 from wyoming.audio import AudioStart, AudioChunk, AudioStop
 from wyoming.asr import Transcribe, Transcript
 from wyoming.tts import Synthesize
 
-# -------------------- Voice compatibility shim --------------------
-try:
-    from wyoming.tts import Voice as _WyomingVoice  # newer wyoming
-except Exception:
-    _WyomingVoice = None  # older wyoming
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s [wyoming-bridge] %(message)s",
+)
+log = logging.getLogger("wyoming-bridge")
 
-class _VoiceShim:
-    def __init__(self, name: str):
-        self.name = name
-    def to_dict(self):
-        return {"name": self.name}
+# -----------------------------------------------------------------------------
+# Config
+# -----------------------------------------------------------------------------
+WHISPER_HOST = os.getenv("WHISPER_HOST", "wyoming-whisper")
+WHISPER_PORT = int(os.getenv("WHISPER_PORT", "10300"))
 
-def make_voice(name: str):
-    return _WyomingVoice(name=name) if _WyomingVoice else _VoiceShim(name)
+PIPER_HOST = os.getenv("PIPER_HOST", "wyoming-piper")
+PIPER_PORT = int(os.getenv("PIPER_PORT", "10200"))
 
-# -------------------- Logging --------------------
-logger = logging.getLogger("wyoming-bridge")
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter(
-    "%(asctime)s %(levelname)s [%(name)s] %(message)s", "%Y-%m-%d %H:%M:%S"
-))
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+DEFAULT_VOICE = os.getenv("DEFAULT_VOICE", "en_US-GlaDOS-medium")
 
-# -------------------- App & config --------------------
-app = FastAPI()
-WHISPER_HOST, WHISPER_PORT = "wyoming-whisper", 10300
-PIPER_HOST,   PIPER_PORT   = "wyoming-piper",   10200
-DEFAULT_VOICE = "en_US-GlaDOS-medium"
+# -----------------------------------------------------------------------------
+# FastAPI
+# -----------------------------------------------------------------------------
+app = FastAPI(title="Wyoming Bridge", version="1.0.0")
 
-# -------------------- Helpers --------------------
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+async def _iter_events(client: AsyncTcpClient):
+    """
+    Wyoming 1.4.x style: repeatedly call read_event() until None.
+    """
+    while True:
+        ev = await client.read_event()
+        if ev is None:
+            break
+        yield ev
+
 async def _connect(host: str, port: int) -> AsyncTcpClient:
-    client = AsyncTcpClient(host, port)   # ctor is (host, port)
-    await client.connect()                # connect() takes no args
-    return client
+    """
+    Open a raw TCP connection and wrap it with AsyncTcpClient (Wyoming 1.4.x).
+    """
+    reader, writer = await asyncio.open_connection(host, port)
+    return AsyncTcpClient(reader, writer)
 
-async def _safe_disconnect(client: Optional[AsyncTcpClient]) -> None:
-    if client:
-        try:
-            await client.disconnect()
-        except Exception:
-            pass
-
-def _peer_ip(request: Request) -> str:
-    return getattr(request.client, "host", "unknown") if request.client else "unknown"
-
-# -------------------- Health --------------------
-@app.get("/healthz", response_class=PlainTextResponse)
-async def healthz():
-    return "ok"
-
-# -------------------- STT --------------------
+# -----------------------------------------------------------------------------
+# STT
+# -----------------------------------------------------------------------------
 @app.post("/stt")
 async def stt(request: Request, file: UploadFile = File(...)):
-    data = await file.read()
-    if not data or len(data) <= 44:
-        raise HTTPException(400, "Empty/invalid WAV")
-
-    ip = _peer_ip(request)
-    logger.info("[STT] from=%s filename=%s size=%dB",
-                ip, getattr(file, "filename", "<upload>"), len(data))
-
-    client: Optional[AsyncTcpClient] = None
+    # Basic request logging
+    client_ip = request.client.host if request.client else "unknown"
     try:
+        data = await file.read()
+        size = len(data) if data else 0
+        log.info("[STT] from=%s filename=%s bytes=%s", client_ip, file.filename, size)
+
+        # Validate WAV-ish (44 byte header minimal)
+        if not data or size <= 44:
+            raise HTTPException(400, "Empty/invalid WAV (need PCM WAV data)")
+
         client = await _connect(WHISPER_HOST, WHISPER_PORT)
 
-        # stream wav to ASR
+        # Stream audio to Whisper
         await client.write_event(AudioStart(format="wav"))
         buf = io.BytesIO(data)
         while True:
@@ -86,76 +85,72 @@ async def stt(request: Request, file: UploadFile = File(...)):
                 break
             await client.write_event(AudioChunk(audio=chunk))
         await client.write_event(AudioStop())
+
+        # Ask to transcribe
         await client.write_event(Transcribe())
 
-        # read events until we get a Transcript
-        text = ""
-        while True:
-            ev = await client.read_event()
-            if ev is None:
-                break
+        # Read back transcript
+        text: str = ""
+        async for ev in _iter_events(client):
             if isinstance(ev, Transcript):
                 text = ev.text or ""
                 break
 
-        logger.info("[STT] done from=%s text_len=%d", ip, len(text))
+        # Close connection
+        client.close()
+
+        log.info("[STT] ok from=%s text_len=%s", client_ip, len(text))
         return JSONResponse({"text": text})
 
-    except AssertionError as e:
-        logger.error("[STT] assertion error from=%s: %s", ip, e, exc_info=True)
-        raise HTTPException(502, "STT upstream assertion error")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("[STT] error from=%s: %s", ip, e, exc_info=True)
-        raise HTTPException(502, f"STT upstream error: {e}")
-    finally:
-        await _safe_disconnect(client)
+        log.exception("[STT] error from=%s: %s", client_ip, e)
+        raise HTTPException(status_code=502, detail=f"STT upstream error: {e}")
 
-# -------------------- TTS --------------------
+# -----------------------------------------------------------------------------
+# TTS
+# -----------------------------------------------------------------------------
 @app.post("/tts")
 async def tts(request: Request, payload: dict):
-    text = (payload.get("text") or "").strip()
-    voice_name = (payload.get("voice") or DEFAULT_VOICE).strip()
-    if not text:
-        raise HTTPException(400, "Missing text")
-
-    ip = _peer_ip(request)
-    logger.info("[TTS] from=%s text_len=%d voice='%s'", ip, len(text), voice_name)
-
-    client: Optional[AsyncTcpClient] = None
-    out = io.BytesIO()
-
+    client_ip = request.client.host if request.client else "unknown"
     try:
+        text = (payload.get("text") or "").strip()
+        voice = (payload.get("voice") or DEFAULT_VOICE).strip()
+
+        if not text:
+            raise HTTPException(400, "Missing 'text'")
+
+        log.info("[TTS] from=%s text_len=%s voice=%r", client_ip, len(text), voice)
+
         client = await _connect(PIPER_HOST, PIPER_PORT)
 
-        # build voice in a way that works across wyoming versions
-        voice_obj = make_voice(voice_name)
+        # Wyoming 1.4.x expects voice as a STRING here.
+        await client.write_event(Synthesize(text=text, voice=voice))
 
-        # IMPORTANT for older wyoming: send the Event object
-        await client.write_event(Synthesize(text=text, voice=voice_obj).event())
-
-        # Collect audio: read one event at a time
-        while True:
-            ev = await client.read_event()
-            if ev is None:
-                break
-            if isinstance(ev, AudioChunk) and getattr(ev, "audio", None):
-                out.write(ev.audio)
-            elif isinstance(ev, AudioStop):
+        # Collect streamed WAV
+        out = io.BytesIO()
+        # We expect AudioChunk events followed by AudioStop
+        async for ev in _iter_events(client):
+            # Some Wyoming versions expose .audio on chunks
+            if hasattr(ev, "audio"):
+                out.write(getattr(ev, "audio"))
+            # Stop when audio is finished
+            if ev.__class__.__name__ == "AudioStop":
                 break
 
-        if out.tell() == 0:
-            raise RuntimeError("No audio returned from TTS server")
+        client.close()
 
         out.seek(0)
-        logger.info("[TTS] done from=%s bytes=%d", ip, out.getbuffer().nbytes)
-        return StreamingResponse(out, media_type="audio/wav",
-                                 headers={"Cache-Control": "no-store"})
+        log.info("[TTS] ok from=%s bytes=%s", client_ip, out.getbuffer().nbytes)
+        return StreamingResponse(
+            out,
+            media_type="audio/wav",
+            headers={"Cache-Control": "no-store"},
+        )
 
-    except AssertionError as e:
-        logger.error("[TTS] assertion error from=%s: %s", ip, e, exc_info=True)
-        raise HTTPException(502, "TTS upstream assertion error")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error("[TTS] error from=%s: %s", ip, e, exc_info=True)
-        raise HTTPException(502, f"TTS upstream error: {e}")
-    finally:
-        await _safe_disconnect(client)
+        log.exception("[TTS] error from=%s: %s", client_ip, e)
+        raise HTTPException(status_code=502, detail=f"TTS upstream error: {e}")

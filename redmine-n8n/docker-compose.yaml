@@ -183,6 +183,7 @@ services:
       - "10200:10200"
     volumes:
       - ./ai-model-cache/piper-voices:/voices
+    # Make sure this voice actually exists in /voices; change if needed
     command: --voice en_US-amy-low --uri tcp://0.0.0.0:10200
     networks:
       - ai_net
@@ -238,4 +239,5 @@ volumes:
   n8n_data:
 
 networks:
-  ai_net: 
+  ai_net:
+    driver: bridge 
