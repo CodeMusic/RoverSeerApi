@@ -104,7 +104,6 @@ services:
       - VITE_RIDDLE_GATE_MODE=preview
     networks: [ai_net]
 
-       
   musai-api:
     build: ./musai-api
     container_name: musai-api
@@ -120,7 +119,7 @@ services:
       DEFAULT_PIPER_VOICE: en_US-GlaDOS-medium
       VOICES_DIR: /voices
 
-      # LLM (optional; future use)
+      # LLM passthrough (optional)
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3
     volumes:
@@ -131,7 +130,7 @@ services:
     networks:
       ai_net:
         aliases: [ musai-api ]
-
+        
   searxng:
     image: searxng/searxng:latest
     container_name: searxng
