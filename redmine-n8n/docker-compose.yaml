@@ -194,11 +194,16 @@ services:
     restart: unless-stopped
     ports:
       - "18000:8000"
+    environment:
+      - WHISPER_HOST=wyoming-whisper
+      - WHISPER_PORT=10300
+      - PIPER_HOST=wyoming-piper
+      - PIPER_PORT=10200
+      - DEFAULT_VOICE=en_US-GlaDOS-medium
     depends_on:
       - wyoming-whisper
       - wyoming-piper
     networks:
-      - ai_net
 
   silverbullet:
     build:
