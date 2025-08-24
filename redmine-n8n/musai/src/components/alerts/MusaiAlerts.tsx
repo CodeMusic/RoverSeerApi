@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Bell, X, ExternalLink, Clock, TrendingUp, Sparkles, AlertCircle, CheckCircle, MessageSquare, Search as SearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useNavigate } from 'react-router-dom';
 
 export interface MusaiAlert {
   id: string;
@@ -37,6 +39,12 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
   onToggle
 }) => {
   const unreadCount = alerts.filter(alert => !alert.isRead).length;
+  const [selectedAlert, setSelectedAlert] = useState<MusaiAlert | null>(null);
+  const navigate = useNavigate();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [panelMaxHeightPx, setPanelMaxHeightPx] = useState<number | undefined>(undefined);
 
   const handleToggle = () => {
     // Request notification permission on first user interaction
@@ -102,6 +110,61 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
     return timestamp.toLocaleDateString();
   };
 
+  // Calculate a dynamic max height so that up to four alerts are fully visible.
+  // Beyond that, the panel becomes scrollable. This prevents the 2.5 item cutoff
+  // caused by a fixed max height.
+  useEffect(() => {
+    if (!isOpen)
+    {
+      return;
+    }
+
+    if (alerts.length <= 4)
+    {
+      setPanelMaxHeightPx(undefined);
+      return;
+    }
+
+    // Defer until layout is settled to get accurate measurements
+    const measure = () =>
+    {
+      const headerHeight = headerRef.current ? headerRef.current.getBoundingClientRect().height : 0;
+      const listElement = listRef.current;
+
+      if (!listElement)
+      {
+        return;
+      }
+
+      const alertCards = Array.from(listElement.querySelectorAll('.musai-alert-card')) as HTMLElement[];
+      const firstFour = alertCards.slice(0, 4);
+
+      let alertsHeight = 0;
+      firstFour.forEach((el, index) =>
+      {
+        alertsHeight += el.getBoundingClientRect().height;
+        // Account for vertical gaps introduced by space-y-3 between items (0.75rem)
+        if (index < firstFour.length - 1)
+        {
+          alertsHeight += 12; // 0.75rem = 12px (default Tailwind base)
+        }
+      });
+
+      // Account for panel inner padding around the list (p-2 => 0.5rem top + bottom)
+      const listVerticalPaddingPx = 16; // 0.5rem * 2 = 16px
+
+      // Add a small buffer for borders/shadows
+      const bufferPx = 8;
+
+      const computedMax = Math.ceil(headerHeight + alertsHeight + listVerticalPaddingPx + bufferPx);
+      setPanelMaxHeightPx(computedMax);
+    };
+
+    // Use rAF to ensure DOM has rendered the list items
+    const raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
+  }, [isOpen, alerts.length]);
+
   return (
     <>
       {/* Alert Bell Button */}
@@ -124,8 +187,15 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
 
       {/* Alerts Panel */}
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-background border rounded-lg shadow-lg z-50">
-          <div className="p-3 border-b">
+        <div
+          ref={panelRef}
+          className="absolute top-full right-0 mt-2 w-80 bg-background border rounded-lg shadow-lg z-50"
+          style={{
+            maxHeight: panelMaxHeightPx,
+            overflowY: alerts.length > 4 ? 'auto' as const : 'visible' as const
+          }}
+        >
+          <div ref={headerRef} className="p-3 border-b">
             <div className="flex items-center justify-between">
               <h3 className="font-medium">Musai Alerts</h3>
               <Button variant="ghost" size="sm" onClick={onToggle}>
@@ -134,7 +204,7 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
             </div>
           </div>
 
-          <div className="p-2">
+          <div ref={listRef} className="p-2">
             {alerts.length === 0 ? (
               <div className="p-4 text-center text-muted-foreground">
                 <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -144,13 +214,16 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
               <div className="space-y-3">
                 {alerts.map((alert) => (
                   <Card 
-                    key={alert.id} 
+                    key={alert.id}
                     className={cn(
-                      "transition-all duration-200 hover:shadow-md cursor-pointer",
+                      "transition-all duration-200 hover:shadow-md cursor-pointer musai-alert-card",
                       getAlertColor(alert.type, alert.priority),
                       !alert.isRead && "ring-2 ring-blue-500 ring-opacity-50"
                     )}
-                    onClick={() => onViewAlert(alert)}
+                    onClick={() => {
+                      onMarkAsRead(alert.id);
+                      setSelectedAlert(alert);
+                    }}
                   >
                     <CardContent className="p-3">
                       <div className="flex items-start gap-3">
@@ -227,6 +300,49 @@ export const MusaiAlerts: React.FC<MusaiAlertsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Full Alert Dialog */}
+      <Dialog open={!!selectedAlert} onOpenChange={(open) => !open && setSelectedAlert(null)}>
+        <DialogContent className="sm:max-w-lg">
+          {selectedAlert && (
+            <div className="space-y-3">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {getAlertIcon(selectedAlert.type)}
+                  <span>{selectedAlert.title}</span>
+                </DialogTitle>
+              </DialogHeader>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatTimestamp(selectedAlert.timestamp)}
+                <Badge className={cn("ml-2", getPriorityColor(selectedAlert.priority))}>{selectedAlert.priority}</Badge>
+              </div>
+              <DialogDescription className="whitespace-pre-wrap">
+                {selectedAlert.description}
+              </DialogDescription>
+              {selectedAlert.actionUrl && (
+                <div className="pt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="inline-flex items-center gap-2"
+                    onClick={() => {
+                      // Close alerts panel and modal, then SPA navigate
+                      onToggle();
+                      const url = selectedAlert.actionUrl as string;
+                      setSelectedAlert(null);
+                      navigate(url);
+                    }}
+                  >
+                    {selectedAlert.actionLabel || 'Open'}
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }; 

@@ -40,6 +40,9 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const isMobile = useIsMobile();
   const { preference } = useTheme();
 
+  // Persist sidebar intent across visits per device class
+  const searchCollapseStorageKey = (mobile: boolean) => `musai_search_collapsed_${mobile ? 'mobile' : 'desktop'}`;
+
   // MuseEyeSearch parameters
   const [mode, setMode] = useState<SearchMode>('standard');
   const [sources, setSources] = useState<SearchSource[]>(['web']);
@@ -50,6 +53,33 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   // Desktop: show based solely on collapse state; Mobile: show when explicitly opened
   const shouldShowSidebar = (!isMobile && !isSidebarCollapsed) || (isMobile && isSidebarOpen);
   const sidebarOpenForChild = isMobile ? isSidebarOpen : true;
+
+  // Initialize sidebar state from storage; default mobile closed, desktop open
+  useEffect(() => {
+    try
+    {
+      const key = searchCollapseStorageKey(isMobile);
+      const raw = localStorage.getItem(key);
+      const defaultCollapsed = isMobile ? true : false;
+      const nextCollapsed = raw != null ? raw === 'true' : defaultCollapsed;
+
+      setIsSidebarCollapsed(nextCollapsed);
+      if (isMobile)
+      {
+        // Do not auto-open overlay on mobile
+        setIsSidebarOpen(false);
+      }
+      else
+      {
+        setIsSidebarOpen(!nextCollapsed);
+      }
+    }
+    catch
+    {
+      setIsSidebarCollapsed(isMobile);
+      setIsSidebarOpen(!isMobile);
+    }
+  }, [isMobile]);
 
   // Compute iframe src for standard mode (must not be inside conditional to respect Rules of Hooks)
   const musaiIframeSrc = useMemo(() => {
@@ -66,10 +96,12 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     if (isMobile)
     {
       setIsSidebarOpen(false);
+      try { localStorage.setItem(searchCollapseStorageKey(true), 'true'); } catch {}
       return;
     }
     setIsSidebarCollapsed(true);
     setIsSidebarOpen(false);
+    try { localStorage.setItem(searchCollapseStorageKey(false), 'true'); } catch {}
   }, [isMobile]);
 
   // Listen for global expand requests from BaseLayout hamburger
@@ -78,10 +110,11 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     {
       setIsSidebarCollapsed(false);
       setIsSidebarOpen(true);
+      try { localStorage.setItem(searchCollapseStorageKey(isMobile), 'false'); } catch {}
     };
     window.addEventListener('musai-search-expand-sidebar', onExpand as EventListener);
     return () => window.removeEventListener('musai-search-expand-sidebar', onExpand as EventListener);
-  }, []);
+  }, [isMobile]);
 
   // Notify BaseLayout when search sidebar visibility changes so it can show/hide hamburger appropriately
   useEffect(() => {
@@ -733,7 +766,11 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
       {/* Mobile hamburger: show only when sidebar not visible */}
       {isMobile && !shouldShowSidebar && (
         <button
-          onClick={() => { setIsSidebarOpen(true); setIsSidebarCollapsed(false); }}
+          onClick={() => { 
+            setIsSidebarOpen(true); 
+            setIsSidebarCollapsed(false); 
+            try { localStorage.setItem(searchCollapseStorageKey(true), 'false'); } catch {}
+          }}
           className="fixed top-8 left-16 z-50 p-2 rounded-lg bg-background border shadow-md text-muted-foreground"
         >
           <Menu className="w-5 h-5" />
@@ -750,7 +787,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
           "transition-all duration-300 h-[100dvh] min-h-0 overflow-hidden",
           // On mobile, render as overlay so it doesn't push content width
           // Use higher z-index than the backdrop overlay to keep it clickable
-          isMobile ? "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg" : "w-96 flex-shrink-0",
+          isMobile ? "fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[85vw] bg-background border-r shadow-lg overflow-y-auto" : "w-96 flex-shrink-0",
           // Hide when mobile sidebar is not open
           isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
         )}>

@@ -84,3 +84,37 @@ export const executeHTML = (code: string): HTMLIFrameElement => {
   iframe.className = 'w-full h-full border-0';
   return iframe;
 };
+
+// Execute CSS by injecting into a sandboxed iframe (style preview)
+export const executeCSS = (css: string): HTMLIFrameElement => {
+  const iframe = document.createElement('iframe');
+  iframe.sandbox.add('allow-scripts');
+  iframe.className = 'w-full h-full border-0';
+  const html = `<!doctype html><html><head><style>${css}</style></head><body><div id="preview">CSS loaded.</div></body></html>`;
+  iframe.srcdoc = html;
+  return iframe;
+};
+
+// Execute Markdown by rendering into a sandboxed iframe using markdown-it (loaded in main thread)
+export const executeMarkdown = async (markdown: string): Promise<HTMLIFrameElement> => {
+  const { default: MarkdownIt } = await import('markdown-it');
+  const md = new MarkdownIt({ html: true, linkify: true, breaks: true });
+  const rendered = md.render(markdown);
+  const iframe = document.createElement('iframe');
+  iframe.sandbox.add('allow-scripts');
+  iframe.className = 'w-full h-full border-0 bg-white';
+  const html = `<!doctype html><html><head><meta charset="utf-8"/></head><body style="padding:16px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, sans-serif;">${rendered}</body></html>`;
+  iframe.srcdoc = html;
+  return iframe;
+};
+
+// Validate and pretty-print JSON
+export const executeJSON = (code: string): { result?: string; error?: string } => {
+  try {
+    const parsed = JSON.parse(code);
+    const pretty = JSON.stringify(parsed, null, 2);
+    return { result: pretty };
+  } catch (e: any) {
+    return { error: e?.message || 'Invalid JSON' };
+  }
+};

@@ -99,7 +99,7 @@ export function BaseSessionSidebar<T extends BaseSession>({
   if (!isSidebarOpen) return null;
 
   return (
-    <div className="w-96 bg-sidebar border-r border-border flex flex-col h-full">
+    <div className="w-full bg-sidebar border-r border-border flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-border/20">
         <div className="flex items-center justify-between mb-3">

@@ -33,6 +33,38 @@ export const useMessageSender = (
     currentMessages: Message[],
     file?: File
   ) => {
+    // Helper: parse any server payload into content/thoughts/pov and derived logical/creative
+    const parseMusaiPayload = (data: any): {
+      content?: string;
+      thoughts?: string;
+      pov?: Array<{ name?: string; type?: string; thought: string }>;
+      logicalThought?: string;
+      creativeThought?: string;
+    } => {
+      const responseContent = extractResponseContent(data);
+      const responseThoughts = extractResponseThoughts(data);
+      const responsePov = extractResponsePov(data);
+      let logicalThought: string | undefined;
+      let creativeThought: string | undefined;
+      if (Array.isArray(responsePov)) {
+        for (const pov of responsePov) {
+          if (!pov || typeof pov.thought !== 'string') continue;
+          const type = String(pov.type || '').toLowerCase();
+          if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
+          if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
+        }
+      }
+      logicalThought = sanitizePovThought(logicalThought);
+      creativeThought = sanitizePovThought(creativeThought);
+      const filteredPov = sanitizePovArray(responsePov);
+      return {
+        content: responseContent,
+        thoughts: responseThoughts,
+        pov: filteredPov,
+        logicalThought,
+        creativeThought
+      };
+    };
     // Normalize POV thoughts: treat empty or 'unknown' (and similar) as undefined
     const sanitizePovThought = (value?: string): string | undefined =>
     {
@@ -248,30 +280,13 @@ export const useMessageSender = (
         const tryParseFinalRaw = (raw: string): void => {
           try {
             const data = JSON.parse(raw);
-            const responseContent = extractResponseContent(data);
-            const responseThoughts = extractResponseThoughts(data);
-            const responsePov = extractResponsePov(data);
-
-            let logicalThought: string | undefined;
-            let creativeThought: string | undefined;
-            if (Array.isArray(responsePov)) {
-              for (const pov of responsePov) {
-                if (!pov || typeof pov.thought !== 'string') continue;
-                const type = String(pov.type || '').toLowerCase();
-                if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
-                if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
-              }
-            }
-            logicalThought = sanitizePovThought(logicalThought);
-            creativeThought = sanitizePovThought(creativeThought);
-            const filteredPov = sanitizePovArray(responsePov);
-
+            const parsed = parseMusaiPayload(data);
             updateAssistantMessage({
-              ...(responseContent ? { content: workingMessages.find(m => m.id === assistantMessageId)?.content || responseContent } : {}),
-              ...(responseThoughts ? { thoughts: responseThoughts } : {}),
-              ...(filteredPov ? { pov: filteredPov } : {}),
-              ...(logicalThought ? { logicalThought } : {}),
-              ...(creativeThought ? { creativeThought } : {})
+              ...(parsed.content ? { content: workingMessages.find(m => m.id === assistantMessageId)?.content || parsed.content } : {}),
+              ...(parsed.thoughts ? { thoughts: parsed.thoughts } : {}),
+              ...(parsed.pov ? { pov: parsed.pov } : {}),
+              ...(parsed.logicalThought ? { logicalThought: parsed.logicalThought } : {}),
+              ...(parsed.creativeThought ? { creativeThought: parsed.creativeThought } : {})
             });
           } catch {
             // ignore
@@ -293,29 +308,14 @@ export const useMessageSender = (
             },
             onFinalJson: (obj) => {
               try {
-                const responseContent = extractResponseContent(obj);
-                const responseThoughts = extractResponseThoughts(obj);
-                const responsePov = extractResponsePov(obj);
-                let logicalThought: string | undefined;
-                let creativeThought: string | undefined;
-                if (Array.isArray(responsePov)) {
-                  for (const pov of responsePov) {
-                    if (!pov || typeof pov.thought !== 'string') continue;
-                    const type = String(pov.type || '').toLowerCase();
-                    if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
-                    if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
-                  }
-                }
-                logicalThought = sanitizePovThought(logicalThought);
-                creativeThought = sanitizePovThought(creativeThought);
-                const filteredPov = sanitizePovArray(responsePov);
+                const parsed = parseMusaiPayload(obj);
                 updateAssistantMessage({
-                  ...(responseThoughts ? { thoughts: responseThoughts } : {}),
-                  ...(filteredPov ? { pov: filteredPov } : {}),
-                  ...(logicalThought ? { logicalThought } : {}),
-                  ...(creativeThought ? { creativeThought } : {}),
+                  ...(parsed.thoughts ? { thoughts: parsed.thoughts } : {}),
+                  ...(parsed.pov ? { pov: parsed.pov } : {}),
+                  ...(parsed.logicalThought ? { logicalThought: parsed.logicalThought } : {}),
+                  ...(parsed.creativeThought ? { creativeThought: parsed.creativeThought } : {}),
                   // keep streamed content; don't overwrite
-                  ...(responseContent && !(workingMessages.find(m => m.id === assistantMessageId)?.content)?.trim() ? { content: responseContent } : {})
+                  ...(parsed.content && !(workingMessages.find(m => m.id === assistantMessageId)?.content)?.trim() ? { content: parsed.content } : {})
                 });
               } catch {}
             },
@@ -328,28 +328,13 @@ export const useMessageSender = (
             // Fallback: parse the accumulated raw response (non-streamy servers)
             try {
               const data = JSON.parse(raw);
-              const responseContent = extractResponseContent(data);
-              const responseThoughts = extractResponseThoughts(data);
-              const responsePov = extractResponsePov(data);
-              let logicalThought: string | undefined;
-              let creativeThought: string | undefined;
-              if (Array.isArray(responsePov)) {
-                for (const pov of responsePov) {
-                  if (!pov || typeof pov.thought !== 'string') continue;
-                  const type = String(pov.type || '').toLowerCase();
-                  if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
-                  if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
-                }
-              }
-              logicalThought = sanitizePovThought(logicalThought);
-              creativeThought = sanitizePovThought(creativeThought);
-              const filteredPov = sanitizePovArray(responsePov);
+              const parsed = parseMusaiPayload(data);
               updateAssistantMessage({
-                content: responseContent,
-                ...(responseThoughts ? { thoughts: responseThoughts } : {}),
-                ...(filteredPov ? { pov: filteredPov } : {}),
-                ...(logicalThought ? { logicalThought } : {}),
-                ...(creativeThought ? { creativeThought } : {})
+                ...(parsed.content ? { content: parsed.content } : {}),
+                ...(parsed.thoughts ? { thoughts: parsed.thoughts } : {}),
+                ...(parsed.pov ? { pov: parsed.pov } : {}),
+                ...(parsed.logicalThought ? { logicalThought: parsed.logicalThought } : {}),
+                ...(parsed.creativeThought ? { creativeThought: parsed.creativeThought } : {})
               });
             } catch {
               // Raw text fallback
@@ -372,35 +357,18 @@ export const useMessageSender = (
           throw new Error('Empty response from server');
         }
 
-        const responseContent = extractResponseContent(responseData);
-        const responseThoughts = extractResponseThoughts(responseData);
-        const responsePov = extractResponsePov(responseData);
-
-        let logicalThought: string | undefined;
-        let creativeThought: string | undefined;
-        if (Array.isArray(responsePov)) {
-          for (const pov of responsePov) {
-            if (!pov || typeof pov.thought !== 'string') continue;
-            const type = String(pov.type || '').toLowerCase();
-            if (!logicalThought && (type === 'logical' || /logic/.test(type))) logicalThought = pov.thought;
-            if (!creativeThought && (type === 'creative' || /creativ/.test(type))) creativeThought = pov.thought;
-          }
-        }
-
-        logicalThought = sanitizePovThought(logicalThought);
-        creativeThought = sanitizePovThought(creativeThought);
-        const filteredPov = sanitizePovArray(responsePov);
+        const parsed = parseMusaiPayload(responseData);
 
         const assistantMessage: Message = {
           id: uuidv4(),
-          content: responseContent,
+          content: parsed.content,
           role: "assistant",
           timestamp: Date.now(),
           bubbleColor: assistantPolarity,
-          ...(responseThoughts && { thoughts: responseThoughts }),
-          ...(filteredPov && { pov: filteredPov }),
-          ...(logicalThought && { logicalThought }),
-          ...(creativeThought && { creativeThought })
+          ...(parsed.thoughts && { thoughts: parsed.thoughts }),
+          ...(parsed.pov && { pov: parsed.pov }),
+          ...(parsed.logicalThought && { logicalThought: parsed.logicalThought }),
+          ...(parsed.creativeThought && { creativeThought: parsed.creativeThought })
         };
 
         const finalMessages = [...newMessages, assistantMessage];

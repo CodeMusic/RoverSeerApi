@@ -19,16 +19,16 @@ import { MusaiDevConsole } from "@/components/developer/MusaiDevConsole";
 import { AttentionalScrollReset } from "@/components/routing/AttentionalScrollReset";
 import { SmartRouter } from "@/components/routing/SmartRouter";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import EyeOfMusai from "@/pages/info/EyeOfMusai";
-import CareerMusaiInfo from "@/pages/info/CareerMusaiInfo";
+const EyeOfMusai = React.lazy(() => import("@/pages/info/EyeOfMusai"));
+const CareerMusaiInfo = React.lazy(() => import("@/pages/info/CareerMusaiInfo"));
 import CareerMusaiConsole from "@/pages/CareerMusaiConsole";
-import TherapyMusaiInfo from "@/pages/info/TherapyMusaiInfo";
-import MedicalMusaiInfo from "@/pages/info/MedicalMusaiInfo";
+const TherapyMusaiInfo = React.lazy(() => import("@/pages/info/TherapyMusaiInfo"));
+const MedicalMusaiInfo = React.lazy(() => import("@/pages/info/MedicalMusaiInfo"));
 import MedicalMusaiDemo from "@/pages/MedicalMusaiDemo";
 import MedicalMusaiConsole from "@/pages/MedicalMusaiConsole";
-import EmergentNarrativeInfo from "@/pages/info/EmergentNarrativeInfo";
+const EmergentNarrativeInfo = React.lazy(() => import("@/pages/info/EmergentNarrativeInfo"));
 import RiddleGate from "@/components/common/RiddleGate";
-import AgileMusaiInfo from "@/pages/info/AgileMusaiInfo";
+const AgileMusaiInfo = React.lazy(() => import("@/pages/info/AgileMusaiInfo"));
 import AgileMusaiConsole from "@/pages/AgileMusaiConsole";
 
 // Create a client for React Query
@@ -92,7 +92,8 @@ function App() {
                   <AttentionalScrollReset />
                   <ErrorBoundary>
                     <div className="min-h-screen">
-                      <Routes>
+                      <React.Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
+                        <Routes>
                         <Route path={ROUTES.HOME} element={<Landing />} />
                         <Route path={ROUTES.MAIN_APP} element={<RiddleGate><Index /></RiddleGate>} />
                         <Route path={ROUTES.PLAYGROUND} element={<RiddleGate><Playground /></RiddleGate>} />
@@ -131,7 +132,8 @@ function App() {
                         <Route path="/curations/locked" element={<CurationsLocked />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path={ROUTES.NOT_FOUND} element={<NotFound />} />
-                      </Routes>
+                        </Routes>
+                      </React.Suspense>
                     </div>
                   </ErrorBoundary>
                   <RouteAwareToaster />

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import ROUTES from '@/config/routes';
+import { ROUTES, TOOL_TO_ROUTE } from '@/config/routes';
 import { universityApi } from '@/lib/universityApi';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,36 @@ const University = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+
+  // Map tab id constants to tool keys used by route mapping
+  const tabIdToToolKey = (tabId: string): 'chat' | 'search' | 'code' | 'university' | 'narrative' | 'career' | 'therapy' | 'medical' | 'task' | 'eye' =>
+  {
+    switch (tabId)
+    {
+      case APP_TERMS.TAB_CHAT:
+        return 'chat';
+      case APP_TERMS.TAB_SEARCH:
+        return 'search';
+      case APP_TERMS.TAB_CODE:
+        return 'code';
+      case APP_TERMS.TAB_UNIVERSITY:
+        return 'university';
+      case APP_TERMS.TAB_NARRATIVE:
+        return 'narrative';
+      case APP_TERMS.TAB_CAREER:
+        return 'career';
+      case APP_TERMS.TAB_THERAPY:
+        return 'therapy';
+      case APP_TERMS.TAB_MEDICAL:
+        return 'medical';
+      case APP_TERMS.TAB_TASK:
+        return 'task';
+      case APP_TERMS.TAB_EYE:
+        return 'eye';
+      default:
+        return 'chat';
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -489,8 +519,21 @@ const University = () => {
       onToggleFavorite={() => {}} // No-op for university
       renderMainContent={renderMainContent}
       onTabChange={(tab) => {
-        // Handle tab navigation if needed
-        console.log('University tab change:', tab);
+        const toolKey = tabIdToToolKey(tab);
+        const target = TOOL_TO_ROUTE[toolKey];
+        if (!target)
+        {
+          // Fallback to main app chat if mapping missing
+          navigate(`${ROUTES.MAIN_APP}?mode=chat`);
+          return;
+        }
+        // For unified main app, include mode to select the correct tab on arrival
+        if (target === ROUTES.MAIN_APP)
+        {
+          navigate(`${target}?mode=${toolKey}`);
+          return;
+        }
+        navigate(target);
       }}
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}

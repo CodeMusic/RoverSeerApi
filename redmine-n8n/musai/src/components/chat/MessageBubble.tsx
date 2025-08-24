@@ -262,7 +262,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       {/* Message Content */}
       <div className={cn(
-        "max-w-[70%] flex flex-col",
+        "max-w-full md:max-w-[70%] flex flex-col min-w-0",
         isUser ? "items-end" : "items-start"
       )}>
         {/* Name and Time */}
@@ -277,7 +277,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {/* Message Bubble */}
         <div className={cn(
-          "rounded-lg px-4 py-2 border-2 imsg-bubble entangle-flash",
+          "rounded-lg px-4 py-2 border-2 imsg-bubble entangle-flash w-full break-words",
           isUser ? 
             cn(
               entangledStyling?.bubble || moodStyling?.userBubble || styling.userBubble,

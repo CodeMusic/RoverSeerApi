@@ -114,3 +114,74 @@ export const extractResponsePov = (data: any): Array<{ name?: string; type?: str
   }
   return undefined;
 };
+
+// Extracts logical and creative thoughts when providers return alternate shapes
+// Accepts many common variants, e.g. { logicalThought, creativeThought } or { logical, creative }
+export const extractLogicalCreative = (data: any): { logical?: string; creative?: string } =>
+{
+  const pickFirstString = (obj: any, keys: string[]): string | undefined =>
+  {
+    if (!obj || typeof obj !== 'object') { return undefined; }
+    for (const key of keys)
+    {
+      const value = (obj as any)[key];
+      if (typeof value === 'string')
+      {
+        const trimmed = value.trim();
+        if (trimmed) { return trimmed; }
+      }
+    }
+    return undefined;
+  };
+
+  const searchObject = (obj: any, out: { logical?: string; creative?: string }): void =>
+  {
+    if (!obj || typeof obj !== 'object') { return; }
+    // Common key variants we have seen across providers/workflows
+    const logicalKeys = [
+      'logicalThought', 'logical', 'logic', 'analysis', 'reasoning_logical', 'logical_reasoning'
+    ];
+    const creativeKeys = [
+      'creativeThought', 'creative', 'creativity', 'imagination', 'reasoning_creative', 'creative_reasoning'
+    ];
+
+    out.logical = out.logical || pickFirstString(obj, logicalKeys);
+    out.creative = out.creative || pickFirstString(obj, creativeKeys);
+
+    // Explore nested common containers if needed
+    if (!out.logical || !out.creative)
+    {
+      if (obj.message && typeof obj.message === 'object')
+      {
+        searchObject(obj.message, out);
+      }
+      if (obj.response && typeof obj.response === 'object')
+      {
+        searchObject(obj.response, out);
+      }
+      if (obj.data && typeof obj.data === 'object')
+      {
+        searchObject(obj.data, out);
+      }
+      if (Array.isArray(obj.items))
+      {
+        for (const item of obj.items) { searchObject(item, out); }
+      }
+    }
+  };
+
+  const result: { logical?: string; creative?: string } = {};
+  if (Array.isArray(data))
+  {
+    for (const entry of data)
+    {
+      searchObject(entry, result);
+      if (result.logical && result.creative) { break; }
+    }
+  }
+  else
+  {
+    searchObject(data, result);
+  }
+  return result;
+};
