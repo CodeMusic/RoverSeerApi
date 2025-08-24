@@ -18,10 +18,10 @@ export const PlaygroundOutput: React.FC<PlaygroundOutputProps> = ({
 }) => {
   const isIframePreview = language === 'html' || language === 'css' || language === 'markdown';
   return isIframePreview ? (
-    <div ref={iframeRef} className="w-full h-full bg-white" />
+    <div ref={iframeRef} className="w-full h-full bg-black p-3 overflow-auto" />
   ) : (
     <div ref={outputRef} className="w-full h-full p-4 font-mono text-sm overflow-auto bg-black text-white">
-      {output}
+      {output || 'Output will appear here. For languages marked with *, execution runs server-side or is not supported in-browser yet.'}
     </div>
   );
 };

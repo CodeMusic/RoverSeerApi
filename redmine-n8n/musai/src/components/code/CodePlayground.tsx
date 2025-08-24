@@ -202,12 +202,18 @@ const CodePlayground: React.FC<CodePlaygroundProps> = ({
 
             if (isEmpty || isDefault)
             {
+              // Clear any previous results when switching languages
+              setOutput('');
+              try { if (iframeRef.current) { iframeRef.current.innerHTML = ''; } } catch {}
               setLanguage(nextLang);
               setCode(getLanguageSample(nextLang));
               return;
             }
 
             const replace = window.confirm(`Replace current content with ${nextLang} sample? Click Cancel to keep your code.`);
+            // Clear any previous results when switching languages
+            setOutput('');
+            try { if (iframeRef.current) { iframeRef.current.innerHTML = ''; } } catch {}
             setLanguage(nextLang);
             if (replace)
             {
