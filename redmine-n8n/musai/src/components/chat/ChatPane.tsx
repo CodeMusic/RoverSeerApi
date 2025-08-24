@@ -231,10 +231,14 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     handleCloseContextMenu();
   };
 
+  // For CodeMusai, raise the input dock further and add matching bottom padding to the message list
+  const inputBottomOffsetClass = module === 'code' ? 'bottom-20 md:bottom-32' : 'bottom-0';
+  const messagesBottomPaddingClass = module === 'code' ? 'pb-24 md:pb-36' : 'pb-2';
+
   return (
     <div className={`chat-pane h-full max-h-[100dvh] flex flex-col min-h-0 min-w-0 overflow-hidden ${theme.container} ${className}`}>
       {/* Messages Area */}
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 pb-2 flex flex-col">
+      <div ref={scrollContainerRef} className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 ${messagesBottomPaddingClass} flex flex-col`}>
         <div className="min-h-full flex flex-col justify-end space-y-4">
           {messageList.map((message, index) => {
             const isLast = index === messageList.length - 1;
@@ -284,7 +288,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
       {/* Input Area */}
       {!readOnly && (
-        <div className={`sticky bottom-0 z-10 border-t ${theme.border} bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-safe mt-auto shrink-0`}>
+        <div className={`sticky ${inputBottomOffsetClass} z-10 border-t ${theme.border} bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-safe mt-auto shrink-0`}>
           <ChatInput
             module={module}
             onMessageSend={onMessageSend}

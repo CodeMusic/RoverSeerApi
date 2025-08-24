@@ -1,6 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Ensure Monaco editor fills container; avoid tiny initial height */
+.musai-monaco .monaco-scrollable-element.editor-scrollable {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: auto !important;
+}
+
+/* Ensure resizable panels' content can stretch fully */
+#playground-panels, 
+#playground-panels > [data-panel],
+#playground-panels > [data-panel] > div {
+  height: 100%;
+  min-height: 0;
+}
+
 /* Musai Portal Animations (legacy) */
 /* Entanglement flash overlay for new message pairs */
 @keyframes entangleFlash {

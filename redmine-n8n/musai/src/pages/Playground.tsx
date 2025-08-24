@@ -1,18 +1,35 @@
 import React from 'react';
 import CodeMusaiPlayground from '@/components/code/CodeMusaiPlayground';
 import { useNavigate } from 'react-router-dom';
+import { useDevSessions } from '@/hooks/useDevSessions';
 
 const Playground = () => {
   const navigate = useNavigate();
+  const {
+    sessions,
+    currentSessionId,
+    createNewSession,
+    deleteSession,
+    renameSession,
+    toggleFavorite,
+    updateSession,
+    setCurrentSessionId,
+  } = useDevSessions();
 
   return (
-    <div className="min-h-screen bg-background p-6 md:p-8 lg:p-10">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground tracking-tight">CodeMusai's Playground</h1>
-          <p className="text-muted-foreground mt-2">AI-assisted code development environment</p>
-        </div>
-        <CodeMusaiPlayground onClose={() => navigate('/')} />
+    <div className="min-h-[100dvh] h-[100dvh] w-[100vw] bg-background flex flex-col">
+      <div className="flex-1 min-h-0 min-w-0">
+          <CodeMusaiPlayground
+            onClose={() => navigate('/')}
+            sessions={sessions}
+            currentSessionId={currentSessionId}
+            onNewSession={createNewSession}
+            onSessionSelect={setCurrentSessionId}
+            onDeleteSession={deleteSession}
+            onRenameSession={renameSession}
+            onToggleFavorite={toggleFavorite}
+            onUpdateSession={updateSession}
+          />
       </div>
     </div>
   );

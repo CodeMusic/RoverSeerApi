@@ -4,12 +4,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable';
-import { executeJavaScript, executeHTML } from '@/utils/codeExecutor';
+import { executeJavaScript, executeHTML, executeCSS, executeMarkdown, executeJSON } from '@/utils/codeExecutor';
+import { executeSQL } from '@/utils/sqlExecutor';
+import { executePython } from '@/utils/pythonExecutor';
+import { executeRuby } from '@/utils/rubyExecutor';
 import { useToast } from '@/hooks/use-toast';
 import { EditorHeader } from '../playground/EditorHeader';
 import { PlaygroundOutput } from '../playground/PlaygroundOutput';
 import { usePopoutWindow } from '@/hooks/usePopoutWindow';
-import { SUPPORTED_LANGUAGES } from '../playground/constants';
+import { SUPPORTED_LANGUAGES, getLanguageSample } from '../playground/constants';
 import { Code, MessageSquare, Sparkles, Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DevSession, Message } from '@/types/chat';
@@ -66,6 +69,9 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
   const outputRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLDivElement>(null);
   const resizeTimeoutRef = useRef<NodeJS.Timeout>();
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const editorContainerRef = useRef<HTMLDivElement | null>(null);
 
   const currentLanguage = SUPPORTED_LANGUAGES.find(lang => lang.value === language);
   const canRunInBrowser = currentLanguage?.canRunInBrowser ?? false;
@@ -208,12 +214,27 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     }
   }, [currentSessionId, sessions, defaultLanguage, defaultValue]);
 
+  // Auto-run support when navigating from inline code blocks
+  useEffect(() => {
+    try
+    {
+      const shouldAutoRun = localStorage.getItem('playground-auto-run');
+      if (shouldAutoRun)
+      {
+        localStorage.removeItem('playground-auto-run');
+        // Defer slightly to allow editor/init to settle
+        setTimeout(() => { void handleRun(); }, 150);
+      }
+    }
+    catch {}
+  }, []);
+
   const handleRun = async (ev?: React.MouseEvent) => {
     try {
       let result = '';
       let hadError = false;
       
-      if (language === 'javascript') {
+      if (language === 'javascript' || language === 'typescript') {
         const executionResult = await executeJavaScript(code);
         const outputText = [
           ...(executionResult.logs || []),
@@ -229,6 +250,49 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
           iframeRef.current.appendChild(iframe);
         }
         result = 'HTML rendered in iframe';
+      } else if (language === 'css') {
+        const iframe = executeCSS(code);
+        if (iframeRef.current) {
+          iframeRef.current.innerHTML = '';
+          iframeRef.current.appendChild(iframe);
+        }
+        result = 'CSS applied in iframe';
+      } else if (language === 'markdown') {
+        const iframe = await executeMarkdown(code);
+        if (iframeRef.current) {
+          iframeRef.current.innerHTML = '';
+          iframeRef.current.appendChild(iframe);
+        }
+        result = 'Markdown rendered in iframe';
+      } else if (language === 'json') {
+        const { result: jsonResult, error: jsonError } = executeJSON(code);
+        result = jsonResult || (jsonError ? `Error: ${jsonError}` : '');
+      } else if (language === 'sql') {
+        const res = await executeSQL({ query: code });
+        if (res.error) {
+          result = `Error: ${res.error}`;
+          hadError = true;
+        } else {
+          const header = (res.columns || []).join('\t');
+          const lines = (res.rows || []).map(r => r.map(v => v === null ? 'NULL' : String(v)).join('\t'));
+          result = [header, ...lines].join('\n');
+        }
+      } else if (language === 'python') {
+        const res = await executePython({ code });
+        if (res.error) {
+          result = [res.stdout, res.stderr, `Error: ${res.error}`].filter(Boolean).join('\n');
+          hadError = true;
+        } else {
+          result = [res.stdout, res.stderr].filter(Boolean).join('\n');
+        }
+      } else if (language === 'ruby') {
+        const res = await executeRuby({ code });
+        if (res.error) {
+          result = [res.stdout, `Error: ${res.error}`].filter(Boolean).join('\n');
+          hadError = true;
+        } else {
+          result = res.stdout || '';
+        }
       } else {
         result = `Code execution for ${language} is not yet supported in the browser.`;
       }
@@ -297,8 +361,38 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
       if (outputRef.current) {
         outputRef.current.scrollTop = outputRef.current.scrollHeight;
       }
+      // Nudge Monaco to re-measure when panels resize
+      try {
+        if (editorRef.current && editorRef.current.layout) {
+          editorRef.current.layout();
+        }
+        window.dispatchEvent(new Event('resize'));
+      } catch {}
     }, 100);
   };
+
+  // Rely on CSS and panel onLayout to size the editor; avoid extra JS observers
+
+  // Align global toaster away from the chat pane when open
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.style.getPropertyValue('--musai-toaster-right-offset');
+    const chatWidthRem = 24; // w-96
+    const offset = isChatOpen ? `${chatWidthRem}rem` : '0px';
+    root.style.setProperty('--musai-toaster-right-offset', offset);
+    return () =>
+    {
+      // Restore prior value on unmount
+      if (previous)
+      {
+        root.style.setProperty('--musai-toaster-right-offset', previous);
+      }
+      else
+      {
+        root.style.setProperty('--musai-toaster-right-offset', '0px');
+      }
+    };
+  }, [isChatOpen]);
 
   // No-op key handler retained for legacy references (chat input handled inside ChatPane)
 
@@ -346,8 +440,16 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
     }
   };
 
+  // Compute dynamic style to offset global toaster when chat is open
+  const rootStyle: React.CSSProperties = {
+    // Shift toaster left by chat width when open; this sets the CSS variable read by the global toaster
+    // Keep in sync with the chat width class below (w-96 → 24rem)
+    // Use pixels to avoid Tailwind dependence at runtime
+    ['--musai-toaster-right-offset' as any]: isChatOpen ? '24rem' : '0px'
+  };
+
   return (
-    <div className="flex h-full bg-background overflow-hidden">
+    <div className="flex h-[100dvh] min-h-[100dvh] bg-background overflow-hidden" style={rootStyle}>
       {/* Main Content Area */}
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -365,9 +467,9 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
         </div>
 
         {/* Main Workspace */}
-        <div className="flex-1 flex overflow-hidden min-w-0">
+        <div className="flex-1 overflow-hidden min-w-0 h-full">
           {shouldShowPreMusai ? (
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-h-0 h-full">
               <PreMusaiPage
                 type="code"
                 onSubmit={(input) => {
@@ -401,8 +503,20 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
             </div>
           ) : (
           <>
+          <ResizablePanelGroup 
+            direction="horizontal"
+            className="h-full min-w-0"
+            id="code-horizontal-panels"
+            onLayout={handleResize}
+          >
           {/* Code Editor Side */}
-          <div className="flex-1 flex flex-col border-r min-w-0">
+          <ResizablePanel 
+            defaultSize={isChatOpen ? 70 : 100}
+            minSize={30}
+            id="code-left-pane"
+            order={1}
+          >
+          <div className="flex-1 flex flex-col min-w-0">
             <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
               <div className="flex items-center gap-2 min-w-0">
                 <Code className="w-4 h-4 text-primary" />
@@ -422,37 +536,79 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                 )}
               </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-              <Card className="w-full h-full mx-auto bg-card shadow-lg border-0 rounded-none flex flex-col">
+            <div className="flex-1 overflow-hidden min-h-0">
+              <Card className="w-full h-full min-h-0 mx-auto bg-card shadow-lg border-0 rounded-none flex flex-col">
                 <CardHeader className="border-b border-border/20">
                   <EditorHeader
                     language={language}
-                    setLanguage={setLanguage}
+                    setLanguage={(nextLang) => {
+                      const isEmpty = !code || !code.trim();
+                      const currentSample = getLanguageSample(language).trim();
+                      const isDefault = code.trim() === currentSample || code.trim() === (defaultValue || '').trim();
+
+                      if (isEmpty || isDefault)
+                      {
+                        setLanguage(nextLang);
+                        const nextCode = getLanguageSample(nextLang);
+                        setCode(nextCode);
+                        saveCurrentSession({ language: nextLang, code: nextCode });
+                        return;
+                      }
+
+                      const replace = window.confirm(`Keep current code while switching to ${nextLang}?\nOK = keep current code, Cancel = replace with sample`);
+                      setLanguage(nextLang);
+                      if (!replace)
+                      {
+                        const nextCode = getLanguageSample(nextLang);
+                        setCode(nextCode);
+                        saveCurrentSession({ language: nextLang, code: nextCode });
+                      }
+                      else
+                      {
+                        saveCurrentSession({ language: nextLang });
+                      }
+                    }}
                     code={code}
                     onRun={handleRun}
                     onPopOutput={handlePopOutput}
                     isOutputPopped={isOutputPopped}
+                    onSetCode={setCode}
+                    onCommentSelection={() => {
+                      const editor = editorRef.current;
+                      if (!editor) { return; }
+                      const add = editor.getAction && (editor.getAction('editor.action.addCommentLine') || editor.getAction('editor.action.commentLine'));
+                      if (add && add.run) { add.run(); }
+                    }}
+                    onUncommentSelection={() => {
+                      const editor = editorRef.current;
+                      if (!editor) { return; }
+                      const remove = editor.getAction && (editor.getAction('editor.action.removeCommentLine') || editor.getAction('editor.action.commentLine'));
+                      if (remove && remove.run) { remove.run(); }
+                    }}
                   />
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-4 pb-8 relative">
+                <CardContent className="flex-1 overflow-hidden min-h-0 p-4 pb-8 relative">
                   <ResizablePanelGroup 
                     direction="vertical" 
-                    className="h-full rounded-md border"
+                    className="h-full min-h-[360px] rounded-md border"
                     onLayout={handleResize}
                     id="playground-panels"
                   >
                     <ResizablePanel 
                       defaultSize={canRunInBrowser && !isOutputPopped ? 60 : 100}
+                      minSize={20}
                       id="editor-panel"
                       order={1}
                     >
-                      <div className="h-full">
+                      <div className="h-full min-h-[300px] min-w-0 musai-monaco relative" ref={editorContainerRef}>
                         <Editor
+                          key={`${currentSessionId || 'play'}-${language}`}
                           height="100%"
                           language={language}
                           value={code}
                           onChange={(value) => setCode(value || '')}
                           theme="vs-dark"
+                          loading={<div className="w-full h-full" />}
                           options={{
                             minimap: { enabled: false },
                             fontSize: 14,
@@ -463,6 +619,13 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                             padding: { top: 16, bottom: 16 },
                             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                           }}
+                          beforeMount={(monaco) => {
+                            try { monaco.editor.setTheme('vs-dark'); } catch {}
+                          }}
+                          onMount={(editor, monaco) => {
+                            editorRef.current = editor;
+                            try { editor.layout(); } catch {}
+                          }}
                         />
                       </div>
                     </ResizablePanel>
@@ -471,16 +634,19 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                         <ResizableHandle withHandle />
                         <ResizablePanel 
                           defaultSize={40}
+                          minSize={20}
                           id="output-panel"
                           order={2}
                         >
-                          <PlaygroundOutput
-                            output={output}
-                            language={language}
-                            code={code}
-                            iframeRef={iframeRef}
-                            outputRef={outputRef}
-                          />
+                          <div className="h-full min-h-0">
+                            <PlaygroundOutput
+                              output={output}
+                              language={language}
+                              code={code}
+                              iframeRef={iframeRef}
+                              outputRef={outputRef}
+                            />
+                          </div>
                           {/* Using global RouteAwareToaster; no scoped toaster here */}
                         </ResizablePanel>
                       </>
@@ -490,44 +656,57 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
               </Card>
             </div>
           </div>
+          </ResizablePanel>
 
           {/* AI Chat Side */}
           {isChatOpen && (
-            <div className="w-96 flex flex-col border-l min-h-0">
-              <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  <span className="font-medium text-sm">AI Chat</span>
+            <>
+              <ResizableHandle withHandle />
+              <ResizablePanel 
+                defaultSize={30}
+                minSize={20}
+                maxSize={50}
+                id="code-chat-pane"
+                order={2}
+              >
+                <div className="h-full flex flex-col min-h-0 min-w-0 border-l overflow-hidden">
+                  <div className="flex items-center justify-between p-3 border-b bg-sidebar/20">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                      <span className="font-medium text-sm">AI Chat</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsChatOpen(false)}
+                      title="Hide AI Chat"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
+                    <ChatPane
+                      sessionId={currentSessionId || 'unsaved'}
+                      module="code"
+                      messageList={messages}
+                      onMessageSend={onSendMessage}
+                      isTyping={isTyping}
+                      className="h-full"
+                      prefixText={(() => {
+                        const maxLen = 240;
+                        const codeHead = code.split('\n').slice(0, 6).join('\n');
+                        const codePart = codeHead.length > maxLen ? `${codeHead.slice(0, maxLen)}…` : codeHead;
+                        const firstOutLine = (output || '').toString().split('\n')[0] || '';
+                        const outTrim = firstOutLine.length > maxLen ? `${firstOutLine.slice(0, maxLen)}…` : firstOutLine;
+                        return `[Code (${language}) snippet: ${codePart} | last output: ${outTrim}]`;
+                      })()}
+                    />
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsChatOpen(false)}
-                  title="Hide AI Chat"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="flex-1 min-h-0">
-                <ChatPane
-                  sessionId={currentSessionId || 'unsaved'}
-                  module="code"
-                  messageList={messages}
-                  onMessageSend={onSendMessage}
-                  isTyping={isTyping}
-                  className="h-full"
-                  prefixText={(() => {
-                    const maxLen = 240;
-                    const codeHead = code.split('\n').slice(0, 6).join('\n');
-                    const codePart = codeHead.length > maxLen ? `${codeHead.slice(0, maxLen)}…` : codeHead;
-                    const firstOutLine = (output || '').toString().split('\n')[0] || '';
-                    const outTrim = firstOutLine.length > maxLen ? `${firstOutLine.slice(0, maxLen)}…` : firstOutLine;
-                    return `[Code (${language}) snippet: ${codePart} | last output: ${outTrim}]`;
-                  })()}
-                />
-              </div>
-            </div>
+              </ResizablePanel>
+            </>
           )}
+          </ResizablePanelGroup>
 
           {/* Chat Toggle Button when chat is closed (moved to header; no floating button) */}
 
