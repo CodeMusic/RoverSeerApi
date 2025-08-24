@@ -3,7 +3,6 @@ import { Menu, Code } from 'lucide-react';
 import { NavigationBar } from '@/components/common/NavigationBar';
 import TopAppBar from '@/components/common/TopAppBar';
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable';
-import BottomTabBar from '@/components/common/BottomTabBar';
 import { BaseSessionSidebar } from '@/components/common/BaseSessionSidebar';
 import { MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
@@ -237,9 +236,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
         <div className={cn(
           // Ensure main content fits viewport. If top bar is visible (pt-14 = 3.5rem), subtract it.
           hideTopAppBar ? "h-[100dvh] md:h-[100svh]" : "h-[calc(100dvh-4rem)] md:h-[calc(100svh-4rem)]",
-          "flex overflow-x-hidden",
-          // Leave space for bottom tab bar on mobile
-          isMobile ? "pb-16 pb-safe" : undefined
+          "flex overflow-x-hidden overflow-y-auto"
         )}>
           {(!isMobile && currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed) ? (
             <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0 h-full" id="base-left-resizable">
@@ -462,10 +459,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
             />
           )}
         </div>
-        {/* Bottom Tab Bar on mobile */}
-        {isMobile && (
-          <BottomTabBar currentTab={currentTab} onTabChange={onTabChange} />
-        )}
+        
       </div>
     </div>
   );
