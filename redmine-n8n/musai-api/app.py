@@ -99,6 +99,12 @@ def voices():
 
 @app.post("/tts")
 async def tts(payload: dict):
+    import collections.abc as cabc
+    try:
+        import numpy as np  # optional but helpful if synth returns ndarray
+    except Exception:
+        np = None
+
     text = (payload.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Missing text")
@@ -109,35 +115,67 @@ async def tts(payload: dict):
         or "en_US-GlaDOS-medium"
     )
 
+    # 1) get (and cache) the voice
     try:
-        # cache voices to avoid reloading each call
         voice = _get_piper_voice(voice_name)
     except Exception as e:
         raise HTTPException(400, f"Voice load error: {e}")
 
+    # 2) run synth
     try:
-        # Get PCM16 samples from piper (array or bytes depending on version)
-        pcm = voice.synthesize(text)
-
-        # Normalize to bytes
-        data = pcm.tobytes() if hasattr(pcm, "tobytes") else bytes(pcm)
-
-        # Build a WAV in-memory
-        out = io.BytesIO()
-        with wave.open(out, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)  # 16-bit
-            wf.setframerate(voice.config.sample_rate)
-            wf.writeframes(data)
-
-        out.seek(0)
-        return StreamingResponse(
-            out,
-            media_type="audio/wav",
-            headers={"Cache-Control": "no-store"},
-        )
+        pcm = voice.synthesize(text)  # may be ndarray, bytes, or a generator/iterable
     except Exception as e:
-        raise HTTPException(502, f"TTS failed: {e}")
+        raise HTTPException(502, f"TTS failed during synth: {e}")
+
+    # 3) normalize to bytes
+    data = bytearray()
+
+    def _append_chunk(ch):
+        # numpy array (int16) → bytes
+        if np is not None and isinstance(ch, np.ndarray):
+            # ensure int16 little-endian
+            if ch.dtype != np.int16:
+                ch = ch.astype(np.int16, copy=False)
+            data.extend(ch.tobytes())
+        # has .tobytes (e.g., array-like)
+        elif hasattr(ch, "tobytes"):
+            data.extend(ch.tobytes())
+        # already bytes/bytearray
+        elif isinstance(ch, (bytes, bytearray)):
+            data.extend(ch)
+        else:
+            # last-ditch: try to interpret as iterable of ints
+            try:
+                for v in ch:  # e.g., python list of int16
+                    data.extend(int(v).to_bytes(2, "little", signed=True))
+            except Exception as exc:
+                raise HTTPException(502, f"TTS produced unsupported chunk type: {type(ch)} ({exc})")
+
+    # ndarray / bytes vs generator/iterable
+    if isinstance(pcm, (bytes, bytearray)) or hasattr(pcm, "tobytes"):
+        _append_chunk(pcm)
+    elif isinstance(pcm, cabc.Iterable):
+        for part in pcm:
+            _append_chunk(part)
+    else:
+        raise HTTPException(502, f"TTS returned unsupported type: {type(pcm)}")
+
+    # 4) sanity-check: must have audio
+    if len(data) == 0:
+        raise HTTPException(502, "TTS produced 0 audio bytes (check voice model/config and text)")
+
+    # 5) wrap as WAV
+    sr = getattr(getattr(voice, "config", None), "sample_rate", None) or 22050
+    out = io.BytesIO()
+    with wave.open(out, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)          # PCM16
+        wf.setframerate(sr)
+        wf.writeframes(data)
+    out.seek(0)
+
+    return StreamingResponse(out, media_type="audio/wav",
+                             headers={"Cache-Control": "no-store"})
 
 @app.post("/stt")
 async def stt(file: UploadFile = File(...)):
@@ -173,6 +211,8 @@ async def chat_completions(body: Dict):
         ],
         "model": OLLAMA_MODEL,
     }
+
+
 
 
 
