@@ -110,27 +110,32 @@ async def tts(payload: dict):
     )
 
     try:
-        model_path, config_path = _resolve_voice_paths(voice_name)
-    except FileNotFoundError as e:
-        raise HTTPException(400, str(e))
+        # cache voices to avoid reloading each call
+        voice = _get_piper_voice(voice_name)
+    except Exception as e:
+        raise HTTPException(400, f"Voice load error: {e}")
 
     try:
-        # Load voice (cache this in production for speed)
-        voice = PiperVoice.load(model_path, config_path)
+        # Get PCM16 samples from piper (array or bytes depending on version)
+        pcm = voice.synthesize(text)
 
+        # Normalize to bytes
+        data = pcm.tobytes() if hasattr(pcm, "tobytes") else bytes(pcm)
+
+        # Build a WAV in-memory
         out = io.BytesIO()
         with wave.open(out, "wb") as wf:
             wf.setnchannels(1)
-            wf.setsampwidth(2)
+            wf.setsampwidth(2)  # 16-bit
             wf.setframerate(voice.config.sample_rate)
-
-            # Piper expects a file-like handle, not raw frames
-            voice.synthesize(text, wf)
+            wf.writeframes(data)
 
         out.seek(0)
-        return StreamingResponse(out, media_type="audio/wav",
-                                 headers={"Cache-Control": "no-store"})
-
+        return StreamingResponse(
+            out,
+            media_type="audio/wav",
+            headers={"Cache-Control": "no-store"},
+        )
     except Exception as e:
         raise HTTPException(502, f"TTS failed: {e}")
 
@@ -168,6 +173,8 @@ async def chat_completions(body: Dict):
         ],
         "model": OLLAMA_MODEL,
     }
+
+
 
 
 
