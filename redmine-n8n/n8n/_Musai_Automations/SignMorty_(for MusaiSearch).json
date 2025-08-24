@@ -1,0 +1,284 @@
+{
+  "name": "SignMorty",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sign-morty",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://search.codemusic.ca"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET,POST,OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Authorization, Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Credentials",
+                "value": "true"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -160,
+        -48
+      ],
+      "id": "81206d64-1304-441e-a065-ae9531357e55",
+      "name": "Webhook",
+      "webhookId": "3f32c702-6457-43a4-81f1-690ad8d3fcd6",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "value": "={{$json[\"mortyurl_plain\"]}}",
+        "secret": "=q9ofLSY/cc96sOWKqpttFYEfHBD8nhxIun/NfOon2qA=",
+        "encoding": "base64"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [
+        288,
+        192
+      ],
+      "id": "c5f38478-adcb-4f2c-ac87-cc9d96b213b2",
+      "name": "Crypto",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Build final Morty URL (no URL class) =====\nvar mortyBase = 'https://search.codemusic.ca/morty';\nvar mortyurl  = String($json.mortyurl_param || '').trim(); // encoded\nvar hash      = String($json.data || '').trim();           // 64-hex from Crypto\n\nfunction is64hex(s){ return /^[0-9a-f]{64}$/i.test(s); }\n\nif (!mortyurl)  return [{ json: { ok:false, error:'Missing mortyurl (encoded)' } }];\nif (!hash)      return [{ json: { ok:false, error:'Missing mortyhash' } }];\nif (!is64hex(hash)) return [{ json: { ok:false, error:'mortyhash must be 64-hex' } }];\n\nvar signed = mortyBase + '/?mortyurl=' + mortyurl + '&mortyhash=' + hash;\n\nreturn [{\n  json: {\n    ok: true,\n    mortyurl_plain: $json.mortyurl_plain,\n    mortyhash: hash,\n    signed_url: signed\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        192
+      ],
+      "id": "bb89a037-61e2-4fe5-8b8e-6c8df58d9aa9",
+      "name": "PrepareURL"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---- config you can tune ----\nconst ORIGIN = 'https://search.codemusic.ca';\nconst KEY = $env.MORTY_SIGN_KEY ?? 'abda1f2d263f71cf7ab0e58aaa9b6d15811f1c10fc9e1c48ba7fcd7cea27daa0';                               // must equal Morty’s MORTY_KEY\nconst INCLUDE_PREFIX = false;                                   // set true if your curl test A worked\n\nif (!KEY) {\n  return [{ json: { ok: false, status: 500, error: 'MORTY_SIGN_KEY not set' } }];\n}\n\n// Accept ?url=... that already starts with /morty/https/... or /https/...\nlet input = $json?.query?.url || $json?.url || $json?.href;\nif (!input) return [{ json: { ok: false, status: 400, error: 'Missing url' } }];\n\n// Normalize to an absolute path+query under the public origin, then extract the pathname & search\nfunction pathAndQuery(u) {\n  // if full URL, strip scheme/host\n  if (/^https?:\\/\\//i.test(u)) {\n    try {\n      const tmp = new (class URL2 {\n        constructor(s){ this.s=s; }\n        get pathname(){ return s => s.split('?')[0]; }\n      });\n    } catch (_) {}\n  }\n  // simple manual parse:\n  let s = u;\n  if (s.startsWith('https://')) s = s.slice(8);\n  if (s.startsWith('http://'))  s = s.slice(7);\n  const slash = s.indexOf('/');\n  s = slash >= 0 ? s.slice(slash) : '/';\n  const qi = s.indexOf('?');\n  return { path: qi === -1 ? s : s.slice(0, qi), query: qi === -1 ? '' : s.slice(qi) };\n}\n\nconst { path, query } = pathAndQuery(input);\n\n// Ensure we have the Morty route in the public URL; the part Morty consumes is *always* `/https/...`\nconst mortyPayloadPath = path.startsWith('/https/') ? path\n                       : path.startsWith('/morty/https/') ? path.slice('/morty'.length)\n                       : path; // if user passed odd input, try as-is\n\n// Tiny SHA256 + HMAC (ASCII) – same as you used earlier\nfunction sha256(ascii){ function r(v,a){return(v>>>a)|(v<<(32-a));} var p=Math.pow,m=p(2,32),l='length',i,j,res='',w=[],bl=ascii[l]*8,h=sha256.h=sha256.h||[],k=sha256.k=sha256.k||[],pc=k[l]; if(!pc){var ip={},c=2;while(pc<64){if(!ip[c]){for(i=0;i<313;i+=c)ip[i]=c;h[pc]=(p(c,.5)*m)|0;k[pc++]=(p(c,1/3)*m)|0;} c++;}} ascii+='\\x80'; while(ascii[l]%64-56) ascii+='\\x00'; for(i=0;i<ascii[l];i++){j=ascii.charCodeAt(i); if(j>>8) return; w[i>>2]|= j<<((3-i)%4)*8;} w[w[l]]=((bl/m)|0); w[w[l]]=bl; var W=[],a,b,c,d,e,f,g,hv; for(j=0;j<w[l];){a=h[0];b=h[1];c=h[2];d=h[3];e=h[4];f=h[5];g=h[6];hv=h[7]; for(i=0;i<64;i++){ if(i<16) W[i]=w[j+i]; else {var g0=W[i-15],g1=W[i-2]; W[i]=(((g0>>>7)^(g0>>>18)^(g0>>>3))+(W[i-7]|0)+((g1>>>17)^(g1>>>19)^(g1>>>10))+(W[i-16]|0))|0;} var t2=((a>>>2)^(a>>>13)^(a>>>22))+((a&b)^(a&c)^(b&c)); var t1=hv+((e>>>6)^(e>>>11)^(e>>>25))+((e&f)^(~e&g))+k[i]+(W[i]|0); hv=g; g=f; f=e; e=(d+t1)|0; d=c; c=b; b=a; a=(t1+t2)|0;} h[0]=(h[0]+a)|0; h[1]=(h[1]+b)|0; h[2]=(h[2]+c)|0; h[3]=(h[3]+d)|0; h[4]=(h[4]+e)|0; h[5]=(h[5]+f)|0; h[6]=(h[6]+g)|0; h[7]=(h[7]+hv)|0; j+=16;} for(i=0;i<8;i++){ for(j=3;j+1;j--){ var b=(h[i]>>(j*8))&255; res+=((b<16)?0:'')+b.toString(16);} } return res;}\nfunction hexToBytes(hex){ let s=''; for(let i=0;i<hex.length;i+=2){ s+=String.fromCharCode(parseInt(hex.substr(i,2),16)); } return s; }\nfunction hmacSha256(key,msg){ var bs=64; if(key.length>bs) key=hexToBytes(sha256(key)); if(key.length<bs) key=key+String.fromCharCode.apply(null,new Array(bs-key.length).fill(0)); var o='',iK=''; for(let i=0;i<bs;i++){ let kc=key.charCodeAt(i); o+=String.fromCharCode(0x5c^kc); iK+=String.fromCharCode(0x36^kc); } return sha256(o+hexToBytes(sha256(iK+msg))); }\n\n// Build both strings-to-sign\nconst toSignA = '/morty' + mortyPayloadPath + (query || ''); // includes prefix\nconst toSignB =               mortyPayloadPath + (query || ''); // excludes prefix\n\nconst hashA = hmacSha256(KEY, toSignA);\nconst hashB = hmacSha256(KEY, toSignB);\n\n// Compose final public URLs (public route always has /morty/)\nfunction withHash(q, h){\n  if (!q) return `?hash=${h}`;\n  return q.includes('hash=') ? q.replace(/hash=[^&]*/,'hash='+h)\n                             : (q + (q.includes('?') ? '&' : '?') + 'hash=' + h);\n}\nconst urlA = `${ORIGIN}/morty${mortyPayloadPath}${withHash('', hashA)}`;\nconst urlB = `${ORIGIN}/morty${mortyPayloadPath}${withHash('', hashB)}`;\n\n// Choose which one to return by flag once you know; for now return both\nconst chosen = INCLUDE_PREFIX ? { toSign: toSignA, hash: hashA, url: urlA }\n                              : { toSign: toSignB, hash: hashB, url: urlB };\n\nreturn [{\n  json: {\n    ok: true,\n    chosen,\n    variants: {\n      includesMortyInHmac: { toSign: toSignA, hash: hashA, url: urlA },\n      excludesMortyInHmac: { toSign: toSignB, hash: hashB, url: urlB }\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -336
+      ],
+      "id": "1cfb85c8-73bb-4a4f-bb14-0573e241083b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== Build mortyurl_plain + mortyurl_param (no URL class) =====\nfunction ensureHttpPrefix(s) {\n  s = String(s || '').trim();\n  if (!s) return '';\n  if (s.startsWith('http://') || s.startsWith('https://')) return s;\n  return 'https://' + s;\n}\n\nfunction buildFromFull(j) {\n  // pick a single source of truth for the \"plain\" URL string\n  var raw = (j && j.query && j.query.url) || j.url || j.href || '';\n  raw = ensureHttpPrefix(raw);\n  return raw;\n}\n\nfunction buildFromParts(j) {\n  var scheme = String((j.scheme || 'https')).replace(/:$/,'');\n  var host   = String(j.host || '').trim();\n  var path   = String(j.path || '');\n  var query  = String(j.query || '');\n\n  if (!host) throw new Error('Missing host');\n\n  if (!path) path = '/';\n  if (path[0] !== '/') path = '/' + path;\n\n  if (query) {\n    if (query[0] !== '?') query = '?' + query;\n  }\n\n  return scheme + '://' + host + path + query;\n}\n\nfunction enc(s){ return encodeURIComponent(String(s)); }\n\nvar plain;\nif (($json && $json.query && $json.query.url) || $json.url || $json.href) {\n  plain = buildFromFull($json);\n} else {\n  plain = buildFromParts($json);\n}\n\n// IMPORTANT: plain must be *exactly* what you want to open, byte-for-byte.\n// (trailing slash matters; spaces/newlines are forbidden)\nplain = plain.trim();\n\nreturn [{\n  json: {\n    // sign THIS exact string in the Crypto node:\n    mortyurl_plain: plain,\n    // put THIS into the morty query:\n    mortyurl_param: enc(plain)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        192
+      ],
+      "id": "d043c3f6-917a-46d9-be0d-a79e894d549e",
+      "name": "BuildMortyURL"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ORIGIN = $json.origin || 'https://search.codemusic.ca';\nconst ORIGIN_HOST = new URL(ORIGIN).host;\n\nfunction stripSig(u) {\n  u.searchParams.delete('hash');\n  u.searchParams.delete('mortyhash');\n  u.searchParams.delete('mortyurl'); // splash param\n  return u;\n}\n\nfunction buildFromPublicMortyUrl(publicUrlStr) {\n  const u = stripSig(new URL(publicUrlStr));\n  // Expect pathname like: /morty/https/<host>/<path>\n  const p = u.pathname || '/';\n  const idx = p.indexOf('/https/');\n  if (idx === -1) throw new Error('Invalid morty URL (no /https/ segment)');\n  const tail = p.slice(idx);                   // \"/https/<host>/<path>\"\n  const toSign = tail + (u.search || '');      // keep original query (minus hash/mortyhash)\n  const publicUrl = `${new URL(ORIGIN).origin}${p}${u.search || ''}`;\n  return { toSign, publicUrl };\n}\n\nfunction buildFromWebUrl(webUrlStr) {\n  const u = new URL(webUrlStr);\n  const host = u.host;\n  const path = u.pathname || '/';\n  const qs   = u.search || '';\n  const toSign   = `/https/${host}${path}${qs}`;\n  const publicUrl= `${ORIGIN}/morty${toSign}`;\n  return { toSign, publicUrl };\n}\n\nfunction buildFromParts() {\n  const host = $json.host;\n  if (!host) throw new Error('Missing host');\n  const path = $json.path || '/';\n  let   qs   = $json.query || '';\n  if (qs && !qs.startsWith('?')) qs = '?' + qs;\n  const toSign   = `/https/${host}${path}${qs}`;\n  const publicUrl= `${ORIGIN}/morty${toSign}`;\n  return { toSign, publicUrl };\n}\n\n// --- choose the input ---\nconst raw = ($json?.query?.url) ?? $json?.url ?? $json?.href ?? null;\n\nlet res;\nif (raw) {\n  const u = new URL(raw);\n  if (u.host === ORIGIN_HOST && u.pathname.startsWith('/morty/')) {\n    // It's already a public Morty URL — extract the /https/... tail.\n    res = buildFromPublicMortyUrl(raw);\n  } else {\n    // It's a normal web URL — wrap it.\n    res = buildFromWebUrl(raw);\n  }\n} else {\n  res = buildFromParts();\n}\n\n// Ensure no stale hash/mortyhash are on publicUrl\nconst pub = stripSig(new URL(res.publicUrl));\n\nreturn [{\n  json: {\n    ...$json,\n    toSign: res.toSign,          // e.g. \"/https/en.wikipedia.org/wiki/Fe\"\n    publicUrl: pub.toString()    // e.g. \"https://search.codemusic.ca/morty/https/en.wikipedia.org/wiki/Fe\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -368
+      ],
+      "id": "090afbe2-7e9f-4645-8e19-5bb5350bd627",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Morty key (exact same base64 string you set in docker-compose)\nconst KEY_B64 = 'q9ofLSY/cc96sOWKqpttFYEfHBD8nhxIun/NfOon2qA=';\n\n// Inputs from the BuildMortyURL node\nconst toSign    = $json.toSign;      // e.g. \"/https/en.wikipedia.org/wiki/Fe\"\nconst publicUrl = $json.publicUrl;   // e.g. \"https://search.codemusic.ca/morty/https/en.wikipedia.org/wiki/Fe\"\n\nif (!toSign || !publicUrl) {\n  return [{ json: { ok: false, error: 'Missing toSign or publicUrl' } }];\n}\n\n// Use the global crypto (no require)\nconst key = Buffer.from(KEY_B64, 'base64');\nconst sig = crypto.createHmac('sha256', key)\n                  .update(toSign)\n                  .digest('hex'); // lowercase 64-hex\n\n// Append both hash and mortyhash\nconst url = new URL(publicUrl);\nurl.searchParams.set('hash', sig);\nurl.searchParams.set('mortyhash', sig);\n\nreturn [{\n  json: {\n    ok: true,\n    toSign,\n    signature: sig,\n    publicUrl,\n    signedUrl: url.toString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -368
+      ],
+      "id": "6063a843-f8bc-468c-bfe7-986eb5805cbc",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "https://search.codemusic.ca"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "10a8aa0a-8f07-4e12-94df-eb29dd9b3abf",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Function Item — Morty signer (no Crypto node, no require)\n * Input (any one):\n *   - $json.body.url    e.g. \"https://en.wikipedia.org/wiki/Few\"\n *   - $json.url          \"\n *   - $json.href         \"\n *\n * Output:\n *   {\n *     ok: true,\n *     mortyurl_plain: \"<plain URL>\",\n *     mortyhash: \"<64-hex>\",\n *     signed_url: \"https://search.codemusic.ca/morty/?mortyurl=<enc>&mortyhash=<hex>\"\n *   }\n *\n * CONFIG: set your Morty base and base64 key here:\n */\nconst MORTY_BASE = 'https://search.codemusic.ca/morty';\nconst MORTY_KEY_B64 = 'q9ofLSY/cc96sOWKqpttFYEfHBD8nhxIun/NfOon2qA='; // <-- your base64 key\n\n/* ------------------ helpers (no external libs) ------------------ */\nfunction enc(s){ return encodeURIComponent(String(s)); }\nfunction takeUrl(j){\n  if (j?.body?.url) return String(j.body.url);\n  if (j?.url)        return String(j.url);\n  if (j?.href)       return String(j.href);\n  throw new Error('Need url or href');\n}\n\n// base64 -> bytes\nfunction b64ToBytes(b64){\n  // atob polyfill for n8n sandbox\n  function _atob(str){\n    const map = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';\n    let output = '', buffer, bc = 0, bs, idx = 0, chr;\n    str = String(str).replace(/=+$/, '');\n    while ((chr = str.charAt(idx++))) {\n      const c = map.indexOf(chr);\n      if (c === -1) continue;\n      bs = bc % 4 ? (bs * 64) + c : c;\n      if (bc++ % 4) output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)));\n    }\n    return output;\n  }\n  const bin = _atob(b64);\n  const out = new Uint8Array(bin.length);\n  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);\n  return out;\n}\n\n// utf8 string -> bytes\nfunction utf8ToBytes(str){\n  const out = [];\n  for (let i=0;i<str.length;i++){\n    let c = str.charCodeAt(i);\n    if (c < 0x80) out.push(c);\n    else if (c < 0x800){ out.push(0xC0 | (c>>6), 0x80 | (c & 0x3F)); }\n    else if (c < 0xD800 || c >= 0xE000){\n      out.push(0xE0 | (c>>12), 0x80 | ((c>>6)&0x3F), 0x80 | (c & 0x3F));\n    } else {\n      // surrogate pair\n      i++;\n      const c2 = str.charCodeAt(i);\n      const u = 0x10000 + (((c & 0x3FF)<<10) | (c2 & 0x3FF));\n      out.push(0xF0 | (u>>18), 0x80 | ((u>>12)&0x3F), 0x80 | ((u>>6)&0x3F), 0x80 | (u & 0x3F));\n    }\n  }\n  return new Uint8Array(out);\n}\n\n// bytes -> hex\nfunction toHex(bytes){\n  const hex = [];\n  for (let i=0;i<bytes.length;i++){\n    const h = bytes[i].toString(16).padStart(2,'0');\n    hex.push(h);\n  }\n  return hex.join('');\n}\n\n/* ---- tiny SHA-256 + HMAC (public-domain style implementation) ---- */\n// Based on a compact reference implementation (bitwise/words)\nconst K = new Uint32Array([\n  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,\n  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,\n  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,\n  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,\n  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,\n  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,\n  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,\n  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,\n]);\nfunction rotr(x,n){ return (x>>>n) | (x<<(32-n)); }\nfunction sha256(bytes){\n  const l = bytes.length;\n  const bitLen = l * 8;\n  // padding\n  const withOne = new Uint8Array(((l + 9 + 63) & ~63));\n  withOne.set(bytes);\n  withOne[l] = 0x80;\n  const view = new DataView(withOne.buffer);\n  view.setUint32(withOne.length-4, bitLen>>>0);\n  view.setUint32(withOne.length-8, Math.floor(bitLen/0x100000000));\n\n  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;\n  const w = new Uint32Array(64);\n\n  for (let i=0;i<withOne.length;i+=64){\n    for (let j=0;j<16;j++) w[j] = view.getUint32(i + j*4);\n    for (let j=16;j<64;j++){\n      const s0 = rotr(w[j-15],7) ^ rotr(w[j-15],18) ^ (w[j-15]>>>3);\n      const s1 = rotr(w[j-2],17) ^ rotr(w[j-2],19) ^ (w[j-2]>>>10);\n      w[j] = (w[j-16] + s0 + w[j-7] + s1)>>>0;\n    }\n    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;\n    for (let j=0;j<64;j++){\n      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);\n      const ch = (e & f) ^ (~e & g);\n      const temp1 = (h + S1 + ch + K[j] + w[j])>>>0;\n      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);\n      const maj = (a & b) ^ (a & c) ^ (b & c);\n      const temp2 = (S0 + maj)>>>0;\n      h=g; g=f; f=e; e=(d + temp1)>>>0; d=c; c=b; b=a; a=(temp1 + temp2)>>>0;\n    }\n    h0=(h0+a)>>>0; h1=(h1+b)>>>0; h2=(h2+c)>>>0; h3=(h3+d)>>>0; h4=(h4+e)>>>0; h5=(h5+f)>>>0; h6=(h6+g)>>>0; h7=(h7+h)>>>0;\n  }\n  const out = new Uint8Array(32);\n  const dv = new DataView(out.buffer);\n  dv.setUint32(0,h0); dv.setUint32(4,h1); dv.setUint32(8,h2); dv.setUint32(12,h3);\n  dv.setUint32(16,h4); dv.setUint32(20,h5); dv.setUint32(24,h6); dv.setUint32(28,h7);\n  return out;\n}\nfunction hmacSha256(keyBytes, msgBytes){\n  const block = 64;\n  if (keyBytes.length > block) keyBytes = sha256(keyBytes);\n  const k = new Uint8Array(block); k.set(keyBytes);\n  const oKey = new Uint8Array(block), iKey = new Uint8Array(block);\n  for (let i=0;i<block;i++){ oKey[i] = 0x5c ^ k[i]; iKey[i] = 0x36 ^ k[i]; }\n  const inner = sha256(new Uint8Array([...iKey, ...msgBytes]));\n  const outer = sha256(new Uint8Array([...oKey, ...inner]));\n  return outer;\n}\n/* ------------------ actual signing ------------------ */\nlet mortyurl_plain;\ntry {\n  mortyurl_plain = takeUrl($json);          // the exact plain string to sign\n} catch (e) {\n  return [{ json: { ok:false, error: String(e.message || e) } }];\n}\n\nconst keyBytes = b64ToBytes(MORTY_KEY_B64);\nconst msgBytes = utf8ToBytes(mortyurl_plain);\nconst digestHex = toHex(hmacSha256(keyBytes, msgBytes));\n\n// final Morty URL\nconst mortyurl_param = enc(mortyurl_plain);\nconst signed_url = `${MORTY_BASE}/?mortyurl=${mortyurl_param}&mortyhash=${digestHex}`;\n\nreturn [{\n  json: {\n    ok: true,\n    mortyurl_plain,\n    mortyhash: digestHex,\n    signed_url\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -16
+      ],
+      "id": "ab118fb4-54d0-4d6c-8843-301a3261be01",
+      "name": "Sign"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Function node: mimcheck (no URL(), extension-based)\nconst BLOCK_EXT = new Set([\n  // images\n  \"png\",\"jpg\",\"jpeg\",\"gif\",\"webp\",\"bmp\",\"tif\",\"tiff\",\"ico\",\"svg\",\n  // audio\n  \"mp3\",\"wav\",\"ogg\",\"m4a\",\"aac\",\"flac\",\"opus\",\n  // video\n  \"mp4\",\"webm\",\"mkv\",\"mov\",\"avi\",\"m4v\",\n  // fonts\n  \"woff\",\"woff2\",\"ttf\",\"otf\",\"eot\",\n  // archives & binaries\n  \"zip\",\"gz\",\"tgz\",\"bz2\",\"xz\",\"7z\",\"rar\",\"dmg\",\"exe\",\"bin\",\"iso\",\n  // office/docs as attachments (usually better unproxied)\n  \"pdf\",\"doc\",\"docx\",\"ppt\",\"pptx\",\"xls\",\"xlsx\"\n]);\n\nfunction pickUrl(obj) {\n  return obj.mortyurl_plain || obj.url || obj.href || \"\";\n}\n\nfunction extOf(raw) {\n  let p = String(raw || \"\");\n  // strip query & fragment\n  let i = p.indexOf(\"?\"); if (i !== -1) p = p.slice(0, i);\n  i = p.indexOf(\"#\"); if (i !== -1) p = p.slice(0, i);\n  // last path segment\n  const slash = p.lastIndexOf(\"/\"); if (slash !== -1) p = p.slice(slash + 1);\n  // hidden file or no dot -> no ext\n  const dot = p.lastIndexOf(\".\");\n  if (dot <= 0) return \"\";\n  return p.slice(dot + 1).toLowerCase();\n}\n\nconst out = [];\nfor (const item of items) {\n  const it = item.json ?? item;\n  const plain = pickUrl(it);\n  const ext = extOf(plain);\n\n  // Decide: no ext => proxy (page); page-ish ext => proxy; blocked ext => unproxy\n  const isBlocked = !!ext && BLOCK_EXT.has(ext);\n\n  const finalUrl = isBlocked\n    ? plain                          // unproxied (use the real URL)\n    : (it.signed_url || plain);      // keep proxied if you already have it\n\n  out.push({\n    json: {\n      ...it,\n      proxied: !isBlocked,\n      proxied_reason: isBlocked ? `blocked-ext:${ext || \"-\"}` : (ext ? `page-ext:${ext}` : \"no-ext\"),\n      signed_url: finalUrl,\n    }\n  });\n}\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -80
+      ],
+      "id": "485a0b5a-acbc-4049-ba20-61ab5e9122f3",
+      "name": "MimeCheck"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Sign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "PrepareURL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildMortyURL": {
+      "main": [
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareURL": {
+      "main": [
+        []
+      ]
+    },
+    "Sign": {
+      "main": [
+        [
+          {
+            "node": "MimeCheck",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MimeCheck": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "08c36861-4330-4fef-ab78-1c22a8d81d11",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "cXa67RURIJ2Icwzd",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T15:44:14.646Z",
+      "updatedAt": "2025-08-15T15:44:14.646Z",
+      "id": "PC19MdgjapOHg5hW",
+      "name": "musai"
+    },
+    {
+      "createdAt": "2025-08-23T13:06:57.041Z",
+      "updatedAt": "2025-08-23T13:06:57.041Z",
+      "id": "ttw0kPFQtIM6Xxya",
+      "name": "musaisearch"
+    }
+  ]
+}

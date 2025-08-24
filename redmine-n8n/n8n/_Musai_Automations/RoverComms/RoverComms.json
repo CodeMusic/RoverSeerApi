@@ -1,0 +1,423 @@
+{
+  "name": "RoverComms",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/transcriptions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "wav"
+            },
+            {
+              "name": "model",
+              "value": "whisper-1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        272,
+        -480
+      ],
+      "id": "4606d2de-2b44-459c-a7d3-e454f6c37b43",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/Jean-Luc_Picard:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        736,
+        32
+      ],
+      "id": "ee9e1fda-6573-450c-8e77-307aa0f6143e",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        32
+      ],
+      "id": "92fd34d3-3479-44bc-92fc-5094b7e8dfaa",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/audio/speech",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"tts-1\",\n  \"input\": \"{{ $json[\\\"output\\\"] }}\",\n  \"voice\": \"nova\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        848,
+        -576
+      ],
+      "id": "51bd9019-dbc7-438f-93b4-afd4d2fe25dd",
+      "name": "HTTP Request1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Access first item's binary data\nconst input = items[0];\nconst rawBase64 = input.binary.data.data; // Ensure the binary input name is \"data\"\nconst pcm = Buffer.from(rawBase64, 'base64'); // ← This should work in n8n's sandbox\n\nconst sampleRate = 16000;\nconst channels = 1;\nconst bits = 16;\n\nfunction pcmToWav(pcm, sampleRate, channels, bits) {\n  const header = Buffer.alloc(44);\n  const dataSize = pcm.length;\n\n  header.write('RIFF', 0);\n  header.writeUInt32LE(36 + dataSize, 4);\n  header.write('WAVE', 8);\n  header.write('fmt ', 12);\n  header.writeUInt32LE(16, 16); // Subchunk1Size\n  header.writeUInt16LE(1, 20);  // AudioFormat (1 = PCM)\n  header.writeUInt16LE(channels, 22); // NumChannels\n  header.writeUInt32LE(sampleRate, 24); // SampleRate\n  header.writeUInt32LE(sampleRate * channels * bits / 8, 28); // ByteRate\n  header.writeUInt16LE(channels * bits / 8, 32); // BlockAlign\n  header.writeUInt16LE(bits, 34); // BitsPerSample\n  header.write('data', 36);\n  header.writeUInt32LE(dataSize, 40);\n\n  return Buffer.concat([header, pcm]);\n}\n\nconst wavBuffer = pcmToWav(pcm, sampleRate, channels, bits);\n\nreturn [\n  {\n    binary: {\n      wav: {\n        data: wavBuffer.toString('base64'),\n        mimeType: 'audio/wav',\n        fileName: 'recording.wav'\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -256
+      ],
+      "id": "f4a2be3f-a6ca-4840-b423-d26f31936687",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "const net = require(\"net\");\n\nconst wavBuffer = Buffer.from(items[0].binary.wav.data, \"base64\");\nconst header = Buffer.alloc(5);\nheader.writeUInt8(0x01, 0); // WAV message\nheader.writeUInt32BE(wavBuffer.length, 1); // Length\n\nreturn new Promise((resolve, reject) => {\n  const client = new net.Socket();\n  const chunks = [];\n\n  client.connect(10300, \"wyoming-whisper\", () => {\n    client.write(Buffer.concat([header, wavBuffer]));\n  });\n\n  client.on(\"data\", (chunk) => chunks.push(chunk));\n  client.on(\"end\", () => {\n    const total = Buffer.concat(chunks);\n    const textLength = total.readUInt32BE(0);\n    const text = total.slice(4, 4 + textLength).toString(\"utf-8\");\n    resolve([{ json: { text } }]);\n  });\n\n  client.on(\"error\", (err) => reject(err));\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        48
+      ],
+      "id": "8dcc8f51-6a68-4ebc-b018-8e8e0166b678",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const net = require(\"net\");\nconst text = items[0].json.text || \"Hello from n8n and CodeMusai!\";\nconst payload = Buffer.from(text, \"utf-8\");\n\nconst header = Buffer.alloc(5);\nheader.writeUInt8(0x01, 0); // TTS message\nheader.writeUInt32BE(payload.length, 1); // Length\n\nreturn new Promise((resolve, reject) => {\n  const client = new net.Socket();\n  const chunks = [];\n\n  client.connect(10200, \"wyoming-piper\", () => {\n    client.write(Buffer.concat([header, payload]));\n  });\n\n  client.on(\"data\", (chunk) => chunks.push(chunk));\n  client.on(\"end\", () => {\n    const audioBuffer = Buffer.concat(chunks);\n    resolve([\n      {\n        binary: {\n          audio: {\n            data: audioBuffer.toString(\"base64\"),\n            mimeType: \"audio/wav\",\n            fileName: \"response.wav\",\n          },\n        },\n      },\n    ]);\n  });\n\n  client.on(\"error\", (err) => reject(err));\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -64
+      ],
+      "id": "c413043c-4685-419d-b622-7fa4cb1b5564",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "audio-assistant/S3CR3TK3Y",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data",
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -208,
+        -256
+      ],
+      "id": "158dc436-d370-4024-87a0-1cf539dac6af",
+      "name": "Webhook",
+      "webhookId": "db9206c1-515b-40c4-a777-f053216a611c"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "audio",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "audio/wav"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1376,
+        -320
+      ],
+      "id": "f7bac3f7-2574-43df-9d95-9934d318f0ea",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://musai-api:9000/stt",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "wav"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        -240
+      ],
+      "id": "47ccfaa6-cdc2-420d-8c0c-2734e10523e1",
+      "name": "STT"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://musai-api:9000/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"={{ ($json.output || '').replace(/\\r?\\n/g, '\\\\n') }}\",\n  \"voice\": \"en_US-GlaDOS-medium\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "audio"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        -320
+      ],
+      "id": "440b1817-eced-4a59-8bdf-bdcb8f517523",
+      "name": "TTS",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are Jean-Luc Picard of the USS Enterprise."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        -288
+      ],
+      "id": "bfc90542-8cfc-40a3-9474-18d4ec8aae7f",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        416,
+        144
+      ],
+      "id": "ba8e55ac-06bf-452f-a1e7-2f06b7ae20f0",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "STT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        []
+      ]
+    },
+    "Code2": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STT": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TTS": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "35f25e93-7568-4a54-b7cb-52117e19e314",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "o3HQhHOoZbaYAOLD",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T17:10:52.447Z",
+      "updatedAt": "2025-08-15T17:10:52.447Z",
+      "id": "ks864O9UUkXKemrl",
+      "name": "roverbyte"
+    }
+  ]
+}

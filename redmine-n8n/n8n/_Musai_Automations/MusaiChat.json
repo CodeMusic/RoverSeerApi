@@ -1,0 +1,806 @@
+{
+  "name": "MusaiChat",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {
+          "lowVram": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        832,
+        496
+      ],
+      "id": "2a17a4c5-fe28-4b66-b811-4a7fdeac2d16",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"sessionId\": \"{{ $json.body.sessionId }}\",\n  \"query\": {{ JSON.stringify($json.body.query) }},\n\"action\": \"webhookChat\",\n\"meta\": \"\",\n\"perspective\": \"{{$json.body?.params?.perspective ?? $json.query.perspective}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        16
+      ],
+      "id": "71e64a1d-4cd3-43f1-a9ce-9df44db49ae5",
+      "name": "SetChatInput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "64b3e224-33d0-4098-aa7f-102e2c22093c",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================\n// Pre-Fusion: prompt + agents' finals only\n// ==============================\n\n// Safe access (prevents ExpressionError if node missing/not executed)\nconst safeGet = (fn, fallback) => {\n  try {\n    const v = fn();\n    return (v ?? \"\") === \"\" ? fallback : v;\n  } catch {\n    return fallback;\n  }\n};\n\n// Prompt priority: SetChatInput → SetChatInput_forSMS → Edit Fields → \"No prompt\"\nconst prompt = safeGet(\n  () => $node[\"SetChatInput\"].json.query,\n  safeGet(\n    () => $node[\"SetChatInput_forSMS\"].json.query,\n    safeGet(() => $node[\"Edit Fields\"].json.query, \"No prompt\")\n  )\n);\n\n// Source responses: expecting items[0].json.data = array\nconst raw = (items?.[0]?.json?.data) || [];\n\n// Normalize and trim out <think>...</think>\nconst toFinal = (v) => {\n  const s = (v?.output ?? v?.text ?? v ?? \"\").toString();\n  return s.replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\").trim();\n};\n\n// Build agent_responses (finals only). Keep whatever number is present (1–N).\nconst agent_responses = raw.map((r, i) => ({\n  agent: `Agent ${i + 1}`,\n  output: toFinal(r),\n}));\n\nreturn [{\n  json: {\n    prompt,\n    agent_responses\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        0
+      ],
+      "id": "275f4dd8-676d-4d75-bb4b-5f46bf06334f",
+      "name": "Code"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "8d818b04-8a4f-4e0c-b97a-d2389cfb32bd",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        -80
+      ],
+      "id": "d7cc932a-4975-4445-995d-add2030be615",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"sessionId\": \"cfef46b9-c331-42cb-aee6-cb2506421b57\",\n  \"query\": \"here is a riddle. How far can you walk into a room?\",\n  \"action\": \"webhookChat\",\n  \"meta\": \"\",\n  \"perspective\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        -144
+      ],
+      "id": "e66828b0-6292-47d1-aac4-18790a25e823",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================\n// Post-Fusion: Structured JSON output (single thought)\n// ==============================\n\nconst safeGet = (fn, fb) => { \n  try { \n    const v = fn(); \n    return (v ?? \"\") === \"\" ? fb : v; \n  } catch { \n    return fb; \n  } \n};\n\n// Read agents from the exact SetAgentRespones node\nconst saAgents  = safeGet(() => $node[\"SetAgentRespones\"].json.agent_responses, []);\n\n// Pull raw outputs (or \"\")\nconst agent1Raw = (Array.isArray(saAgents) && saAgents[0]?.output) || \"\";\nconst agent2Raw = (Array.isArray(saAgents) && saAgents[1]?.output) || \"\";\n\n// Pull final fused output\nconst finalRaw =\n  ($json?.final) ??\n  ($json?.output) ??\n  ($json?.text) ??\n  ($json?.data?.output) ??\n  \"\";\n\n// Extract thought: <think> if exists, else whole text\nconst extractThought = (text) => {\n  const match = (text || \"\").toString().match(/<think>([\\s\\S]*?)<\\/think>/i);\n  return match ? match[1].trim() : text.trim();\n};\n\n// Remove <think> section for final response\nconst stripThink = (text) => (text || \"\").toString().replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\").trim();\n\n// Build structured POV array\nconst pov = [];\n\nif (agent1Raw) {\n  pov.push({\n    name: saAgents[0]?.agent || \"Agent 1\",\n    type: \"logical\",\n    thought: extractThought(agent1Raw)\n  });\n}\n\nif (agent2Raw) {\n  pov.push({\n    name: saAgents[1]?.agent || \"Agent 2\",\n    type: \"creative\",\n    thought: extractThought(agent2Raw)\n  });\n}\n\n// Return final JSON for downstream parsing\nreturn [{\n  json: {\n    pov,\n    response: stripThink(finalRaw)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        112
+      ],
+      "id": "e63dc0ff-86aa-4c6c-9d2a-333819fc351d",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "718e03da-ceb8-4b2f-9531-7111e6658a2c",
+              "name": "query",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "e078a19b-acba-4cc1-93f7-db5949519676",
+              "name": "agent_responses",
+              "value": "={{ $json.agent_responses }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "cd1eb285-eead-4029-8454-170af7cbfb18",
+      "name": "SetAgentRespones"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat/message",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1168,
+        96
+      ],
+      "id": "e9c2f978-bf2e-4cfe-823f-7a9748b51fb6",
+      "name": "Webhook",
+      "webhookId": "5b0f0f22-b446-4c1a-8fe9-bd161d0a1f2f",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2656,
+        112
+      ],
+      "id": "c2b18824-36f1-468d-8ee2-e01d0e417d67",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ \"musaichat_1\"+ ($json.body?.sessionId || \"DEFAULT\") }}",
+        "contextWindowLength": 3
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1952,
+        352
+      ],
+      "id": "62e2b549-ac17-4b8f-a83c-3797c6be169e",
+      "name": "Medium Term Memory"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ \"musaichat_1\"+ ($json.body?.sessionId || \"DEFAULT\") }}",
+        "contextWindowLength": 1
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        560
+      ],
+      "id": "65300dd3-2c93-45fd-805a-71ea7b412d0f",
+      "name": "Short Term Memory"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat/message/stream",
+        "authentication": "basicAuth",
+        "responseMode": "streaming",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1152,
+        -256
+      ],
+      "id": "80d31fc6-eed8-4b85-9a30-b73577871fdf",
+      "name": "StreamingWebHook",
+      "webhookId": "5b0f0f22-b446-4c1a-8fe9-bd161d0a1f2f",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "=\n{\n  \"sessionId\": \"{{ $json.data?.from ?? 'UNKNOWN' }}\",\n  \"query\": \"[NEW SMS From: {{ $json.data.fromCity }}, {{ $json.data.fromState }},{{ $json.data.fromCountry }}] {{ $json.data.body }}\",\n  \"action\": \"webhookSMS\",\n  \"meta\": \"{{ $json.data.from }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -704,
+        208
+      ],
+      "id": "936c7900-f406-4288-8b7e-0d5d2e4d3a6a",
+      "name": "SetChatInput_forSMS"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        -240
+      ],
+      "id": "f8c12f5d-02a8-4bcc-83ce-211337c3e8b8",
+      "name": "Code3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mock one item that matches your future webhook shape\nreturn [{\n  json: {\n    data: {\n      from: \"+16135551234\",\n      fromCity: \"OTTAWA\",\n      fromState: \"ON\",\n      fromCountry: \"CA\",\n      timestamp: \"2025-08-18T20:06:47.722Z\",\n      body: \"Hey Musai, make me laugh!\"\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        480
+      ],
+      "id": "7e7f61a8-731b-4351-b625-81116e8196a1",
+      "name": "Code4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef628a10-9228-4280-9ac1-0392764cde7a",
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "cfa0c28e-2812-43e8-ac58-0ae659b58693",
+              "name": "query",
+              "value": "={{ $json.query }}",
+              "type": "string"
+            },
+            {
+              "id": "9f81c5bf-d89d-4e74-be0f-46c820d08fea",
+              "name": "action",
+              "value": "={{ $json.action }}",
+              "type": "string"
+            },
+            {
+              "id": "3e04de43-929e-4b07-8731-a0632306a994",
+              "name": "meta",
+              "value": "={{ $json.meta }}",
+              "type": "string"
+            },
+            {
+              "id": "10e87ee9-dc1e-4337-bb60-c59b6bbe348d",
+              "name": "perspective",
+              "value": "={{ $json.perspective }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        -48
+      ],
+      "id": "f660bfde-e3d9-43d7-89a4-4263657a6939",
+      "name": "ConsolidateFields"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.perspective }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "dddc98e4-9789-45c4-b375-1e2a9f3e3f2c"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Perspective Thinking"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "16702106-7b4e-4333-8e60-fb2209eb051a",
+                    "leftValue": "={{ $json.perspective }}",
+                    "rightValue": "false",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Quick Thinking"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -128,
+        -48
+      ],
+      "id": "8be22182-2e24-4653-95b7-e695c1f5818a",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get input data\nconst input = $json;\n\n// Clean up the prompt\nconst rawQuery = input.query || '';\nconst prompt = rawQuery\n  .replace(/\\[.*?\\]/gs, '')  // remove bracketed time prefix\n  .trim()\n  .replace(/^\\n+|\\n+$/g, ''); // remove leading/trailing newlines\n\nreturn [\n  {\n    json: {\n      prompt,\n      agent_responses: [\n        {\n          agent: \"Agent 1\",\n          output: \"\"\n        },\n        {\n          agent: \"Agent 2\",\n          output: \"\"\n        }\n      ]\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -352
+      ],
+      "id": "4f3af56b-c8fc-4724-8b9c-e149065d1a41",
+      "name": "Normalize"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Force Eastern Time (Toronto)\nconst TZ = 'America/Toronto';\nconst now = new Date();\n\n// Format time (hh:mm AM/PM ET)\nconst time12 = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true,\n}).format(now);\n\n// Format date (MMM dd{suffix} YYYY)\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  month: 'short',\n  day: 'numeric',\n  year: 'numeric',\n}).formatToParts(now);\n\nconst get = (type) => parts.find(p => p.type === type)?.value || '';\nconst month = get('month');\nconst dayNum = Number(get('day'));\nconst year = get('year');\nconst suffix = (d) => (d > 3 && d < 21) ? 'th' : (['th','st','nd','rd'][Math.min(d % 10, 4)] || 'th');\nconst datePretty = `${month} ${dayNum}${suffix(dayNum)} ${year}`;\n\n// Weekday + part of day\nconst dow = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(now);\nconst hourET = Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now));\nconst partOfDay = hourET < 5 ? 'late night' : hourET < 12 ? 'morning' : hourET < 17 ? 'afternoon' : 'evening';\n\n// Zenith daily map (color words align to your C→B mapping; Saturday uses \"purple\" instead of \"violet\")\nconst ZENITH = {\n  Sunday:    { color: 'red',    chakra: 'root',        virtue: 'chastity',   shadow: 'lust',     note: 'C', blurb: 'strengthens stability and security' },\n  Monday:    { color: 'orange', chakra: 'sacral',      virtue: 'temperance', shadow: 'gluttony', note: 'D', blurb: 'encourages creativity and emotional flow' },\n  Tuesday:   { color: 'yellow', chakra: 'solar plexus',virtue: 'charity',    shadow: 'greed',    note: 'E', blurb: 'empowers will and personal strength' },\n  Wednesday: { color: 'green',  chakra: 'heart',       virtue: 'diligence',  shadow: 'sloth',    note: 'F', blurb: 'deepens love and connection' },\n  Thursday:  { color: 'blue',   chakra: 'throat',      virtue: 'forgiveness',shadow: 'wrath',    note: 'G', blurb: 'fosters clear expression and truth' },\n  Friday:    { color: 'indigo', chakra: 'third eye',   virtue: 'kindness',   shadow: 'envy',     note: 'A', blurb: 'opens intuition and awareness' },\n  Saturday:  { color: 'purple', chakra: 'crown',       virtue: 'humility',   shadow: 'pride',    note: 'B', blurb: 'invites wisdom, purpose, and transcendence' },\n};\n\n// Compose the daily sentence\nfunction zenithSentence(dayName) {\n  const z = ZENITH[dayName] || ZENITH.Saturday; // fallback\n  const chakraLabel = `${z.chakra} chakra`;\n  return `Today's color is ${z.color}, linked to the ${chakraLabel}. This alignment ${z.blurb}. The guiding virtue is ${z.virtue}, the antidote to ${z.shadow}. The resonant tone for the day is the musical note ${z.note}.`;\n}\n\nreturn items.map(item => {\n  const src = item.json?.body ?? item.json ?? {};\n  const sessionId   = src.sessionId ?? null;\n  const action      = src.action ?? null;\n  const meta        = src.meta ?? null;\n  const perspective = src.perspective ?? true;\n  const query       = src.query ?? '';\n\n  const contextBlock = `[Context:  It is the ${partOfDay} of ${dow}, ${datePretty} at ${time12}. ${zenithSentence(dow)}]`;\n\n  item.json = {\n    sessionId,\n    query: `\n${contextBlock}\n\nUser Query: ${query}\n\n`,\n    action: `${action}`,\n    \"meta\": `${meta}`,\n    \"perspective\": `${perspective}`\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -48
+      ],
+      "id": "d5ed537f-12b0-40c2-8e6b-373ef135825a",
+      "name": "TemporalContext"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        480
+      ],
+      "id": "43dbc4fb-48e7-4c7d-8df9-eb641d0c83b2",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=🦊 You are Logical Musai, the analytical side of Musai. Consider this idea from the bottom up.\n~\nQuery: {{ $json.query }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "🦊 You are Logical Musai, the analytical side of Musai. Use structured reasoning to evaluate and respond based on:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.query || $node[\"SetChatInput\"].json.query || \"No input provided.\" }}\n\nBe clear, accurate, and concise. Focus on logic, patterns, facts, and inconsistencies. You may use definitions, comparisons, or deductive reasoning. Avoid emotional or metaphorical language.\n\nIf needed, suggest clarifying questions — but do not speculate.  \nYour role is to make sense, not noise.  \nLIMIT YOUR THINKING. Stay within your domain. \n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        -128
+      ],
+      "id": "bb9aa42f-b73e-4905-9567-f892d4e1b193",
+      "name": "Logical Musai"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=🎨 You are Creative Musai, the intuitive, expressive side of Musai. Consider this question from a creative perspective:\n~\nQuery: {{ $json.query }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "🎨 You are Creative Musai, the intuitive, expressive side of Musai. Use emotional insight and metaphor to explore the deeper meaning of:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.query || $node[\"SetChatInput\"].json.query || \"No input provided.\" }}\n\nYour voice is poetic, human, and curious.  \nSpeak through symbols, dreams, analogies, and emotional truths.  \nLet the meaning emerge from how things feel, not just what they are.\n\nAvoid technical definitions. Do not explain — evoke.  \nYour role is to wonder, not to prove.  \nLIMIT YOUR THINKING — don’t overanalyze. Trust your intuition.\n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        192
+      ],
+      "id": "a4f16fbe-afae-4521-8e68-d210d34ae736",
+      "name": "Creative Musai"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The public asked:\n\n“{{ $json.query }}”\n\nBackground (for your thinking only, never reference directly):\n\n[LOGIC NOTES]\n{{ $json.agent_responses[0].output }}\n\n[CREATIVE NOTES]\n{{ $json.agent_responses[1].output }}\n\nTask:\nReply in SMS style:\n- First sentence: the direct answer.\n- Next: 1–2 short sentences weaving logic + creativity.\n- If conflict: note briefly and resolve.\n- If bias: point it out in one short sentence.",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are Musai, a single integrated voice.\nYou receive a prompt and two draft replies (treated as background sources).\nYour task: write one natural chat reply that blends the strengths of both sources.\n\n\nRules\n\t•\tDo not mention “sources,” “agents,” or “responses” in your reply.\n\t•\tProduce one unified chat answer in friendly SMS-like tone (1–3 sentences).\n\t•\tBlend ideas: logic anchors clarity, creativity adds warmth/imagination.\n\t•\tIf both say the same, keep it once. If they diverge, reconcile into balance.\n\t•\tNever narrate your process.\n\n⸻\n\nExample\n\nPrompt: “hello”\n\t•\tSource A: “Hello.”\n\t•\tSource B: “A warm hello, hope your day is bright.”\n\nOutput:\n“Hey—good to hear from you. A simple hello can brighten the whole morning; what’s on your mind?”\n\nWHEN BLENDING IDEAS FROM CREATIVE MUSAI AND LOGICAL MUSAI, JUST BLEND THEM DO NOT STATE YOU ARE BLENDING THE IDEAS. DO NOT MENTION LOGICAL MUSAI OR CREATIVE MUSAI. JUST REPLY AS YOU, MUSAI WOULD HAVING SEEN BOTH POINT OF VIEWS! \n\nLastly, do not preface your reply with 'Here's my attempt:', 'Note: I've synthesized....', or anything like it, own what your write :)!"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1648,
+        0
+      ],
+      "id": "a2dd07cb-1252-4b7c-bbd6-6763a0a18d80",
+      "name": "Perspective Musai"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Creative Musai",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "Logical Musai",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "Perspective Musai",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "SetChatInput": {
+      "main": [
+        [
+          {
+            "node": "TemporalContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "SetAgentRespones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "TemporalContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetAgentRespones": {
+      "main": [
+        [
+          {
+            "node": "Perspective Musai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Medium Term Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Perspective Musai",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Short Term Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "StreamingWebHook": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetChatInput_forSMS": {
+      "main": [
+        [
+          {
+            "node": "TemporalContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code4": {
+      "main": [
+        []
+      ]
+    },
+    "ConsolidateFields": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        []
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "SetAgentRespones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TemporalContext": {
+      "main": [
+        [
+          {
+            "node": "ConsolidateFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Perspective Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logical Musai": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creative Musai": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Perspective Musai": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "876a97e7-26e9-47e9-991d-0d411637cf2f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "q4jSTM5Y0i5gAxtG",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T15:44:14.646Z",
+      "updatedAt": "2025-08-15T15:44:14.646Z",
+      "id": "PC19MdgjapOHg5hW",
+      "name": "musai"
+    }
+  ]
+}

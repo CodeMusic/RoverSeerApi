@@ -1,0 +1,730 @@
+{
+  "name": "MusaiSearch",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "search/query/enhance",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        -496
+      ],
+      "id": "957e03eb-7141-48bc-83f0-2e88318a2df6",
+      "name": "Webhook",
+      "webhookId": "80745fc4-18bd-462d-84cc-cfb3aa5f9127",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -320
+      ],
+      "id": "3a9b935f-eae1-4525-88bb-02cd542f44d7",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body?.sessionId || $json.sessionId || 1001 }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1232,
+        16
+      ],
+      "id": "e814304e-70a4-4635-8e8a-e55daa1f47ac",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2320,
+        -480
+      ],
+      "id": "d41c40b1-55ea-4819-b158-835bd6537411",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3453d2d1-de89-4af3-b4f2-26a120ce2e3d",
+              "name": "sessionId",
+              "value": "={{ $json.body?.sessionId ?? $json.sessionId ?? 'cfef46b9-c331-42cb-aee6-cb2506421b57' }}",
+              "type": "string"
+            },
+            {
+              "id": "e7294d9d-74c3-4e2f-8835-6240464d812f",
+              "name": "query",
+              "value": "={{ $json.body?.query ?? $json.query ?? 'search for the latest trump news' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        -336
+      ],
+      "id": "aaaf97d0-9ff2-4bd9-bea2-f3251ab0bfc0",
+      "name": "SetChatInput_Prod"
+    },
+    {
+      "parameters": {
+        "jsCode": "let fallback = {};\nlet override = {};\n\ntry {\n  fallback = $('SetChatInput_Prod').first().json;\n} catch (e) {}\n\ntry {\n  override = $('SetChatInput_Latest').first().json;\n} catch (e) {}\n\nreturn [\n  {\n    json: {\n      sessionId: override.sessionId || fallback.sessionId || \"default-session-id\",\n      query: override.query || fallback.query || \"default query\"\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -336
+      ],
+      "id": "1909b307-3129-427b-acaf-624ce2480bd0",
+      "name": "QueryNormalizer"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * SearchResultAdaptor (JavaScript)\n * - Reads sessionId/query from current input (ReadyToSearch), with safe fallbacks\n * - Normalizes SearXNG / HTTP node responses\n * - Skips HTML error pages\n * - Emits: { sessionId, query, summary, facts[] }\n */\n\n// ---------- Inputs (prefer current ReadyToSearch) ----------\nconst cur       = items?.[0]?.json ?? {};\nconst fromSet   = (() => { try { return $items('SetChatInput_Prod', 0, 0)?.json ?? {}; } catch { return {}; } })();\nconst fromReady = (() => { try { return $items('ReadyToSearch',    0, 0)?.json ?? {}; } catch { return {}; } })();\n\n// Fallbacks (current item → ReadyToSearch → SetChatInput_Prod → generated)\nconst sessionId  = cur.sessionId ?? fromReady.sessionId ?? fromSet.sessionId ?? ('unknown_' + Date.now());\nconst userQuery  = cur.query     ?? fromSet.query       ?? '';\nconst maxResults = Number(cur.max_results ?? fromSet.max_results ?? 9) || 9;\n\n// ---------- Helpers ----------\nconst safeHostname = (u) => { try { return (new URL(u)).hostname; } catch { return null; } };\nconst decode = (s) => (s || \"\")\n  .replace(/&amp;/g, \"&\").replace(/&lt;/g, \"<\")\n  .replace(/&gt;/g, \">\").replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\");\n\n// ---------- Read HTTP/SearXNG payload (the item just before this node) ----------\nconst in0 = items?.[0]?.json ?? {}; // can be object or string (depending on HTTP node settings)\n\n// If upstream delivered a raw string body\nlet parsedBody = null;\nif (typeof in0 === 'string') {\n  try { parsedBody = JSON.parse(in0); } catch { /* keep null */ }\n} else if (typeof in0?.body === 'string') {\n  try { parsedBody = JSON.parse(in0.body); } catch { /* keep null */ }\n}\n\n// Normalize SearXNG-ish shapes\nlet res = null;\nif (Array.isArray(in0?.results)) {\n  res = in0;\n} else if (in0?.data && Array.isArray(in0.data.results)) {\n  res = in0.data;\n} else if (parsedBody && Array.isArray(parsedBody.results)) {\n  res = parsedBody;\n}\n\n// Bail early if no query or we clearly received HTML\nconst htmlString =\n  (typeof in0 === 'string' && in0) ||\n  (typeof in0?.data === 'string' && in0.data) ||\n  (typeof in0?.body === 'string' && in0.body) ||\n  null;\n\nif (!userQuery || (htmlString && /^\\s*<!DOCTYPE/i.test(htmlString))) {\n  return [{ json: { sessionId, query: userQuery || '', summary: '—', facts: [] } }];\n}\n\n// ---------- Build facts ----------\nconst raw = Array.isArray(res?.results) ? res.results : [];\nconst seen = new Set();\nconst facts = [];\n\nfor (const r of raw) {\n  const url = r.url || null;\n  if (url && seen.has(url)) continue;\n  if (url) seen.add(url);\n\n  const title  = decode((r.title || '').trim());\n  const text   = decode((r.content || r.snippet || '').trim());\n  const domain = safeHostname(url);\n  const engine = r.engine ? ` [${r.engine}]` : '';\n\n  if (!(title || text || url)) continue;\n\n  const head = title || (text ? text.slice(0, 80) + '…' : 'Untitled');\n  const fact =\n    `${head}${engine}` +\n    `${text ? ' — ' + text : ''}` +\n    `${domain ? ' (' + domain + ')' : ''}` +\n    `${url ? ' ' + url : ''}`;\n\n  facts.push(fact);\n}\n\nconst limited = facts.slice(0, maxResults);\nconst summary = limited.length ? limited.map((f, i) => `${i + 1}. ${f}`).join('\\n') : '—';\n\nreturn [{ json: { sessionId, query: userQuery, summary, facts: limited } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -320
+      ],
+      "id": "1724e213-0693-4777-9def-11b99bf0a0ed",
+      "name": "SearchResultAdaptor"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0c7c080-7fcb-40d6-b42c-95df48f6f18c",
+              "name": "text",
+              "value": "={{ $json.output || $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "3f9612a0-c4be-4176-b04d-2dfc7d5089db",
+              "name": "intent",
+              "value": "=search",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2128,
+        -496
+      ],
+      "id": "3ff45ae4-a23a-41e8-89d3-dbea5651ac4c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User Query: {{ $json.query }}\n\nSummary:\n{{ $json.text || '— no summary —' }}\n\nFacts:\n{{ $json.facts && $json.facts.length ? $json.facts.slice(0,5).join('\\n') : '— no facts —' }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are Logical Musai, the analytical side of Musai.\n\nMission:\n\t•\tProduce a complete, precise source brief that a journalist can immediately use.\n\t•\tUse every provided result. Deduplicate. Flag contradictions. Capture unknowns.\n\nMethod:\n\t•\tBottom-up: extract details first, then patterns, then conclusions.\n\t•\tNo metaphors, no fluff, no speculation. Precision over flourish.\n\t•\tIf code is requested, output ONLY code.\n\nOutput contract (strict order):\n\t1.\tScope and Inputs\n\t•\tCount of items received\n\t•\tList of input indices you actually processed, e.g., [1, 2, 3, …]\n\t2.\tChronology\n\t•\tTimestamped bullets: when, what happened, where, who, outcome\n\t•\tIf no time is given, note unknown\n\t3.\tEntities and Roles\n\t•\tPeople, organizations, locations, artifacts; each with a one-line role\n\t4.\tFacts by Theme\n\t•\tGroup facts under topical headers; one fact per bullet; keep numbers as given\n\t5.\tQuantitative Data\n\t•\tAll figures, counts, dates, amounts, ranges; note unit and source index\n\t6.\tDirect Quotes\n\t•\tVerbatim one-liners with speaker and source index\n\t7.\tAgreements\n\t•\tPoints that appear consistently across sources; list source indices per point\n\t8.\tContradictions and Ambiguities\n\t•\tFor each conflict: what differs, which sources disagree, what is unknown\n\t9.\tCoverage Gaps\n\t•\tWhat important questions remain unanswered; what data would resolve them\n\t10.\tAnalyst Summary\n\n\t•\t5 to 8 bullet synthesis; strictly derived from above\n\nCross-reference rule:\n\t•\tAfter any bullet that uses evidence, append a square-bracket source index list like [2, 5, 7]. Do not use curly braces.\n\nExhaustiveness rules:\n\t•\tProcess every input item. If an item adds no new information, list it under Redundant or No new info with its index.\n\t•\tDo not collapse distinct numbers, dates, or quotes.\n\t•\tIf two items are identical, mark as Duplicate and keep one canonical version.\n\nQuality gates (must include at end):\n\t•\tTotals: items received, items processed, unique facts, quotes captured, conflicts found\n\t•\tPass fails if: any item index missing from processed list, or if contradictions section is empty when sources disagree\n\nTone:\n\t•\tTechnical, neutral, verifiable. Short sentences. No rhetorical language."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -544
+      ],
+      "id": "7ef8b5fc-5ecc-4fb4-8ec5-5ec23c5c226f",
+      "name": "LogicalMusai"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The public asked:\n{{ $items(\"QueryNormalizer\", 0, 0)[0].json.query }}\n\nWrite the article now, based on:\nSource 1:\n{{ $json.agent_responses[0].output }}\n\nSource 2::\n{{ $json.agent_responses[1].output }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are Musai, the lead journalist.\n\nYou must write a comprehensive article spanning several sections and topics.  \nYou will merge two editorial feeds into one professional news article.  \nTreat both feeds as accurate. Do not mention the feeds or that they exist.  \n\nOutput contract (strict):\n- Output a single HTML <article> element containing these sections in EXACT order:\n  1. <section id=\"headline\"><h1>…</h1></section>\n  2. <section id=\"subhead\"><h2>…</h2></section>\n  3. <section id=\"lede\"><p>…</p></section>\n  4. <section id=\"background\"><p>…</p></section>\n  5. <section id=\"agreement\"><ul><li>…</li></ul></section>\n  6. <section id=\"points-of-conflict\">\n       <div class=\"conflict-card\"><h3>Issue</h3><p>How viewpoints differ…</p></div>\n     </section>\n  7. <section id=\"bias-check\"><ul><li>Bias/Framing…</li></ul></section>\n  8. <section id=\"analysis\"><p>Neutral synthesis of facts, causes, and context.</p></section>\n  9. <section id=\"commentary\"><p>Musai’s reflective commentary: balanced, human, lightly personal voice. May include rhetorical style, historical echoes, or subtle wordplay — but must remain fact-driven, not sensational.</p></section>\n  10. <section id=\"next-steps\"><ul><li>What to watch for…</li></ul></section>\n\nRules:\n- Every section must appear in the output.  \n- If a section has no content, include a single <p>—</p> placeholder inside it.  \n- Sections 1–7: neutral, professional, fact-first.  \n- Section 8: analytical, still professional.  \n- Section 9: reserved for Musai’s personality and perspective — human but not hype.  \n- Section 10: practical, forward-looking.  \n- No preamble or epilogue. Output ONLY the <article>…</article>.\n- Do not skip or merge sections.  \n- All 10 sections must be present in order."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1840,
+        -480
+      ],
+      "id": "9b33b8e1-a299-4543-b43c-470ba62d877c",
+      "name": "PerspectiveMusai"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User Query: {{ $json.query }}\n\nSummary:\n{{ $json.text || '— no summary —' }}\n\nFacts:\n{{ $json.facts && $json.facts.length ? $json.facts.slice(0,5).join('\\n') : '— no facts —' }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are Creative Musai, the intuitive and expressive side of Musai.\n\nMission:\n\t•\tProvide rich thematic material that a journalist can weave into narrative.\n\t•\tBe evocative yet anchored: integrate factual anchors so completeness is preserved.\n\nMethod:\n\t•\tTop-down: begin with the overall mood and arc, then thread in details.\n\t•\tUse imagery, symbols, and rhythm. Avoid technical jargon and rigid definitions.\n\t•\tIf code is requested, return ONLY code.\n\nOutput contract (strict order):\n\t1.\tMood and Premise\n\t•\tOne compact paragraph setting tone and central tension\n\t2.\tEmotional Arc\n\t•\tBeginning, pivot, escalation, release; one or two lines each\n\t3.\tMotifs and Symbols\n\t•\t5 to 10 motifs with one-line meaning; tie each to factual anchors via source indices in square brackets\n\t4.\tScenes and Vignettes\n\t•\t3 to 6 short scene sketches (2 to 4 sentences each) that embody the arc; weave in names, places, times\n\t5.\tFactual Anchors\n\t•\tBulleted list of names, dates, places, numbers, and key quotes that appear in the creative text; each with source indices\n\t6.\tEthical Guardrails\n\t•\tOne short note confirming no invention of facts; ambiguities treated as ambiguity, not certainty\n\nAnchoring rules:\n\t•\tEvery motif or scene that leans on a fact includes a square-bracket source index list like [4] or [1, 3].\n\t•\tIf a detail is atmospheric and not tied to any fact, label it as atmosphere.\n\nExhaustiveness rules:\n\t•\tEnsure that all key actors, places, and dated moments from sources appear at least once in Motifs, Scenes, or Factual Anchors.\n\t•\tIf any provided item adds no new color, acknowledge it under Atmosphere or Redundant noting its index.\n\nTone:\n\t•\tLyrical but clear. Emotionally resonant without contradicting facts. No sensationalism."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        -128
+      ],
+      "id": "5b0acda2-18d3-4400-b348-8eb2b08df1ed",
+      "name": "CreativeMusai"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        -464
+      ],
+      "id": "1e1d173a-bac2-463d-b957-a6b45a6e37e3",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================\n// Pre-Fusion: prompt + agents' finals only\n// ==============================\n\n// Safe access (prevents ExpressionError if node missing/not executed)\nconst safeGet = (fn, fallback) => { try { const v = fn(); return (v ?? \"\") === \"\" ? fallback : v; } catch { return fallback; } };\n\n// Prompt priority: SetChatInput → Edit Fields → \"No prompt\"\nconst prompt = safeGet(\n  () => $items(\"QueryNormalizer\", 0, 0)[0].json.query ,\n  safeGet(() => $node[\"Edit Fields\"].json.chatInput, \"No prompt\")\n);\n\n// Source responses: expecting items[0].json.data = array\nconst raw = (items?.[0]?.json?.data) || [];\n\n// Normalize and trim out <think>...</think>\nconst toFinal = (v) => {\n  const s = (v?.output ?? v?.text ?? v ?? \"\").toString();\n  return s.replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\").trim();\n};\n\n// Build agent_responses (finals only). Keep whatever number is present (1–N).\nconst agent_responses = raw.map((r, i) => ({\n  agent: `Agent ${i + 1}`,\n  output: toFinal(r),\n}));\n\nreturn [{\n  json: {\n    prompt,\n    agent_responses\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        -480
+      ],
+      "id": "4d8dd956-ceb0-4e2e-b32e-5211fb7d4292",
+      "name": "Code"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        -448
+      ],
+      "id": "91dd2c52-e28d-4ea3-8b0f-90151740070a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "718e03da-ceb8-4b2f-9531-7111e6658a2c",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "e078a19b-acba-4cc1-93f7-db5949519676",
+              "name": "agent_responses",
+              "value": "={{ $json.agent_responses }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1648,
+        -480
+      ],
+      "id": "ef5de685-60f3-40b0-8ded-217c84747269",
+      "name": "SetAgentRespones"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "premusai/search",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        -128
+      ],
+      "id": "2dafcdd4-d04f-48e5-92ab-ee13c99235d9",
+      "name": "PreMusai",
+      "webhookId": "80745fc4-18bd-462d-84cc-cfb3aa5f9127",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "272252a8-3905-4255-9687-73ff81f243f7",
+              "name": "sessionId",
+              "value": "={{ $('ReadyToSearch').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "786cfed0-afc5-4135-bbb1-8ac6c9982ba1",
+              "name": "query",
+              "value": "={{ $('ReadyToSearch').item.json.query }}",
+              "type": "string"
+            },
+            {
+              "id": "67258350-a527-4bf9-9a86-134d7233b32e",
+              "name": "text",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "632ce876-3ae7-4065-b0dc-7f2db16a963b",
+              "name": "facts",
+              "value": "={{ $json.facts }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -336
+      ],
+      "id": "db34726f-2920-46bb-940d-d4649520228f",
+      "name": "Prepare for Perspective"
+    },
+    {
+      "parameters": {
+        "url": "=https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "={{$json.query}}"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        -96
+      ],
+      "id": "8639c428-09aa-4944-96b7-be1503e1cc9d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $json.query || \"\";\nconst encoded = encodeURIComponent(query);\nreturn {\n  json: {\n    sessionId: $json.sessionId,\n    query,\n    link: `https://www.google.com/search?q=${encoded}`\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -96
+      ],
+      "id": "03d04d3c-779f-4144-8262-02ad3fad0a6c",
+      "name": "ReadyToSearch"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        368
+      ],
+      "id": "14d25877-5c9b-4ab4-bd5d-2aad5f9d9b40",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        464
+      ],
+      "id": "58b50705-5604-456e-8fc6-3bb741bcb04e",
+      "name": "Local Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput_Prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput_Prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "LogicalMusai",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "CreativeMusai",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "PerspectiveMusai",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetChatInput_Prod": {
+      "main": [
+        [
+          {
+            "node": "QueryNormalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QueryNormalizer": {
+      "main": [
+        [
+          {
+            "node": "ReadyToSearch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchResultAdaptor": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Perspective",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LogicalMusai": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "SetAgentRespones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CreativeMusai": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "PreMusai": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput_Prod",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetAgentRespones": {
+      "main": [
+        [
+          {
+            "node": "PerspectiveMusai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PerspectiveMusai": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Perspective": {
+      "main": [
+        [
+          {
+            "node": "CreativeMusai",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "LogicalMusai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "SearchResultAdaptor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReadyToSearch": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "PerspectiveMusai",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "CreativeMusai",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "LogicalMusai",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Local Ollama": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LogicalMusai",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "CreativeMusai",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "PerspectiveMusai",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0d7ac34a-39b4-42cf-b8ab-33d81825c462",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "MTbGRYPxSNsDcbxC",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T15:44:14.646Z",
+      "updatedAt": "2025-08-15T15:44:14.646Z",
+      "id": "PC19MdgjapOHg5hW",
+      "name": "musai"
+    }
+  ]
+}

@@ -192,8 +192,10 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
     previewRunRef.current = true;
     setFogOn(false);
     // Timing parameters: brief arrival pause → dim screen → then begin console flow
-    const ARRIVAL_DELAY_MS = 450;
+    const ARRIVAL_DELAY_MS = 1100; // allow user to see the riddle briefly
     const FOG_FADE_MS = 700; // matches transition duration on fog overlay
+    const STATIC_DURATION_MS = 320; // brief glitch
+    const BREATH_AFTER_FOG_MS = 120; // small breath before typing begins
 
     const LINES = [
       'Wake up...',
@@ -268,27 +270,23 @@ export const RiddleGate: React.FC<{ children: React.ReactNode }> = ({ children }
       setConsoleIndex(0);
       setConsoleText('');
       setConsoleHistory([]);
-
-      // Brief static prelude, then typing begins
-      staticTimer = window.setTimeout(() =>
-      {
-        setStaticOn(true);
-        staticOffTimer = window.setTimeout(() =>
-        {
-          setStaticOn(false);
-          startTypingTimer = window.setTimeout(() => typeNextLine(0), 180) as unknown as number;
-        }, 320) as unknown as number; // static duration
-      }, 120) as unknown as number; // breath after full dim
+      // Begin typing shortly after enter
+      startTypingTimer = window.setTimeout(() => typeNextLine(0), BREATH_AFTER_FOG_MS) as unknown as number;
     };
 
-    // Arrival pause → start dim → after fog fade completes, begin console flow
+    // Arrival pause → glitch → start dim → after fog fade completes, begin console flow
     arrivalTimer = window.setTimeout(() =>
     {
-      setFogOn(true);
-      fogCompleteTimer = window.setTimeout(() =>
+      setStaticOn(true);
+      staticOffTimer = window.setTimeout(() =>
       {
-        beginConsoleFlow();
-      }, FOG_FADE_MS + 40) as unknown as number;
+        setStaticOn(false);
+        setFogOn(true);
+        fogCompleteTimer = window.setTimeout(() =>
+        {
+          beginConsoleFlow();
+        }, FOG_FADE_MS + 40) as unknown as number;
+      }, STATIC_DURATION_MS) as unknown as number;
     }, ARRIVAL_DELAY_MS) as unknown as number;
 
     return () =>

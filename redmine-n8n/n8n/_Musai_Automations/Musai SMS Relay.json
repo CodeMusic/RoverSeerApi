@@ -1,0 +1,453 @@
+{
+  "name": "Musai SMS Relay",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        496
+      ],
+      "id": "a1357209-d6fd-4bc7-918b-54bd2c872689",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Force Eastern Time (Toronto)\nconst TZ = 'America/Toronto';\nconst now = new Date();\n\n// Format time (hh:mm AM/PM ET)\nconst time12 = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true,\n}).format(now);\n\n// Format date (MMM dd{suffix} YYYY)\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  month: 'short',\n  day: 'numeric',\n  year: 'numeric',\n}).formatToParts(now);\n\nconst get = (type) => parts.find(p => p.type === type)?.value || '';\nconst month = get('month');\nconst dayNum = Number(get('day'));\nconst year = get('year');\nconst suffix = (d) => (d > 3 && d < 21) ? 'th' : (['th','st','nd','rd'][Math.min(d % 10, 4)] || 'th');\nconst datePretty = `${month} ${dayNum}${suffix(dayNum)} ${year}`;\n\n// Weekday + part of day\nconst dow = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(now);\nconst hourET = Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now));\nconst partOfDay = hourET < 5 ? 'late night' : hourET < 12 ? 'morning' : hourET < 17 ? 'afternoon' : 'evening';\n\n// Map items\nreturn items.map(item => {\n  const src = item.json?.body ?? item.json ?? {};\n  \n  const sessionId = src.sessionId ?? null;\n\n    const action = src.action ?? null;\n\n    const meta = src.meta ?? null;\n\n  \n  const query = src.query ?? '';\n\n  // Append context in a private-style block at the end of the query\n  item.json = {\n    sessionId,\n    query: `\n[ It is the ${partOfDay} of ${dow}, ${datePretty} at ${time12}]\n\n${query}\n\n`, action: `${action}`\n    ,\"meta\" :`${meta}`\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        352
+      ],
+      "id": "33b04478-8c8d-4faa-9ae3-a91d592d06af",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    \"sessionId\": $json.data?.from ?? \"UNKNOWN\",\n    \"query\": `[NEW SMS From: ${$json.data?.fromCity || ''}, ${$json.data?.fromState || ''}, ${$json.data?.fromCountry || ''}] ${($json.data?.body || '').replace(/\\s+/g,' ').trim()}`,\n    \"action\": \"webhookChat\",\n    \"meta\": $json.data?.from\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        608
+      ],
+      "id": "eacd9305-b783-4441-b00e-460cbd955007",
+      "name": "SetChatInput_forSMS"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mock one item that matches your future webhook shape\nreturn [{\n  json: {\n    data: {\n      from: \"+16135551234\",\n      fromCity: \"OTTAWA\",\n      fromState: \"ON\",\n      fromCountry: \"CA\",\n      timestamp: \"2025-08-18T20:06:47.722Z\",\n      body: \"Hey Musai, make me laugh!\"\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        880
+      ],
+      "id": "c802429f-f3b4-4905-9954-990668b88f81",
+      "name": "Code4"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "com.twilio.messaging.inbound-message.received"
+        ]
+      },
+      "type": "n8n-nodes-base.twilioTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        688
+      ],
+      "id": "9bed10ba-ec6e-43c5-956b-cde2f80cf730",
+      "name": "Twilio Trigger",
+      "webhookId": "022870fe-9574-4807-976e-e2355c5124af",
+      "credentials": {
+        "twilioApi": {
+          "id": "AO3AHH3U6xK3VDIc",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"sessionId\": \"cfef46b9-c331-42cb-aee6-cb2506421b57\",\n  \"query\": \"here is a riddle. How far can you walk into a room?\",\n  \"action\": \"\",\n  \"meta\": \"\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        256
+      ],
+      "id": "3fd07ee5-ec59-4727-b0df-b8b6bc24fc34",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The user asked:\n\"{{ ($json.body?.query ?? $json.query ?? '').toString().replace(/\\[[^\\]]*\\]/g,'').replace(/\\s+/g,' ').trim() }}\"\n\nAnswer with one word only: musaisearch or musaichat.",
+        "options": {
+          "systemMessage": "=You are the Musai intent selector. Output one word only: musaisearch or musaichat.\nRule: if the query contains any of: look up, lookup, search, find, news, latest, update, check, verify, compare, today, now, this week, this month, price, score → musaisearch.\nNever explain or add punctuation. If uncertain, choose musaisearch.\nExamples:\nQ: “look up X” → musaisearch\nQ: “tell me a joke” → musaichat\nQ: “how are you?” → musaichat\nQ: “what is the latest on the president” → musaisearch\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        352
+      ],
+      "id": "5e5682f3-5323-4253-890b-854d145f7d0b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        480,
+        688
+      ],
+      "id": "2ce86134-0fe8-4e55-8303-3f38836a5e8b",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        688
+      ],
+      "id": "be2c4807-5478-4906-ac9c-6bc096a3cfe5",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "musaichat",
+                    "rightValue": "={{ $json.output.toString().toLowerCase() }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fabe6d6e-1b76-4613-bac0-a9236d56b623"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "a5b71bd9-87e1-4999-bf49-e134a5f99ed1",
+                    "leftValue": "musaisearch",
+                    "rightValue": "={{ $json.output.toString().toLowerCase() }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        912,
+        352
+      ],
+      "id": "7b48c816-54d8-4741-bffa-ed10a218af5e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/chat/message",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{\n  {\n    \"sessionId\": $node[\"SetChatInput_forSMS\"].json.sessionId,\n    \"query\": $node[\"SetChatInput_forSMS\"].json.query,\n    \"action\": \"webhookChat\",\n    \"meta\": $node[\"SetChatInput_forSMS\"].json.meta,\n    \"perspective\": \"true\"\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        256
+      ],
+      "id": "8ac3bacc-9189-4bf9-a969-72f961310dd3",
+      "name": "MusaiChat",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/premusai/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{\n  {\n    \"sessionId\": $node[\"SetChatInput_forSMS\"].json.sessionId,\n    \"query\": $node[\"SetChatInput_forSMS\"].json.query,\n    \"action\": \"webhookSearch\",\n    \"meta\": $node[\"SetChatInput_forSMS\"].json.meta\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        448
+      ],
+      "id": "45569a91-8160-46a7-98a9-acc082e60e8e",
+      "name": "MusaiSearch",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "12892068724",
+        "to": "={{ $json.meta || $node[\"SetChatInput_forSMS\"].json.meta || $json.data?.from || \"\" }}",
+        "message": "={{\n  (() => {\n    const raw = ($json.output || $json.text || $json.response || '').toString();\n    const clean = raw.replace(/\\s+/g,' ').trim();\n    const MAX = 1600;                 // Twilio API limit\n    return clean.length > MAX ? (clean.slice(0, MAX-1) + '…') : clean;\n  })()\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        336
+      ],
+      "id": "62962c19-5b0f-42eb-a6f6-345537f14845",
+      "name": "Send an SMS/MMS/WhatsApp message",
+      "credentials": {
+        "twilioApi": {
+          "id": "AO3AHH3U6xK3VDIc",
+          "name": "Twilio account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: $json.text (contains the HTML)\n// Output: clean SMS string in msg.text\n\nconst html = $json.text || \"\";\n\n// 1. Remove newlines & excess spaces\nlet clean = html.replace(/\\n+/g, \" \").replace(/\\s+/g, \" \").trim();\n\n// 2. Replace headings and list markers for readability\nclean = clean\n  .replace(/<h1>(.*?)<\\/h1>/gi, \"HEADLINE: $1\\n\")\n  .replace(/<h2>(.*?)<\\/h2>/gi, \"SUBHEAD: $1\\n\")\n  .replace(/<h3>(.*?)<\\/h3>/gi, \"$1:\\n\")\n  .replace(/<li>(.*?)<\\/li>/gi, \"- $1\\n\")\n  .replace(/<\\/p>/gi, \"\\n\");\n\n// 3. Strip all remaining HTML tags\nclean = clean.replace(/<[^>]+>/g, \"\");\n\n// 4. Collapse multiple spaces/newlines\nclean = clean.replace(/\\n\\s*\\n+/g, \"\\n\").trim();\n\n// 5. Optional: limit SMS length (160 chars)\n// const sms = clean.slice(0, 160);\n\nreturn {\n  json: {\n    text: clean,\n    intent: \"search\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        448
+      ],
+      "id": "a40747ad-d2bf-48a8-8b07-9d5e3f29b330",
+      "name": "TransformForSMS"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetChatInput_forSMS": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twilio Trigger": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput_forSMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "MusaiChat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MusaiSearch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MusaiChat": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MusaiSearch": {
+      "main": [
+        [
+          {
+            "node": "TransformForSMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TransformForSMS": {
+      "main": [
+        [
+          {
+            "node": "Send an SMS/MMS/WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c0f602ed-930a-49d3-ad12-1c9c9ea899b5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "2Y08sNpLRa6WG8IG",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T15:44:14.646Z",
+      "updatedAt": "2025-08-15T15:44:14.646Z",
+      "id": "PC19MdgjapOHg5hW",
+      "name": "musai"
+    }
+  ]
+}
