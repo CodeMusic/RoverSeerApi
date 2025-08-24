@@ -99,12 +99,6 @@ def voices():
 
 @app.post("/tts")
 async def tts(payload: dict):
-    import collections.abc as cabc
-    try:
-        import numpy as np  # optional; fine if not present
-    except Exception:
-        np = None
-
     text = (payload.get("text") or "").strip()
     if not text:
         raise HTTPException(400, "Missing text")
@@ -115,90 +109,27 @@ async def tts(payload: dict):
         or "en_US-GlaDOS-medium"
     )
 
-    # 1) get (and cache) the voice
+    # Load/cached Piper voice
     try:
         voice = _get_piper_voice(voice_name)
     except Exception as e:
         raise HTTPException(400, f"Voice load error: {e}")
 
-    # 2) run synth (return type varies by piper-tts version)
+    # Let Piper emit a complete WAV into a BytesIO. No chunk handling.
+    out = io.BytesIO()
     try:
-        pcm = voice.synthesize(text)  # could be ndarray, bytes, generator, tuple, or AudioChunk-like
+        # PiperVoice.synthesize(text, wav_file_like)
+        voice.synthesize(text, out)
     except Exception as e:
         raise HTTPException(502, f"TTS failed during synth: {e}")
 
-    # 3) normalize to bytes; also allow tuple form to override sample rate
-    data = bytearray()
-    sr_holder = [getattr(getattr(voice, "config", None), "sample_rate", None) or 22050]
+    # Basic sanity check (should be > 44 bytes for a valid WAV)
+    if out.tell() <= 44:
+        raise HTTPException(502, "TTS produced an empty WAV (check voice model/config and text)")
 
-    def _append_chunk(ch):
-        # a) Wyoming-like AudioChunk: has .audio (bytes)
-        if hasattr(ch, "audio"):
-            payload = ch.audio
-            if not isinstance(payload, (bytes, bytearray)):
-                raise HTTPException(502, f"TTS AudioChunk payload type unsupported: {type(payload)}")
-            data.extend(payload)
-            return
-
-        # b) Tuple (audio, sample_rate)
-        if isinstance(ch, tuple) and len(ch) == 2 and isinstance(ch[1], int):
-            pcm_part, maybe_sr = ch
-            if 8000 <= maybe_sr <= 48000:
-                sr_holder[0] = maybe_sr
-            ch = pcm_part  # now normalize the audio piece
-
-        # c) numpy array of int16 samples
-        if np is not None and isinstance(ch, np.ndarray):
-            if ch.dtype != np.int16:
-                ch = ch.astype(np.int16, copy=False)
-            data.extend(ch.tobytes())
-            return
-
-        # d) raw bytes/bytearray
-        if isinstance(ch, (bytes, bytearray)):
-            data.extend(ch)
-            return
-
-        # e) anything with .tobytes()
-        if hasattr(ch, "tobytes"):
-            data.extend(ch.tobytes())
-            return
-
-        # f) iterable of ints (last resort)
-        try:
-            for v in ch:
-                data.extend(int(v).to_bytes(2, "little", signed=True))
-            return
-        except Exception as exc:
-            raise HTTPException(502, f"TTS produced unsupported chunk type: {type(ch)} ({exc})")
-
-    # Single object vs generator/iterable
-    if isinstance(pcm, (bytes, bytearray)) or hasattr(pcm, "tobytes") or hasattr(pcm, "audio"):
-        _append_chunk(pcm)
-    elif isinstance(pcm, cabc.Iterable):
-        for part in pcm:
-            _append_chunk(part)
-    else:
-        raise HTTPException(502, f"TTS returned unsupported type: {type(pcm)}")
-
-    if not data:
-        raise HTTPException(502, "TTS produced 0 audio bytes (check voice model/config and text)")
-
-    # 4) wrap as WAV
-    sr = sr_holder[0]
-    out = io.BytesIO()
-    with wave.open(out, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)  # 16-bit PCM
-        wf.setframerate(sr)
-        wf.writeframes(data)
     out.seek(0)
-
-    return StreamingResponse(
-        out,
-        media_type="audio/wav",
-        headers={"Cache-Control": "no-store"},
-    )
+    return StreamingResponse(out, media_type="audio/wav",
+                             headers={"Cache-Control": "no-store"})
 
 @app.post("/stt")
 async def stt(file: UploadFile = File(...)):
@@ -234,6 +165,8 @@ async def chat_completions(body: Dict):
         ],
         "model": OLLAMA_MODEL,
     }
+
+
 
 
 
