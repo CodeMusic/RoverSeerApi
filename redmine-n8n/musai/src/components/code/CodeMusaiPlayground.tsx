@@ -548,30 +548,24 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
 
                       if (isEmpty || isDefault)
                       {
-                        // Clear any previous results when switching languages
-                        setOutput('');
-                        try { if (iframeRef.current) { iframeRef.current.innerHTML = ''; } } catch {}
                         setLanguage(nextLang);
                         const nextCode = getLanguageSample(nextLang);
                         setCode(nextCode);
-                        saveCurrentSession({ language: nextLang, code: nextCode, output: '' });
+                        saveCurrentSession({ language: nextLang, code: nextCode });
                         return;
                       }
 
                       const replace = window.confirm(`Keep current code while switching to ${nextLang}?\nOK = keep current code, Cancel = replace with sample`);
-                      // Clear any previous results when switching languages
-                      setOutput('');
-                      try { if (iframeRef.current) { iframeRef.current.innerHTML = ''; } } catch {}
                       setLanguage(nextLang);
                       if (!replace)
                       {
                         const nextCode = getLanguageSample(nextLang);
                         setCode(nextCode);
-                        saveCurrentSession({ language: nextLang, code: nextCode, output: '' });
+                        saveCurrentSession({ language: nextLang, code: nextCode });
                       }
                       else
                       {
-                        saveCurrentSession({ language: nextLang, output: '' });
+                        saveCurrentSession({ language: nextLang });
                       }
                     }}
                     code={code}
@@ -594,9 +588,19 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                   />
                 </CardHeader>
                 <CardContent className="flex-1 overflow-hidden min-h-0 p-4 pb-8 relative">
-                  {!isOutputPopped ? (
-                    <div className="h-full min-h-[360px] rounded-md border grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] p-3 gap-3">
-                      <div className="min-h-0 min-w-0 musai-monaco relative p-3 bg-[#1e1e1e] rounded-md" ref={editorContainerRef}>
+                  <ResizablePanelGroup 
+                    direction="vertical" 
+                    className="h-full min-h-[360px] rounded-md border"
+                    onLayout={handleResize}
+                    id="playground-panels"
+                  >
+                    <ResizablePanel 
+                      defaultSize={canRunInBrowser && !isOutputPopped ? 60 : 100}
+                      minSize={20}
+                      id="editor-panel"
+                      order={1}
+                    >
+                      <div className="h-full min-h-[300px] min-w-0 musai-monaco relative" ref={editorContainerRef}>
                         <Editor
                           key={`${currentSessionId || 'play'}-${language}`}
                           height="100%"
@@ -624,46 +628,30 @@ const CodeMusaiPlayground: React.FC<CodeMusaiPlaygroundProps> = ({
                           }}
                         />
                       </div>
-                      <div className="min-h-0 min-w-0 border-t p-3 bg-black rounded-md">
-                        <PlaygroundOutput
-                          output={output}
-                          language={language}
-                          code={code}
-                          iframeRef={iframeRef}
-                          outputRef={outputRef}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-full min-h-0 min-w-0 musai-monaco relative p-3 bg-[#1e1e1e] rounded-md" ref={editorContainerRef}>
-                      <Editor
-                        key={`${currentSessionId || 'play'}-${language}`}
-                        height="100%"
-                        language={language}
-                        value={code}
-                        onChange={(value) => setCode(value || '')}
-                        theme="vs-dark"
-                        loading={<div className="w-full h-full" />}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 14,
-                          lineNumbers: 'on',
-                          roundedSelection: false,
-                          scrollBeyondLastLine: false,
-                          automaticLayout: true,
-                          padding: { top: 16, bottom: 16 },
-                          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                        }}
-                        beforeMount={(monaco) => {
-                          try { monaco.editor.setTheme('vs-dark'); } catch {}
-                        }}
-                        onMount={(editor, monaco) => {
-                          editorRef.current = editor;
-                          try { editor.layout(); } catch {}
-                        }}
-                      />
-                    </div>
-                  )}
+                    </ResizablePanel>
+                    {canRunInBrowser && !isOutputPopped && (
+                      <>
+                        <ResizableHandle withHandle />
+                        <ResizablePanel 
+                          defaultSize={40}
+                          minSize={20}
+                          id="output-panel"
+                          order={2}
+                        >
+                          <div className="h-full min-h-0">
+                            <PlaygroundOutput
+                              output={output}
+                              language={language}
+                              code={code}
+                              iframeRef={iframeRef}
+                              outputRef={outputRef}
+                            />
+                          </div>
+                          {/* Using global RouteAwareToaster; no scoped toaster here */}
+                        </ResizablePanel>
+                      </>
+                    )}
+                  </ResizablePanelGroup>
                 </CardContent>
               </Card>
             </div>
