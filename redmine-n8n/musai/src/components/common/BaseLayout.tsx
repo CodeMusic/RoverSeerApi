@@ -242,7 +242,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           isMobile ? "pb-16 pb-safe" : undefined
         )}>
           {(!isMobile && currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed) ? (
-            <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0 h-full" id="base-left-resizable">
+            <ResizablePanelGroup direction="horizontal" className="flex-1 min-w-0" id="base-left-resizable">
               <ResizablePanel defaultSize={25} minSize={18} maxSize={40} id="base-left-sidebar">
                 <div className="h-full border-r border-border bg-background">
                   {leftOverride ?? (
@@ -286,9 +286,9 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               </ResizablePanel>
               <ResizableHandle withHandle />
               <ResizablePanel id="base-left-main" defaultSize={75} minSize={40}>
-                <div className="flex w-full min-w-0 h-full">
+                <div className="flex w-full min-w-0">
                   {/* Main Content Area */}
-                  <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full">
+                  <div className="flex-1 flex flex-col min-w-0 min-h-0">
                     {renderMainContent()}
                   </div>
                   {/* Right Sidebar (desktop only) */}
@@ -412,7 +412,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
               )}
 
               {/* Main Content Area */}
-              <div className="flex-1 flex flex-col min-w-0 min-h-0 h-full">
+              <div className="flex-1 flex flex-col min-w-0 min-h-0">
                 {renderMainContent()}
               </div>
 

@@ -74,21 +74,12 @@ export const CodeBlock = ({ language, children }: CodeBlockProps) => {
   };
 
   const handlePlayCode = (event: React.MouseEvent) => {
-    // Fast path: open in full playground and auto-run for SPA feel
-    localStorage.setItem('playground-code', codeText);
-    const normalizedLang = language.toLowerCase();
-    const monacoLang = languageMap[normalizedLang] || normalizedLang;
-    if (monacoLang) {
-      localStorage.setItem('playground-language', monacoLang);
-    }
-    localStorage.setItem('playground-merge-strategy', 'comment-and-prepend');
-    localStorage.setItem('playground-auto-run', '1');
-    navigate('/code-musai');
-    toast({
-      description: "Opening in CodeMusai and running…",
-      duration: 1600,
-      variant: "info",
+    const rect = event.currentTarget.getBoundingClientRect();
+    setCompilerPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top
     });
+    setCompilerVisible(true);
   };
 
   const handleCopyToPlayground = () => {
@@ -100,8 +91,6 @@ export const CodeBlock = ({ language, children }: CodeBlockProps) => {
     if (monacoLang) {
       localStorage.setItem('playground-language', monacoLang);
     }
-    localStorage.setItem('playground-merge-strategy', 'comment-and-prepend');
-    localStorage.setItem('playground-auto-run', '1');
     
     navigate('/code-musai');
     toast({

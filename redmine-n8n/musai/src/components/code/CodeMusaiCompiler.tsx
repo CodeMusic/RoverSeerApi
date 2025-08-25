@@ -3,10 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, Play, Maximize2, MessageSquare, Code, Sparkles } from 'lucide-react';
-import { executeJavaScript, executeHTML, executeCSS, executeMarkdown, executeJSON } from '@/utils/codeExecutor';
-import { executeSQL } from '@/utils/sqlExecutor';
-import { executePython } from '@/utils/pythonExecutor';
-import { executeRuby } from '@/utils/rubyExecutor';
+import { executeJavaScript, executeHTML } from '@/utils/codeExecutor';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +68,7 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
 
   const normalizedLang = language.toLowerCase();
   const monacoLang = languageMap[normalizedLang] || normalizedLang;
-  const canRunInBrowser = ['javascript', 'typescript', 'html', 'css', 'markdown', 'json', 'sql', 'python', 'ruby'].includes(monacoLang);
+  const canRunInBrowser = ['javascript', 'html'].includes(monacoLang);
 
   useEffect(() => {
     if (isVisible) {
@@ -116,48 +113,7 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
           iframeRef.current.appendChild(iframe);
           setOutput('HTML rendered successfully');
         }
-      } else if (monacoLang === 'css') {
-        if (iframeRef.current) {
-          const iframe = executeCSS(code);
-          iframeRef.current.innerHTML = '';
-          iframeRef.current.appendChild(iframe);
-          setOutput('CSS applied in preview');
-        }
-      } else if (monacoLang === 'markdown') {
-        if (iframeRef.current) {
-          const iframe = await executeMarkdown(code);
-          iframeRef.current.innerHTML = '';
-          iframeRef.current.appendChild(iframe);
-          setOutput('Markdown rendered successfully');
-        }
-      } else if (monacoLang === 'json') {
-        const { result, error } = executeJSON(code);
-        setOutput(result || (error ? `Error: ${error}` : ''));
-      } else if (monacoLang === 'sql') {
-        const res = await executeSQL({ query: code });
-        if (res.error) {
-          setOutput(`Error: ${res.error}`);
-        } else {
-          const header = (res.columns || []).join('\t');
-          const lines = (res.rows || []).map(r => r.map(v => v === null ? 'NULL' : String(v)).join('\t'));
-          setOutput([header, ...lines].join('\n'));
-        }
-      } else if (monacoLang === 'python') {
-        const res = await executePython({ code });
-        if (res.error) {
-          setOutput([res.stdout, res.stderr, `Error: ${res.error}`].filter(Boolean).join('\n'));
-        } else {
-          setOutput([res.stdout, res.stderr].filter(Boolean).join('\n'));
-        }
-      } else if (monacoLang === 'ruby') {
-        const res = await executeRuby({ code });
-        if (res.error) {
-          setOutput([res.stdout, `Error: ${res.error}`].filter(Boolean).join('\n'));
-        } else {
-          setOutput(res.stdout || '');
-        }
       } else {
-        // Treat TypeScript as JavaScript (types stripped in executor)
         const { result, error, logs = [] } = await executeJavaScript(code);
         const outputText = [
           ...(logs.length > 0 ? logs : []),
@@ -192,10 +148,8 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
   };
 
   const handleOpenPlayground = () => {
-    // Store intent to merge code when opening the full playground
     localStorage.setItem('playground-code', code);
     localStorage.setItem('playground-language', monacoLang);
-    localStorage.setItem('playground-merge-strategy', 'comment-and-prepend');
     onOpenPlayground();
   };
 
@@ -228,7 +182,6 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
                 {monacoLang.toUpperCase()}
               </Badge>
               <Button
-                type="button"
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
@@ -249,7 +202,6 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
               </span>
               <div className="flex items-center gap-1">
                 <Button
-                  type="button"
                   variant="outline"
                   size="sm"
                   className="h-6 text-xs"
@@ -268,7 +220,6 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
           {/* Run Button */}
           <div className="flex items-center gap-2">
             <Button
-              type="button"
               onClick={handleRun}
               disabled={!canRunInBrowser || isRunning}
               className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
@@ -316,7 +267,6 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
             <Button
-              type="button"
               variant="outline"
               size="sm"
               className="flex-1 text-xs"
@@ -326,7 +276,6 @@ const CodeMusaiCompiler: React.FC<CodeMusaiCompilerProps> = ({
               Chat with AI
             </Button>
             <Button
-              type="button"
               variant="outline"
               size="sm"
               className="flex-1 text-xs"
