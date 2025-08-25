@@ -64,28 +64,6 @@ export function MusaiAlertsProvider({ children }: { children: React.ReactNode })
         localStorage.setItem('musai-alerts-seeded-beta-0814', '1');
       }
     } catch {}
-
-    // Seed a one-time CodeMusai languages expansion announcement
-    try {
-      const hasSeededCode = localStorage.getItem('musai-alerts-seeded-code-langs-2024-08-js-ts');
-      if (!hasSeededCode) {
-        const codeAlert: MusaiAlert = {
-          id: `seed-code-${Date.now()}`,
-          type: 'code',
-          title: "CodeMusai now runs Python, SQL, Ruby, JSON, Markdown, and CSS (in addition to JavaScript and TypeScript)",
-          description: "New in-browser, sandboxed runtimes are available. First run may download the runtime, then it's cached.",
-          timestamp: new Date(),
-          isRead: false,
-          priority: 'medium',
-          actionUrl: '/code-musai',
-          actionLabel: 'Open Playground',
-          data: { languages: ['python','sql','ruby','json','markdown','css','javascript','typescript'] },
-          source: 'system'
-        } as MusaiAlert;
-        setAlerts(prev => [codeAlert, ...prev]);
-        localStorage.setItem('musai-alerts-seeded-code-langs-2024-08-js-ts', '1');
-      }
-    } catch {}
   }, []);
 
   // Save alerts to localStorage whenever they change

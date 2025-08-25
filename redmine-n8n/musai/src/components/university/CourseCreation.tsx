@@ -14,7 +14,6 @@ interface CourseCreationProps
 {
   initialTopic?: string;
   onComplete?: () => void;
-  onCancel?: () => void;
 }
 
 interface GeneratedCourseData 
@@ -32,7 +31,7 @@ interface GeneratedCourseData
   tags: string[];
 }
 
-const CourseCreation = ({ initialTopic, onComplete, onCancel }: CourseCreationProps) => 
+const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) => 
 {
   const [topic, setTopic] = useState(initialTopic || '');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -438,13 +437,7 @@ const CourseCreation = ({ initialTopic, onComplete, onCancel }: CourseCreationPr
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                if (onCancel) {
-                  onCancel();
-                } else {
-                  navigate(-1);
-                }
-              }}
+              onClick={() => navigate('/university')}
             >
               Cancel
             </Button>

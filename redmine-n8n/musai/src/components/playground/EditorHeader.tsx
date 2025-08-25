@@ -13,9 +13,6 @@ interface EditorHeaderProps {
   onRun: (ev?: React.MouseEvent) => void;
   onPopOutput: () => void;
   isOutputPopped: boolean;
-  onSetCode?: (next: string) => void;
-  onCommentSelection?: () => void;
-  onUncommentSelection?: () => void;
 }
 
 export const EditorHeader: React.FC<EditorHeaderProps> = ({
@@ -24,10 +21,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   code,
   onRun,
   onPopOutput,
-  isOutputPopped,
-  onSetCode,
-  onCommentSelection,
-  onUncommentSelection
+  isOutputPopped
 }) => {
   const { toast } = useToast();
   const currentLanguage = SUPPORTED_LANGUAGES.find(lang => lang.value === language);
@@ -79,51 +73,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
     }
   };
 
-  const commentSyntax = (lang: string): { line?: string; block?: { start: string; end: string } } => {
-    const l = (lang || '').toLowerCase();
-    if (['javascript','typescript','java','c','cpp','csharp','go','rust','php','sql','css'].includes(l)) return { line: '//', block: { start: '/*', end: '*/' } };
-    if (l === 'html') return { block: { start: '<!--', end: '-->' } };
-    if (['python','shell','bash','sh','ruby'].includes(l)) return { line: '#' };
-    if (l === 'markdown') return { line: '<!--', block: { start: '<!--', end: '-->' } };
-    return { line: '//' };
-  };
-
-  const handleComment = () => {
-    if (onCommentSelection)
-    {
-      onCommentSelection();
-      return;
-    }
-    if (!onSetCode) return;
-    const { line, block } = commentSyntax(language);
-    const lines = code.split('\n');
-    if (line) {
-      onSetCode(lines.map(l => `${line} ${l}`).join('\n'));
-    } else if (block) {
-      onSetCode(`${block.start}\n${code}\n${block.end}`);
-    }
-  };
-
-  const handleUncomment = () => {
-    if (onUncommentSelection)
-    {
-      onUncommentSelection();
-      return;
-    }
-    if (!onSetCode) return;
-    const { line, block } = commentSyntax(language);
-    let next = code;
-    if (line) {
-      next = next.split('\n').map(l => l.replace(new RegExp(`^\\s*${line.replace(/[/*]/g, r => `\\${r}`)}\\s?`), '')).join('\n');
-    }
-    if (block) {
-      const start = block.start.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const end = block.end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      next = next.replace(new RegExp(`^\\s*${start}\n?`), '').replace(new RegExp(`\n?${end}\\s*$`), '');
-    }
-    onSetCode(next);
-  };
-
   return (
     <CardTitle className="flex justify-between items-center">
       <div className="flex items-center gap-4">
@@ -135,34 +84,15 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           <SelectContent>
             {SUPPORTED_LANGUAGES.map((lang) => (
               <SelectItem key={lang.value} value={lang.value}>
-                {lang.label}{!lang.canRunInBrowser ? ' *' : ''}
+                {lang.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleComment}
-          className="hover:bg-accent"
-        >
-          Comment
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleUncomment}
-          className="hover:bg-accent"
-        >
-          Uncomment
-        </Button>
         {canRunInBrowser && (
           <Button
-            type="button"
             variant="outline"
             size="sm"
             onClick={(ev) => onRun?.(ev)}
@@ -174,7 +104,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
         )}
         {canRunInBrowser && (
           <Button
-            type="button"
             variant="outline"
             size="sm"
             onClick={onPopOutput}
@@ -185,7 +114,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           </Button>
         )}
         <Button
-          type="button"
           variant="outline"
           size="sm"
           onClick={handleSaveToFile}
@@ -195,7 +123,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           Save
         </Button>
         <Button
-          type="button"
           variant="outline"
           size="sm"
           onClick={handleCopy}

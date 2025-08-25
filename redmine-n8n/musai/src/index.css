@@ -305,13 +305,6 @@ textarea, input, button {
 .agent-article #subhead {
   margin-bottom: 1.25rem; /* extra space before lede for readability */
 }
-.agent-article #headline,
-.agent-article #subhead {
-  max-width: 68ch;
-  margin-left: 0;
-  margin-right: 0;
-  padding-left: 0.25rem;
-}
 .agent-article #lede {
   font-weight: 500;
   margin-top: 0.25rem;
@@ -402,8 +395,6 @@ textarea, input, button {
   /* Expand article spacing for print */
   .agent-article { page-break-inside: avoid; }
   .agent-article section { break-inside: avoid; page-break-inside: avoid; }
-  /* Keep print header within article column width */
-  .musai-print-container h1 { max-width: 68ch; }
 }
 
 /* Play button pulse effect */
@@ -1249,38 +1240,4 @@ textarea, input, button {
     -webkit-backdrop-filter: blur(0px) !important;
     backdrop-filter: blur(0px) !important;
   }
-}
-
-/* Toaster offset to avoid overlapping the right chat pane in CodeMusaiPlayground */
-:root {
-  --musai-toaster-right-offset: 0px;
-}
-
-/* Sonner root container typically uses these attributes; ensure we override right position */
-[data-sonner-toaster].toaster[data-y="bottom"][data-x="right"],
-[data-sonner-toaster].toaster[data-position*="right"],
-.toaster[data-y="bottom"][data-x="right"],
-.toaster[data-position*="right"] {
-  right: calc(var(--musai-toaster-right-offset, 0px) + 16px) !important;
-}
-
-/* Safe-area inset utilities for notches and home indicators */
-.pt-safe, .py-safe {
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
-}
-
-.pb-safe, .py-safe {
-  padding-bottom: constant(safe-area-inset-bottom);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.pl-safe, .px-safe {
-  padding-left: constant(safe-area-inset-left);
-  padding-left: env(safe-area-inset-left);
-}
-
-.pr-safe, .px-safe {
-  padding-right: constant(safe-area-inset-right);
-  padding-right: env(safe-area-inset-right);
 }

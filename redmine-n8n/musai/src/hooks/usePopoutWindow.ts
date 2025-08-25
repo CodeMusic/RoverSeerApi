@@ -27,12 +27,8 @@ export const usePopoutWindow = (
   }, [output, language, code]);
 
   const handlePopOutput = () => {
-    if (isOutputPopped)
-    {
-      if (popoutWindowRef.current && !popoutWindowRef.current.closed)
-      {
-        popoutWindowRef.current.close();
-      }
+    if (isOutputPopped && popoutWindowRef.current && !popoutWindowRef.current.closed) {
+      popoutWindowRef.current.close();
       setIsOutputPopped(false);
       return;
     }

@@ -160,9 +160,6 @@ export const UniversityContent = () => {
             setCurrentView('dashboard');
             loadData(); // Refresh the data
           }}
-          onCancel={() => {
-            setCurrentView('dashboard');
-          }}
         />
       </div>
     );

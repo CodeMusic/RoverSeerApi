@@ -16,8 +16,7 @@ export const PlaygroundOutput: React.FC<PlaygroundOutputProps> = ({
   iframeRef,
   outputRef
 }) => {
-  const isIframePreview = language === 'html' || language === 'css' || language === 'markdown';
-  return isIframePreview ? (
+  return language === 'html' ? (
     <div ref={iframeRef} className="w-full h-full bg-white" />
   ) : (
     <div ref={outputRef} className="w-full h-full p-4 font-mono text-sm overflow-auto bg-black text-white">

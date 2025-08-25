@@ -112,18 +112,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const { disableEffects } = useMusaiMood();
   const [queueMetrics, setQueueMetrics] = useState<QueueMetrics | null>(null);
 
-  // Utility: gently nudge the viewport to the conversational tail
-  const scrollToBottom = () =>
-  {
-    const container = scrollContainerRef.current;
-    if (container)
-    {
-      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-      return;
-    }
-    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  };
-
   useEffect(() =>
   {
     const onMetrics = (ev: Event) =>
@@ -160,6 +148,14 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   // Auto-scroll to bottom when messages update or typing indicator appears
   useEffect(() => {
+    const scrollToBottom = () => {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      } else {
+        endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    };
     // use rAF and short timeout to ensure layout is committed
     const raf = requestAnimationFrame(() => {
       const id = window.setTimeout(scrollToBottom, 0);
@@ -167,49 +163,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     });
     return () => cancelAnimationFrame(raf);
   }, [messageList.length, isTyping]);
-
-  // On mount: make several deferred attempts to reach the tail so we beat
-  // late layout from resizable panels and container paints
-  useEffect(() =>
-  {
-    const timeouts: number[] = [];
-    const schedule = (delay: number) =>
-    {
-      const id = window.setTimeout(scrollToBottom, delay);
-      timeouts.push(id);
-    };
-    // Immediate and staggered retries
-    schedule(0);
-    schedule(50);
-    schedule(150);
-    schedule(300);
-    return () => timeouts.forEach((id) => window.clearTimeout(id));
-  }, []);
-
-  // Observe container resizes; if user is near the tail, keep anchoring to it
-  useEffect(() =>
-  {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const isNearTail = () =>
-    {
-      const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
-      return distanceFromBottom < 120; // gentle threshold
-    };
-
-    const observer = new ResizeObserver(() =>
-    {
-      if (isNearTail())
-      {
-        // Defer slightly so new height is committed
-        requestAnimationFrame(() => scrollToBottom());
-      }
-    });
-
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
 
   const handleMessageContext = (messageId: string, event: React.MouseEvent) => {
     event.preventDefault();
@@ -232,59 +185,57 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   };
 
   return (
-    <div className={`chat-pane h-full max-h-[100dvh] flex flex-col min-h-0 min-w-0 overflow-hidden ${theme.container} ${className}`}>
+    <div className={`chat-pane h-full flex flex-col min-h-0 ${theme.container} ${className}`}>
       {/* Messages Area */}
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 pb-2 flex flex-col">
-        <div className="min-h-full flex flex-col justify-end space-y-4">
-          {messageList.map((message, index) => {
-            const isLast = index === messageList.length - 1;
-            const showTypingInThisBubble = Boolean(
-              isTyping &&
-              isLast &&
-              message.role === 'assistant' &&
-              (!message.content || message.content.trim().length === 0)
-            );
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-2">
+        {messageList.map((message, index) => {
+          const isLast = index === messageList.length - 1;
+          const showTypingInThisBubble = Boolean(
+            isTyping &&
+            isLast &&
+            message.role === 'assistant' &&
+            (!message.content || message.content.trim().length === 0)
+          );
+          return (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              roleConfig={roleConfig}
+              module={module}
+              onContextMenu={(event) => handleMessageContext(message.id, event)}
+              theme={theme}
+              isTyping={showTypingInThisBubble}
+            />
+          );
+        })}
+
+        {/* Fallback: if typing but no assistant placeholder yet, render a single mystical bubble */}
+        {isTyping && (
+          (() => {
+            const last = messageList[messageList.length - 1];
+            // Show standalone indicator only if there is no assistant placeholder yet
+            // i.e., when there are no messages or the last message is from the user
+            const shouldShowStandalone = !last || last.role === 'user';
+            if (!shouldShowStandalone) return null;
             return (
               <MessageBubble
-                key={message.id}
-                message={message}
+                key="typing-standalone"
+                message={{ id: 'typing-standalone', content: '', role: 'assistant', timestamp: Date.now() }}
                 roleConfig={roleConfig}
                 module={module}
-                onContextMenu={(event) => handleMessageContext(message.id, event)}
+                isTyping={true}
                 theme={theme}
-                isTyping={showTypingInThisBubble}
               />
             );
-          })}
-
-          {/* Fallback: if typing but no assistant placeholder yet, render a single mystical bubble */}
-          {isTyping && (
-            (() => {
-              const last = messageList[messageList.length - 1];
-              // Show standalone indicator only if there is no assistant placeholder yet
-              // i.e., when there are no messages or the last message is from the user
-              const shouldShowStandalone = !last || last.role === 'user';
-              if (!shouldShowStandalone) return null;
-              return (
-                <MessageBubble
-                  key="typing-standalone"
-                  message={{ id: 'typing-standalone', content: '', role: 'assistant', timestamp: Date.now() }}
-                  roleConfig={roleConfig}
-                  module={module}
-                  isTyping={true}
-                  theme={theme}
-                />
-              );
-            })()
-          )}
-          {/* Scroll Sentinel: zero-height anchor at the tail */}
-          <div ref={endOfMessagesRef} />
-        </div>
+          })()
+        )}
+        {/* Scroll Sentinel */}
+        <div ref={endOfMessagesRef} />
       </div>
 
       {/* Input Area */}
       {!readOnly && (
-        <div className={`sticky bottom-0 z-10 border-t ${theme.border} bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-safe mt-auto shrink-0`}>
+        <div className={`border-t ${theme.border} bg-background/50`}>
           <ChatInput
             module={module}
             onMessageSend={onMessageSend}
