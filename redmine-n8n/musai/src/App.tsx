@@ -59,6 +59,7 @@ import CourseCreationPage from "@/pages/CourseCreationPage";
 import CourseLectureView from "@/pages/CourseLectureView";
 import CourseExamView from "@/pages/CourseExamView";
 import CourseSyllabus from "@/components/university/CourseSyllabus";
+import CourseLecturePreview from "@/pages/CourseLecturePreview";
 import { Curations } from "@/pages/Curations";
 import { CurationsLocked } from "@/pages/CurationsLocked";
 import MusaiCurationsInfo from "@/pages/info/MusaiCurationsInfo";
@@ -120,6 +121,7 @@ function App() {
                         <Route path={ROUTES.UNIVERSITY} element={<RiddleGate><University /></RiddleGate>} />
                         <Route path={ROUTES.UNIVERSITY_INFO} element={<UniversityInfo />} />
                         <Route path={ROUTES.UNIVERSITY_LECTURE_NEW} element={<RiddleGate><LectureWizard /></RiddleGate>} />
+                        <Route path={ROUTES.UNIVERSITY_LECTURE_PREVIEW} element={<RiddleGate><CourseLecturePreview /></RiddleGate>} />
                         <Route path={ROUTES.UNIVERSITY_LECTURE_VIEW} element={<RiddleGate><LectureView /></RiddleGate>} />
                         <Route path={ROUTES.UNIVERSITY_COURSE_NEW} element={<RiddleGate><CourseCreationPage /></RiddleGate>} />
                         <Route path={ROUTES.UNIVERSITY_COURSE_VIEW} element={<RiddleGate><CourseSyllabus /></RiddleGate>} />

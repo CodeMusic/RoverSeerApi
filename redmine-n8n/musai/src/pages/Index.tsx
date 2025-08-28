@@ -60,6 +60,13 @@ const Index = () => {
   // Animate leave/enter when tab changes and sync URL ?mode=...
   const handleTabChange = (nextTab: string) => {
     if (nextTab === currentTab) return setPortalPhase('none');
+    // When navigating away from Eye, clear transient Eye prompts/payloads
+    // to avoid auto-running Perceive/Reflect when returning later.
+    if (currentTab === APP_TERMS.TAB_EYE && nextTab !== APP_TERMS.TAB_EYE)
+    {
+      setEyePerceivePrompt(null);
+      setEyeReflectPayload(null);
+    }
     // Map tab id → mode query param for deep-linking and content loaders
     const tabToMode: Record<string, string> = {
       [APP_TERMS.TAB_CHAT]: 'chat',

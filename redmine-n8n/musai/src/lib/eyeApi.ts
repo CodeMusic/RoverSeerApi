@@ -88,10 +88,55 @@ class EyeApiService {
 
     const contentType = (res.headers.get('Content-Type') || '').toLowerCase();
 
-    // If server returned binary directly, pass it through
+    // If server returned binary directly, normalize blob type so browsers infer the right extension
     if (contentType.startsWith('image/') || contentType.includes('octet-stream'))
     {
-      return await res.blob();
+      const raw = await res.blob();
+
+      // If the server already marked it as an image/*, return as-is
+      if (raw.type && raw.type.startsWith('image/'))
+      {
+        return raw;
+      }
+
+      // Some servers respond as octet-stream; detect magic bytes to set correct type
+      try
+      {
+        const header = await raw.slice(0, 16).arrayBuffer();
+        const bytes = new Uint8Array(header);
+
+        const isPng = bytes.length >= 8 &&
+          bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47 &&
+          bytes[4] === 0x0D && bytes[5] === 0x0A && bytes[6] === 0x1A && bytes[7] === 0x0A;
+
+        const isJpeg = bytes.length >= 3 && bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF;
+
+        const isGif = bytes.length >= 6 &&
+          bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 &&
+          (bytes[4] === 0x39 || bytes[4] === 0x37) && bytes[5] === 0x61; // GIF89a or GIF87a
+
+        const isWebp = bytes.length >= 12 &&
+          bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && // RIFF
+          bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;  // WEBP
+
+        let detected: string | null = null;
+        if (isPng) detected = 'image/png';
+        else if (isJpeg) detected = 'image/jpeg';
+        else if (isGif) detected = 'image/gif';
+        else if (isWebp) detected = 'image/webp';
+
+        if (detected)
+        {
+          return new Blob([raw], { type: detected });
+        }
+      }
+      catch
+      {
+        // Ignore detection errors and fall through
+      }
+
+      // Fallback: return original blob (may save without extension via context menu)
+      return raw;
     }
 
     // Resilience: if server returned JSON with base64 payload, convert to Blob

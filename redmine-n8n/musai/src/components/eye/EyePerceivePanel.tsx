@@ -14,6 +14,7 @@ export const EyePerceivePanel: React.FC<EyePerceivePanelProps> = ({ prompt, onCa
 {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const hasAutoRun = useRef(false);
 
@@ -32,6 +33,7 @@ export const EyePerceivePanel: React.FC<EyePerceivePanelProps> = ({ prompt, onCa
       const blob = await eyeApi.generateImage(text);
       const url = URL.createObjectURL(blob);
       setImageUrl(url);
+      setImageMime(blob.type || null);
     }
     catch (e: any)
     {
@@ -92,7 +94,13 @@ export const EyePerceivePanel: React.FC<EyePerceivePanelProps> = ({ prompt, onCa
                   <div className="text-xs sm:text-sm text-muted-foreground mb-2">Result</div>
                   <img src={imageUrl} alt="Generated" className="max-h-[70vh] rounded-md object-contain mx-auto w-full" />
                   <div className="mt-3 text-center">
-                    <a href={imageUrl} download={"eyeofmusai.png"} className="text-sm underline">Download</a>
+                    {(() => {
+                      const ext = imageMime?.split('/')?.[1] || 'png';
+                      const filename = `eyeofmusai.${ext}`;
+                      return (
+                        <a href={imageUrl} download={filename} className="text-sm underline">Download</a>
+                      );
+                    })()}
                   </div>
                 </div>
               ) : (

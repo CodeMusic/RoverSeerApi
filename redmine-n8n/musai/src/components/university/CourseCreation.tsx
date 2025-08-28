@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Sparkles, Edit, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import LecturePreviewModal from '@/components/university/LecturePreviewModal';
 import { universityApi } from '@/lib/universityApi';
 import type { Course, CourseCreationRequest } from '@/types/university';
 import { Textarea } from '@/components/ui/textarea';
@@ -39,6 +40,10 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState<GeneratedCourseData | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewTitle, setPreviewTitle] = useState<string>('');
+  const [previewSummary, setPreviewSummary] = useState<string>('');
+  const [previewCache, setPreviewCache] = useState<Record<string, { content: string; isHtml: boolean; title: string }>>({});
   const navigate = useNavigate();
 
   // Auto-generate when an initial topic is provided and nothing has been generated yet
@@ -331,7 +336,16 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                 </h4>
                 <div className="space-y-3">
                   {(isEditing ? (editedData?.syllabus || []) : generatedData.syllabus).map((lecture, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div 
+                      key={index} 
+                      className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-purple-50/40 dark:hover:bg-gray-800 cursor-pointer group"
+                      onClick={() => {
+                        if (isEditing) return;
+                        setPreviewTitle(lecture.title);
+                        setPreviewSummary(lecture.summary);
+                        setPreviewOpen(true);
+                      }}
+                    >
                       <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-xs font-medium text-purple-600 dark:text-purple-300">
                         {index + 1}
                       </div>
@@ -394,14 +408,19 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                           </div>
                         ) : (
                           <>
-                            <h5 className="font-medium">{lecture.title}</h5>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {lecture.summary}
-                            </p>
-                            <div className="flex items-center gap-2 mt-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {lecture.duration}
-                              </Badge>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h5 className="font-medium">{lecture.title}</h5>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                  {lecture.summary}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {lecture.duration}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity text-purple-600">➔</div>
                             </div>
                           </>
                         )}
@@ -460,6 +479,28 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
             </Button>
           </div>
         )}
+        <LecturePreviewModal 
+          open={previewOpen} 
+          onClose={() => setPreviewOpen(false)} 
+          title={previewTitle} 
+          summary={previewSummary}
+          courseTitle={(isEditing ? editedData?.title : generatedData?.title) || ''}
+          courseDescription={(isEditing ? editedData?.description : generatedData?.description) || ''}
+          instructor={(isEditing ? editedData?.instructor : generatedData?.instructor) || ''}
+          difficulty={(isEditing ? editedData?.difficulty : generatedData?.difficulty) || 'beginner'}
+          tags={(isEditing ? editedData?.tags : generatedData?.tags) || []}
+          syllabus={(isEditing ? editedData?.syllabus : generatedData?.syllabus) || []}
+          currentIndex={(() => {
+            const list = (isEditing ? editedData?.syllabus : generatedData?.syllabus) || [];
+            const idx = list.findIndex(s => s.title === previewTitle);
+            return idx >= 0 ? idx : undefined;
+          })()}
+          cacheKey={`${(isEditing ? editedData?.title : generatedData?.title) || 'draft'}::${previewTitle}`}
+          cachedContent={previewCache[`${(isEditing ? editedData?.title : generatedData?.title) || 'draft'}::${previewTitle}`]?.content}
+          cachedIsHtml={previewCache[`${(isEditing ? editedData?.title : generatedData?.title) || 'draft'}::${previewTitle}`]?.isHtml}
+          cachedResolvedTitle={previewCache[`${(isEditing ? editedData?.title : generatedData?.title) || 'draft'}::${previewTitle}`]?.title}
+          onGenerated={(key, payload) => setPreviewCache(prev => ({ ...prev, [key]: payload }))}
+        />
       </div>
     </div>
   );

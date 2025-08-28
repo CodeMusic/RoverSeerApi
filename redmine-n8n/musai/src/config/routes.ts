@@ -43,6 +43,7 @@ export const ROUTES = {
   // University routes
   UNIVERSITY: '/university',
   UNIVERSITY_LECTURE_NEW: '/university/lecture/new',
+  UNIVERSITY_LECTURE_PREVIEW: '/university/lecture/preview',
   UNIVERSITY_LECTURE_VIEW: '/university/lecture/:id',
   UNIVERSITY_COURSE_NEW: '/university/course/new',
   UNIVERSITY_COURSE_VIEW: '/university/course/:courseId',

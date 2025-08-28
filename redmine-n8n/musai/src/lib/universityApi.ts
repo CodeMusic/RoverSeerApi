@@ -117,18 +117,49 @@ class UniversityApiService
   // Normalize n8n-like payloads that may be arrays or contain stringified JSON in an "output" field
   private parseN8nLikePayload(raw: any): any
   {
+    // Cognition: robustly interpret n8n outputs, including code-fenced JSON strings
     const tryParse = (value: unknown): any =>
     {
       if (typeof value !== 'string')
       {
         return value;
       }
+
+      const stripCodeFence = (text: string): string =>
+      {
+        const trimmed = text.trim();
+        if (!trimmed.startsWith('```'))
+        {
+          return text;
+        }
+        // Remove leading ```lang (optional) and trailing ```
+        const firstFenceEnd = trimmed.indexOf('\n');
+        const withoutHead = firstFenceEnd >= 0 ? trimmed.slice(firstFenceEnd + 1) : trimmed.replace(/^```+[^\n]*\n?/, '');
+        const lastFence = withoutHead.lastIndexOf('```');
+        const inner = lastFence >= 0 ? withoutHead.slice(0, lastFence) : withoutHead;
+        return inner.trim();
+      };
+
+      // First, attempt raw JSON parse
       try
       {
         return JSON.parse(value);
       }
       catch
       {
+        // If the string is code-fenced (e.g., ```json ... ```), strip and retry
+        const unfenced = stripCodeFence(value);
+        if (unfenced !== value)
+        {
+          try
+          {
+            return JSON.parse(unfenced);
+          }
+          catch
+          {
+            // fall through
+          }
+        }
         return value;
       }
     };
@@ -196,6 +227,7 @@ class UniversityApiService
       : [];
     const syllabus = rawSyllabus.map((item: any) =>
     {
+      // Normalize alternate key names like "lecture topic"
       const t = (item?.title || item?.['lecture topic'] || item?.topic || 'Untitled').toString();
       const s = (item?.summary || item?.description || '').toString();
       const d = (item?.duration || item?.estimatedDuration || '45 min').toString();
@@ -370,7 +402,8 @@ class UniversityApiService
   {
     try 
     {
-      const response = await this.axiosInstance.post('/lecture/generate', request);
+      // Long-running job: allow up to 10 minutes
+      const response = await this.axiosInstance.post('/lecture/generate', request, { timeout: 600000 });
       return response.data;
     } 
     catch (error) 
@@ -439,11 +472,12 @@ class UniversityApiService
   {
     try 
     {
+      // Exams can also run long; align with lecture timeout
       const response = await this.axiosInstance.post('/exam/generate', {
         courseId,
         type,
         lectureContents
-      });
+      }, { timeout: 600000 });
       return response.data;
     }
     catch (error)
@@ -652,12 +686,40 @@ class UniversityApiService
   }
 
   // Agent 2: Generate lecture content from approved plan
-  async generateLectureContent(steps: LectureStep[]): Promise<LectureContent> 
+  async generateLectureContent(
+    steps: LectureStep[],
+    context?: {
+      courseTitle?: string;
+      courseDescription?: string;
+      instructor?: string;
+      difficulty?: 'beginner' | 'intermediate' | 'advanced';
+      tags?: string[];
+      syllabus?: Array<{ title: string; summary?: string; duration?: string }>;
+      currentIndex?: number;
+    }
+  ): Promise<LectureContent> 
   {
     try 
     {
-      const response = await this.axiosInstance.post('/generate-lecture', { steps });
-      return response.data;
+      // Preview generation can take time in n8n; extend timeout
+      const response = await this.axiosInstance.post(
+        '/generate-lecture',
+        { 
+          steps,
+          // Provide optional course context to improve generation quality
+          courseTitle: context?.courseTitle,
+          courseDescription: context?.courseDescription,
+          instructor: context?.instructor,
+          difficulty: context?.difficulty,
+          tags: context?.tags,
+          syllabus: context?.syllabus,
+          currentIndex: context?.currentIndex
+        },
+        { timeout: 600000 }
+      );
+      // Normalize n8n array/output wrappers to a consistent shape
+      const parsed = this.parseN8nLikePayload(response.data);
+      return parsed;
     } 
     catch (error) 
     {
