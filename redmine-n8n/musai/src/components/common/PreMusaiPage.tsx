@@ -431,6 +431,28 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
     fileInputRef.current?.click();
   };
 
+  // Eye of Musai: Enter triggers Perceive when text exists, otherwise Reflect (open upload)
+  const handleEyeInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) =>
+  {
+    if (e.key !== 'Enter' || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey)
+    {
+      return;
+    }
+    if (isLoading)
+    {
+      return;
+    }
+    e.preventDefault();
+    const text = (input || '').trim();
+    if (text)
+    {
+      onSubmit(text, undefined);
+      return;
+    }
+    // No text: prompt for image upload (Reflect)
+    openFilePicker();
+  };
+
   const handleQuickActionClick = (action: PreMusaiQuickAction) => {
     if (onQuickAction) {
       onQuickAction(action.id, action.actionType, action.actionData);
@@ -715,6 +737,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                   placeholder={placeholder}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleEyeInputKeyDown}
                   disabled={isLoading}
                   className="flex-1 px-4 py-3 text-lg rounded-xl border-2 border-cyan-500/30 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 mystical-glow"
                 />
