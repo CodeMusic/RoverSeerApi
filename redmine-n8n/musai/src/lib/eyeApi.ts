@@ -81,11 +81,55 @@ class EyeApiService {
     const url = n8nApi.getEndpointUrl(N8N_ENDPOINTS.EYE.GENERATE);
     const res = await fetchWithTimeout(url, {
       method: 'POST',
-      headers: withN8nAuthHeaders({ 'Content-Type': 'application/json' }) as any,
+      headers: withN8nAuthHeaders({ 'Content-Type': 'application/json', 'Accept': 'image/*,application/octet-stream,application/json' }) as any,
       body: JSON.stringify({ prompt })
     }, TIMEOUTS.API_REQUEST);
     if (!res.ok) throw new Error(`Eye generate failed: ${res.status}`);
-    return await res.blob();
+
+    const contentType = (res.headers.get('Content-Type') || '').toLowerCase();
+
+    // If server returned binary directly, pass it through
+    if (contentType.startsWith('image/') || contentType.includes('octet-stream'))
+    {
+      return await res.blob();
+    }
+
+    // Resilience: if server returned JSON with base64 payload, convert to Blob
+    if (contentType.includes('application/json') || contentType.includes('text/plain'))
+    {
+      try
+      {
+        const json = await res.json();
+        const data = (json?.data || json?.image?.data) as string | undefined;
+        const mimeType = (json?.mimeType || json?.image?.mimeType || 'image/png') as string;
+
+        if (typeof data === 'string' && data.length > 0)
+        {
+          const toBase64 = (input: string): string =>
+          {
+            const commaIndex = input.indexOf(',');
+            return commaIndex !== -1 ? input.slice(commaIndex + 1) : input;
+          };
+          const base64 = toBase64(data);
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++)
+          {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          return new Blob([byteArray], { type: mimeType });
+        }
+      }
+      catch
+      {
+        // Fall through to error below
+      }
+      throw new Error('Eye generate returned JSON without image data');
+    }
+
+    // Unknown content type
+    throw new Error(`Unexpected content type: ${contentType || 'unknown'}`);
   }
 }
 
