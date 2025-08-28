@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import { eyeApi, EyeRecognizeRequest, EyeRecognizeResponse } from '@/lib/eyeApi';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { APP_TERMS } from '@/config/constants';
@@ -23,6 +23,7 @@ export default function EyeRecognize()
   const [result, setResult] = useState<EyeRecognizeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
 
   const imageSrc = useMemo(() =>
   {
@@ -30,8 +31,16 @@ export default function EyeRecognize()
     return `data:${state.preview.mimeType};base64,${state.preview.data}`;
   }, [state.preview]);
 
+  useEffect(() =>
+  {
+    setIsImageLoading(!!imageSrc);
+  }, [imageSrc]);
+
   const handleConfirm = async () =>
   {
+    if (isImageLoading) {
+      return;
+    }
     if (!state.payload) {
       navigate(-1);
       return;
@@ -64,12 +73,24 @@ export default function EyeRecognize()
               {imageSrc && (
                 <div>
                   <div className="text-xs text-muted-foreground mb-2">Selected image</div>
-                  <img src={imageSrc} alt={state.preview?.fileName || 'Selected'} className="max-h-64 rounded-md object-contain" />
+                  <img
+                    src={imageSrc}
+                    alt={state.preview?.fileName || 'Selected'}
+                    className="max-h-64 rounded-md object-contain"
+                    onLoad={() => setIsImageLoading(false)}
+                    onError={() => setIsImageLoading(false)}
+                  />
+                  {isImageLoading && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Loading image…</span>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={handleCancel} disabled={isSubmitting} className="rounded-xl">Cancel</Button>
-                <Button onClick={handleConfirm} disabled={isSubmitting} className="rounded-xl">Analyze</Button>
+                <Button onClick={handleConfirm} disabled={isSubmitting || isImageLoading} className="rounded-xl">Analyze</Button>
               </div>
             </>
           )}

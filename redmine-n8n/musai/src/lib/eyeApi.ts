@@ -67,7 +67,7 @@ class EyeApiService {
           ...payload,
         }
       }),
-    });
+    }, TIMEOUTS.API_REQUEST);
     if (!res.ok) throw new Error(`Eye recognize failed: ${res.status}`);
     return res.json();
   }

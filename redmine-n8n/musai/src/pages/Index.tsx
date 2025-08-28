@@ -735,6 +735,19 @@ const Index = () => {
       default:
         setCurrentSessionId(sessionId);
     }
+
+    // If currently in Eye, selecting a session should switch to that module's tab
+    if (currentTab === APP_TERMS.TAB_EYE) {
+      const typeToTab: Record<string, string> = {
+        dev: APP_TERMS.TAB_CODE,
+        chat: APP_TERMS.TAB_CHAT,
+        career: APP_TERMS.TAB_CAREER,
+        narrative: APP_TERMS.TAB_NARRATIVE,
+        therapy: APP_TERMS.TAB_THERAPY,
+      };
+      const nextTab = typeToTab[session.type] || APP_TERMS.TAB_CHAT;
+      handleTabChange(nextTab);
+    }
   };
 
   // Handle new session creation based on tab
@@ -744,6 +757,14 @@ const Index = () => {
         return createNewDevSession();
       case APP_TERMS.TAB_CAREER:
         return createNewCareerSession();
+      case APP_TERMS.TAB_EYE: {
+        // For Eye, "new session" should reset Eye state and return to PreMusai
+        setEyePerceivePrompt(null);
+        setEyeReflectPayload(null);
+        setForceChatUI(false);
+        setCurrentSessionId("");
+        return;
+      }
       case APP_TERMS.TAB_UNIVERSITY: {
         // For University, use the PreMusai flow. Do not create a chat session.
         // Ensure we're on the University tab so PreMusai is visible, then wait for user input.

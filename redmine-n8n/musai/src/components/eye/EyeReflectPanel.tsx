@@ -16,14 +16,21 @@ export const EyeReflectPanel: React.FC<EyeReflectPanelProps> = ({ payload, previ
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<EyeRecognizeResponse | null>(null);
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const hasAutoRun = useRef(false);
   const submittedRef = useRef(false);
 
   const imageSrc = useMemo(() =>
   {
-    if (!preview) return null;
-    return `data:${preview.mimeType};base64,${preview.data}`;
-  }, [preview]);
+    const source = preview || payload?.image;
+    if (!source) return null;
+    return `data:${source.mimeType};base64,${source.data}`;
+  }, [preview, payload]);
+
+  useEffect(() =>
+  {
+    setIsImageLoading(!!imageSrc);
+  }, [imageSrc]);
 
   const handleAnalyze = async () =>
   {
@@ -74,14 +81,26 @@ export const EyeReflectPanel: React.FC<EyeReflectPanelProps> = ({ payload, previ
           {imageSrc && (
             <div>
               <div className="text-xs text-muted-foreground mb-2">Selected image</div>
-              <img src={imageSrc} alt={preview?.fileName || 'Selected'} className="max-h-64 rounded-md object-contain" />
+              <img
+                src={imageSrc}
+                alt={preview?.fileName || payload?.image?.fileName || 'Selected'}
+                className="max-h-64 rounded-md object-contain"
+                onLoad={() => setIsImageLoading(false)}
+                onError={() => setIsImageLoading(false)}
+              />
+              {isImageLoading && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading image…</span>
+                </div>
+              )}
             </div>
           )}
 
           {!result && (
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="rounded-xl">Cancel</Button>
-              <Button onClick={handleAnalyze} disabled={isSubmitting || !!result} className="rounded-xl">Analyze</Button>
+              <Button onClick={handleAnalyze} disabled={isSubmitting || !!result || isImageLoading} className="rounded-xl">Analyze</Button>
             </div>
           )}
 
