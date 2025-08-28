@@ -36,6 +36,7 @@ export const ROUTES = {
   // Eye operation pages
   EYE_TRAIN: '/eye/train',
   EYE_RECOGNIZE: '/eye/recognize',
+  EYE_GENERATE: '/eye/generate',
 
   
   

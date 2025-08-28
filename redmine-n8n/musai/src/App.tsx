@@ -70,6 +70,7 @@ import NotFound from "@/pages/NotFound";
 import CFMInfo from "@/pages/info/CFMInfo";
 import EyeTrain from "@/pages/eye/EyeTrain";
 import EyeRecognize from "@/pages/eye/EyeRecognize";
+import EyeGenerate from "@/pages/eye/EyeGenerate";
 
 // Routes
 import { ROUTES, RouteUtils } from "@/config/routes";
@@ -105,6 +106,7 @@ function App() {
                         <Route path={ROUTES.EYE_OF_MUSAI} element={<EyeOfMusai />} />
                         <Route path={ROUTES.EYE_TRAIN} element={<RiddleGate><EyeTrain /></RiddleGate>} />
                         <Route path={ROUTES.EYE_RECOGNIZE} element={<RiddleGate><EyeRecognize /></RiddleGate>} />
+                        <Route path={ROUTES.EYE_GENERATE} element={<RiddleGate><EyeGenerate /></RiddleGate>} />
                         <Route path={ROUTES.CAREER_MUSAI} element={<CareerMusaiInfo />} />
                         <Route path={ROUTES.CAREER_MUSAI_CONSOLE} element={<RiddleGate><CareerMusaiConsole /></RiddleGate>} />
                         <Route path={ROUTES.THERAPY_MUSAI} element={<TherapyMusaiInfo />} />

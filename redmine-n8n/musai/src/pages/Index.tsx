@@ -26,6 +26,8 @@ import { useDevSessions } from "@/hooks/useDevSessions";
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
+import { EyePerceivePanel } from '@/components/eye/EyePerceivePanel';
+import { EyeReflectPanel } from '@/components/eye/EyeReflectPanel';
 
 const Index = () => {
   const location = useLocation();
@@ -42,6 +44,8 @@ const Index = () => {
   const [showVictory, setShowVictory] = useState<boolean>(false);
   const [isCreatingNarrative, setIsCreatingNarrative] = useState<boolean>(false);
   const [isProcessingMedical, setIsProcessingMedical] = useState<boolean>(false);
+  const [eyePerceivePrompt, setEyePerceivePrompt] = useState<string | null>(null);
+  const [eyeReflectPayload, setEyeReflectPayload] = useState<{ payload: any; preview: { data: string; mimeType: string; fileName?: string } } | null>(null);
   const [currentTab, setCurrentTab] = useState<string>(
     location.state?.switchToTab || 
     (searchParams.get('mode') === 'search' ? APP_TERMS.TAB_SEARCH :
@@ -526,16 +530,16 @@ const Index = () => {
         // Eye: route to confirmation pages with payload; those pages call n8n
         if (file) {
           const imageData = await prepareFileData(file);
-          if (input && input.startsWith('TRAIN:')) {
-            const prompt = input.substring('TRAIN:'.length).trim() || undefined;
-            navigate(ROUTES.EYE_TRAIN, { state: { payload: { prompt, images: [{ ...imageData }] }, preview: imageData } });
-          } else {
-            navigate(ROUTES.EYE_RECOGNIZE, { state: { payload: { image: imageData }, preview: imageData } });
-          }
+          // Inline Reflect panel; prevent double-clicks by replacing pending state
+          setEyeReflectPayload({ payload: { image: imageData }, preview: imageData });
           return;
         }
         if (input && input.trim()) {
-          navigate(ROUTES.EYE_TRAIN, { state: { payload: { prompt: input.trim() } } });
+          const text = input.trim();
+          // Default: generating from text prompt
+          const prompt = text.toUpperCase().startsWith('GENERATE:') ? text.substring('GENERATE:'.length).trim() : text;
+          // In-app perceive panel instead of route navigation
+          setEyePerceivePrompt(prompt);
           return;
         }
         return;
@@ -885,6 +889,27 @@ const Index = () => {
 
     // Show PreMusai page for any tab without a current session (except narrative which uses its own flow)
     if (shouldShowPreMusai && currentTab !== APP_TERMS.TAB_NARRATIVE) {
+      // Eye: if Perceive prompt is active, show in-app panel inside shell
+      if (currentTab === APP_TERMS.TAB_EYE && eyePerceivePrompt) {
+        return (
+          <EyePerceivePanel
+            prompt={eyePerceivePrompt}
+            onCancel={() => setEyePerceivePrompt(null)}
+            autoRun
+          />
+        );
+      }
+      // Eye: if Reflect payload is active, show inline panel
+      if (currentTab === APP_TERMS.TAB_EYE && eyeReflectPayload) {
+        return (
+          <EyeReflectPanel
+            payload={eyeReflectPayload.payload as any}
+            preview={eyeReflectPayload.preview}
+            onCancel={() => setEyeReflectPayload(null)}
+            autoRun
+          />
+        );
+      }
       // Medical: show processing screen when active
       if (currentTab === APP_TERMS.TAB_MEDICAL && isProcessingMedical) {
         return (

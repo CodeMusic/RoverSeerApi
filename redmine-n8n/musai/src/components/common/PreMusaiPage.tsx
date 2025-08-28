@@ -300,7 +300,7 @@ const getPageConfig = (type: PreMusaiPageType) => {
         ],
         quickActions: [
           { icon: Eye, title: 'Analyze Image', description: 'Upload and classify', id: 'eye-analyze', actionType: 'function' },
-          { icon: Zap, title: 'Generate from Text', description: 'Create an image from a prompt', id: 'eye-generate', actionType: 'submit', actionData: 'Generate an image: ' }
+          { icon: Zap, title: 'Perceive', description: 'Create an image from a prompt', id: 'eye-generate', actionType: 'submit', actionData: 'Generate an image: ' }
         ]
       };
     default:
@@ -692,21 +692,13 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
 
         {/* Input/Form Area */}
         <div className="w-full max-w-2xl space-y-6">
-          {/* Eye of Musai image tools */}
+          {/* Eye of Musai tools with Perceive/Reflect toggle */}
           {type === 'eye' && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <Input
-                  type="text"
-                  placeholder={placeholder}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={isLoading}
-                  className="flex-1 px-4 py-3 text-lg rounded-xl border-2 border-cyan-500/30 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 mystical-glow"
-                />
                 <Button type="button" variant="outline" onClick={openFilePicker} className="rounded-xl">
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload
+                  Reflect
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -718,6 +710,17 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                     if (file) handleImageSelect(file);
                   }}
                 />
+                <Input
+                  type="text"
+                  placeholder={placeholder}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-3 text-lg rounded-xl border-2 border-cyan-500/30 focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 transition-all duration-300 mystical-glow"
+                />
+                <Button onClick={(e) => { e.preventDefault(); onSubmit(input || 'Generate an image from this prompt', undefined); }} disabled={isLoading} className="rounded-xl">
+                  <ImageIcon className="w-4 h-4 mr-2" /> Perceive
+                </Button>
               </div>
               {imagePreviewUrl && (
                 <div className="rounded-xl border border-cyan-500/20 p-3 bg-background/50">
@@ -736,11 +739,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                   </div>
                 </div>
               )}
-              <div className="flex justify-end">
-                <Button onClick={(e) => { e.preventDefault(); onSubmit(input || 'Generate an image from this prompt', undefined); }} disabled={isLoading} className="rounded-xl">
-                  <ImageIcon className="w-4 h-4 mr-2" /> Generate from Text
-                </Button>
-              </div>
+
             </div>
           )}
 

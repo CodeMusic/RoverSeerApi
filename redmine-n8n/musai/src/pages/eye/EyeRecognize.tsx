@@ -56,7 +56,7 @@ export default function EyeRecognize()
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Eye className="w-5 h-5" /> Recognize with Eye of Musai</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Eye className="w-5 h-5" /> Eye of Musai — Reflect</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!result && (
@@ -69,7 +69,7 @@ export default function EyeRecognize()
               )}
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={handleCancel} disabled={isSubmitting} className="rounded-xl">Cancel</Button>
-                <Button onClick={handleConfirm} disabled={isSubmitting} className="rounded-xl">Confirm Recognize</Button>
+                <Button onClick={handleConfirm} disabled={isSubmitting} className="rounded-xl">Analyze</Button>
               </div>
             </>
           )}
@@ -77,12 +77,17 @@ export default function EyeRecognize()
           {isSubmitting && (
             <div className="flex items-center justify-center py-8" aria-live="polite" aria-busy="true">
               <div className="w-8 h-8 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
-              <span className="ml-3 text-sm text-muted-foreground">Calling n8n…</span>
+              <span className="ml-3 text-sm text-muted-foreground">Musai is Recognizing…</span>
             </div>
           )}
 
           {error && (
-            <div className="text-sm text-red-600">{error}</div>
+            <div className="text-sm text-red-600 flex items-center justify-between gap-3">
+              <span>{error}</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setError(null); handleConfirm(); }} className="rounded-xl">Retry</Button>
+              </div>
+            </div>
           )}
 
           {result && (

@@ -68,6 +68,8 @@ export const N8N_ENDPOINTS = {
     TRAIN: '/eye/train',
     // Recognize/detect objects in an image
     RECOGNIZE: '/eye/recognize',
+    // Generate image from prompt
+    GENERATE: '/eye/generate',
   },
 
   // CodeMusai Endpoints
