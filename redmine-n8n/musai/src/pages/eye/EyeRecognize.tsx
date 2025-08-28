@@ -25,11 +25,21 @@ export default function EyeRecognize()
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
 
+  const normalizeBase64Data = (data?: string): string | null =>
+  {
+    if (!data) return null;
+    const commaIndex = data.indexOf(',');
+    return commaIndex !== -1 ? data.slice(commaIndex + 1) : data;
+  };
+
   const imageSrc = useMemo(() =>
   {
-    if (!state.preview) return null;
-    return `data:${state.preview.mimeType};base64,${state.preview.data}`;
-  }, [state.preview]);
+    const source = state.preview || state.payload?.image;
+    if (!source) return null;
+    const base64 = normalizeBase64Data(source.data);
+    if (!base64) return null;
+    return `data:${source.mimeType};base64,${base64}`;
+  }, [state.preview, state.payload]);
 
   useEffect(() =>
   {
@@ -75,7 +85,7 @@ export default function EyeRecognize()
                   <div className="text-xs text-muted-foreground mb-2">Selected image</div>
                   <img
                     src={imageSrc}
-                    alt={state.preview?.fileName || 'Selected'}
+                    alt={state.preview?.fileName || state.payload?.image?.fileName || 'Selected'}
                     className="max-h-64 rounded-md object-contain"
                     onLoad={() => setIsImageLoading(false)}
                     onError={() => setIsImageLoading(false)}

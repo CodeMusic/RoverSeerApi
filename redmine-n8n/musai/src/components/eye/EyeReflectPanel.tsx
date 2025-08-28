@@ -20,11 +20,20 @@ export const EyeReflectPanel: React.FC<EyeReflectPanelProps> = ({ payload, previ
   const hasAutoRun = useRef(false);
   const submittedRef = useRef(false);
 
+  const normalizeBase64Data = (data?: string): string | null =>
+  {
+    if (!data) return null;
+    const commaIndex = data.indexOf(',');
+    return commaIndex !== -1 ? data.slice(commaIndex + 1) : data;
+  };
+
   const imageSrc = useMemo(() =>
   {
     const source = preview || payload?.image;
     if (!source) return null;
-    return `data:${source.mimeType};base64,${source.data}`;
+    const base64 = normalizeBase64Data(source.data);
+    if (!base64) return null;
+    return `data:${source.mimeType};base64,${base64}`;
   }, [preview, payload]);
 
   useEffect(() =>
