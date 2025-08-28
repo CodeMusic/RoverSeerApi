@@ -46,16 +46,47 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
   const [previewCache, setPreviewCache] = useState<Record<string, { content: string; isHtml: boolean; title: string }>>({});
   const navigate = useNavigate();
 
-  // Auto-generate when an initial topic is provided and nothing has been generated yet
+  // Session cache keys to avoid re-fetching on reloads
+  const getCourseCacheKey = (t: string) => 
+  {
+    const normalized = t.trim().toLowerCase();
+    return normalized ? `musai-university-course-gen::${encodeURIComponent(normalized)}` : '';
+  };
+
+  const currentCacheKey = getCourseCacheKey(topic);
+
+  // Load from session cache if available (prevents refetch on reload)
   useEffect(() => 
   {
-    const shouldAutoGenerate = Boolean(initialTopic && topic.trim() && !generatedData && !isGenerating);
-    if (shouldAutoGenerate) 
+    if (!topic.trim() || generatedData)
+    {
+      return;
+    }
+    try 
+    {
+      const cached = currentCacheKey ? sessionStorage.getItem(currentCacheKey) : null;
+      if (cached)
+      {
+        const parsed = JSON.parse(cached) as GeneratedCourseData;
+        setGeneratedData(parsed);
+        setEditedData(parsed);
+      }
+    }
+    catch {}
+  }, [topic, currentCacheKey, generatedData]);
+
+  // Auto-generate only on first visit with initialTopic and no cache/flag
+  useEffect(() => 
+  {
+    const hasTopic = Boolean(initialTopic && topic.trim());
+    const hasCache = Boolean(currentCacheKey && sessionStorage.getItem(currentCacheKey));
+    const hasGeneratedFlag = Boolean(currentCacheKey && sessionStorage.getItem(`${currentCacheKey}::generated`));
+    const shouldAutoGenerate = Boolean(hasTopic && !generatedData && !isGenerating && !hasCache && !hasGeneratedFlag);
+    if (shouldAutoGenerate)
     {
       handleGenerateCourseDraft();
     }
-  // We intentionally depend on these to re-evaluate when topic/prop changes
-  }, [initialTopic, topic, generatedData, isGenerating]);
+  }, [initialTopic, topic, generatedData, isGenerating, currentCacheKey]);
 
   const handleGenerateCourseDraft = async () => 
   {
@@ -69,6 +100,16 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
       const courseData = await universityApi.generateCourseFromTopic(topic);
       setGeneratedData(courseData);
       setEditedData(courseData);
+      // Cache in session to prevent re-fetching on reload
+      try 
+      {
+        if (currentCacheKey)
+        {
+          sessionStorage.setItem(currentCacheKey, JSON.stringify(courseData));
+          sessionStorage.setItem(`${currentCacheKey}::generated`, '1');
+        }
+      }
+      catch {}
     } 
     catch (error) 
     {

@@ -11,6 +11,8 @@ import type { Course, CourseLecture, UniversityTab } from '@/types/university';
 import LectureContent from '@/components/university/LectureContent';
 import LectureChat from '@/components/university/LectureChat';
 import CourseQuiz from '@/components/university/CourseQuiz';
+import { BaseLayout } from '@/components/common/BaseLayout';
+import { APP_TERMS } from '@/config/constants';
 
 const CourseLectureView = () =>
 {
@@ -106,163 +108,177 @@ const CourseLectureView = () =>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-      <div className="container mx-auto px-4 py-6 max-w-6xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate(`/university/course/${course.metadata.id}`)}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Syllabus
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">{course.metadata.title}</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{lecture.title}</p>
+  const renderMainContent = () => {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+        <div className="container mx-auto px-4 py-6 max-w-6xl">
+          <div className="mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={() => navigate(`/university/course/${course!.metadata.id}`)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Syllabus
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">{course!.metadata.title}</h1>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{lecture!.title}</p>
+              </div>
             </div>
+            <Badge variant={lecture!.status === 'completed' ? 'default' : 'secondary'}>
+              {lecture!.status === 'completed' ? (
+                <>
+                  <CheckCircle className="mr-1 h-3 w-3" /> Completed
+                </>
+              ) : (
+                lecture!.status.replace('_', ' ')
+              )}
+            </Badge>
           </div>
-          <Badge variant={lecture.status === 'completed' ? 'default' : 'secondary'}>
-            {lecture.status === 'completed' ? (
-              <>
-                <CheckCircle className="mr-1 h-3 w-3" /> Completed
-              </>
-            ) : (
-              lecture.status.replace('_', ' ')
-            )}
-          </Badge>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Course Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between text-sm mb-2">
-                  <span>{course.completedLectures} of {course.lectures.length} completed</span>
-                  <span>{getOverallProgress()}%</span>
-                </div>
-                <Progress value={getOverallProgress()} className="h-2" />
-              </CardContent>
-            </Card>
-          </div>
-          <div className="lg:col-span-3">
-            <Card className="h-[calc(100dvh-220px)]">
-              <CardHeader>
-                <CardTitle className="text-lg">{lecture.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UniversityTab)} className="h-full flex flex-col">
-                  <TabsList className="mx-6 mt-2">
-                    <TabsTrigger value="lecture" disabled={isTabLocked('lecture')} className="flex items-center gap-2">
-                      <BookOpen className="h-4 w-4" /> Lecture
-                    </TabsTrigger>
-                    <TabsTrigger value="chat" disabled={isTabLocked('chat')} className="flex items-center gap-2">
-                      <MessageCircle className="h-4 w-4" /> Chat
-                    </TabsTrigger>
-                    <TabsTrigger value="quiz" disabled={isTabLocked('quiz')} className="flex items-center gap-2">
-                      {isTabLocked('quiz') ? <Lock className="h-4 w-4" /> : <Brain className="h-4 w-4" />} Quiz
-                    </TabsTrigger>
-                  </TabsList>
-                  <div className="flex-1 px-6 pb-6">
-                    <TabsContent value="lecture" className="mt-4 h-full">
-                      {/* Legacy LectureContent expects a legacy Lecture shape; we render content text if available */}
-                      {lecture.content ? (
-                        <div className="prose dark:prose-invert max-w-none">
-                          <div dangerouslySetInnerHTML={{ __html: lecture.content }} />
-                        </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center">
-                          <div className="text-center">
-                            <p className="mb-4">No content generated yet.</p>
-                            <Button onClick={() => setActiveTab('quiz')}>Go to Quiz</Button>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-1">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Course Progress</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>{course!.completedLectures} of {course!.lectures.length} completed</span>
+                    <span>{getOverallProgress()}%</span>
+                  </div>
+                  <Progress value={getOverallProgress()} className="h-2" />
+                </CardContent>
+              </Card>
+            </div>
+            <div className="lg:col-span-3">
+              <Card className="h-[calc(100dvh-220px)]">
+                <CardHeader>
+                  <CardTitle className="text-lg">{lecture!.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UniversityTab)} className="h-full flex flex-col">
+                    <TabsList className="mx-6 mt-2">
+                      <TabsTrigger value="lecture" disabled={isTabLocked('lecture')} className="flex items-center gap-2">
+                        <BookOpen className="h-4 w-4" /> Lecture
+                      </TabsTrigger>
+                      <TabsTrigger value="chat" disabled={isTabLocked('chat')} className="flex items-center gap-2">
+                        <MessageCircle className="h-4 w-4" /> Chat
+                      </TabsTrigger>
+                      <TabsTrigger value="quiz" disabled={isTabLocked('quiz')} className="flex items-center gap-2">
+                        {isTabLocked('quiz') ? <Lock className="h-4 w-4" /> : <Brain className="h-4 w-4" />} Quiz
+                      </TabsTrigger>
+                    </TabsList>
+                    <div className="flex-1 px-6 pb-6">
+                      <TabsContent value="lecture" className="mt-4 h-full">
+                        {lecture!.content ? (
+                          <div className="prose dark:prose-invert max-w-none">
+                            <div dangerouslySetInnerHTML={{ __html: lecture!.content }} />
                           </div>
-                        </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="chat" className="mt-4 h-full">
-                      {/* Placeholder chat until dedicated course-lecture chat exists */}
-                      <div className="h-full flex items-center justify-center text-sm text-gray-500">Chat coming soon</div>
-                    </TabsContent>
-                    <TabsContent value="quiz" className="mt-4 h-full">
-                      <CourseQuiz
-                        lecture={lecture}
-                        onQuizCompleted={(passed, attempt) => {
-                          if (!course) return;
-                          // Update lecture status and course progress
-                          const updatedCourse: Course = { ...course };
-                          const idx = updatedCourse.lectures.findIndex(l => l.id === lecture.id);
-                          if (idx >= 0)
-                          {
-                            // Record attempt locally on the lecture
-                            const updatedLecture: CourseLecture = {
-                              ...updatedCourse.lectures[idx],
-                              quizAttempts: [...updatedCourse.lectures[idx].quizAttempts, attempt]
-                            };
-                            updatedCourse.lectures[idx] = updatedLecture;
+                        ) : (
+                          <div className="h-full flex items-center justify-center">
+                            <div className="text-center">
+                              <p className="mb-4">No content generated yet.</p>
+                              <Button onClick={() => setActiveTab('quiz')}>Go to Quiz</Button>
+                            </div>
+                          </div>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="chat" className="mt-4 h-full">
+                        <div className="h-full flex items-center justify-center text-sm text-gray-500">Chat coming soon</div>
+                      </TabsContent>
+                      <TabsContent value="quiz" className="mt-4 h-full">
+                        <CourseQuiz
+                          lecture={lecture!}
+                          onQuizCompleted={(passed, attempt) => {
+                            if (!course) return;
+                            const updatedCourse: Course = { ...course };
+                            const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
+                            if (idx >= 0)
+                            {
+                              const updatedLecture: CourseLecture = {
+                                ...updatedCourse.lectures[idx],
+                                quizAttempts: [...updatedCourse.lectures[idx].quizAttempts, attempt]
+                              };
+                              updatedCourse.lectures[idx] = updatedLecture;
+                              if (passed)
+                              {
+                                updatedCourse.lectures[idx] = {
+                                  ...updatedCourse.lectures[idx],
+                                  status: 'completed'
+                                };
+                                if (idx + 1 < updatedCourse.lectures.length)
+                                {
+                                  const next = updatedCourse.lectures[idx + 1];
+                                  if (next.status === 'locked')
+                                  {
+                                    updatedCourse.lectures[idx + 1] = {
+                                      ...next,
+                                      status: 'unlocked'
+                                    };
+                                  }
+                                }
+                                updatedCourse.completedLectures = Math.min(
+                                  updatedCourse.lectures.length,
+                                  (updatedCourse.lectures.filter(l => l.status === 'completed').length)
+                                );
+                                updatedCourse.overallProgress = Math.round(
+                                  (updatedCourse.lectures.filter(l => l.status === 'completed').length / updatedCourse.lectures.length) * 100
+                                );
+                              }
+                              setLecture(updatedCourse.lectures[idx]);
+                            }
+                            universityApi.saveCourse(updatedCourse);
                             if (passed)
+                            {
+                              setActiveTab('lecture');
+                            }
+                          }}
+                          onGenerateMoreQuestions={async () => {
+                            if (!course) return;
+                            const more = await universityApi.generateQuiz({
+                              courseId: course!.metadata.id,
+                              lectureId: lecture!.id,
+                              lectureContent: lecture!.content || ''
+                            });
+                            const updatedCourse: Course = { ...course! };
+                            const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
+                            if (idx >= 0)
                             {
                               updatedCourse.lectures[idx] = {
                                 ...updatedCourse.lectures[idx],
-                                status: 'completed'
+                                quiz: (updatedCourse.lectures[idx].quiz || []).concat(more)
                               };
-                              // Unlock next lecture if exists
-                              if (idx + 1 < updatedCourse.lectures.length)
-                              {
-                                const next = updatedCourse.lectures[idx + 1];
-                                if (next.status === 'locked')
-                                {
-                                  updatedCourse.lectures[idx + 1] = {
-                                    ...next,
-                                    status: 'unlocked'
-                                  };
-                                }
-                              }
-                              updatedCourse.completedLectures = Math.min(
-                                updatedCourse.lectures.length,
-                                (updatedCourse.lectures.filter(l => l.status === 'completed').length)
-                              );
-                              updatedCourse.overallProgress = Math.round(
-                                (updatedCourse.lectures.filter(l => l.status === 'completed').length / updatedCourse.lectures.length) * 100
-                              );
+                              await universityApi.saveCourse(updatedCourse);
+                              setCourse(updatedCourse);
+                              setLecture(updatedCourse.lectures[idx]);
                             }
-                            setLecture(updatedCourse.lectures[idx]);
-                          }
-                          universityApi.saveCourse(updatedCourse);
-                          if (passed)
-                          {
-                            setActiveTab('lecture');
-                          }
-                        }}
-                        onGenerateMoreQuestions={async () => {
-                          if (!course) return;
-                          const more = await universityApi.generateQuiz({
-                            courseId: course.metadata.id,
-                            lectureId: lecture.id,
-                            lectureContent: lecture.content || ''
-                          });
-                          const updatedCourse: Course = { ...course };
-                          const idx = updatedCourse.lectures.findIndex(l => l.id === lecture.id);
-                          if (idx >= 0)
-                          {
-                            updatedCourse.lectures[idx] = {
-                              ...updatedCourse.lectures[idx],
-                              quiz: (updatedCourse.lectures[idx].quiz || []).concat(more)
-                            };
-                            await universityApi.saveCourse(updatedCourse);
-                            setCourse(updatedCourse);
-                            setLecture(updatedCourse.lectures[idx]);
-                          }
-                        }}
-                      />
-                    </TabsContent>
-                  </div>
-                </Tabs>
-              </CardContent>
-            </Card>
+                          }}
+                        />
+                      </TabsContent>
+                    </div>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    );
+  };
+
+  return (
+    <BaseLayout
+      currentTab={APP_TERMS.TAB_UNIVERSITY}
+      sessions={[]}
+      currentSessionId=""
+      onNewSession={() => {}}
+      onSessionSelect={() => {}}
+      onDeleteSession={() => {}}
+      onRenameSession={() => {}}
+      onToggleFavorite={() => {}}
+      renderMainContent={renderMainContent}
+      onTabChange={() => {}}
+      isNavigationExpanded={false}
+      onToggleNavigation={() => {}}
+    />
   );
 };
 
