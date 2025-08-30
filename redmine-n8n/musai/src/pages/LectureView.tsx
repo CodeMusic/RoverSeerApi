@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, BookOpen, MessageCircle, Brain, Lock, CheckCircle } from 'lucide-react';
 import { universityApi } from '@/lib/universityApi';
-import type { Lecture as LegacyLecture, UniversityTab } from '@/types/university';
-import type { Lecture as ApiLecture } from '@/lib/universityApi';
+import type { Lecture, UniversityTab } from '@/types/university';
 import LectureContent from '@/components/university/LectureContent';
 import LectureChat from '@/components/university/LectureChat';
 import QuizComponent from '@/components/university/QuizComponent';
@@ -20,7 +19,7 @@ const LectureView = () =>
 {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [lecture, setLecture] = useState<LegacyLecture | null>(null);
+  const [lecture, setLecture] = useState<Lecture | null>(null);
   const [activeTab, setActiveTab] = useState<UniversityTab>('lecture');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,7 +42,7 @@ const LectureView = () =>
       
       if (foundLecture) 
       {
-        setLecture(apiToLegacy(foundLecture));
+        setLecture(foundLecture);
       } 
       else 
       {
@@ -61,11 +60,10 @@ const LectureView = () =>
     }
   };
 
-  const updateLecture = async (updatedLecture: LegacyLecture) => 
+  const updateLecture = async (updatedLecture: Lecture) => 
   {
     setLecture(updatedLecture);
-    const toSave = legacyToApi(updatedLecture);
-    await universityApi.saveLecture(toSave);
+    await universityApi.saveLecture(updatedLecture);
   };
 
   const isTabLocked = (tab: UniversityTab): boolean => 
@@ -119,49 +117,7 @@ const LectureView = () =>
     return Math.round((completedSteps / lecture.steps.length) * 100);
   };
 
-  // Type adaptation between API lecture and legacy lecture shapes
-  function apiToLegacy(src: ApiLecture): LegacyLecture
-  {
-    return {
-      id: src.id,
-      title: src.title,
-      topic: src.title,
-      status: src.status,
-      steps: src.steps.map(s => ({
-        title: s.title,
-        content: s.content,
-        quiz: s.quiz,
-        chat: s.chat,
-        completed: false,
-        quizPassed: false,
-      })),
-      currentStep: 0,
-      passThreshold: src.passThreshold,
-      overallScore: src.score,
-      exported: src.exported,
-      createdAt: src.createdAt,
-      updatedAt: src.createdAt,
-    };
-  }
-
-  function legacyToApi(src: LegacyLecture): ApiLecture
-  {
-    return {
-      id: src.id,
-      title: src.title,
-      status: src.status,
-      steps: src.steps.map(s => ({
-        title: s.title,
-        content: s.content,
-        quiz: s.quiz,
-        chat: s.chat,
-      })),
-      passThreshold: src.passThreshold,
-      score: src.overallScore,
-      exported: src.exported,
-      createdAt: src.createdAt,
-    };
-  }
+  
 
   if (isLoading) 
   {

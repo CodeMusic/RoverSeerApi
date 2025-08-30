@@ -1,5 +1,8 @@
 {
   "items": [
+    { "title": "Musai University: lecture generation", "note": "Generate multi-section lectures with syllabus, quiz, and content previews.", "date": "2025-08-20" },
+    { "title": "Eye of Musai: Perceive and Recognize", "note": "Text-to-image generation and image recognition flows working with multi-image sessions and tools.", "date": "2025-08-20" },
+    { "title": "MusaiRESearch: newspaper articles with images", "note": "Research flow now outputs full newspaper-style articles including inline images.", "date": "2025-08-20" },
     { "title": "Stream toggle (Chat)", "note": "New iOS-style switch to choose streaming vs. non-streaming endpoint (/chat/message/stream vs /chat/message). On by default.", "date": "2025-08-17" },
     { "title": "Visual effects toggle (Chat)", "note": "Enable/disable celebratory and mood effects (party/rainbow/matrix). When off, effects won't trigger and any active effects stop immediately.", "date": "2025-08-17" },
     { "title": "MusaiChat: streaming replies + logical/creative POV", "note": "Live token streaming UI. Final JSON parsed to show reasoning toggles.", "date": "2025-08-16" },

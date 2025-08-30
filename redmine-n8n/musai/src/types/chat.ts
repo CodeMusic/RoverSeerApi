@@ -35,7 +35,7 @@ export interface BaseSession {
   createdAt: number;
   // Hash of client IP for lightweight multi-user separation pre-accounts
   clientIpHash?: string;
-  type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative' | 'career' | 'therapy';
+  type: 'chat' | 'dev' | 'search' | 'university' | 'task' | 'narrative' | 'career' | 'therapy' | 'eye';
 }
 
 export interface ChatSession extends BaseSession {
@@ -107,5 +107,12 @@ export interface TherapySession extends BaseSession {
   };
 }
 
+export interface EyeSession extends BaseSession {
+  type: 'eye';
+  mode: 'perceive' | 'recognize';
+  // Store recent prompts for quick reference (not images/blobs)
+  prompts: string[];
+}
+
 // Union type for all session types
-export type AllSessions = ChatSession | CareerSession | NarrativeSession | DevSession | SearchSession | UniversitySession | TaskSession | TherapySession;
+export type AllSessions = ChatSession | CareerSession | NarrativeSession | DevSession | SearchSession | UniversitySession | TaskSession | TherapySession | EyeSession;

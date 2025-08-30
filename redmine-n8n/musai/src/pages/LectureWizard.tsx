@@ -77,22 +77,27 @@ const LectureWizard = () =>
       setState('generating');
       
       const lectureContent = await universityApi.generateLectureContent(generatedPlan);
-      
-      // Create a new lecture object
-      const newLecture = {
+
+      // Create a new lecture object (unified Lecture shape)
+      const newLecture: Lecture = {
         id: `lecture-${Date.now()}`,
         title: lectureContent.title,
-        status: 'in_progress' as const,
+        topic: topic,
+        status: 'in_progress',
         steps: generatedPlan.map((step, index) => ({
           title: step.title,
-          content: index === 0 ? lectureContent.content : '', // Only first step has content initially
+          content: index === 0 ? lectureContent.content : '',
           quiz: index === 0 ? lectureContent.quiz : [],
-          chat: []
+          chat: [],
+          completed: index === 0, // first step treated as started
+          quizPassed: false,
         })),
+        currentStep: 0,
         passThreshold: 0.7,
-        score: 0,
+        overallScore: 0,
         exported: false,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       await universityApi.saveLecture(newLecture);

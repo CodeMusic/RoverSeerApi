@@ -10,6 +10,7 @@ import { ChatPane } from "@/components/chat/ChatPane";
 import { useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useCallback, useState } from "react";
 import { AllSessions } from "@/types/chat";
+import { useEyeSessions } from "@/hooks/useEyeSessions";
 import { APP_TERMS, CANONICAL_TOOL_ORDER } from "@/config/constants";
 import { ROUTES } from "@/config/routes";
 import { prepareFileData } from '@/utils/fileOperations';
@@ -256,6 +257,19 @@ const Index = () => {
     updateTherapyContext,
   } = useTherapySessions();
 
+  const {
+    sessions: eyeSessions,
+    currentSessionId: eyeCurrentSessionId,
+    createNewSession: createNewEyeSession,
+    deleteSession: deleteEyeSession,
+    renameSession: renameEyeSession,
+    toggleFavorite: toggleEyeFavorite,
+    updateSession: updateEyeSession,
+    setCurrentSessionId: setEyeCurrentSessionId,
+    getCurrentSession: getCurrentEyeSession,
+    appendPrompt: appendEyePrompt,
+  } = useEyeSessions();
+
 
 
 
@@ -285,6 +299,7 @@ const Index = () => {
     ...narrativeSessions,
     ...therapySessions,
     ...devSessions,
+    ...eyeSessions,
   ];
 
   // Get current session based on tab
@@ -302,8 +317,7 @@ const Index = () => {
         // Medical flows do not use chat sessions yet; force PreMusai
         return null;
       case APP_TERMS.TAB_EYE:
-        // Eye of Musai uses a specialized PreMusai panel with image tools
-        return null;
+        return eyeSessions.find(s => s.id === eyeCurrentSessionId);
       case APP_TERMS.TAB_SEARCH:
         // For now, search uses chat-like sessions but we can distinguish them later
         return sessions.find(s => s.id === currentSessionId);
@@ -739,6 +753,9 @@ const Index = () => {
       case 'therapy':
         setTherapyCurrentSessionId(sessionId);
         break;
+      case 'eye':
+        setEyeCurrentSessionId(sessionId);
+        break;
       default:
         setCurrentSessionId(sessionId);
     }
@@ -765,11 +782,11 @@ const Index = () => {
       case APP_TERMS.TAB_CAREER:
         return createNewCareerSession();
       case APP_TERMS.TAB_EYE: {
-        // For Eye, "new session" should reset Eye state and return to PreMusai
+        // Eye: start a fresh Eye session; the in-panel UI will handle interactions
+        createNewEyeSession('perceive');
         setEyePerceivePrompt(null);
         setEyeReflectPayload(null);
         setForceChatUI(false);
-        setCurrentSessionId("");
         return;
       }
       case APP_TERMS.TAB_UNIVERSITY: {
@@ -811,6 +828,9 @@ const Index = () => {
       case 'therapy':
         deleteTherapy(sessionId);
         break;
+      case 'eye':
+        deleteEyeSession(sessionId);
+        break;
       default:
         deleteSession(sessionId);
     }
@@ -834,6 +854,9 @@ const Index = () => {
         break;
       case 'therapy':
         renameTherapy(sessionId, newName);
+        break;
+      case 'eye':
+        renameEyeSession(sessionId, newName);
         break;
       default:
         renameSession(sessionId, newName);
@@ -859,6 +882,9 @@ const Index = () => {
       case 'therapy':
         toggleTherapyFavorite(sessionId);
         break;
+      case 'eye':
+        toggleEyeFavorite(sessionId);
+        break;
       default:
         toggleFavorite(sessionId);
     }
@@ -866,6 +892,56 @@ const Index = () => {
 
   // Render main content based on current tab and session
   const renderMainContent = () => {
+    // Eye: always render Eye workspace (panels or PreMusai), regardless of session message model
+    if (currentTab === APP_TERMS.TAB_EYE)
+    {
+      if (eyePerceivePrompt)
+      {
+        return (
+          <EyePerceivePanel
+            prompt={eyePerceivePrompt}
+            onCancel={() => setEyePerceivePrompt(null)}
+            autoRun
+            eyeSessionId={eyeCurrentSessionId}
+            onAppendPrompt={(p) => { if (eyeCurrentSessionId) appendEyePrompt(eyeCurrentSessionId, p); }}
+          />
+        );
+      }
+      if (eyeReflectPayload)
+      {
+        return (
+          <EyeReflectPanel
+            payload={eyeReflectPayload.payload as any}
+            preview={eyeReflectPayload.preview}
+            onCancel={() => setEyeReflectPayload(null)}
+            autoRun
+          />
+        );
+      }
+      // Default: show Eye PreMusai to gather prompt or image
+      return (
+        <PreMusaiPage
+          type="eye"
+          onSubmit={(input, file) => {
+            if (file)
+            {
+              // Reflect path (image-based)
+              prepareFileData(file).then(imageData => {
+                setEyeReflectPayload({ payload: { image: imageData }, preview: imageData });
+              });
+              return;
+            }
+            const text = (input || '').trim();
+            if (text)
+            {
+              setEyePerceivePrompt(text);
+            }
+          }}
+          isLoading={false}
+        />
+      );
+    }
+
     // Dedicated CodeMusai playground UI
     if (currentTab === APP_TERMS.TAB_CODE) {
       return (
@@ -911,7 +987,9 @@ const Index = () => {
     };
 
     // Check if we should show PreMusai page (no session for this tab or empty session)
-    const shouldShowPreMusai = !forceChatUI && (!currentSession || !('messages' in currentSession) || currentSession.messages.length === 0);
+    const shouldShowPreMusai = !forceChatUI && (
+      !currentSession || (('messages' in currentSession) && currentSession.messages.length === 0)
+    );
 
     // All Musai features should work within the unified app - no redirects!
 

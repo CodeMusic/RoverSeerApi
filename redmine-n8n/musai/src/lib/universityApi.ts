@@ -14,7 +14,8 @@ import type {
   QuizQuestion,
   ChatMessage,
   CourseExam,
-  ExamType
+  ExamType,
+  Lecture
 } from '@/types/university';
 import { getRandomWittyError } from '@/config/messages';
 
@@ -41,22 +42,7 @@ export interface LectureContent
   quiz: QuizQuestion[];
 }
 
-export interface Lecture 
-{
-  id: string;
-  title: string;
-  status: 'planning' | 'in_progress' | 'complete';
-  steps: Array<{
-    title: string;
-    content: string;
-    quiz: QuizQuestion[];
-    chat: ChatMessage[];
-  }>;
-  passThreshold: number;
-  score: number;
-  exported: boolean;
-  createdAt: string;
-}
+// Use Lecture type from '@/types/university'
 
 export interface QuizResult 
 {
@@ -792,7 +778,37 @@ class UniversityApiService
     try 
     {
       const stored = localStorage.getItem('musai-university-lectures');
-      return stored ? JSON.parse(stored) : [];
+      const raw = stored ? JSON.parse(stored) : [];
+      // Normalize any older saved shapes into the unified Lecture type
+      const normalized: Lecture[] = Array.isArray(raw) ? raw.map((l: any) => {
+        const steps = Array.isArray(l?.steps) ? l.steps.map((s: any) => ({
+          title: String(s?.title || ''),
+          content: String(s?.content || ''),
+          quiz: Array.isArray(s?.quiz) ? s.quiz : [],
+          chat: Array.isArray(s?.chat) ? s.chat : [],
+          completed: Boolean(s?.completed ?? false),
+          quizPassed: Boolean(s?.quizPassed ?? false)
+        })) : [];
+
+        const createdAt = String(l?.createdAt || new Date().toISOString());
+        const updatedAt = String(l?.updatedAt || createdAt);
+
+        const lecture: Lecture = {
+          id: String(l?.id || `lecture-${Date.now()}`),
+          title: String(l?.title || 'Untitled Lecture'),
+          topic: String(l?.topic || l?.title || ''),
+          status: (l?.status === 'planning' || l?.status === 'in_progress' || l?.status === 'complete') ? l.status : 'in_progress',
+          steps,
+          currentStep: Number.isFinite(l?.currentStep) ? Number(l.currentStep) : 0,
+          passThreshold: typeof l?.passThreshold === 'number' ? l.passThreshold : 0.7,
+          overallScore: typeof l?.overallScore === 'number' ? l.overallScore : (typeof l?.score === 'number' ? l.score : 0),
+          exported: Boolean(l?.exported ?? false),
+          createdAt,
+          updatedAt
+        };
+        return lecture;
+      }) : [];
+      return normalized;
     } 
     catch (error) 
     {
@@ -807,14 +823,18 @@ class UniversityApiService
     {
       const lectures = await this.getLectures();
       const existingIndex = lectures.findIndex(l => l.id === lecture.id);
-      
+      const toSave: Lecture = {
+        ...lecture,
+        updatedAt: new Date().toISOString()
+      };
+
       if (existingIndex >= 0) 
       {
-        lectures[existingIndex] = lecture;
+        lectures[existingIndex] = toSave;
       } 
       else 
       {
-        lectures.push(lecture);
+        lectures.push(toSave);
       }
       
       localStorage.setItem('musai-university-lectures', JSON.stringify(lectures));

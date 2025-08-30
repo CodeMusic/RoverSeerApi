@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Map } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { APP_TERMS } from '@/config/constants';
+import { RouteUtils } from '@/config/routes';
 import { MusaiAlerts } from '@/components/alerts/MusaiAlerts';
 import { useMusaiAlerts } from '@/contexts/MusaiAlertsContext';
 import BetaRoadmapModal from './BetaRoadmapModal';
@@ -12,6 +15,7 @@ export function TopAppBar()
   const { alerts, dismissAlert, markAsRead, toggleAlerts, isAlertsOpen, closeAlerts } = useMusaiAlerts() as any;
   const [isRoadmapOpen, setIsRoadmapOpen] = useState<boolean>(false);
   const { preferences } = useUserPreferences();
+  const navigate = useNavigate();
 
   return (
     <div className={cn(
@@ -31,6 +35,27 @@ export function TopAppBar()
               onViewAlert={(alert) =>
               {
                 markAsRead(alert.id);
+                // Prefer in-app navigation to the relevant module
+                const title = (alert.title || '').toLowerCase();
+                if (title.includes('university'))
+                {
+                  closeAlerts();
+                  navigate(RouteUtils.mainAppWithMode('university'));
+                  return;
+                }
+                if (title.includes('eye of musai') || title.includes('perceive') || title.includes('recognize'))
+                {
+                  closeAlerts();
+                  navigate(RouteUtils.mainAppWithMode('eye'));
+                  return;
+                }
+                if (title.includes('research') || title.includes('newspaper') || alert.type === 'search')
+                {
+                  closeAlerts();
+                  navigate(RouteUtils.mainAppWithMode('search'));
+                  return;
+                }
+                // Fallback: external url if provided
                 if (alert.actionUrl)
                 {
                   window.open(alert.actionUrl, '_blank', 'noopener,noreferrer');

@@ -64,6 +64,47 @@ export function MusaiAlertsProvider({ children }: { children: React.ReactNode })
         localStorage.setItem('musai-alerts-seeded-beta-0814', '1');
       }
     } catch {}
+
+    // Seed feature announcements (beta roadmap highlights)
+    try {
+      const hasSeededFeatures = localStorage.getItem('musai-alerts-seeded-beta-0820');
+      if (!hasSeededFeatures) {
+        const base = {
+          description: '',
+          isRead: false,
+          priority: 'high' as const,
+          source: 'system'
+        };
+        const featureAlerts: MusaiAlert[] = [
+          {
+            id: `seed-uni-lecture-${Date.now()}`,
+            type: 'university',
+            title: 'Musai University can now generate lectures',
+            description: 'Create multi-section lectures with syllabus, quiz, and content previews.',
+            timestamp: new Date(),
+            ...base
+          } as MusaiAlert,
+          {
+            id: `seed-eye-${Date.now() + 1}`,
+            type: 'chat',
+            title: 'Eye of Musai: Perceive and Recognize working',
+            description: 'Generate images from prompts and recognize content from images; includes tools and multi-image sessions.',
+            timestamp: new Date(),
+            ...base
+          } as MusaiAlert,
+          {
+            id: `seed-research-${Date.now() + 2}`,
+            type: 'search',
+            title: 'MusaiRESearch generates newspaper articles with images',
+            description: 'Research flow outputs full newspaper-style articles with inline images.',
+            timestamp: new Date(),
+            ...base
+          } as MusaiAlert
+        ];
+        setAlerts(prev => [...featureAlerts, ...prev]);
+        localStorage.setItem('musai-alerts-seeded-beta-0820', '1');
+      }
+    } catch {}
   }, []);
 
   // Save alerts to localStorage whenever they change

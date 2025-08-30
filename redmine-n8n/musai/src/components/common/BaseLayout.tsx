@@ -94,9 +94,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       [APP_TERMS.TAB_SEARCH]: 'search',
       [APP_TERMS.TAB_TASK]: 'task',
       [APP_TERMS.TAB_THERAPY]: 'therapy',
-      // Medical and Eye currently do not use traditional sessions
-      // Include mapping only when session types exist
-      [APP_TERMS.TAB_EYE]: 'chat', // Eye reuses chat-like sessions initially
+      // Eye uses its own session type
+      [APP_TERMS.TAB_EYE]: 'eye',
     };
     
     const expectedType = tabToSessionType[currentTab];
@@ -112,7 +111,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       return filteredSessions.filter(s => s.type === 'dev');
     }
     return filteredSessions.filter((session) => 
-      session.type === 'chat' || session.type === 'career' || session.type === 'therapy'
+      session.type === 'chat' || session.type === 'career' || session.type === 'therapy' || session.type === 'eye'
     );
   })() as BaseSession[];
 
