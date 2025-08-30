@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Sparkles, Edit, Check } from 'lucide-react';
+import { BookOpen, Sparkles, Edit, Check, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import LecturePreviewModal from '@/components/university/LecturePreviewModal';
 import { universityApi } from '@/lib/universityApi';
 import type { Course, CourseCreationRequest } from '@/types/university';
 import { Textarea } from '@/components/ui/textarea';
+import { eyeApi } from '@/lib/eyeApi';
 
 interface CourseCreationProps 
 {
@@ -44,6 +45,8 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
   const [previewTitle, setPreviewTitle] = useState<string>('');
   const [previewSummary, setPreviewSummary] = useState<string>('');
   const [previewCache, setPreviewCache] = useState<Record<string, { content: string; isHtml: boolean; title: string }>>({});
+  const [courseIconUrl, setCourseIconUrl] = useState<string | null>(null);
+  const [isGeneratingIcon, setIsGeneratingIcon] = useState<boolean>(false);
   const navigate = useNavigate();
 
   // Session cache keys to avoid re-fetching on reloads
@@ -70,6 +73,20 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
         const parsed = JSON.parse(cached) as GeneratedCourseData;
         setGeneratedData(parsed);
         setEditedData(parsed);
+        // Try to load any previously generated icon
+        try
+        {
+          const iconKey = currentCacheKey ? `courseIcon::${currentCacheKey}` : '';
+          if (iconKey)
+          {
+            const icon = window.localStorage.getItem(iconKey);
+            if (icon)
+            {
+              setCourseIconUrl(icon);
+            }
+          }
+        }
+        catch {}
       }
     }
     catch {}
@@ -110,6 +127,41 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
         }
       }
       catch {}
+
+      // Generate small course icon based on title/description/tags
+      try
+      {
+        const iconKey = currentCacheKey ? `courseIcon::${currentCacheKey}` : '';
+        if (iconKey)
+        {
+          const existing = window.localStorage.getItem(iconKey);
+          if (existing)
+          {
+            setCourseIconUrl(existing);
+          }
+          else
+          {
+            setIsGeneratingIcon(true);
+            const promptParts: string[] = [];
+            if (courseData.title) promptParts.push(`Course icon for: ${courseData.title}`);
+            if (courseData.description) promptParts.push(courseData.description);
+            if (Array.isArray(courseData.tags) && courseData.tags.length > 0) promptParts.push(`Tags: ${courseData.tags.join(', ')}`);
+            const prompt = promptParts.join('\n');
+            const blob = await eyeApi.generateImage(prompt);
+            const dataUrl = await blobToDataUrl(blob);
+            try { window.localStorage.setItem(iconKey, dataUrl); } catch {}
+            setCourseIconUrl(dataUrl);
+          }
+        }
+      }
+      catch
+      {
+        // Silent fail; placeholder icon will remain
+      }
+      finally
+      {
+        setIsGeneratingIcon(false);
+      }
     } 
     catch (error) 
     {
@@ -198,6 +250,136 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
+  };
+
+  const getCacheKeyForLecture = (lectureTitle: string): string => 
+  {
+    const courseTitle = (isEditing ? editedData?.title : generatedData?.title) || 'draft';
+    return `${courseTitle}::${lectureTitle}`;
+  };
+
+  const areAllLecturesGenerated = (): boolean => 
+  {
+    const list = (isEditing ? editedData?.syllabus : generatedData?.syllabus) || [];
+    if (!list.length)
+    {
+      return false;
+    }
+    return list.every(s => Boolean(previewCache[getCacheKeyForLecture(s.title)]));
+  };
+
+  const handleExportCourseHtml = (): void => 
+  {
+    const data = isEditing ? editedData : generatedData;
+    if (!data)
+    {
+      return;
+    }
+    const list = data.syllabus || [];
+
+    const escapeHtml = (str: string): string => 
+    {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    };
+
+    // Course icon (prefer state, fallback to localStorage)
+    let iconDataUrl: string | null = courseIconUrl;
+    try
+    {
+      if (!iconDataUrl)
+      {
+        const iconKey = currentCacheKey ? `courseIcon::${currentCacheKey}` : (data.title ? `courseIcon::${encodeURIComponent(data.title.trim().toLowerCase())}` : '');
+        if (iconKey)
+        {
+          iconDataUrl = window.localStorage.getItem(iconKey);
+        }
+      }
+    }
+    catch {}
+
+    const courseHeader = `
+      <header class="course-header">
+        ${iconDataUrl ? `<div class=\"course-icon\"><img src=\"${iconDataUrl}\" alt=\"${escapeHtml(data.title)}\" /></div>` : ''}
+        <h1 class="course-title">${escapeHtml(data.title)}</h1>
+        <div class="course-meta">Instructor: ${escapeHtml(data.instructor)} • Difficulty: ${escapeHtml(data.difficulty)} • Duration: ${escapeHtml(data.estimatedDuration)}</div>
+        <p class="course-description">${escapeHtml(data.description)}</p>
+        <div class="course-tags">${(data.tags || []).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+      </header>
+    `;
+
+    const lecturesHtml = list.map((s, idx) => 
+    {
+      const cacheKey = getCacheKeyForLecture(s.title);
+      const payload = previewCache[cacheKey];
+      if (!payload)
+      {
+        return '';
+      }
+      const imageKey = `lecturePreviewImage::${cacheKey}`;
+      let imageDataUrl: string | null = null;
+      try { imageDataUrl = window.localStorage.getItem(imageKey); } catch {}
+      const imageBlock = imageDataUrl ? `<div class="feature-image"><img src="${imageDataUrl}" alt="${escapeHtml(s.title)}" /></div>` : '';
+      const contentBlock = payload.isHtml
+        ? `<div class="lecture-content">${payload.content}</div>`
+        : `<pre class="lecture-content-md">${escapeHtml(payload.content)}</pre>`;
+      return `
+        <article class="lecture">
+          <h2 class="lecture-title">${idx + 1}. ${escapeHtml(payload.title || s.title)}</h2>
+          ${imageBlock}
+          ${contentBlock}
+        </article>
+      `;
+    }).join('\n');
+
+    const css = `
+      body { font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Inter, sans-serif; color: #111; margin: 0; padding: 24px; background: #fff; }
+      .course-header { border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 24px; }
+      .course-icon { width: 64px; height: 64px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+      .course-icon img { width: 100%; height: 100%; object-fit: cover; }
+      .course-title { font-size: 28px; font-weight: 800; margin: 0 0 6px 0; }
+      .course-meta { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+      .course-description { font-size: 14px; color: #374151; }
+      .course-tags { margin-top: 8px; }
+      .tag { display: inline-block; border: 1px solid #e5e7eb; border-radius: 999px; padding: 2px 8px; font-size: 11px; color: #374151; margin-right: 6px; }
+      .lecture { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; margin: 16px 0; }
+      .lecture-title { font-size: 18px; font-weight: 700; margin: 0 0 10px 0; }
+      .feature-image { border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
+      .feature-image img { width: 100%; height: auto; object-fit: cover; }
+      .lecture-content { font-size: 14px; line-height: 1.6; }
+      .lecture-content-md { white-space: pre-wrap; font-size: 13px; line-height: 1.5; background: #f9fafb; padding: 10px; border-radius: 6px; border: 1px solid #e5e7eb; }
+      @media print { body { padding: 12mm; } }
+    `;
+
+    const html = `<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>${escapeHtml(data.title)} — Course Export</title>
+          <style>${css}</style>
+        </head>
+        <body>
+          ${courseHeader}
+          ${lecturesHtml}
+        </body>
+      </html>`;
+
+    try
+    {
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${data.title.replace(/\s+/g, '-').toLowerCase()}-course.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }
+    catch {}
   };
 
   return (
@@ -307,6 +489,17 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                       </Button>
                     </>
                   )}
+                  {!isEditing && areAllLecturesGenerated() && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportCourseHtml}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Export Course (HTML)
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -314,8 +507,18 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
               {/* Course Overview */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
-                    <BookOpen className="h-8 w-8 text-white" />
+                  <div className="w-16 h-16 rounded-lg overflow-hidden border flex items-center justify-center bg-gradient-to-br from-purple-500 to-blue-600">
+                    {courseIconUrl ? (
+                      <img src={courseIconUrl} alt="Course icon" className="w-full h-full object-cover" />
+                    ) : (
+                      <>
+                        {isGeneratingIcon ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+                        ) : (
+                          <BookOpen className="h-8 w-8 text-white" />
+                        )}
+                      </>
+                    )}
                   </div>
                   <div className="flex-1">
                     {isEditing ? (
@@ -459,6 +662,15 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                                   <Badge variant="secondary" className="text-xs">
                                     {lecture.duration}
                                   </Badge>
+                                  {(() => {
+                                    const key = getCacheKeyForLecture(lecture.title);
+                                    const has = Boolean(previewCache[key]);
+                                    return has ? (
+                                      <span className="inline-flex items-center text-green-600 text-xs gap-1">
+                                        <Check className="h-3 w-3" /> Ready
+                                      </span>
+                                    ) : null;
+                                  })()}
                                 </div>
                               </div>
                               <div className="self-center opacity-0 group-hover:opacity-100 transition-opacity text-purple-600">➔</div>
@@ -548,3 +760,14 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
 };
 
 export default CourseCreation; 
+
+async function blobToDataUrl(blob: Blob): Promise<string>
+{
+  return new Promise((resolve, reject) =>
+  {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}

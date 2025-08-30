@@ -5,6 +5,7 @@ import { Sparkles, Download } from 'lucide-react';
 import { universityApi } from '@/lib/universityApi';
 import { MarkdownRenderer } from '@/components/chat/MarkdownRenderer';
 import { isLikelyMarkdown } from '@/utils/markdown';
+import { eyeApi } from '@/lib/eyeApi';
 
 interface LecturePreviewModalProps 
 {
@@ -36,6 +37,7 @@ export function LecturePreviewModal({ open, onClose, title, summary, courseTitle
   const isFetchingRef = useRef<boolean>(false);
   const lastSignatureRef = useRef<string | null>(null);
   const isMountedRef = useRef<boolean>(false);
+  const [featureImageUrl, setFeatureImageUrl] = useState<string | null>(null);
 
   useEffect(() => 
   {
@@ -61,6 +63,20 @@ export function LecturePreviewModal({ open, onClose, title, summary, courseTitle
           setResolvedTitle(cachedResolvedTitle || title);
           setContent(cachedContent);
           setIsHtml(Boolean(cachedIsHtml));
+          // Attempt to pull cached image if previously generated
+          try
+          {
+            const imgKey = cacheKey ? `lecturePreviewImage::${cacheKey}` : (resolvedTitle ? `lecturePreviewImage::${resolvedTitle}` : '');
+            if (imgKey)
+            {
+              const cachedImg = window.localStorage.getItem(imgKey);
+              if (cachedImg)
+              {
+                setFeatureImageUrl(cachedImg);
+              }
+            }
+          }
+          catch {}
           return;
         }
         // Build stable signature to prevent duplicate runs from focus/re-render
@@ -100,12 +116,61 @@ export function LecturePreviewModal({ open, onClose, title, summary, courseTitle
         const raw = (generated && typeof generated === 'object') ? (generated as any).content : generated;
         const asString = typeof raw === 'string' ? raw : JSON.stringify(raw ?? {}, null, 2);
         const looksHtml = typeof asString === 'string' && /<([a-z][\w-]*)(\s|>)/i.test(asString.trim());
-        setIsHtml(looksHtml && !isLikelyMarkdown(asString));
-        setContent(asString || '');
+        const computedIsHtml = (looksHtml && !isLikelyMarkdown(asString));
+        setIsHtml(computedIsHtml);
+
+        // Generate feature image from summary or derived text
+        let generatedImageDataUrl: string | null = null;
+        try
+        {
+          const imgKey = cacheKey ? `lecturePreviewImage::${cacheKey}` : (generated.title ? `lecturePreviewImage::${generated.title}` : '');
+          const existing = imgKey ? window.localStorage.getItem(imgKey) : null;
+          const promptSource = (summary && summary.trim().length > 0) ? summary : htmlToPlainTextSafe(asString).slice(0, 800);
+          if (!existing && promptSource && promptSource.trim().length > 0)
+          {
+            const blob = await eyeApi.generateImage(promptSource);
+            generatedImageDataUrl = await blobToDataUrl(blob);
+            if (imgKey)
+            {
+              try { window.localStorage.setItem(imgKey, generatedImageDataUrl); } catch {}
+            }
+          }
+          else if (existing)
+          {
+            generatedImageDataUrl = existing;
+          }
+        }
+        catch {}
+
+        setFeatureImageUrl(generatedImageDataUrl);
+
+        // Inject image into content for HTML or prepend markdown image for MD
+        const contentWithImage = (() =>
+        {
+          if (!generatedImageDataUrl)
+          {
+            return asString || '';
+          }
+          if (computedIsHtml)
+          {
+            // Avoid double-inserting if an <img> already exists at the top
+            const hasImg = /<img\b/i.test(asString);
+            if (hasImg)
+            {
+              return asString || '';
+            }
+            const imgBlock = `<div class="rounded border bg-card overflow-hidden mb-4"><img src="${generatedImageDataUrl}" alt="Illustration" style="width:100%;height:auto;object-fit:cover;" /></div>`;
+            return `${imgBlock}${asString || ''}`;
+          }
+          // Markdown: prepend image syntax so viewers render it
+          return `![](${generatedImageDataUrl})\n\n${asString || ''}`;
+        })();
+
+        setContent(contentWithImage);
         // Emit to cache owner
         if (cacheKey && onGenerated)
         {
-          onGenerated(cacheKey, { content: asString || '', isHtml: looksHtml && !isLikelyMarkdown(asString), title: generated.title || title });
+          onGenerated(cacheKey, { content: contentWithImage || '', isHtml: computedIsHtml, title: generated.title || title });
         }
       }
       catch 
@@ -147,6 +212,11 @@ export function LecturePreviewModal({ open, onClose, title, summary, courseTitle
             </div>
           ) : (
             <>
+              {featureImageUrl && !isHtml && (
+                <div className="rounded border bg-card overflow-hidden mb-4">
+                  <img src={featureImageUrl} alt="Illustration" style={{ width: '100%', height: 'auto', objectFit: 'cover' }} />
+                </div>
+              )}
               {isHtml ? (
                 <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
               ) : (
@@ -183,5 +253,36 @@ export function LecturePreviewModal({ open, onClose, title, summary, courseTitle
 }
 
 export default LecturePreviewModal;
+
+// Helpers — localized to this module to avoid broader dependencies
+function htmlToPlainTextSafe(input: string): string
+{
+  try
+  {
+    if (typeof window === 'undefined' || typeof DOMParser === 'undefined')
+    {
+      return input;
+    }
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(input, 'text/html');
+    const text = doc.body?.textContent || '';
+    return text.replace(/\s+/g, ' ').trim();
+  }
+  catch
+  {
+    return input;
+  }
+}
+
+async function blobToDataUrl(blob: Blob): Promise<string>
+{
+  return new Promise((resolve, reject) =>
+  {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
 
 
