@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import ROUTES from '@/config/routes';
+import ROUTES, { RouteUtils } from '@/config/routes';
 import { universityApi } from '@/lib/universityApi';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { cn } from '@/lib/utils';
@@ -489,8 +489,21 @@ const University = () => {
       onToggleFavorite={() => {}} // No-op for university
       renderMainContent={renderMainContent}
       onTabChange={(tab) => {
-        // Handle tab navigation if needed
-        console.log('University tab change:', tab);
+        // Allow switching away via the left toolbar by routing through main app with mode
+        const map: Record<string, string> = {
+          [APP_TERMS.TAB_CHAT]: 'chat',
+          [APP_TERMS.TAB_SEARCH]: 'search',
+          [APP_TERMS.TAB_CODE]: 'code',
+          [APP_TERMS.TAB_UNIVERSITY]: 'university',
+          [APP_TERMS.TAB_NARRATIVE]: 'narrative',
+          [APP_TERMS.TAB_CAREER]: 'career',
+          [APP_TERMS.TAB_THERAPY]: 'therapy',
+          [APP_TERMS.TAB_MEDICAL]: 'medical',
+          [APP_TERMS.TAB_TASK]: 'task',
+          [APP_TERMS.TAB_EYE]: 'eye'
+        };
+        const mode = map[tab] || 'chat';
+        navigate(RouteUtils.mainAppWithMode(mode));
       }}
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}
