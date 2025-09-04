@@ -1,25 +1,24 @@
-# comfyui/Dockerfile.comfyui
-
 FROM python:3.10-slim
 
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git ffmpeg libgl1 libglib2.0-0 && \
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git wget build-essential ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Set environment variables for CPU/MPS fallback (esp. for Mac M1/M2)
-ENV PYTORCH_ENABLE_MPS_FALLBACK=1
-ENV CUDA_VISIBLE_DEVICES=""
-ENV FORCE_CPU=1
+# Get official ComfyUI source (latest)
+WORKDIR /root/ComfyUI
+RUN git clone --depth=1 https://github.com/comfyanonymous/ComfyUI . 
 
-# Copy app source code
-COPY ./src /app
+# Install CPU-only PyTorch wheels (works on linux/arm64)
+# (the extra-index ensures CPU wheels, avoiding CUDA packages)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu \
+        torch==2.3.1 torchvision==0.18.1 && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# (Optional) install any custom nodes here
 
 EXPOSE 8188
 
-CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188"]
+# Force CPU at startup so ComfyUI never tries CUDA
+CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cpu"]

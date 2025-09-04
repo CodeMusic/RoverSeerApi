@@ -65,7 +65,7 @@ services:
       - n8n_data:/home/node/.n8n
       - ./n8n/plugins:/data/packages
     networks: [ai_net]
-
+    
   comfyui:
     build:
       context: ./comfyui
@@ -74,15 +74,12 @@ services:
     container_name: musai_comfyui
     restart: always
     ports:
-      - "8008:8188"
+      - "8008:8188"    # host:container
     volumes:
-      - ./ai-model-cache/comfyui-models:/app/models
-      - ./ai-model-cache/comfyui-output:/app/output
-      - ./ai-model-cache/comfyui-input:/app/input
-    environment:
-      - COMFYUI_ARGS=--listen 0.0.0.0 --port 8188
-      - PYTORCH_ENABLE_MPS_FALLBACK=1  # For Apple M1/M2
-      - CUDA_VISIBLE_DEVICES=""
+      # official tree lives under /root/ComfyUI
+      - ./ai-model-cache/comfyui-models:/root/ComfyUI/models
+      - ./ai-model-cache/comfyui-output:/root/ComfyUI/output
+      - ./ai-model-cache/comfyui-input:/root/ComfyUI/input
     networks: [ai_net]
 
   musai:
