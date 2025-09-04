@@ -65,7 +65,7 @@ services:
       - n8n_data:/home/node/.n8n
       - ./n8n/plugins:/data/packages
     networks: [ai_net]
-    
+
   comfyui:
     build:
       context: ./comfyui
@@ -80,6 +80,11 @@ services:
       - ./ai-model-cache/comfyui-models:/root/ComfyUI/models
       - ./ai-model-cache/comfyui-output:/root/ComfyUI/output
       - ./ai-model-cache/comfyui-input:/root/ComfyUI/input
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8188/"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
     networks: [ai_net]
 
   musai:
@@ -179,10 +184,10 @@ services:
       - DEBUG=true
     networks: [ai_net]
     healthcheck:
-      test: ["CMD", "wget", "-qO", "-", "http://localhost:3000/morty/https/example.com/"]
-      interval: 30s
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1"]
+      interval: 20s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   wyoming-whisper:
     image: rhasspy/wyoming-whisper
