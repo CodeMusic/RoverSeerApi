@@ -124,22 +124,10 @@ services:
       OLLAMA_MODEL: llama3
     volumes:
       - ./ai-model-cache/piper-voices:/voices:ro
-      - ./ai-model-cache/whisper-models:/whisper-models
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks: [ai_net]
-
-      # LLM passthrough (optional)
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: llama3
-    volumes:
-      - ./ai-model-cache/piper-voices:/voices:ro
       - ./ai-model-cache/whisper-models:/whisper-models:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      ai_net:
-        aliases: [ musai-api ]
+    networks: [ai_net]
 
   searxng:
     image: searxng/searxng:latest

@@ -10,6 +10,7 @@ cd "$APP_ROOT"
 # Apple Silicon / discovery
 export PYTORCH_ENABLE_MPS_FALLBACK=1
 export PYTHONNOUSERSITE=1
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
 
 # Your custom nodes + central model cache
 export COMFYUI_CUSTOM_NODES="$HOME/redmine-n8n/comfyui/src/custom_nodes"
