@@ -187,7 +187,14 @@ class UniversityApiService
 
     if (typeof raw === 'string')
     {
-      return tryParse(raw);
+      // If the payload is a JSON string (possibly an array with { output }),
+      // parse it and then re-run normalization to unwrap common wrappers.
+      const parsed = tryParse(raw);
+      if (parsed === raw)
+      {
+        return raw;
+      }
+      return this.parseN8nLikePayload(parsed);
     }
 
     return raw;
