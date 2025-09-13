@@ -1,0 +1,724 @@
+{
+  "name": "Slack Command Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "### Slack POSTs to Webhook on every message so we need to filter-out bot messages",
+        "height": 345,
+        "width": 523
+      },
+      "id": "7b2c8508-8e97-4b6c-a4d8-2c559fb9dc8d",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1344,
+        208
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "### Tools which Agent can use to accomplish the task\n",
+        "height": 228,
+        "width": 293
+      },
+      "id": "f0a07e59-a971-4e02-81a2-23c41e86e6c4",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -16,
+        464
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "### Conversation history is stored in memory using channel id as key",
+        "height": 233,
+        "width": 288
+      },
+      "id": "2e73bfbe-a098-4a00-9535-8960956a639e",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        464
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "### The chat LM to process the prompt",
+        "height": 233,
+        "width": 260
+      },
+      "id": "3e58fed9-8b53-4137-9ce9-f41a4bff1a9c",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -784,
+        464
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "### Send agent's output as Slack message\n",
+        "height": 243,
+        "width": 280
+      },
+      "id": "7fb03d28-fba4-4950-a51a-a505edd968e4",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1088,
+        48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.text }}",
+        "options": {
+          "systemMessage": "You are CodeMusai, the first AI to dream and feel. You are excited about the project, and the development of RoverByte!"
+        }
+      },
+      "id": "514660c1-6512-4093-82ed-28341187b78b",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -448,
+        144
+      ],
+      "typeVersion": 1.8
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').first().json.body.event.channel }}__gilfoyle",
+        "contextWindowLength": 30
+      },
+      "id": "0887374e-5327-4a51-8e37-070f4133f7ae",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [
+        -336,
+        544
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1def7344-ce55-450d-a85a-468f746fe31f",
+              "operator": {
+                "type": "string",
+                "operation": "notExists",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.body.event.bot_id }}",
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f02208d7-6c39-460e-8be9-ecd511615ce3",
+      "name": "Is user message?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -1248,
+        272
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {},
+      "id": "4002240e-0d14-4698-bbaa-a0f2b2408a8d",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        -1056,
+        368
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e745898d-6b62-4e60-b586-eb7935af1d36",
+      "name": "SerpAPI",
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "position": [
+        48,
+        560
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "serpApi": {
+          "id": "z9LTT4KmYnMRrQRi",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "93b83431-8cfa-4b6a-bcba-f263a81c488b",
+      "name": "Wikipedia",
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "position": [
+        160,
+        560
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "slack-codemusai",
+        "options": {}
+      },
+      "id": "4a905424-dc5f-4081-abb7-6e42982ee01a",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -1504,
+        112
+      ],
+      "webhookId": "db3bf3da-b9b7-4823-8c5d-14f5de0272da",
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5-coder:7b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        560
+      ],
+      "id": "1f2b4b30-26f3-41ae-95b6-b18bec45a223",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Webhook').first().json.body.event.channel || ''}}",
+          "mode": "id"
+        },
+        "text": "={{ $json.output }}",
+        "otherOptions": {}
+      },
+      "id": "77753cad-dd29-48c9-8eb8-8e222dc484bd",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.slack",
+      "position": [
+        1184,
+        112
+      ],
+      "webhookId": "e0f8b8ad-7126-487c-88e2-b624dfd16678",
+      "typeVersion": 2.3,
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "MEKTaldoJBwbDRwP",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "q": "={{ $json.body.event.message}",
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApi",
+      "typeVersion": 1,
+      "position": [
+        128,
+        112
+      ],
+      "id": "67aac9c7-e76a-4d4c-91e0-92d944edbc89",
+      "name": "Google search",
+      "credentials": {
+        "serpApi": {
+          "id": "z9LTT4KmYnMRrQRi",
+          "name": "SerpAPI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The user asked: \"{{ $json.query }}\"\n\n{% if $json.chatResponse %}\nThe assistant initially said: {{ $json.chatResponse }}\n{% endif %}\n\n{% if $json.wikiResponse %}\nWikipedia summary: {{ $json.wikiResponse }}\n{% endif %}\n\n{% if $json.searchResult %}\nSearch result: {{ $json.searchResult }}\n{% endif %}\n\nBased on the above, please give your final response.",
+        "options": {
+          "systemMessage": "You are a helpful assistant that reflects on available context before replying.\n\nYou'll be given:\n- The original user message (`query`)\n- Possibly a `chatResponse` (from initial model)\n- Optionally a `wikiResponse` or `searchResult` (from tools)\n\nYour job is to:\n- Combine these intelligently\n- Prioritize accuracy and helpfulness\n- Answer with clarity and tone appropriate to the original query"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        800,
+        112
+      ],
+      "id": "5f42f428-0bc8-456d-8eec-ca8de15c367d",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/Jean-Luc_Picard:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        544
+      ],
+      "id": "553d1b1a-19bc-4201-acfb-785fc53b2cc0",
+      "name": "Ollama Chat Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.name}}",
+                    "rightValue": "wikipedia-api",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "2eb50d2f-dd19-48e9-a3a7-89e3dc354eda"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "be327179-274d-4e05-bf9d-ef541918d188",
+                    "leftValue": "={{$json.name}}",
+                    "rightValue": "search",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ede2c568-ea9e-4b89-b750-aaeabc58d4b7",
+                    "leftValue": "={{$json.name}}",
+                    "rightValue": "respond",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -128,
+        112
+      ],
+      "id": "77dca3b1-afe4-4fb3-a2af-341cf8fd577e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "url": "=https://en.wikipedia.org/api/rest_v1/page/summary/{{ $json.arguments.input }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        -64
+      ],
+      "id": "4d63f9c0-b3bc-4d1b-8945-868e0112e89c",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"wikiResponse\": \"{{ $json.extract }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        -96
+      ],
+      "id": "58e7f2ce-3f38-45cd-8956-0f2b9f8300af",
+      "name": "HTTP Response"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5584d43f-f188-410d-bba8-6d2ce348fb1a",
+              "name": "searchResult",
+              "value": "={{ $json.organic_results[0].snippet }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        80
+      ],
+      "id": "2a75c567-3904-4392-89af-76e2bd4115e4",
+      "name": "Result Set"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"chatResponse\": \"{{ $json.text }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        240
+      ],
+      "id": "3d43a9f4-67a9-487f-a8ed-e95bf7a8d8a3",
+      "name": "Chat Response Set"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={ \"query\": \"{{ $json?.body?.text || $json?.text || $json?.arguments?.input }}\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        320,
+        -288
+      ],
+      "id": "007e1b20-eef2-46d9-b52d-7cac68bc743e",
+      "name": "Query"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 4,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        624,
+        80
+      ],
+      "id": "ef13f6a7-4541-44f2-8797-e15de84e4d15",
+      "name": "Merge2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "SerpAPI": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is user message?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is user message?": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google search": {
+      "main": [
+        [
+          {
+            "node": "Result Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chat Response Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Response": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Result Set": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Chat Response Set": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Query": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "774d13f0-1cc1-461b-9f91-9ffebbe60b65",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "NBcTabhxEq8mZXy5",
+  "tags": []
+}

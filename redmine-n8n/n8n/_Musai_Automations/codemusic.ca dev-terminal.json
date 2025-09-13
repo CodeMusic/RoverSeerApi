@@ -1,0 +1,981 @@
+{
+  "name": "codemusic.ca dev-terminal",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "codemusicca",
+        "authentication": "basicAuth",
+        "responseMode": "streaming",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        16
+      ],
+      "id": "801ed430-a1ea-4e16-9bd0-1e5bfbb54dd6",
+      "name": "Webhook",
+      "webhookId": "aa7a1a6d-ff23-4d24-b433-bd9cddeeb412",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2240,
+        112
+      ],
+      "id": "7e03006f-4d31-4e07-a117-798e1e2fd07f",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        400,
+        272
+      ],
+      "id": "275f479c-b40b-457c-9a6f-472ad6bb8acf",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        208
+      ],
+      "id": "982fc578-b642-4dd8-8d7d-a5f22a1501b9",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0adb92cc-444d-4291-a0a1-d60c4a37635d",
+                    "leftValue": "={{$json[\"__type\"]}}",
+                    "rightValue": "tool",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "toolcall"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ed597deb-5969-4677-9c84-c870e75184bb",
+                    "leftValue": "= {{$json[\"__type\"]}} ",
+                    "rightValue": ".*",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "chat response"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1504,
+        272
+      ],
+      "id": "51970655-1038-4c37-97fd-5238f67cf512",
+      "name": "is tool call?"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json[\"name\"]}}",
+                    "rightValue": "wikipedia-api",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0f83e05c-9e6f-4d33-9a6d-c60b9dd8733e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Wiki toolcall"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d14afb5b-5c3d-4584-83ce-5582d375c21c",
+                    "leftValue": "={{$json[\"name\"]}}",
+                    "rightValue": "Send_a_message_in_Slack",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Slack toolcall"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        864,
+        -208
+      ],
+      "id": "a3966d31-4e9b-465f-a29e-7d99e8ace72e",
+      "name": "which tool?"
+    },
+    {
+      "parameters": {
+        "url": "=https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={{ encodeURIComponent($json.data || '') }}&format=json&utf8=1&srlimit=1&srprop=snippet|timestamp",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        32,
+        -480
+      ],
+      "id": "34e104d7-fbdb-4603-841e-f7b6f5f08fbb",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "=https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&formatversion=2&format=json&pageids={{$json.query.search[0].pageid}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        -480
+      ],
+      "id": "7941150a-4cd3-46d3-bd0d-1aef5b139fed",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.isURL}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "ee713e47-e928-4879-937c-55ee7c222851"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "URL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "77f04c41-eee1-4e31-965e-b5afb334065b",
+                    "leftValue": "={{$json.isURL}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Wiki"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -160,
+        -272
+      ],
+      "id": "306dac88-6579-43de-8396-58bef51b2611",
+      "name": "isURL"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        64,
+        -288
+      ],
+      "id": "db8cab32-95d0-4dca-a91e-22ccbb936753",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Name: Build ChatInput (Wikipedia any shape → LLM)\n// Input: JSON from one of:\n//   A) Search:  action=query&list=search ... (has query.search[0].snippet, pageid, title)\n//   B) Extracts: action=query&prop=extracts ... (has query.pages[0].extract, title, pageid)\n//   C) REST Summary: /api/rest_v1/page/summary/{title} (has extract, title, content_urls)\n//\n// Also pass `initialPrompt` and (optionally) `sessionId` earlier in the flow.\n// Output: { body: { chatInput, sessionId }, web: {} }\n\nfunction htmlToText(s = '') {\n  return String(s)\n    .replace(/<[^>]+>/g, '')    // strip tags (e.g., <span class=\"searchmatch\">)\n    .replace(/&quot;/g, '\"')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&#39;|&apos;/g, \"'\")\n    .trim();\n}\n\nfunction clip(s = '', max = 1800) {\n  if (s.length <= max) return s;\n  return s.slice(0, max - 1).trimEnd() + '…';\n}\n\nreturn items.map(i => {\n  const j = i.json || {};\n  const initialPrompt =\n    j.initialPrompt ?? j.prompt ?? j.userQuery ?? j.parameters?.input ?? j.topic ?? '';\n  const sessionId = j.sessionId || '104.28.132.29'; // swap in your own resolver if needed\n\n  let title = '';\n  let text  = '';\n  let url   = '';\n\n  // --- Case C: REST summary shape -------------------------\n  // { title, extract, description?, content_urls.desktop.page, type? }\n  if (j && (j.extract || j.content_urls || j.type === 'standard' || j.type === 'disambiguation')) {\n    title = j.title || '';\n    text  = j.extract || j.description || '';\n    url   = j.content_urls?.desktop?.page || j.canonicalurl || '';\n  }\n\n  // --- Case B: Extracts shape -----------------------------\n  // { query: { pages: [ { title, pageid, extract } ] } }\n  if (!text && j?.query?.pages?.[0]) {\n    const p = j.query.pages[0];\n    title = p.title || title;\n    text  = p.extract || text;\n    if (!url && p.pageid) url = `https://en.wikipedia.org/?curid=${p.pageid}`;\n  }\n\n  // --- Case A: Search shape -------------------------------\n  // { query: { search: [ { title, pageid, snippet } ] } }\n  if (!text && j?.query?.search?.[0]) {\n    const s = j.query.search[0];\n    title = s.title || title;\n    text  = htmlToText(s.snippet || '');\n    if (!url && s.pageid) url = `https://en.wikipedia.org/?curid=${s.pageid}`;\n  }\n\n  // Final tidy\n  title = (title || '').trim();\n  text  = clip((text || '').trim(), 1800); // keep it token‑friendly\n  const decorated = title ? `${title} — ${text}` : (text || 'No extract available.');\n  const withUrl   = url ? `${decorated} (${url})` : decorated;\n\n  const chatInput =\n    `You were asked: ${initialPrompt}. You ran a tool call and got: ` +\n    `'${withUrl}'. Please answer now without calling another tool.`;\n\n  return {\n    json: {\n      body: { chatInput, sessionId },\n      web: {} // keep if your receiver expects this key\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        -480
+      ],
+      "id": "85f5e2d8-2e02-4462-a58b-e6800daa7228",
+      "name": "PrepForAgent-Wiki"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Name: Build ChatInput (Generic URL → LLM) with Slack + preserved sessionId\n// Output: { json: { body: { chatInput, sessionId } } }\n\nfunction htmlToText(s = '') {\n  return String(s)\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&quot;/g, '\"')\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/&#39;|&apos;/g, \"'\")\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction clip(s = '', max = 1800) {\n  if (!s) return '';\n  return s.length <= max ? s : s.slice(0, max - 1).trimEnd() + '…';\n}\n\nfunction extractMeta(html = '') {\n  const grab = (re) => (re.exec(html) || [,''])[1].trim();\n  const ogTitle = grab(/<meta[^>]+property=[\"']og:title[\"'][^>]+content=[\"']([^\"']+)[\"']/i)\n               || grab(/<meta[^>]+name=[\"']og:title[\"'][^>]+content=[\"']([^\"']+)[\"']/i);\n  const ogDesc  = grab(/<meta[^>]+property=[\"']og:description[\"'][^>]+content=[\"']([^\"']+)[\"']/i)\n               || grab(/<meta[^>]+name=[\"']description[\"'][^>]+content=[\"']([^\"']+)[\"']/i);\n  const ogUrl   = grab(/<meta[^>]+property=[\"']og:url[\"'][^>]+content=[\"']([^\"']+)[\"']/i);\n  const title   = ogTitle || grab(/<title[^>]*>([\\s\\S]*?)<\\/title>/i);\n  return { title, desc: ogDesc, ogUrl };\n}\n\n// ---------- Slack helpers ----------\nfunction isSlackSuccess(j = {}) {\n  return j && j.ok === true && (j.channel || j.channel_id) && (j.message || j.msg || j.data?.message);\n}\nfunction pluck(obj, path, d = undefined) {\n  try { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj) ?? d; } catch { return d; }\n}\nfunction flattenSlackText(message = {}) {\n  if (typeof message.text === 'string' && message.text.trim()) return message.text.trim();\n  const blocks = message.blocks || [];\n  const parts = [];\n  function collect(el) {\n    if (!el || typeof el !== 'object') return;\n    if (Array.isArray(el.elements)) el.elements.forEach(collect);\n    if (el.type === 'text' && typeof el.text === 'string') parts.push(el.text);\n    if (el.type === 'link') {\n      const label = (el.text && el.text.trim()) ? el.text.trim() : el.url;\n      parts.push(`${label} (${el.url})`);\n    }\n  }\n  for (const b of blocks) if (Array.isArray(b.elements)) b.elements.forEach(collect);\n  return parts.join(' ').replace(/\\s+/g, ' ').trim();\n}\n\nreturn items.map(i => {\n  const j = i.json || {};\n\n  // Preserve sessionId EXACTLY if provided (string or object); fallback only if missing\n  const sessionId = ('sessionId' in j) ? j.sessionId : 'debug-session';\n\n  // Caller’s words (don’t force to string)\n  const initialPrompt =\n    j.initialPrompt ?? j.prompt ?? j.userQuery ?? j.parameters?.input ?? j.topic ?? j.data ?? '';\n\n  // --- Branch 1: Slack success payload ---\n  if (isSlackSuccess(j)) {\n    const channel = j.channel || j.channel_id || pluck(j, 'message.channel') || 'unknown';\n    const ts      = j.ts || j.message_timestamp || pluck(j, 'message.ts') || 'unknown-ts';\n    const msg     = j.message || j.msg || j.data?.message || {};\n    const text    = flattenSlackText(msg) || '[no message text parsed]';\n\n    // Try to surface an n8n “powered by” link if present\n    const rawStr = JSON.stringify(j);\n    const wfLinkMatch = rawStr.match(/https?:\\/\\/[^\\s\")]+n8n[^\\s\")]+/i);\n    const wfLink = wfLinkMatch ? wfLinkMatch[0] : '';\n\n    const excerpt = clip(text, 800);\n    const chatInput =\n      `I sent this to CodeMusic.ca on Slack (channel: ${channel}, ts: ${ts}). ` +\n      `Visitor message relayed: \"${excerpt}\".` +\n      (wfLink ? ` Automated via n8n workflow: ${wfLink}` : '');\n\n    return { json: { body: { chatInput, sessionId } } };\n  }\n\n  // --- Branch 2: Generic URL → LLM (original behavior) ---\n  const requestedUrl =\n    j.request?.url || j.url || j.sourceUrl || j.finalUrl || j.data || '';\n\n  const rawBody = (typeof j === 'string')\n    ? j\n    : (j.body ?? j.data ?? j.html ?? j.response ?? j.page ?? '');\n\n  const bodyStr = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody || '');\n  const meta = extractMeta(bodyStr);\n  const title = meta.title || '';\n  const url   = meta.ogUrl || requestedUrl || '';\n\n  const textPlain = htmlToText(bodyStr);\n  const excerpt = clip(meta.desc || textPlain, 1800);\n  const decorated = title ? `${title} — ${excerpt}` : (excerpt || 'No readable content found.');\n  const withUrl = url ? `${decorated} (${url})` : decorated;\n\n  const asked = (typeof initialPrompt === 'string' && initialPrompt.trim()) ? initialPrompt : '';\n  const chatInput =\n    `User said: \"${asked}\". ` +\n    `You requested this URL to help answer: ${url || requestedUrl || '[unknown URL]'}. ` +\n    `Here are the page results: '${withUrl}'. Please answer now and do not call another tool.`;\n\n  return { json: { body: { chatInput, sessionId } } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -288
+      ],
+      "id": "035d0a8a-f10c-4f31-9dbc-20c3b1312361",
+      "name": "PrepForAgent-URL"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(s) {\n  return (typeof s === 'string')\n    ? s.trim().replace(/^['\"]|['\"]$/g, '') // strip wrapping quotes\n    : '';\n}\n\nfunction hasScheme(s) {\n  return /^https?:\\/\\//i.test(s);\n}\n\nfunction looksLikeUrlNoScheme(s) {\n  return /^(?:www\\.)?[a-z0-9-._~%]+\\.[a-z]{2,}(?::\\d+)?(?:\\/[^\\s#?]+)?(?:\\?[^\\s#]*)?(?:#[^\\s]*)?$/i.test(s);\n}\n\nfunction isHttpUrl(s) {\n  try {\n    const u = new URL(s);\n    return u.protocol === 'http:' || u.protocol === 'https:';\n  } catch {\n    return false;\n  }\n}\n\nconst j = $json;\n\n// Pick candidate from data → input → topic → query\nlet candidate = clean(j.data) || clean(j.input) || clean(j.topic) || clean(j.query);\nlet isURL = false;\n\nif (candidate) {\n  if (hasScheme(candidate)) {\n    isURL = isHttpUrl(candidate);\n  } else if (looksLikeUrlNoScheme(candidate)) {\n    isURL = isHttpUrl('https://' + candidate);\n  }\n}\n\n// Output only the required fields\nreturn {\n  \"__type\": \"chat\",\n  \"data\": candidate || '',\n  \"isURL\": isURL\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        16
+      ],
+      "id": "a722e218-5393-42f0-bddc-19d3fa673f99",
+      "name": "DetectURL"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09AYS3A91P",
+          "mode": "list",
+          "cachedResultName": "codemusic-site-bot-messages"
+        },
+        "text": "={{ $('is tool call?').item.json.data  || json.body.chatInput }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slackTool",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        208
+      ],
+      "id": "adf48fc9-d7c6-415e-915e-be104d8c4d70",
+      "name": "Send a message in Slack",
+      "webhookId": "6a19f460-7621-4811-b825-436a083dabd1",
+      "credentials": {
+        "slackApi": {
+          "id": "jF8k1HlCZ3aGQz4D",
+          "name": "Musai Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09AYS3A91P",
+          "mode": "list",
+          "cachedResultName": "codemusic-site-bot-messages"
+        },
+        "text": "={{ $json.output || $json.data }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1600,
+        -288
+      ],
+      "id": "f909d996-3111-42df-866b-379d5da7e62e",
+      "name": "Send a message",
+      "webhookId": "fa1dd50a-33dd-4103-a123-a77a8e0ae4cd",
+      "credentials": {
+        "slackApi": {
+          "id": "jF8k1HlCZ3aGQz4D",
+          "name": "Musai Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        240
+      ],
+      "id": "bee68dd8-94ab-4d47-9ef8-b84fbe615595",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Name: Sample ChatInput Test Data\n// Output: { json: { body: { chatInput, sessionId } } }\n\nreturn [\n  {\n    json: {\n      body: {\n        chatInput: \"send a message on slack about yourself but be very funny... research about https://codemusic.ca first.\",\n        sessionId: \"debug-session-123\"\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        240
+      ],
+      "id": "81e281d5-ec26-4939-9e19-91f529be9db6",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Name: Normalize Tool Call → Slack-ready (robust)\n// Output (per item):\n// {\n//   __type: 'tool' | 'chat',\n//   name: 'Send_a_message_in_Slack' | '',\n//   channel: 'general' | '#general' | 'C123...' | '',\n//   text: 'message text' | '',\n//   data: 'message text' | '',\n//   raw: '<original string>'\n// }\n\nfunction toStr(x){ try{ return typeof x==='string'? x : JSON.stringify(x); }catch{ return String(x); } }\n\nfunction normalizeQuotes(s=''){\n  return s\n    .replace(/[\\u201C\\u201D\\u201F\\u2033]/g, '\"')   // “ ” ‟ ″ → \"\n    .replace(/[\\u2018\\u2019\\u2032]/g, \"'\")        // ‘ ’ ′ → '\n    .replace(/\\u00A0/g, ' ')                      // nbsp\n    .replace(/\\u2028|\\u2029/g, ' ');              // line sep\n}\n\n// Attempt to repair common LLM tool-call glitches\nfunction repair(jsonish){\n  let s = String(jsonish || '').trim();\n\n  // Keep last {...} if extra prose surrounds it\n  const first = s.indexOf('{'); const last = s.lastIndexOf('}');\n  if (first !== -1 && last !== -1 && last > first) s = s.slice(first, last+1);\n\n  s = normalizeQuotes(s);\n\n  // Parameters variants → \"parameters\":\n  s = s\n    .replace(/\"parameters\\s*=\\s*\\{/g, '\"parameters\": {')\n    .replace(/\"parameters\\s*\\{/g, '\"parameters\": {')\n    .replace(/parameters\\s*\\(/g, '\"parameters\": {')\n    .replace(/\"parameters\":\\s*\\(\\s*\\{/g, '\"parameters\": {')\n    .replace(/\"parameters\\{\":/g, '\"parameters\":');\n\n  // Unescape accidental key backslashes: \"parameters\\\":\n  s = s.replace(/\"([A-Za-z0-9_-]+)\\\\\":/g, '\"$1\":');\n\n  // Trailing \"})\" → \"}\"\n  s = s.replace(/\\}\\)\\s*$/g, '}');\n\n  // If text ends with an escaped quote before closing braces, unescape just that final one\n  // e.g. ...\"text\":\"...\\\"}}  →  ...\"text\":\"...\"}}\n  s = s.replace(/(\"text\"\\s*:\\s*\")([\\s\\S]*?)\\\\(\"\\s*}\\s*}\\s*$)/, (_, a, mid, c) => a + mid + '\"' + c);\n\n  // Remove dangling commas before } or ]\n  s = s.replace(/,(\\s*[}\\]])/g, '$1');\n\n  // Balance braces (best-effort)\n  const opens = (s.match(/{/g) || []).length;\n  const closes = (s.match(/}/g) || []).length;\n  if (closes < opens) s += '}'.repeat(opens - closes);\n\n  return s;\n}\n\n// Peel up to N JSON layers: \"\\\"{...}\\\"\" → \"{...}\" → {...}\nfunction peel(s, max=3){\n  let cur = s;\n  for (let i=0;i<max;i++){\n    if (typeof cur !== 'string') return cur;\n    const t = cur.trim();\n    if (!t) return t;\n    try {\n      const parsed = JSON.parse(t);\n      if (typeof parsed === 'string'){ cur = parsed; continue; }\n      return parsed;\n    } catch {\n      break;\n    }\n  }\n  return cur;\n}\n\n// Safely unescape common JSON escapes to readable text\nfunction unescapeText(t=''){\n  return String(t)\n    // order matters: decode unicode first, then backslash sequences\n    .replace(/\\\\u201c/g, '“').replace(/\\\\u201d/g, '”')\n    .replace(/\\\\u2018/g, '‘').replace(/\\\\u2019/g, '’')\n    .replace(/\\\\u2022/g, '•')\n    .replace(/\\\\r\\\\n|\\\\n/g, '\\n')\n    .replace(/\\\\\\\\/g, '\\\\')\n    .replace(/\\\\\"/g, '\"')\n    .replace(/\\\\'/g, \"'\");\n}\n\n// Extract channel/text via regex even when JSON is malformed\nfunction extractByRegex(s){\n  // channel: \"channel\" or \"channel_id\"\n  const chM = /\"channel(?:_id)?\"\\s*:\\s*\"(.*?)\"/i.exec(s);\n  let channel = chM ? chM[1] : '';\n\n  // text: find the first \"text\":\"...<unescaped>...\"\n  // uses a tempered dot that stops only at an unescaped quote\n  const txtM = /\"text\"\\s*:\\s*\"(.*?)(?<!\\\\)\"/is.exec(s);\n  let text = txtM ? txtM[1] : '';\n\n  return { channel, text };\n}\n\nfunction pickParam(params = {}){\n  const keys = ['text','message','input','prompt','value','q','query','title'];\n  for (const k of keys) if (typeof params[k] === 'string' && params[k].trim()) return params[k].trim();\n  // stringify first object-like if no string found (avoid [object Object])\n  for (const [k,v] of Object.entries(params)) if (v && typeof v === 'object') return JSON.stringify(v);\n  return '';\n}\n\nfunction out(item){\n  const raw = item?.json ?? {};\n  const wrapped = raw.output ?? raw.payload ?? raw.data ?? raw.body ?? raw;\n\n  const rawStr = toStr(wrapped);\n  const fixed  = repair(rawStr);\n  let obj      = peel(fixed);\n\n  let __type  = 'chat';\n  let name    = '';\n  let channel = '';\n  let text    = '';\n  let data    = '';\n\n  if (obj && typeof obj === 'object'){\n    name = obj.name || '';\n    const params = obj.parameters || obj.params || {};\n    if (name){ // tool path\n      __type  = 'tool';\n      channel = (params.channel_id || params.channelId || params.channel || '').trim();\n      text    = pickParam(params) || '';\n    } else if (typeof obj.output === 'string'){\n      __type = 'chat';\n      text   = obj.output.trim();\n    }\n  } else {\n    // JSON parse failed → regex fallback\n    const byRx = extractByRegex(fixed);\n    const nameM = /\"name\"\\s*:\\s*\"([^\"]+)\"/i.exec(fixed);\n    if (nameM){ __type = 'tool'; name = nameM[1]; }\n    channel = byRx.channel || '';\n    text    = byRx.text || (typeof wrapped === 'string' ? wrapped : rawStr);\n  }\n\n  // Clean channel (strip accidental trailing backslashes)\n  if (channel) channel = channel.replace(/\\\\+$/,'').trim();\n\n  // Final text cleanup / unescape\n  text = unescapeText(text).trim();\n  data = text;\n\n  return {\n    json: { __type, name, channel, text, data, raw: rawStr }\n  };\n}\n\nreturn $input.all().map(out);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        224
+      ],
+      "id": "5800a14c-ff19-4ac9-9202-fe5d75593252",
+      "name": "Normalize Tool Call"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.chatInput }}",
+        "needsFallback": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -64
+      ],
+      "id": "7520ddeb-1f16-4dd2-a182-360087d6838f",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "model": "nvidia/nemotron-nano-9b-v2:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        192,
+        240
+      ],
+      "id": "d45bf5e3-ca6e-4238-bdda-304ca31932ff",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "beb39256-7ec0-4288-a4f2-ef0e58eb3b85",
+              "name": "prompt",
+              "value": "={{$json.body.prompt}} (System: Make an Image the represents this professional work.)",
+              "type": "string"
+            },
+            {
+              "id": "d96afa83-a1cd-415a-a629-c194997dbb97",
+              "name": "height",
+              "value": "={{$json.body.h}}",
+              "type": "string"
+            },
+            {
+              "id": "61b08fe7-fe2b-4b81-adbc-1dc081087bd5",
+              "name": "width",
+              "value": "={{$json.body.w}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        -672
+      ],
+      "id": "ac38fbf4-14a9-4bf2-89e8-852fd3273fe3",
+      "name": "PrepPromptProd"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/comfyui/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{ JSON.stringify($json.text) }},\n  \"steps\": 13,\n  \"w\": {{ Math.max(64, Math.round((($('PrepPromptProd').first()?.json?.width)  ?? 512))) }},\n  \"h\": {{ Math.max(64, Math.round((($('PrepPromptProd').first()?.json?.height) ?? 512))) }},\n  \"cfg\": 6.5,\n  \"seed\": 123456789012,\n  \"neg\": \"blurry, watermark\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        -688
+      ],
+      "id": "ca66dbbb-fc2f-4763-86d8-a3d247ab9ded",
+      "name": "EyeOfMusai SD1.5"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "codemusicca/vision",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -528,
+        -656
+      ],
+      "id": "e8299e06-8469-4587-9eb2-5ccc1ecb6b39",
+      "name": "Webhook1",
+      "webhookId": "58fb5fb2-9417-4c38-aff5-4eac2658420a",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        704,
+        -672
+      ],
+      "id": "0c54de5b-b386-43c4-b46e-ce14fa6dae72",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "promptType": "=define",
+        "text": "=Make a hero-image prompt for a professional webpage that hosts the following content. This is for SD1.5 Dreamshaper : '{{$json.prompt}}'",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -96,
+        -752
+      ],
+      "id": "f8fd5fe4-532b-4d8a-8066-7ad125f5fc06",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "toolDescription": "uses SearchMusai to search the internet though the Musai network",
+        "url": "https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "latest AI News"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        864,
+        256
+      ],
+      "id": "d33cfcb6-dd63-47fc-a612-e8763ee2389a",
+      "name": "Search"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is tool call?": {
+      "main": [
+        [
+          {
+            "node": "which tool?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "which tool?": {
+      "main": [
+        [
+          {
+            "node": "DetectURL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "PrepForAgent-Wiki",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "isURL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "PrepForAgent-URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepForAgent-Wiki": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepForAgent-URL": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DetectURL": {
+      "main": [
+        [
+          {
+            "node": "isURL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message in Slack": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "PrepForAgent-URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Tool Call": {
+      "main": [
+        [
+          {
+            "node": "is tool call?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Tool Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepPromptProd": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EyeOfMusai SD1.5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "PrepPromptProd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "EyeOfMusai SD1.5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dae3bb81-be39-463f-a8fd-b03d28ca6fc6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "UTaTjkIT31YKrUsQ",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T17:11:30.462Z",
+      "updatedAt": "2025-08-15T17:11:30.462Z",
+      "id": "e356SACzIc1UsM1s",
+      "name": "codemusic.ca"
+    }
+  ]
+}

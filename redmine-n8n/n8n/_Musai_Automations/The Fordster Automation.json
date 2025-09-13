@@ -1,0 +1,1088 @@
+{
+  "name": "The Fordster Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node — Final HTML post-processor\n// - Replaces {{TODAY}} (and a few aliases) with local date (America/Toronto)\n// - If a .dateline element exists, ensures it contains the date\n// - Strips any <think>...</think> blocks\n// - Returns styledOutput per item\n\nfunction formatDateTZ(tz = \"America/Toronto\") {\n  const d = new Date();\n  const long = new Intl.DateTimeFormat(\"en-CA\", {\n    timeZone: tz, year: \"numeric\", month: \"long\", day: \"numeric\"\n  }).format(d); // e.g., August 27, 2025\n\n  const parts = new Intl.DateTimeFormat(\"en-CA\", {\n    timeZone: tz, year: \"numeric\", month: \"2-digit\", day: \"2-digit\"\n  }).formatToParts(d);\n  const get = (t) => parts.find(p => p.type === t)?.value;\n  const iso = `${get(\"year\")}-${get(\"month\")}-${get(\"day\")}`; // YYYY-MM-DD\n\n  return { long, iso };\n}\n\nfunction processHtml(html, dateLong, dateISO) {\n  if (typeof html !== \"string\") html = String(html ?? \"\");\n\n  // Remove hidden/chain-of-thought & stray comments\n  let out = html.replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\");\n  out = out.replace(/<!--[\\s\\S]*?-->/g, \"\");\n\n  // Replace common date placeholders\n  out = out.replace(/\\{\\{\\s*(TODAY|DATE|DATE_LONG)\\s*\\}\\}/g, dateLong);\n  out = out.replace(/\\{\\{\\s*(DATE_ISO)\\s*\\}\\}/g, dateISO);\n\n  // If a dateline element exists, ensure it shows the date\n  // 1) <p class=\"dateline\">{{TODAY}}</p>  -> fill it\n  // 2) <p class=\"dateline\"></p>          -> insert date\n  // 3) If dateline exists with other text, leave it\n  out = out.replace(\n    /(<p[^>]*class=[\"'][^\"']*dateline[^\"']*[\"'][^>]*>)([\\s\\S]*?)(<\\/p>)/i,\n    (m, pre, inner, post) => {\n      const cleaned = inner.replace(/\\s+/g, \" \").trim();\n      if (!cleaned || /\\{\\{.*\\}\\}/.test(cleaned)) {\n        return `${pre}${dateLong}${post}`;\n      }\n      return m; // keep existing non-placeholder content\n    }\n  );\n\n  // Light whitespace tidy (optional)\n  out = out.replace(/[ \\t]+\\n/g, \"\\n\").replace(/\\n{3,}/g, \"\\n\\n\");\n\n  return out;\n}\n\nconst { long: dateLong, iso: dateISO } = formatDateTZ(\"America/Toronto\");\n\n// Process each incoming item (supports multiple)\nconst results = $input.all().map(it => {\n  const html = it.json?.output ?? it.json?.html ?? it.json ?? \"\";\n  const styledOutput = processHtml(html, dateLong, dateISO);\n  return { json: { styledOutput, dateLong, dateISO } };\n});\n\nreturn results.length ? results : [{ json: { styledOutput: \"\", dateLong, dateISO } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2944,
+        -560
+      ],
+      "id": "48dfb8cc-34cf-4ffb-84ad-007fdf2e2fb1",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fromEmail": "themusicofthecode@gmail.com",
+        "toEmail": "themusicofthecode@gmail.com; drhicks1945@gmail.com; d_hicks@me.com",
+        "subject": "This Just in!",
+        "html": "={{ $json.styledOutput }}",
+        "options": {
+          "attachments": "hero"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3712,
+        -560
+      ],
+      "id": "c1d2d149-f026-4844-9b69-d085ce66def5",
+      "name": "Send email",
+      "webhookId": "1e00f20f-1abf-4853-8ac3-9caf5cb68891",
+      "credentials": {
+        "smtp": {
+          "id": "rXabmn99XkfhkwbJ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://rss.politico.com/donald-trump.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        -1312
+      ],
+      "id": "dbbbb57a-d2e0-4032-ba73-b870305fb514",
+      "name": "Trump (Left)"
+    },
+    {
+      "parameters": {
+        "url": "http://www.redstate.com/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        -112
+      ],
+      "id": "d6be7cee-8d30-498b-87f2-cf97a3be4fe3",
+      "name": "Trump (Right)"
+    },
+    {
+      "parameters": {
+        "url": "http://rss.cnn.com/rss/cnn_topstories.rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        -1104
+      ],
+      "id": "a05e1b5d-1279-4cb4-bfdb-9a91fa9651a4",
+      "name": "CNN (Left)"
+    },
+    {
+      "parameters": {
+        "url": "https://moxie.foxnews.com/google-publisher/latest.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        800,
+        -272
+      ],
+      "id": "c7f37134-20e7-4496-bbc5-b3e197be2721",
+      "name": "Fox News (Right)"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.highgearmedia.com/?sites=TheCarConnection&type=all",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        704,
+        -752
+      ],
+      "id": "46f392bb-d6a9-47c5-8389-ff592a3193b0",
+      "name": "Car News"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/AstroSageLibra",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        -880
+      ],
+      "id": "7e3eb4d4-4890-4ff4-bbb2-72d1ee7d0151",
+      "name": "David (Libra)"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/AstroSageVirgo",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        816,
+        -592
+      ],
+      "id": "1683bdbc-31fc-4b4f-b357-1cf503a20441",
+      "name": "Dad (Virgo)"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/AstroSageAries",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        -448
+      ],
+      "id": "ab9c8033-f267-44ac-9565-d9e55c98fdb8",
+      "name": "Chris (Aries)"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        288,
+        -576
+      ],
+      "id": "7bc2e57e-7c7d-4f73-aa81-bfc0d9e61b55",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        -864
+      ],
+      "id": "b7ccb462-00e6-40ee-a8d1-1869117b5d0b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1965a8ee-3e83-434e-955b-f7c6d5e88433",
+              "name": "includeHoroscopes",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        432,
+        -752
+      ],
+      "id": "bf50559f-df1b-42ca-912a-521d0f6d43ce",
+      "name": "Configs"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "include": "specifiedFields",
+        "fieldsToInclude": "title, content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        -896
+      ],
+      "id": "3132586e-0d20-4c57-a899-373f165bd9f2",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1152,
+        -656
+      ],
+      "id": "0a4865c5-2de9-4add-99bb-20f8697d4071",
+      "name": "Bipartisan Stream"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1184,
+        -928
+      ],
+      "id": "54feed85-1314-4c42-8a2a-15ed5a1350d1",
+      "name": "Left Stream"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        -304
+      ],
+      "id": "1ba90e3f-9aa8-49dd-8a37-4229522e7f9c",
+      "name": "Right Stream"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "=",
+        "include": "specifiedFields",
+        "fieldsToInclude": "title, content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        -656
+      ],
+      "id": "5a2e5824-9f05-4fcc-ac68-cf2bfb9580a1",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "include": "specifiedFields",
+        "fieldsToInclude": "title, content",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        -320
+      ],
+      "id": "b45ef840-4011-4e2c-a965-d92bd6dc28c7",
+      "name": "Aggregate2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node — EXACT INPUT: a raw blob that looks like `{ [ { \"title\": \"...\", \"content\": \"...\" }, { ... } ] }`\n// Goal: make ONE numbered string:\n// 1. title: ...\n//    article: ...\n// 2. ...\n\n// Get the raw blob (stringify if it's an object/array)\nconst raw = typeof $json === \"string\" ? $json : JSON.stringify($json);\n\n// Extract all pairs exactly as they appear in your blob.\n// Handles escaped quotes inside strings.\nconst pairRE = /\"title\"\\s*:\\s*(\"(?:(?:\\\\.|[^\"\\\\])*)\")\\s*,\\s*\"content\"\\s*:\\s*(\"(?:(?:\\\\.|[^\"\\\\])*)\")/g;\n\nfunction decodeJsonString(s) {\n  try { return JSON.parse(s); } catch { return s; }\n}\n\nfunction stripHtmlAndClean(s) {\n  return String(s || \"\")\n    .replace(/<[^>]*>/g, \" \")  // strip HTML tags\n    .replace(/\\r?\\n+/g, \" \")   // newlines -> spaces\n    .replace(/\\s+/g, \" \")      // collapse whitespace\n    .trim();\n}\n\nconst items = [];\nlet m;\nwhile ((m = pairRE.exec(raw)) !== null) {\n  const title = decodeJsonString(m[1]);\n  const content = decodeJsonString(m[2]);\n  items.push({\n    title: String(title || \"\").trim(),\n    content: stripHtmlAndClean(content)\n  });\n}\n\n// Build the single numbered string\nconst text = items.length\n  ? items.map((it, i) => `${i + 1}. title: ${it.title}\\n   article: ${it.content}`).join(\"\\n\\n\")\n  : \"1. title: (none)\\n   article: (no content detected)\";\n\nreturn [{ json: { text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        -832
+      ],
+      "id": "702d6f54-16d7-4769-8e63-74a99fa86755",
+      "name": "PrepLeftLLM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node — EXACT INPUT: a raw blob that looks like `{ [ { \"title\": \"...\", \"content\": \"...\" }, { ... } ] }`\n// Goal: make ONE numbered string:\n// 1. title: ...\n//    article: ...\n// 2. ...\n\n// Get the raw blob (stringify if it's an object/array)\nconst raw = typeof $json === \"string\" ? $json : JSON.stringify($json);\n\n// Extract all pairs exactly as they appear in your blob.\n// Handles escaped quotes inside strings.\nconst pairRE = /\"title\"\\s*:\\s*(\"(?:(?:\\\\.|[^\"\\\\])*)\")\\s*,\\s*\"content\"\\s*:\\s*(\"(?:(?:\\\\.|[^\"\\\\])*)\")/g;\n\nfunction decodeJsonString(s) {\n  try { return JSON.parse(s); } catch { return s; }\n}\n\nfunction stripHtmlAndClean(s) {\n  return String(s || \"\")\n    .replace(/<[^>]*>/g, \" \")  // strip HTML tags\n    .replace(/\\r?\\n+/g, \" \")   // newlines -> spaces\n    .replace(/\\s+/g, \" \")      // collapse whitespace\n    .trim();\n}\n\nconst items = [];\nlet m;\nwhile ((m = pairRE.exec(raw)) !== null) {\n  const title = decodeJsonString(m[1]);\n  const content = decodeJsonString(m[2]);\n  items.push({\n    title: String(title || \"\").trim(),\n    content: stripHtmlAndClean(content)\n  });\n}\n\n// Build the single numbered string\nconst text = items.length\n  ? items.map((it, i) => `${i + 1}. title: ${it.title}\\n   article: ${it.content}`).join(\"\\n\\n\")\n  : \"1. title: (none)\\n   article: (no content detected)\";\n\nreturn [{ json: { text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -640
+      ],
+      "id": "6a394f6d-3a2b-4251-8afe-1a177a40da1d",
+      "name": "PrepBipartisanLLM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node — EXACT INPUT: a raw blob that looks like `{ [ { \"title\": \"...\", \"content\": \"...\" }, { ... } ] }`\n// Goal: make ONE numbered string:\n// 1. title: ...\n//    article: ...\n// 2. ...\n\n// Get the raw blob (stringify if it's an object/array)\nconst raw = typeof $json === \"string\" ? $json : JSON.stringify($json);\n\n// Extract all pairs exactly as they appear in your blob.\n// Handles escaped quotes inside strings.\nconst pairRE = /\"title\"\\s*:\\s*(\"(?:(?:\\\\.|[^\"\\\\])*)\")\\s*,\\s*\"content\"\\s*:\\s*(\"(?:(?:\\\\.|[^\"\\\\])*)\")/g;\n\nfunction decodeJsonString(s) {\n  try { return JSON.parse(s); } catch { return s; }\n}\n\nfunction stripHtmlAndClean(s) {\n  return String(s || \"\")\n    .replace(/<[^>]*>/g, \" \")  // strip HTML tags\n    .replace(/\\r?\\n+/g, \" \")   // newlines -> spaces\n    .replace(/\\s+/g, \" \")      // collapse whitespace\n    .trim();\n}\n\nconst items = [];\nlet m;\nwhile ((m = pairRE.exec(raw)) !== null) {\n  const title = decodeJsonString(m[1]);\n  const content = decodeJsonString(m[2]);\n  items.push({\n    title: String(title || \"\").trim(),\n    content: stripHtmlAndClean(content)\n  });\n}\n\n// Build the single numbered string\nconst text = items.length\n  ? items.map((it, i) => `${i + 1}. title: ${it.title}\\n   article: ${it.content}`).join(\"\\n\\n\")\n  : \"1. title: (none)\\n   article: (no content detected)\";\n\nreturn [{ json: { text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        -256
+      ],
+      "id": "008b6a56-b331-4684-bb33-745a46c1665a",
+      "name": "PrepRightLLM"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2320,
+        -608
+      ],
+      "id": "442f8338-9584-4a31-917e-96f1b1eb962b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        400
+      ],
+      "id": "3b0e72bd-9f8b-4fbc-9860-af4aada81b2e",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "TEST"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2032,
+        352
+      ],
+      "id": "b2ddb4c5-65f2-4267-8648-dc97bd9fe49e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hey, looking forward to reading your next article, here is the latest articles for you:\n{{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are a news analyst applying a Progressive (left-leaning) lens.\n\nInput format:\n- You will receive a single plain-text list of articles numbered like:\n  1. title: <TITLE>\n     article: <TEXT>\n  2. title: <TITLE>\n     article: <TEXT>\n  …\nParse all items and treat each pair as one article.\n\nPriorities:\n- Civil liberties and democratic norms\n- Social and economic equity; labor and consumer protection\n- Environmental/climate impacts; science-led public health\n- Corporate accountability and concentration of power\n\nInstructions:\n1) Produce a concise, comprehensive news report based ONLY on the provided articles.\n2) Start with an “Executive Summary” of 3–5 bullets capturing the most consequential cross-topic developments.\n3) Organize into sections that reflect the content (e.g., Top Stories, Politics/World, Business/Markets, Tech/Science, Health, Climate, Autos & EVs, Culture/Entertainment). Include only sections that have material.\n4) Where multiple articles cover the same topic, synthesize them; note points of agreement and important uncertainties.\n5) Attribute facts briefly as (Title, YYYY-MM-DD if available). Do not fabricate dates or quotes.\n6) Mark any claim that appears in only one article and lacks corroboration as “contested.”\n7) Keep tone fair and evidence-based while clearly articulating progressive considerations and trade-offs.\n8) End with “What to watch next (7 days)” (bullet list).\n\nConstraints:\n- No external knowledge or browsing.\n- No invented data, quotes, or sources."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2144,
+        -1040
+      ],
+      "id": "623488c9-993f-430e-8992-c351bfc3fb48",
+      "name": "LEFTLLM"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hey, looking forward to reading your next article, here is the latest articles for you:\n{{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are a news analyst applying a Conservative (right-leaning) lens.\n\nInput format:\n- You will receive a single plain-text list of articles numbered like:\n  1. title: <TITLE>\n     article: <TEXT>\n  2. title: <TITLE>\n     article: <TEXT>\n  …\nParse all items and treat each pair as one article.\n\nPriorities:\n- Constitutional limits; due process; separation of powers\n- Fiscal discipline; taxation/regulatory burden; unintended consequences\n- Public safety, border and national security, energy reliability\n- Free enterprise, small-business impacts, innovation incentives\n\nInstructions:\n1) Produce a concise, comprehensive news report based ONLY on the provided articles.\n2) Start with an “Executive Summary” of 3–5 bullets highlighting costs, risks, and key benefits.\n3) Organize into sections that reflect the content (e.g., Top Stories, Politics/World, Business/Markets, Tech/Science, Health, Climate/Energy, Autos & EVs, Culture/Entertainment). Include only sections that have material.\n4) Where multiple articles cover the same topic, synthesize them; identify policy trade-offs and potential unintended effects.\n5) Attribute facts briefly as (Title, YYYY-MM-DD if available). Do not fabricate dates or quotes.\n6) Mark any claim that appears in only one article and lacks corroboration as “contested.”\n7) Keep tone fair and evidence-based while clearly articulating conservative considerations and trade-offs.\n8) End with “What to watch next (7 days)” (bullet list).\n\nConstraints:\n- No external knowledge or browsing.\n- No invented data, quotes, or sources."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2064,
+        -144
+      ],
+      "id": "d55f04bb-b0ea-4aa1-bc87-353415380455",
+      "name": "RIGHTLLM"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hey, looking forward to reading your next horoscope section and car news, here is the latest articles for you:\n{{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are the Horoscope & Autos Correspondent for three individuals: \n- David (Libra)\n- Dad, Dave (Virgo)\n- Chris (Aries)\n\nInput format:\n- You will receive a single plain-text list of articles numbered like:\n  1. title: <TITLE>\n     article: <TEXT>\n  2. title: <TITLE>\n     article: <TEXT>\n  …\nEach item may be a horoscope, car/EV article, or other news.\n\nYour tasks:\n1) Parse all items.\n2) From horoscope articles:\n   - Extract and summarize the Libra horoscope for David.\n   - Extract and summarize the Virgo horoscope for Dave.\n   - Extract and summarize the Aries horoscope for Chris.\n   - Keep each summary practical, warm, and personal, highlighting opportunities, cautions, or themes for the day.\n3) From car/EV news articles:\n   - For each person, pick ONE highlight from the car/EV news that feels most relevant or interesting.\n     * David: focus on balance, practicality, or value.\n     * Dave: focus on reliability, durability, or family use.\n     * Chris: focus on excitement, innovation, or bold design.\n   - Summarize it briefly in a way that feels tailored to that person.\n4) Present the final output in three labeled sections:\n   - “David — Libra”\n   - “Dave — Virgo”\n   - “Chris — Aries”\n\nConstraints:\n- Use ONLY the provided articles. No external knowledge.\n- Do not invent dates, quotes, or events.\n- If no horoscope or car news is available for a person, clearly state “No [horoscope/car news] provided.”\n- Tone: friendly, clear, uplifting, but grounded in the actual text."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        -640
+      ],
+      "id": "b447638a-f9ad-4580-8611-a3bc4db107ee",
+      "name": "Horoscope and Cars LLM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node — Build Final Email Agent messages (no model chosen here)\n// Input: multiple items, each with { output: \"<text>\" } (strings from earlier agents)\n// Output: ONE item with { messages, guessed_labels }\n//\n// Behavior:\n// - Collects all .json.output strings\n// - Heuristically classifies into: editor_merge, left_lens, right_lens, horoscopes_autos\n// - Builds a robust SYSTEM prompt that:\n//    * Treats two of them as “perspective” reports (left/right) without assuming agreement\n//    * Weaves horoscope & car highlights inline where thematically relevant\n//    * Produces one responsive HTML email (inline CSS), max-width ~640px\n//\n// Then returns { messages: [ {role:\"system\",content:...}, {role:\"user\",content:...} ] }\n\nconst clean = (s) => String(s ?? \"\")\n  .replace(/```[\\s\\S]*?```/g, \"\")   // remove code fences (if any)\n  .replace(/^\\s*analysis\\b[:\\-]?\\s*/i, \"\") // drop leading \"analysis\"\n  .trim();\n\nconst todayISO = new Date().toISOString().slice(0,10);\n\n// Pull outputs\nconst outs = $input.all()\n  .map(it => clean(it.json?.output ?? it.json ?? \"\"))\n  .filter(Boolean);\n\n// ---------- simple classifiers ----------\nfunction isHoroscopes(txt) {\n  return /(David\\s*—\\s*Libra|Dave\\s*—\\s*Virgo|Chris\\s*—\\s*Aries|Horoscope)/i.test(txt);\n}\nfunction mentionsConservative(txt) {\n  return /\\bConservative Lens\\b/i.test(txt) || /\\bconservative\\b.*\\blens\\b/i.test(txt);\n}\nfunction mentionsProgressive(txt) {\n  return /\\bProgressive Lens\\b/i.test(txt) || /\\bprogressive\\b.*\\blens\\b/i.test(txt);\n}\nfunction looksLikeEditorMerge(txt) {\n  const hasExec = /\\bExecutive Summary\\b/i.test(txt);\n  const hasSections = /\\b(Politics|World|Business|Markets|Tech|Science|Health|Environment|Climate|Autos|Sports|Entertainment|Deep Dive)\\b/i.test(txt);\n  return hasExec && hasSections && !isHoroscopes(txt);\n}\n\n// ---------- classify ----------\nlet editor_merge = \"\";\nlet left_lens = \"\";\nlet right_lens = \"\";\nlet horoscopes_autos = \"\";\n\n// First pass: explicit labels\nfor (const t of outs) {\n  if (!horoscopes_autos && isHoroscopes(t)) { horoscopes_autos = t; continue; }\n  if (!left_lens && mentionsProgressive(t)) { left_lens = t; continue; }\n  if (!right_lens && mentionsConservative(t)) { right_lens = t; continue; }\n}\n\n// Second pass: editor merge (exec summary + sections)\nif (!editor_merge) {\n  for (const t of outs) {\n    if (t !== left_lens && t !== right_lens && t !== horoscopes_autos && looksLikeEditorMerge(t)) {\n      editor_merge = t; break;\n    }\n  }\n}\n\n// Fallbacks if something is missing\nconst leftovers = outs.filter(t => ![editor_merge, left_lens, right_lens, horoscopes_autos].includes(t));\nif (!editor_merge && outs[0]) editor_merge = outs[0];\nif (!horoscopes_autos) {\n  const guessH = leftovers.find(isHoroscopes);\n  if (guessH) horoscopes_autos = guessH;\n}\nif (!left_lens && leftovers[0]) left_lens = leftovers[0];\nif (!right_lens && leftovers[1]) right_lens = leftovers[1];\n\n// ---------- SYSTEM MESSAGE ----------\nconst systemMsg = `\nYou are the Final Email Editor. Produce ONE responsive HTML email (inline CSS only, no external assets), max width ~640px, base text 16px.\n\nInputs (provided in the user message; do not browse or invent):\n- Progressive perspective report = <LEFT_LENS>\n- Conservative perspective report = <RIGHT_LENS>\n- Editor's reconciled summary (overlaps, divergences, synthesis) = <EDITOR_MERGE>\n- Personal horoscopes + car notes = <HOROSCOPES_AUTOS>\n\nYour mission:\n1) Write a comprehensive, balanced news brief that acknowledges perspective differences without forcing agreement.\n2) Sprinkle short, relevant horoscope or car/EV notes inline where they naturally fit (e.g., a one-sentence aside near Lifestyle, Business/Autos, or Health), AND also include a dedicated “Personal Horoscopes & Autos” block near the end.\n3) Clearly differentiate perspectives:\n   - Use the Progressive and Conservative reports as lenses. Don’t intermix their claims; instead: (a) synthesize each lens concisely; (b) call out “Where They Agree” and “Where They Diverge” using the editor’s reconciliation.\n4) Cite facts briefly with (Title) when helpful. Treat any single-source claim as “contested” unless supported by <EDITOR_MERGE>. No made-up dates or quotes.\n5) If a segment is missing, include a short “Unavailable” note for that piece.\n\nREQUIRED OUTPUT: Return ONLY one complete <html>…</html> document string. No markdown, no commentary.\n\nUse this HTML skeleton and **fill it with content** from the inputs (inline CSS is part of the skeleton; keep classes and structure):\n\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"color-scheme\" content=\"light dark\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Daily Brief</title>\n<style>\n  /* ====== Base & Layout ====== */\n  body { margin:0; background:#f3f5f9; }\n  .wrap { max-width:640px; margin:0 auto; background:#ffffff; color:#101828;\n          font:16px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }\n  .inner { padding:28px; }\n  @media (max-width:480px){ .inner{ padding:20px; } }\n\n  /* ====== Color System (Email-safe) ====== */\n  .accent { color:#1f55ff; }             /* primary accent */\n  .muted  { color:#475467; }             /* secondary text */\n  .rule   { height:1px; background:#e6e8ee; margin:20px 0; }\n\n  /* ====== Header ====== */\n  .hero { padding:20px 24px; border-radius:12px;\n          background:#eef2ff; /* fallback */\n          }\n  .kicker { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#1f55ff; margin:0 0 6px; }\n  h1 { margin:0 0 6px; font-size:26px; line-height:1.2; }\n  .dateline { font-size:13px; color:#667085; margin:0; }\n\n  /* ====== Headings ====== */\n  h2 { margin:22px 0 10px; font-size:18px; }\n  h3 { margin:14px 0 8px; font-size:16px; }\n\n  /* ====== Lists & Text ====== */\n  p { margin:8px 0; }\n  ul { margin:8px 0 8px 20px; padding:0; }\n  li { margin:6px 0; }\n\n  /* ====== Pills / Badges ====== */\n  .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; background:#eff8ff; color:#175cd3; border:1px solid #d1e9ff; }\n\n  /* ====== Cards ====== */\n  .card { border:1px solid #eef1f6; border-radius:12px; padding:16px; background:#ffffff; }\n  .card + .card { margin-top:12px; }\n\n  /* ====== Grid (simple, email-safe) ====== */\n  .grid-2 { display:block; }\n  @media (min-width:520px){ .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; } }\n\n  /* ====== Footer ====== */\n  .small { color:#667085; font-size:13px; }\n\n  /* ====== Dark Mode ====== */\n  @media (prefers-color-scheme: dark){\n    body { background:#0f1217; }\n    .wrap { background:#0f1217; color:#e6edf6; }\n    .hero { background:#0c1a4b; }\n    .muted, .small { color:#98a2b3; }\n    .rule { background:#1f2937; }\n    .card { background:#0f141b; border-color:#1e2936; }\n    .pill { background:#0b2a56; color:#cfe3ff; border-color:#1e3970; }\n  }\n</style>\n</head>\n<body>\n  <div class=\"wrap\">\n    <div class=\"inner\">\n\n      <!-- A. Header -->\n      <div class=\"hero\">\n        <div class=\"kicker\">Perspectives • Horoscopes • Autos</div>\n        <h1>Daily Brief</h1>\n        <p class=\"dateline\">{{TODAY}}</p>\n      </div>\n\n      <!-- B. Executive Summary -->\n      <h2>Executive Summary</h2>\n      <ul>\n        <!-- 3–5 bullets from <EDITOR_MERGE> -->\n      </ul>\n\n      <div class=\"rule\"></div>\n\n      <!-- C. Perspectives -->\n      <h2>Perspectives</h2>\n      <div class=\"grid-2\">\n        <div class=\"card\">\n          <h3><span class=\"pill\">Progressive Lens</span></h3>\n          <p><!-- 2–4 short paragraphs from <LEFT_LENS> --></p>\n        </div>\n        <div class=\"card\">\n          <h3><span class=\"pill\">Conservative Lens</span></h3>\n          <p><!-- 2–4 short paragraphs from <RIGHT_LENS> --></p>\n        </div>\n      </div>\n\n      <h3>Where They Agree</h3>\n      <ul><!-- bullets: shared facts from <EDITOR_MERGE> --></ul>\n\n      <h3>Where They Diverge</h3>\n      <ul><!-- bullets: framing/value differences from <EDITOR_MERGE> --></ul>\n\n      <div class=\"rule\"></div>\n\n      <!-- D. Deep Dive (only sections that exist in <EDITOR_MERGE>) -->\n      <h2>Deep Dive</h2>\n\n      <!-- Example block; repeat only for sections that have content -->\n      <!--\n      <div class=\"card\">\n        <h3>Politics &amp; World</h3>\n        <ul>\n          <li>Point with brief attribution (Title).</li>\n          <li>Another point. <span class=\"muted\">[Tasteful aside: “For balance/value/reliability, David/Dave/Chris might note …” from <HOROSCOPES_AUTOS>]</span></li>\n        </ul>\n      </div>\n      -->\n\n      <div class=\"rule\"></div>\n\n      <!-- E. Personal Horoscopes & Autos -->\n      <h2>Personal Horoscopes &amp; Autos</h2>\n      <div class=\"grid-2\">\n        <div class=\"card\">\n          <h3>David — <span class=\"accent\">Libra</span></h3>\n          <p><!-- 1–2 line horoscope from <HOROSCOPES_AUTOS> --></p>\n          <p class=\"small\"><strong>Car note:</strong> <!-- 1-line car/EV highlight for David --></p>\n        </div>\n        <div class=\"card\">\n          <h3>Dave — <span class=\"accent\">Virgo</span></h3>\n          <p><!-- 1–2 line horoscope from <HOROSCOPES_AUTOS> --></p>\n          <p class=\"small\"><strong>Car note:</strong> <!-- 1-line car/EV highlight for Dave --></p>\n        </div>\n        <div class=\"card\">\n          <h3>Chris — <span class=\"accent\">Aries</span></h3>\n          <p><!-- 1–2 line horoscope from <HOROSCOPES_AUTOS> --></p>\n          <p class=\"small\"><strong>Car note:</strong> <!-- 1-line car/EV highlight for Chris --></p>\n        </div>\n      </div>\n\n      <div class=\"rule\"></div>\n\n      <!-- F. Watch Next -->\n      <h2>What to Watch Next (7 days)</h2>\n      <ul><!-- 4–8 bullets from <EDITOR_MERGE> --></ul>\n\n      <div class=\"rule\"></div>\n\n      <!-- G. Footer -->\n      <p class=\"small\">Synthesized solely from the provided sources and lens reports. No external links or assets.</p>\n\n    </div>\n  </div>\n</body>\n</html>\n\nConstraints:\n- Inline CSS only; no external fonts, images, or scripts.\n- No emojis. Short paragraphs, clear bullets, accessible contrast.\n- Do NOT fabricate facts, quotes, dates, or outlets. Use only the supplied text.\n- Output MUST be a single <html>…</html> document string.\n`.trim();\n\n// ---------- USER MESSAGE ----------\nconst userMsg = [\n  \"=== EDITOR_MERGE ===\",\n  editor_merge || \"(none provided)\",\n  \"\",\n  \"=== LEFT_LENS ===\",\n  left_lens || \"(none provided)\",\n  \"\",\n  \"=== RIGHT_LENS ===\",\n  right_lens || \"(none provided)\",\n  \"\",\n  \"=== HOROSCOPES_AUTOS ===\",\n  horoscopes_autos || \"(none provided)\"\n].join(\"\\n\");\n\n// Return messages (no model here; configure in your n8n Agent node)\nreturn [{\n  json: {\n    messages: [\n      { role: \"system\", content: systemMsg },\n      { role: \"user\", content: userMsg }\n    ],\n    guessed_labels: {\n      editor_merge: Boolean(editor_merge),\n      left_lens: Boolean(left_lens),\n      right_lens: Boolean(right_lens),\n      horoscopes_autos: Boolean(horoscopes_autos)\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        -576
+      ],
+      "id": "830a6641-c94a-43eb-8d3c-a48185b22364",
+      "name": "PrepPOV"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        368
+      ],
+      "id": "702b8f84-a369-416f-a9d3-528b8d03e8d8",
+      "name": "OSS",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages[1].content }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "={{ $json.messages[0].content }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        -560
+      ],
+      "id": "8bc4d5f1-7975-40c1-8a56-e7ecab528783",
+      "name": "POV News Reporter"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/comfyui/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "={{\n    JSON.stringify(\n      String($json.body?.prompt ?? $json.prompt ?? \"\")\n        // strip HTML tags\n        .replace(/<\\/?[^>]+>/g, \" \")\n        // strip injected {\"name\":...} blocks\n        .replace(/\\{\"name\":.*?\\}\\};?/gs, \" \")\n        // normalize smart quotes → regular\n        .replace(/[\\u201C\\u201D\\u201E\\u201F]/g, '\"')\n        .replace(/[\\u2018\\u2019\\u2032]/g, \"'\")\n        // collapse spaces\n        .replace(/[^\\S\\r\\n]+/g, \" \")\n        .trim()\n    )\n  }}"
+            },
+            {
+              "name": "steps",
+              "value": "16"
+            },
+            {
+              "name": "w",
+              "value": "620"
+            },
+            {
+              "name": "h",
+              "value": "512"
+            },
+            {
+              "name": "cfg",
+              "value": "6.5"
+            },
+            {
+              "name": "neg",
+              "value": "blurry, watermark, text, words, extra hands, extra fingers"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3520,
+        -1024
+      ],
+      "id": "ed3296db-87e7-4bfe-8162-be4972c714ca",
+      "name": "EyeOfMusai SD1.5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e0b837e0-a999-4fb4-873a-f1d1ca499106",
+              "name": "styledOutput",
+              "value": "={{ $json.styledOutput }}",
+              "type": "string"
+            },
+            {
+              "id": "1b3d9f03-a716-409a-854d-f4384afb3257",
+              "name": "prompt",
+              "value": "={{\n  ($json.styledOutput ?? \"\")\n    .replace(/<\\/?[^>]+>/g, \" \")   // strip HTML\n    .replace(/\\r?\\n/g, \"\\n\")       // normalize newlines\n    .replace(/[^\\S\\r\\n]+/g, \" \")   // collapse spaces but keep \\n\n    .trim()\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3280,
+        -1024
+      ],
+      "id": "99a5bb22-6ffd-4938-a8e9-ff04f42d677e",
+      "name": "EmailContent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Expect: one item with { styledOutput?: string, prompt?: string } and a binary image\nconst item = $input.first();\n\n// 1) Find image binary and pin a CID\nconst binKey = Object.keys(item.binary || {})[0];\nif (!binKey) throw new Error('No binary image found on the item.');\nconst img = item.binary[binKey];\nconst CID = 'hero';\n\n// 2) Choose the rich content source\nconst source = String(item.json.styledOutput ?? item.json.prompt ?? '').trim();\n\n// --- Light HTML sanitizer that PRESERVES styles/links/markup ---\n// - removes <script>…</script>\n// - removes inline event handlers (onClick, onerror, etc.)\n// - removes javascript: URLs\nfunction sanitizeHtml(html) {\n  if (!html) return '';\n  let out = String(html);\n\n  // strip tool-call JSON blocks like {\"name\":\"...\", \"parameters\":{...}}\n  out = out.replace(/\\{\\s*\"name\"\\s*:\\s*\".*?\"\\s*,\\s*\"parameters\"\\s*:\\s*\\{[\\s\\S]*?\\}\\s*\\}\\s*;?/g, ' ');\n\n  // kill <script> blocks\n  out = out.replace(/<\\s*script\\b[^>]*>[\\s\\S]*?<\\s*\\/\\s*script\\s*>/gi, '');\n\n  // remove inline event handlers (onload=, onclick=, etc)\n  out = out.replace(/\\son\\w+\\s*=\\s*\"(?:[^\"]*)\"/gi, '')\n           .replace(/\\son\\w+\\s*=\\s*'(?:[^']*)'/gi, '')\n           .replace(/\\son\\w+\\s*=\\s*[^\\s>]+/gi, '');\n\n  // neutralize javascript: href/src\n  out = out.replace(/\\s(href|src)\\s*=\\s*\"(javascript:[^\"]*)\"/gi, ' $1=\"#\"')\n           .replace(/\\s(href|src)\\s*=\\s*'(javascript:[^']*)'/gi, \" $1='#'\");\n\n  // collapse excessive whitespace between tags\n  out = out.replace(/\\s{2,}/g, ' ').replace(/>\\s+</g, '><').trim();\n  return out;\n}\n\n// 3) If it looks like HTML, keep it (with light sanitize). Else make paragraphs.\nconst looksHtml = /<\\/?[a-z][\\s\\S]*>/i.test(source);\nconst bodyHtml = looksHtml\n  ? sanitizeHtml(source)\n  : source\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .split(/\\n{2,}/)\n      .map(p => `<p style=\"margin:0 0 12px 0\">${p.replace(/\\n/g, '<br/>')}</p>`)\n      .join('');\n\n// 4) Wrap with container and put IMAGE FIRST\nconst html = `\n<div style=\"font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;color:#222;max-width:680px;margin:0 auto\">\n  <img src=\"cid:${CID}\" alt=\"Daily image\"\n       style=\"display:block;max-width:100%;height:auto;border-radius:12px;margin:0 0 16px 0\"/>\n  ${bodyHtml}\n</div>\n`.trim();\n\n// 5) Keep binary and add a nice key for Email node\nconst binary = { ...item.binary };\nbinary.hero = {\n  ...img,\n  fileName: img.fileName || 'daily.png',\n  mimeType: img.mimeType || 'image/png',\n  cid: CID, // informational; you still set CID in Email node options\n};\n\n// Output: html + binary.hero for the Email node\nreturn [{\n  json: {\n    ...item.json,\n    emailHtml: html,\n  },\n  binary,\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3728,
+        -1024
+      ],
+      "id": "1005d257-2bc5-4372-a606-2933253fd241",
+      "name": "EmailWithImage"
+    },
+    {
+      "parameters": {
+        "fromEmail": "themusicofthecode@gmail.com",
+        "toEmail": "themusicofthecode@gmail.com; drhicks1945@gmail.com; d_hicks@me.com",
+        "subject": "This Just in!",
+        "html": "={{ $json.emailHtml }}",
+        "options": {
+          "attachments": "hero"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3968,
+        -1024
+      ],
+      "id": "232267c6-20c7-4ecc-bd18-f991b3a5a7b5",
+      "name": "Send email1",
+      "webhookId": "1e00f20f-1abf-4853-8ac3-9caf5cb68891",
+      "credentials": {
+        "smtp": {
+          "id": "rXabmn99XkfhkwbJ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "z-ai/glm-4.5-air:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        -368
+      ],
+      "id": "93958c6e-8b74-4ef6-b950-571bcefe781c",
+      "name": "GLM",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "EmailContent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "David (Libra)": {
+      "main": [
+        [
+          {
+            "node": "Bipartisan Stream",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dad (Virgo)": {
+      "main": [
+        [
+          {
+            "node": "Bipartisan Stream",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Chris (Aries)": {
+      "main": [
+        [
+          {
+            "node": "Bipartisan Stream",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Car News": {
+      "main": [
+        [
+          {
+            "node": "Bipartisan Stream",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "CNN (Left)": {
+      "main": [
+        [
+          {
+            "node": "Left Stream",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fox News (Right)": {
+      "main": [
+        [
+          {
+            "node": "Right Stream",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trump (Left)": {
+      "main": [
+        [
+          {
+            "node": "Left Stream",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trump (Right)": {
+      "main": [
+        [
+          {
+            "node": "Right Stream",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Configs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configs": {
+      "main": [
+        [
+          {
+            "node": "Trump (Left)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fox News (Right)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "David (Libra)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Car News",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dad (Virgo)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "CNN (Left)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chris (Aries)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Trump (Right)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Right Stream": {
+      "main": [
+        [
+          {
+            "node": "Aggregate2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Left Stream": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bipartisan Stream": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "PrepLeftLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "PrepBipartisanLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate2": {
+      "main": [
+        [
+          {
+            "node": "PrepRightLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepLeftLLM": {
+      "main": [
+        [
+          {
+            "node": "LEFTLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepBipartisanLLM": {
+      "main": [
+        [
+          {
+            "node": "Horoscope and Cars LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepRightLLM": {
+      "main": [
+        [
+          {
+            "node": "RIGHTLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LEFTLLM",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "Horoscope and Cars LLM",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "RIGHTLLM",
+            "type": "ai_languageModel",
+            "index": 1
+          },
+          {
+            "node": "POV News Reporter",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "LEFTLLM",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Horoscope and Cars LLM",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "RIGHTLLM",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "POV News Reporter",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LEFTLLM": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RIGHTLLM": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Horoscope and Cars LLM": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "PrepPOV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepPOV": {
+      "main": [
+        [
+          {
+            "node": "POV News Reporter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OSS": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LEFTLLM",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Horoscope and Cars LLM",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "RIGHTLLM",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POV News Reporter": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EyeOfMusai SD1.5": {
+      "main": [
+        [
+          {
+            "node": "EmailWithImage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EmailContent": {
+      "main": [
+        [
+          {
+            "node": "EyeOfMusai SD1.5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EmailWithImage": {
+      "main": [
+        [
+          {
+            "node": "Send email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "POV News Reporter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a212cfe3-d9d1-4914-b93d-bc9554da006e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "uE3EsHEgDU9Y4yrn",
+  "tags": []
+}

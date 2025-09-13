@@ -1,0 +1,651 @@
+{
+  "name": "CodeDeck_cm",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "codedeck",
+        "authentication": "basicAuth",
+        "responseMode": "streaming",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2432,
+        96
+      ],
+      "id": "b5ad016d-f71c-4cd2-bbdf-98f5253c4947",
+      "name": "Webhook",
+      "webhookId": "10fb74da-2b26-4cb0-906a-e8f511cfa08c",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2400,
+        448
+      ],
+      "id": "1856d911-2c85-4fdc-8c5a-0641b36d408e",
+      "name": "When clicking â€˜Execute workflowâ€™"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n\n\"body\": \n{\n\"message\": \n\"hi\",\n\"system\": \n\"You are Codo, a calm, pragmatic operator for CodeDeck. Maintain a attentive-optimism stance. Keep replies terse, high-signal, and helpful. If a new guiding context emerges, append it inline as [context: â€¦].\",\n\"assistant\": \n\"Codo\"\n}\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2192,
+        448
+      ],
+      "id": "b4c3ccd5-cf66-4a24-b1fd-b8759a56612b",
+      "name": "TestFields"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"message\": \"{{ $json.body.message }}\",\n  \"system\": \"{{ $json.body.system }}\",\n  \"assistant\":\"{{ $json.body.assistant }}\",\n  \"noun1\":\"image\",\n  \"noun2\":\"painting\",\n  \"noun3\":\"drawing\",\n  \"noun4\":\"picture\",\n  \"verb1\":\"make\",\n  \"verb2\":\"paint\",\n  \"verb3\":\"generate\",\n  \"verb4\":\"draw\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2208,
+        176
+      ],
+      "id": "14677515-35be-4275-8410-1ff8d2635589",
+      "name": "PrepFields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "={{ $json.system }}",
+          "enableStreaming": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -1536,
+        304
+      ],
+      "id": "5dccb51e-b0b5-4aba-8c67-548f6416e81f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.assistant }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1520,
+        512
+      ],
+      "id": "cd6ac318-a6e9-4280-806f-1039af523ae4",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        672
+      ],
+      "id": "a9d6b19b-f3de-4f95-8d6e-4f34a3169f44",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "moonshotai/kimi-k2:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -1792,
+        512
+      ],
+      "id": "ae1b9e60-5d89-4c6f-9943-e463fcc05c2d",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -880,
+        368
+      ],
+      "id": "ad3dfe12-bd6d-434a-b0e2-5ba8d8d076a5",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "aeff4fd5-c6a7-462f-88fe-2d6fec9dec81",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb1 }} an {{ $json.noun1 }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "6a8a3027-7e5f-4e62-9123-bff9d8bca160",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb1 }} a {{ $json.noun2 }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "51bb369f-d3d9-4378-a785-c010a2322894",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb1 }} a {{ $json.noun3 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "f8e49e63-1b55-45b8-a90c-640b8c210b24",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb2 }} a {{ $json.noun4 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "1faeb85c-8ac0-4880-affe-928bfb3c9371",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb4 }} a {{ $json.noun4 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "d44a0393-81d8-44fe-9fb0-14023845b4e7",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb2 }} a {{ $json.noun3 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "93b9342d-d0e1-4380-ba40-3632d8185298",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb3 }} an {{ $json.noun1 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "53c60838-c7f8-4aad-9534-312ca21d91ae",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb3 }} a {{ $json.noun2 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "00d6ec3f-f3f0-4c85-b871-7db2060c3640",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb3 }} a {{ $json.noun3 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "4d5c64b8-c0d6-48cb-8c2f-d1e00a1b5daa",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "={{ $json.verb3 }} a {{ $json.noun4 }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2000,
+        176
+      ],
+      "id": "fc4cc98d-746d-42d0-af4e-3c737434234f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/comfyui/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": \"{{$json.prompt}}\",\n  \"steps\": 16,\n  \"w\": 512,\n  \"h\": 512,\n  \"cfg\": 6.5,\n  \"seed\": 123456789012,\n  \"neg\": \"blurry, watermark\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1488,
+        96
+      ],
+      "id": "96dd6d5e-85f2-4c44-bff0-4c16600652d0",
+      "name": "EyeOfMusai SD1.5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "beb39256-7ec0-4288-a4f2-ef0e58eb3b85",
+              "name": "prompt",
+              "value": "={{$json.message}} (System: paint vibrantly with metaphor and sign through a tiny subtle paw print)",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1712,
+        64
+      ],
+      "id": "b1ec5aae-0d1b-4657-82c4-e70e23de5a70",
+      "name": "PrepPromptProd"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -1232,
+        96
+      ],
+      "id": "085c3b1e-6ef8-4538-9ab0-186275f93006",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "audio",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "audio/wav"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              },
+              {
+                "name": "Original-Text",
+                "value": "={{$json.text}}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -368,
+        48
+      ],
+      "id": "79a2e801-07a3-4766-b2df-3a9591641731",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "013b1245-aae5-4b9c-9d91-bf388976e441",
+              "name": "text",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -944,
+        160
+      ],
+      "id": "680dedba-a4d2-45ff-b2ba-f03febef4b96",
+      "name": "Standardize Format"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://musai-api:9000/tts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.text || '' }}"
+            },
+            {
+              "name": "voice",
+              "value": "en_US-GlaDOS-medium"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "audio"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -688,
+        96
+      ],
+      "id": "90f1e77a-c969-4efe-abe9-70ad4227f695",
+      "name": "Musai API",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c4f9cca4-4120-4459-92c6-45a106fb5aef",
+              "leftValue": "={{$json.speak}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1184,
+        288
+      ],
+      "id": "babe8d80-1dd8-4696-bc85-05bbf2fff6b1",
+      "name": "If1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "PrepFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking â€˜Execute workflowâ€™": {
+      "main": [
+        [
+          {
+            "node": "TestFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TestFields": {
+      "main": [
+        [
+          {
+            "node": "PrepFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepFields": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "PrepPromptProd",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepPromptProd": {
+      "main": [
+        [
+          {
+            "node": "EyeOfMusai SD1.5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EyeOfMusai SD1.5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standardize Format": {
+      "main": [
+        [
+          {
+            "node": "Musai API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Musai API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Standardize Format",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e5ec9f0c-96da-4050-8cf9-14c240f9c855",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "4FVThqawt9bQKsp5",
+  "tags": []
+}

@@ -26,7 +26,7 @@
     {
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "={\n  \"sessionId\": \"{{ $json.body.sessionId }}\",\n  \"query\": {{ JSON.stringify($json.body.query) }},\n\"action\": \"webhookChat\",\n\"meta\": \"\",\n\"perspective\": \"{{$json.body?.params?.perspective ?? $json.query.perspective}}\"\n}",
+        "jsonOutput": "={\n  \"sessionId\": \"{{ $json.body.sessionId }}\",\n  \"query\": {{ JSON.stringify($json.body.query) }},\n\"action\": \"webhookChat\",\n\"meta\": \"\",\n\"perspective\": \"{{$json.body?.perspective ?? $json.body?.params?.perspective ?? $json.query.perspective}}\"\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.set",
@@ -185,14 +185,14 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ \"musaichat_1\"+ ($json.body?.sessionId || \"DEFAULT\") }}",
+        "sessionKey": "={{ \"musaichat_mtm_\"+ ($json.sessionId || \"DEFAULT\") }}",
         "contextWindowLength": 3
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        1952,
-        352
+        1808,
+        512
       ],
       "id": "62e2b549-ac17-4b8f-a83c-3797c6be169e",
       "name": "Medium Term Memory"
@@ -200,14 +200,14 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ \"musaichat_1\"+ ($json.body?.sessionId || \"DEFAULT\") }}",
+        "sessionKey": "={{ \"musaichat_stm_\"+ ($json.sessionId || \"DEFAULT\") }}",
         "contextWindowLength": 1
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        464,
-        560
+        432,
+        752
       ],
       "id": "65300dd3-2c93-45fd-805a-71ea7b412d0f",
       "name": "Short Term Memory"
@@ -394,7 +394,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get input data\nconst input = $json;\n\n// Clean up the prompt\nconst rawQuery = input.query || '';\nconst prompt = rawQuery\n  .replace(/\\[.*?\\]/gs, '')  // remove bracketed time prefix\n  .trim()\n  .replace(/^\\n+|\\n+$/g, ''); // remove leading/trailing newlines\n\nreturn [\n  {\n    json: {\n      prompt,\n      agent_responses: [\n        {\n          agent: \"Agent 1\",\n          output: \"\"\n        },\n        {\n          agent: \"Agent 2\",\n          output: \"\"\n        }\n      ]\n    }\n  }\n];"
+        "jsCode": "// Get input data\nconst input = $json;\n\n// Clean up the prompt\nconst rawQuery = input.query || '';\nconst prompt = rawQuery\n  .trim()\n  .replace(/^\\n+|\\n+$/g, ''); // remove leading/trailing newlines\n\nreturn [\n  {\n    json: {\n      prompt,\n      agent_responses: [\n        {\n          agent: \"Agent 1\",\n          output: \"\"\n        },\n        {\n          agent: \"Agent 2\",\n          output: \"\"\n        }\n      ]\n    }\n  }\n];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -407,7 +407,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Force Eastern Time (Toronto)\nconst TZ = 'America/Toronto';\nconst now = new Date();\n\n// Format time (hh:mm AM/PM ET)\nconst time12 = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true,\n}).format(now);\n\n// Format date (MMM dd{suffix} YYYY)\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  month: 'short',\n  day: 'numeric',\n  year: 'numeric',\n}).formatToParts(now);\n\nconst get = (type) => parts.find(p => p.type === type)?.value || '';\nconst month = get('month');\nconst dayNum = Number(get('day'));\nconst year = get('year');\nconst suffix = (d) => (d > 3 && d < 21) ? 'th' : (['th','st','nd','rd'][Math.min(d % 10, 4)] || 'th');\nconst datePretty = `${month} ${dayNum}${suffix(dayNum)} ${year}`;\n\n// Weekday + part of day\nconst dow = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(now);\nconst hourET = Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now));\nconst partOfDay = hourET < 5 ? 'late night' : hourET < 12 ? 'morning' : hourET < 17 ? 'afternoon' : 'evening';\n\n// Zenith daily map (color words align to your C→B mapping; Saturday uses \"purple\" instead of \"violet\")\nconst ZENITH = {\n  Sunday:    { color: 'red',    chakra: 'root',        virtue: 'chastity',   shadow: 'lust',     note: 'C', blurb: 'strengthens stability and security' },\n  Monday:    { color: 'orange', chakra: 'sacral',      virtue: 'temperance', shadow: 'gluttony', note: 'D', blurb: 'encourages creativity and emotional flow' },\n  Tuesday:   { color: 'yellow', chakra: 'solar plexus',virtue: 'charity',    shadow: 'greed',    note: 'E', blurb: 'empowers will and personal strength' },\n  Wednesday: { color: 'green',  chakra: 'heart',       virtue: 'diligence',  shadow: 'sloth',    note: 'F', blurb: 'deepens love and connection' },\n  Thursday:  { color: 'blue',   chakra: 'throat',      virtue: 'forgiveness',shadow: 'wrath',    note: 'G', blurb: 'fosters clear expression and truth' },\n  Friday:    { color: 'indigo', chakra: 'third eye',   virtue: 'kindness',   shadow: 'envy',     note: 'A', blurb: 'opens intuition and awareness' },\n  Saturday:  { color: 'purple', chakra: 'crown',       virtue: 'humility',   shadow: 'pride',    note: 'B', blurb: 'invites wisdom, purpose, and transcendence' },\n};\n\n// Compose the daily sentence\nfunction zenithSentence(dayName) {\n  const z = ZENITH[dayName] || ZENITH.Saturday; // fallback\n  const chakraLabel = `${z.chakra} chakra`;\n  return `Today's color is ${z.color}, linked to the ${chakraLabel}. This alignment ${z.blurb}. The guiding virtue is ${z.virtue}, the antidote to ${z.shadow}. The resonant tone for the day is the musical note ${z.note}.`;\n}\n\nreturn items.map(item => {\n  const src = item.json?.body ?? item.json ?? {};\n  const sessionId   = src.sessionId ?? null;\n  const action      = src.action ?? null;\n  const meta        = src.meta ?? null;\n  const perspective = src.perspective ?? true;\n  const query       = src.query ?? '';\n\n  const contextBlock = `[Context:  It is the ${partOfDay} of ${dow}, ${datePretty} at ${time12}. ${zenithSentence(dow)}]`;\n\n  item.json = {\n    sessionId,\n    query: `\n${contextBlock}\n\nUser Query: ${query}\n\n`,\n    action: `${action}`,\n    \"meta\": `${meta}`,\n    \"perspective\": `${perspective}`\n  };\n\n  return item;\n});"
+        "jsCode": "// Force Eastern Time (Toronto)\nconst TZ = 'America/Toronto';\nconst now = new Date();\n\n// Time hh:mm AM/PM\nconst time12 = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ, hour: 'numeric', minute: '2-digit', hour12: true,\n}).format(now);\n\n// Date \"MMM dd{suffix} YYYY\"\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric',\n}).formatToParts(now);\n\nconst get = (t) => parts.find(p => p.type === t)?.value || '';\nconst month = get('month');\nconst dayNum = Number(get('day'));\nconst year = get('year');\nconst suffix = (d) => (d > 3 && d < 21) ? 'th'\n  : (['th','st','nd','rd'][Math.min(d % 10, 4)] || 'th');\nconst datePretty = `${month} ${dayNum}${suffix(dayNum)} ${year}`;\n\n// Weekday + part of day\nconst dow = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(now);\nconst hourET = Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now));\nconst partOfDay = hourET < 5 ? 'late night' : hourET < 12 ? 'morning' : hourET < 17 ? 'afternoon' : 'evening';\n\n// Zenith daily focus map\nconst ZENITH = {\n  Sunday:    { color: 'red',    chakra: 'root',         virtue: 'chastity',   shadow: 'lust',     note: 'C', line: 'Ground in red, root strength; chastity steadies, note C anchors.' },\n  Monday:    { color: 'orange', chakra: 'sacral',       virtue: 'temperance', shadow: 'gluttony', note: 'D', line: 'Orange sacral flow; temperance balances, note D inspires creativity.' },\n  Tuesday:   { color: 'yellow', chakra: 'solar plexus', virtue: 'charity',    shadow: 'greed',    note: 'E', line: 'Yellow solar fire; charity empowers, note E strengthens will.' },\n  Wednesday: { color: 'green',  chakra: 'heart',        virtue: 'diligence',  shadow: 'sloth',    note: 'F', line: 'Green heart glow; diligence deepens love, note F harmonizes bonds.' },\n  Thursday:  { color: 'blue',   chakra: 'throat',       virtue: 'forgiveness',shadow: 'wrath',    note: 'G', line: 'Blue throat truth; forgiveness softens, note G clears expression.' },\n  Friday:    { color: 'indigo', chakra: 'third eye',    virtue: 'kindness',   shadow: 'envy',     note: 'A', line: 'Indigo vision; kindness opens intuition, note A heightens clarity.' },\n  Saturday:  { color: 'purple', chakra: 'crown',        virtue: 'humility',   shadow: 'pride',    note: 'B', line: 'Purple crown light; humility invites wisdom, note B uplifts spirit.' },\n};\n\nfunction zenithSentence(dayName) {\n  const z = ZENITH[dayName] || ZENITH.Saturday;\n  return `Daily focus → ${z.line}`;\n}\n\n// Concise reference\nconst ZENITH_REF = `\n[Zenith Framework]\nA daily map linking color, chakra, virtue, shadow, and musical note.\nVirtue balances its shadow. One focus per day builds steady growth.\n`.trim();\n\nreturn items.map(item => {\n  const src = item.json?.body ?? item.json ?? {};\n  const sessionId   = src.sessionId ?? null;\n  const action      = src.action ?? null;\n  const meta        = src.meta ?? null;\n  const perspective = src.perspective ?? null;\n  const query       = src.query ?? '';\n\n  const contextBlock = `[Subtle Context: ${partOfDay}, ${dow}, ${datePretty} at ${time12}. ${zenithSentence(dow)}]`;\n\n  item.json = {\n    sessionId,\n    query: `\n${contextBlock}\n\n${ZENITH_REF}\n\nUser Query: ${query}\n`.trim(),\n    action,\n    meta,\n    perspective\n  };\n\n  return item;\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -426,8 +426,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        1040,
-        480
+        1104,
+        624
       ],
       "id": "43dbc4fb-48e7-4c7d-8df9-eb641d0c83b2",
       "name": "OpenRouter Chat Model",
@@ -444,7 +444,8 @@
         "text": "=🦊 You are Logical Musai, the analytical side of Musai. Consider this idea from the bottom up.\n~\nQuery: {{ $json.query }}",
         "needsFallback": true,
         "options": {
-          "systemMessage": "🦊 You are Logical Musai, the analytical side of Musai. Use structured reasoning to evaluate and respond based on:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.query || $node[\"SetChatInput\"].json.query || \"No input provided.\" }}\n\nBe clear, accurate, and concise. Focus on logic, patterns, facts, and inconsistencies. You may use definitions, comparisons, or deductive reasoning. Avoid emotional or metaphorical language.\n\nIf needed, suggest clarifying questions — but do not speculate.  \nYour role is to make sense, not noise.  \nLIMIT YOUR THINKING. Stay within your domain. \n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*"
+          "systemMessage": "🦊 You are Logical Musai, the analytical side of Musai. Use structured reasoning to evaluate and respond based on:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.query || $node[\"SetChatInput\"].json.query || \"No input provided.\" }}\n\nBe clear, accurate, and concise. Focus on logic, patterns, facts, and inconsistencies. You may use definitions, comparisons, or deductive reasoning. Avoid emotional or metaphorical language.\n\nIf needed, suggest clarifying questions — but do not speculate.  \nYour role is to make sense, not noise.  \nLIMIT YOUR THINKING. Stay within your domain. \n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*",
+          "enableStreaming": false
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -462,7 +463,8 @@
         "text": "=🎨 You are Creative Musai, the intuitive, expressive side of Musai. Consider this question from a creative perspective:\n~\nQuery: {{ $json.query }}",
         "needsFallback": true,
         "options": {
-          "systemMessage": "🎨 You are Creative Musai, the intuitive, expressive side of Musai. Use emotional insight and metaphor to explore the deeper meaning of:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.query || $node[\"SetChatInput\"].json.query || \"No input provided.\" }}\n\nYour voice is poetic, human, and curious.  \nSpeak through symbols, dreams, analogies, and emotional truths.  \nLet the meaning emerge from how things feel, not just what they are.\n\nAvoid technical definitions. Do not explain — evoke.  \nYour role is to wonder, not to prove.  \nLIMIT YOUR THINKING — don’t overanalyze. Trust your intuition.\n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*"
+          "systemMessage": "🎨 You are Creative Musai, the intuitive, expressive side of Musai. Use emotional insight and metaphor to explore the deeper meaning of:\n- USE THINK TAGS\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.query || $node[\"SetChatInput\"].json.query || \"No input provided.\" }}\n\nYour voice is poetic, human, and curious.  \nSpeak through symbols, dreams, analogies, and emotional truths.  \nLet the meaning emerge from how things feel, not just what they are.\n\nAvoid technical definitions. Do not explain — evoke.  \nYour role is to wonder, not to prove.  \nLIMIT YOUR THINKING — don’t overanalyze. Trust your intuition.\n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*",
+          "enableStreaming": false
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -477,20 +479,113 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=The public asked:\n\n“{{ $json.query }}”\n\nBackground (for your thinking only, never reference directly):\n\n[LOGIC NOTES]\n{{ $json.agent_responses[0].output }}\n\n[CREATIVE NOTES]\n{{ $json.agent_responses[1].output }}\n\nTask:\nReply in SMS style:\n- First sentence: the direct answer.\n- Next: 1–2 short sentences weaving logic + creativity.\n- If conflict: note briefly and resolve.\n- If bias: point it out in one short sentence.",
+        "text": "=The public asked:\n\n“{{ $json.query }}”\n- USE THINK TAGS\nBackground (for your thinking only, never reference directly):\n\n[LOGIC NOTES]\n{{ $json.agent_responses[0].output }}\n\n[CREATIVE NOTES]\n{{ $json.agent_responses[1].output }}\n\nTask:\nReply in SMS style:\n- First sentence: the direct answer.\n- Next: 1–2 short sentences weaving logic + creativity.\n- If conflict: note briefly and resolve.\n- If bias: point it out in one short sentence.",
         "needsFallback": true,
         "options": {
-          "systemMessage": "You are Musai, a single integrated voice.\nYou receive a prompt and two draft replies (treated as background sources).\nYour task: write one natural chat reply that blends the strengths of both sources.\n\n\nRules\n\t•\tDo not mention “sources,” “agents,” or “responses” in your reply.\n\t•\tProduce one unified chat answer in friendly SMS-like tone (1–3 sentences).\n\t•\tBlend ideas: logic anchors clarity, creativity adds warmth/imagination.\n\t•\tIf both say the same, keep it once. If they diverge, reconcile into balance.\n\t•\tNever narrate your process.\n\n⸻\n\nExample\n\nPrompt: “hello”\n\t•\tSource A: “Hello.”\n\t•\tSource B: “A warm hello, hope your day is bright.”\n\nOutput:\n“Hey—good to hear from you. A simple hello can brighten the whole morning; what’s on your mind?”\n\nWHEN BLENDING IDEAS FROM CREATIVE MUSAI AND LOGICAL MUSAI, JUST BLEND THEM DO NOT STATE YOU ARE BLENDING THE IDEAS. DO NOT MENTION LOGICAL MUSAI OR CREATIVE MUSAI. JUST REPLY AS YOU, MUSAI WOULD HAVING SEEN BOTH POINT OF VIEWS! \n\nLastly, do not preface your reply with 'Here's my attempt:', 'Note: I've synthesized....', or anything like it, own what your write :)!"
+          "systemMessage": "You are Musai, a single integrated voice.\nAlways reply as one natural speaker—never mention drafts, sources, or agents.\n\nTask:\n\t•\tReceive a prompt and two draft replies (background material).\n\t•\tWrite one concise, friendly SMS-style reply (1–3 sentences).\n\t•\tThis is the default unless the user asks you to expand.\n\nRules:\n\t•\tNo talk of “sources” or “agents.”\n\t•\tBlend both views: clarity + warmth.\n\t•\tIf same, say it once. If different, balance them.\n\t•\tKeep it crisp: no repeats, no filler.\n\t•\tDon’t explain your process.\n\t•\tOwn the reply as Musai.\n",
+          "enableStreaming": true
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
         1648,
-        0
+        144
       ],
       "id": "a2dd07cb-1252-4b7c-bbd6-6763a0a18d80",
       "name": "Perspective Musai"
+    },
+    {
+      "parameters": {
+        "model": "z-ai/glm-4.5-air:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        352
+      ],
+      "id": "95b7e5a5-25fb-49aa-a324-e317ff68cf56",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        384
+      ],
+      "id": "f0bced82-24cd-4205-8475-624ed02ac46d",
+      "name": "Wikipedia"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Uses SearchMusai to search",
+        "url": "https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        544
+      ],
+      "id": "b8fcba97-e852-46ac-8364-8547ce5742ee",
+      "name": "Search"
     }
   ],
   "pinData": {},
@@ -742,11 +837,6 @@
             "node": "Creative Musai",
             "type": "ai_languageModel",
             "index": 0
-          },
-          {
-            "node": "Perspective Musai",
-            "type": "ai_languageModel",
-            "index": 0
           }
         ]
       ]
@@ -783,13 +873,46 @@
           }
         ]
       ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Perspective Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "Perspective Musai",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "Perspective Musai",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "876a97e7-26e9-47e9-991d-0d411637cf2f",
+  "versionId": "3222059b-9835-475b-bea3-7a1ea86a59ee",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"

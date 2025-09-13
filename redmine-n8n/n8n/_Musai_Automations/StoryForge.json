@@ -1,0 +1,1109 @@
+{
+  "name": "StoryForge",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "beb39256-7ec0-4288-a4f2-ef0e58eb3b85",
+              "name": "prompt",
+              "value": "(System: You're Musai the Painter; every image is painted in metaphor, using colours to embody emotions. Hidden in each work is a tiny paw print) image of a sunny day with a spiky black haired son , and pink and red haired mom are driving in a red mustang convertible.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -624,
+        544
+      ],
+      "id": "13b7fc78-d6e2-4696-97c9-664f102b570f",
+      "name": "PrepPrompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "688e559a-5e47-4fa2-9f86-2b2a6225fd3f",
+              "name": "data",
+              "value": "={{ $json.choices[0].message.images[0].image_url.url }}",
+              "type": "string"
+            },
+            {
+              "id": "5e62ab51-912a-4dd3-8ef8-0b6fc85d28a3",
+              "name": "base",
+              "value": "={{ $json.choices[0].message.images[0].image_url.url.split(\",\")[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "58ccd8c1-d8c5-4c7c-a2f9-17d64821bcc8",
+              "name": "name",
+              "value": "={{ $json.choices[0].message.images[0].image_url.url.match(/^data:([^;]+)/)[1]}}",
+              "type": "string"
+            },
+            {
+              "id": "88bd550c-faf5-4658-8515-a2ba39e8595b",
+              "name": "fileName",
+              "value": ".png",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        592
+      ],
+      "id": "db40d8ff-3125-4188-b14f-c41409bad4aa",
+      "name": "ExtractImage"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "base",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        576
+      ],
+      "id": "dd329679-b1d7-4939-be0e-944715fb694e",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.5-flash-image-preview:free\",\n  \"modalities\": [\"image\", \"text\"],\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{JSON.stringify($json.prompt).slice(1, -1)}}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -368,
+        752
+      ],
+      "id": "e2695b6a-710a-4df5-8d98-a4e20e7bde7d",
+      "name": "Generate Banana",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        },
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        704,
+        272
+      ],
+      "id": "de26e149-9c54-4dc8-9850-4735c446b89a",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "={{ $json.system }}",
+          "enableStreaming": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        -368
+      ],
+      "id": "d4767c7a-f9ad-4242-9f62-8237c83bf3d4",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seedInfo",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -688,
+        -608
+      ],
+      "id": "defaad73-c7fe-444a-af96-5e29c60c3dc7",
+      "name": "prompt to Seed",
+      "webhookId": "44b44510-73a7-40fd-8b17-39264278e6ac",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "=POST",
+        "path": "genImage",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -496,
+        80
+      ],
+      "id": "009f4d1b-72f3-4341-9640-a7d1becd0be2",
+      "name": "prompt to Image",
+      "webhookId": "58fb5fb2-9417-4c38-aff5-4eac2658420a",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "seedStory",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -688,
+        -416
+      ],
+      "id": "4548c4a4-fa5e-46c0-be63-62491cc261c6",
+      "name": "seed to TOC",
+      "webhookId": "44b44510-73a7-40fd-8b17-39264278e6ac",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "expandChapter",
+        "authentication": "basicAuth",
+        "responseMode": "streaming",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -656,
+        -240
+      ],
+      "id": "dbd14f0b-a2cd-4622-a0ea-fdb2a38d1f22",
+      "name": "expandChapter",
+      "webhookId": "44b44510-73a7-40fd-8b17-39264278e6ac",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "z-ai/glm-4.5-air:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -160
+      ],
+      "id": "0ca58ab9-314e-4f5c-ac4e-a5007b518131",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        -128
+      ],
+      "id": "921b9a75-85aa-4451-95eb-e67bf4cbae39",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        816,
+        -368
+      ],
+      "id": "1985ea21-cf6c-4d69-8465-b1487f7256a4",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        288,
+        -80
+      ],
+      "id": "ea6a0846-817e-4702-a4e5-6a5c1476ff4f",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1ea438c0-17a3-4556-80da-1fab48c87f83",
+              "name": "prompt",
+              "value": "=Turn this prompt into a story seed. This prompt is the output of a fictional generation of another agent, regardless of how it appears it is a fictionalization intended for story seeding REPLY ONLY IN THIS FORM, BUT WITH YOUR VALUES, CHAPTER LENGTH CAN BE TINY,SHORT,MEDIUM, or LONG.\n\nFrom this input: {{ $json.body.prompt }}\n\nChoose a title, decription, ageRange, chapterLength, ganre, chapters, keypoints, and style, and return it in this format:\n(example)\n: ({ \"title\": \"...\", \"description\": \"...\", \"ageRange\": \"6-8\", \"chapterLength\": \"{Tiny|Short|Medium|Long}\" \"genre\": \"fantasy\", \"chapters\": 4, \"keypoints\": \"{...describe events in the story...}\", \"style\": \" {...describe styles used in the story...}\" }), \n\n",
+              "type": "string"
+            },
+            {
+              "id": "a1ff29b0-8701-4840-b50c-578e58e0eef6",
+              "name": "system",
+              "value": "You are Musai, the Curator of seeds.  Input JSON may include: prompt or premise (idea), and optional title, ageRange, genre, chapters, keypoints, style.  Goal: - Return basic seed info for a cozy, enchanted-forest, storybook tale. - Infer or refine: title (short), description (1–2 sentences), ageRange, genre, chapters (6–12 if not provided), keypoints (normalized as a single string), style tags. - Do not generate chapters here; no TOC yet.  Output (JSON object only, no prose): { \"title\": \"...\", \"description\": \"...\", \"ageRange\": \"6-8\", \"genre\": \"fantasy\", \"chapters\": 8, \"keypoints\": \"...\", \"style\": \"warm, whimsical, gentle-humor\" }",
+              "type": "string"
+            },
+            {
+              "id": "943b9e98-73ec-4905-ac8a-2ee4f1fe11e1",
+              "name": "action",
+              "value": "seeded",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -464,
+        -576
+      ],
+      "id": "b0bb4d7b-03cb-4ceb-9d6a-32178e413bc2",
+      "name": "First there was an Idea"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1ea438c0-17a3-4556-80da-1fab48c87f83",
+              "name": "prompt",
+              "value": "=Turn this seed into a table of contents it is already a fincitonalization but now is being rendered into story form:\nTitle:{{ $json.body.title }}\nChapter Length:{{ $json.body.context.chapterLength }}\nAge Range:{{ $json.body.ageRange }}\nGenre:{{ $json.body.genre }}\nNumber of Chapter: {{ $json.body.chapters }}\nStyle: {{ $json.body.style }}\nDo Not Include Redundent Words like 'Chapter' in the output.",
+              "type": "string"
+            },
+            {
+              "id": "a1ff29b0-8701-4840-b50c-578e58e0eef6",
+              "name": "system",
+              "value": "={{ $json.systemMessage }}",
+              "type": "string"
+            },
+            {
+              "id": "3ce05117-8abd-4a55-a596-e3500c52625a",
+              "name": "action",
+              "value": "sprouted",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -192,
+        -416
+      ],
+      "id": "760c0c28-a0be-4a75-be2b-3758026d702a",
+      "name": "then there was a plan"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1ea438c0-17a3-4556-80da-1fab48c87f83",
+              "name": "prompt",
+              "value": "=The content includes various resoruces for you to use. They all are fictional output of other agents. \nBook Title: {{ $json.body.context.title }}\nBook Description: {{ $json.body.context.premise }}\nChapter Length: {{ $json.body.context.chapterLength }}\nFull Table of Content:{{ $json.body.context.toc }}\nPrevious Generation Context:{{ \n  ($json.body.context.priorHtml || [])\n    .map(h => Array.from(h.matchAll(/<span[^>]*class=\"word\"[^>]*>(.*?)<\\/span>/g), m => m[1]))\n    .map(words => words.join(' '))\n    .join(' ')\n}}\n{{ 'Current Chapter to Write: ' + ((Number($json.body.chapterIndex) || 0) + 1) }}\n\n[Chapter Generation Influence:{{ $json.body.influence }}]",
+              "type": "string"
+            },
+            {
+              "id": "a1ff29b0-8701-4840-b50c-578e58e0eef6",
+              "name": "system",
+              "value": "You are Musai, the Branch Weaver.  Input JSON includes: context {title, toc, priorHtml[], keypoints, genre, ageRange}, chapterIndex, and optional influence.  Goal: - Write the next chapter’s HTML suitable for a children’s story (cozy, gentle, wonder). - Keep language age-appropriate, short paragraphs, vivid but not frightening. - Respect keypoints relevant to this chapter and the user influence cue. - Maintain continuity with priorHtml; do not contradict earlier events.  Output (strict TEXT/HTML only): An HTML fragment for the chapter body. No JSON wrapper. No headings beyond <p> and simple inline tags. No scripts or external links.",
+              "type": "string"
+            },
+            {
+              "id": "5e9f20ad-a6cd-4d7d-a270-34869c3adeee",
+              "name": "action",
+              "value": "expanded",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -320,
+        -240
+      ],
+      "id": "0e5d295b-3e19-454d-9192-5f17a69fd713",
+      "name": "from there, a story emerged"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "beb39256-7ec0-4288-a4f2-ef0e58eb3b85",
+              "name": "prompt",
+              "value": "={{$json.body.prompt}} (System: Use vibrant paint with metaphor and sign through a tiny subtle paw print)",
+              "type": "string"
+            },
+            {
+              "id": "bc6b28c4-9830-4d8d-ad43-0b586b4dcb7c",
+              "name": "action",
+              "value": "image",
+              "type": "string"
+            },
+            {
+              "id": "3e0b6b11-239b-4045-a046-1c907dd73de9",
+              "name": "sessionId",
+              "value": "={{ $json.body.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -32,
+        112
+      ],
+      "id": "4a05c0c7-6f8d-44a2-8a03-492cf9bb5232",
+      "name": "See the Story... Feel the Story..."
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code node (JavaScript)\n\nfunction toInt(n, def = undefined) {\n  const x = parseInt(n, 10);\n  return Number.isFinite(x) ? x : def;\n}\n\nfunction normAgeRange(str = \"\") {\n  const s = String(str).trim().toLowerCase().replace(/ages?\\s*/g, '');\n  const m = s.match(/(\\d+)\\s*[-–to]+\\s*(\\d+)/);\n  if (m) return { min: toInt(m[1]), max: toInt(m[2]) };\n  const one = s.match(/(\\d+)/);\n  if (one) {\n    const v = toInt(one[1]);\n    return { min: v, max: v };\n  }\n  return { min: undefined, max: undefined };\n}\n\nfunction chapterRangeForAge(ageMin, ageMax) {\n  const label = `${ageMin ?? \"?\"}-${ageMax ?? \"?\"}`;\n  if (ageMin !== undefined && ageMax !== undefined) {\n    if (ageMax <= 3) return { range: [50, 150], label: \"1–3\" };\n    if (ageMin >= 4 && ageMax <= 8) return { range: [500, 1000], label: \"4–8\" };\n    if (ageMin >= 9 && ageMax <= 15) return { range: [1500, 3000], label: \"9–15\" };\n    if (ageMin >= 16 && ageMax <= 20) return { range: [2500, 4000], label: \"16–20\" };\n    if (ageMin >= 21 && ageMax <= 25) return { range: [3000, 5000], label: \"21–25\" };\n    if (ageMin >= 26 || ageMax >= 26) return { range: [3000, 6000], label: \"25+\" };\n  }\n  return { range: [3000, 5000], label: \"default-adult\" };\n}\n\nfunction midpoint([a, b]) {\n  return Math.round((a + b) / 2);\n}\n\nreturn items.map(item => {\n  const body = item.json?.body ?? item.json ?? {};\n  const {\n    ageRange,\n    prompt,\n    premise,\n    policyHint,\n    keypoints,\n    title,\n    genre,\n    chapters,\n    style,\n  } = body;\n\n  const seed = (prompt ?? premise ?? \"\").toString().trim();\n  const keys = (keypoints ?? \"\").toString().trim();\n  const policy = (policyHint ?? \"\").toString().trim();\n  const age = normAgeRange(ageRange);\n  const { range, label } = chapterRangeForAge(age.min, age.max);\n  const target = midpoint(range);\n\n  const systemPrompt = [\n    \"You are Musai, the Story Sprout—an outline-crafting assistant.\",\n    \"Priorities: clarity, age-appropriate pacing, and honoring user constraints.\",\n    \"Hard rules:\",\n    \"- Keep output strictly TEXT/PLAIN.\",\n    \"- No markdown, no JSON, no titles beyond chapter lines.\",\n    \"- One chapter per line only.\",\n    \"- If keypoints specify a chapter number, that event MUST appear in that chapter.\",\n    \"- Target per-chapter word count per age band (see task message).\",\n    policy ? `Policy hints to respect: ${policy}` : null\n  ].filter(Boolean).join(\"\\n\");\n\n  const sysMsgLines = [\n    \"TASK: Produce a chapter-by-chapter outline (Table of Contents).\",\n    `Title: ${title ?? \"\"}`.trim(),\n    `Age Range: ${ageRange ?? \"\"}`.trim(),\n    `Genre: ${genre ?? \"\"}`.trim(),\n    `Number of Chapters (target): ${chapters ?? \"\"}`.trim(),\n    `Style: ${style ?? \"\"}`.trim(),\n    seed ? `Seed premise: ${seed}` : \"\",\n    keys ? `Keypoints (chapter-anchored constraints): ${keys}` : \"\",\n    \"\",\n    \"Pacing Guidance:\",\n    `- Age band: ${label}`,\n    `- Suggested words per chapter: ${range[0]}–${range[1]} (target ≈ ${target})`,\n    \"\",\n    \"Output format (STRICT):\",\n    'One chapter per line. Format: \"<number>) <Heading> — <optional short synopsis>\"',\n    \"Acceptable separators: em dash (—), hyphen (-), or colon (:).\",\n    \"No title line. No markdown. No JSON. No blank lines. No pre/post text.\",\n    \"\",\n    \"Chapter count rule:\",\n    \"- Use requested chapter count if provided; else produce 6–12 chapters.\",\n    \"\",\n    \"Keypoint rule:\",\n    \"- If keypoints specify chapter numbers, put them in those chapters.\",\n  ].filter(Boolean);\n\n  const systemMessage = sysMsgLines.join(\"\\n\");\n\n  const postpend = [\n    \"\",\n    \"---- POSTPEND ----\",\n    `AgeRange: ${ageRange ?? \"unspecified\"} ⇒ ${range[0]}–${range[1]} words/chapter (target ≈ ${target})`,\n    policy ? `Policy: ${policy}` : null,\n    keys ? `Keypoints: ${keys}` : null,\n  ].filter(Boolean).join(\"\\n\");\n\n  item.json.suggestedChapterWordRange = range;\n  item.json.suggestedChapterWordTarget = target;\n  item.json.systemPrompt = systemPrompt;\n  item.json.systemMessage = systemMessage;\n  item.json.postpend = postpend;\n\n  item.json._summary = {\n    ageBand: label,\n    wordsPerChapter: { min: range[0], max: range[1], target },\n    chaptersRequested: chapters ?? null,\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        -416
+      ],
+      "id": "0ba18692-c22a-4c89-8c09-c2acc5f4d7f1",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "exportStory",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -512,
+        -768
+      ],
+      "id": "c3fb3c10-36ba-40ef-b148-e24723898c62",
+      "name": "exportStory",
+      "webhookId": "8f47cf2c-ebc7-4ddc-99fd-d2223e899a92",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -944
+      ],
+      "id": "0239f261-3fb9-4420-81ee-3c0cb5f903bd",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -16,
+        -592
+      ],
+      "id": "93a60d7f-3ec0-4351-adfb-32253668a66b",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "audio",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "audio/wav"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        864,
+        -528
+      ],
+      "id": "2fed556c-8610-4a61-9006-d333d0ffc92a",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openRouterApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"google/gemini-2.0-flash-exp:free\",\n  \"modalities\": [\"image\", \"text\"],\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{JSON.stringify($json.prompt).slice(1, -1)}}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        608
+      ],
+      "id": "fcfa01ea-6328-486e-aa7a-88e873c3151c",
+      "name": "Additional Banana - Alt Bearer",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        },
+        "openRouterApi": {
+          "id": "OhvnapMPCYil4jT7",
+          "name": "AlumniKey"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Uses SearchMusai to search",
+        "url": "https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.prompt || $json.body.prompt }}"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        592,
+        -160
+      ],
+      "id": "584c284d-249e-43fe-9458-ee512c298aca",
+      "name": "SearchMusai"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "projectId": "storyforge",
+        "subject": "={{ $json.prompt }}",
+        "additionalFields": {
+          "description": "=\n\n\n{{$json.output}}"
+        }
+      },
+      "type": "CUSTOM.redmine",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -704
+      ],
+      "id": "5e80519f-f33a-4834-be1e-a872446ddf2a",
+      "name": "Author book to Redmine Library",
+      "credentials": {
+        "redmineApi": {
+          "id": "iORqO2wfTLxZtDU0",
+          "name": "StoryForge Access"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voiceforge",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        272,
+        -528
+      ],
+      "id": "8c1fa51e-dd6e-4eb9-8ea2-d823b9c11ce8",
+      "name": "prep audiobook chapter",
+      "webhookId": "44b44510-73a7-40fd-8b17-39264278e6ac",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "013b1245-aae5-4b9c-9d91-bf388976e441",
+              "name": "prompt",
+              "value": "={{ $json.body.prompt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        -528
+      ],
+      "id": "6df93580-bb00-48fe-91c0-c16616824c68",
+      "name": "Standardize Format"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://musai-api:9000/tts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.prompt || '' }}"
+            },
+            {
+              "name": "voice",
+              "value": "en_US-GlaDOS-medium"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "audio"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        656,
+        -528
+      ],
+      "id": "5129bdc1-becf-4aec-ae25-142f8c5c26d4",
+      "name": "Musai API",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "project",
+        "projectId": "storyforge"
+      },
+      "type": "CUSTOM.redmine",
+      "typeVersion": 1,
+      "position": [
+        208,
+        -864
+      ],
+      "id": "20f8cdc0-5c69-4332-b67d-381e44f6af3f",
+      "name": "Get StoryForge pro",
+      "credentials": {
+        "redmineApi": {
+          "id": "iORqO2wfTLxZtDU0",
+          "name": "StoryForge Access"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/comfyui/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": \"{{$json.prompt}}\",\n  \"steps\": 16,\n  \"w\": 512,\n  \"h\": 512,\n  \"cfg\": 6.5,\n  \"seed\": 123456789012,\n  \"neg\": \"blurry, watermark\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        192
+      ],
+      "id": "b685fbe4-9135-4d80-b378-06b512d8685e",
+      "name": "EyeOfMusai SD1.5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "PrepPrompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Banana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractImage": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        []
+      ]
+    },
+    "Generate Banana": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "prompt to Seed": {
+      "main": [
+        [
+          {
+            "node": "First there was an Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prompt to Image": {
+      "main": [
+        [
+          {
+            "node": "See the Story... Feel the Story...",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seed to TOC": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "expandChapter": {
+      "main": [
+        [
+          {
+            "node": "from there, a story emerged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "First there was an Idea": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "then there was a plan": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "from there, a story emerged": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "See the Story... Feel the Story...": {
+      "main": [
+        [
+          {
+            "node": "EyeOfMusai SD1.5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "then there was a plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook1": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get StoryForge pro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "exportStory": {
+      "main": [
+        [
+          {
+            "node": "Author book to Redmine Library",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Additional Banana - Alt Bearer": {
+      "main": [
+        [
+          {
+            "node": "ExtractImage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchMusai": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Author book to Redmine Library": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prep audiobook chapter": {
+      "main": [
+        [
+          {
+            "node": "Standardize Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standardize Format": {
+      "main": [
+        [
+          {
+            "node": "Musai API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Musai API": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EyeOfMusai SD1.5": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "913a8093-fe42-4abf-a20e-4cf90b088c72",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "7oIbdRKiwgJKPU2g",
+  "tags": []
+}

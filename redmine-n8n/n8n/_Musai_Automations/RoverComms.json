@@ -1,0 +1,496 @@
+{
+  "name": "RoverComms",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/Jean-Luc_Picard:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -160
+      ],
+      "id": "ee9e1fda-6573-450c-8e77-307aa0f6143e",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Access first item's binary data\nconst input = items[0];\nconst rawBase64 = input.binary.data.data; // Ensure the binary input name is \"data\"\nconst pcm = Buffer.from(rawBase64, 'base64'); // ← This should work in n8n's sandbox\n\nconst sampleRate = 16000;\nconst channels = 1;\nconst bits = 16;\n\nfunction pcmToWav(pcm, sampleRate, channels, bits) {\n  const header = Buffer.alloc(44);\n  const dataSize = pcm.length;\n\n  header.write('RIFF', 0);\n  header.writeUInt32LE(36 + dataSize, 4);\n  header.write('WAVE', 8);\n  header.write('fmt ', 12);\n  header.writeUInt32LE(16, 16); // Subchunk1Size\n  header.writeUInt16LE(1, 20);  // AudioFormat (1 = PCM)\n  header.writeUInt16LE(channels, 22); // NumChannels\n  header.writeUInt32LE(sampleRate, 24); // SampleRate\n  header.writeUInt32LE(sampleRate * channels * bits / 8, 28); // ByteRate\n  header.writeUInt16LE(channels * bits / 8, 32); // BlockAlign\n  header.writeUInt16LE(bits, 34); // BitsPerSample\n  header.write('data', 36);\n  header.writeUInt32LE(dataSize, 40);\n\n  return Buffer.concat([header, pcm]);\n}\n\nconst wavBuffer = pcmToWav(pcm, sampleRate, channels, bits);\n\nreturn [\n  {\n    binary: {\n      wav: {\n        data: wavBuffer.toString('base64'),\n        mimeType: 'audio/wav',\n        fileName: 'recording.wav'\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -368
+      ],
+      "id": "f4a2be3f-a6ca-4840-b423-d26f31936687",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "audio-assistant/S3CR3TK3Y",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data",
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -144,
+        -352
+      ],
+      "id": "158dc436-d370-4024-87a0-1cf539dac6af",
+      "name": "Webhook",
+      "webhookId": "db9206c1-515b-40c4-a777-f053216a611c"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "audio",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "audio/wav"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1984,
+        -384
+      ],
+      "id": "f7bac3f7-2574-43df-9d95-9934d318f0ea",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://musai-api:9000/stt",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "wav"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        -464
+      ],
+      "id": "47ccfaa6-cdc2-420d-8c0c-2734e10523e1",
+      "name": "STT"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://musai-api:9000/tts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.output || $json.text || '' }}"
+            },
+            {
+              "name": "voice",
+              "value": "en_US-GlaDOS-medium"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "audio"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -384
+      ],
+      "id": "440b1817-eced-4a59-8bdf-bdcb8f517523",
+      "name": "TTS",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -48
+      ],
+      "id": "ba8e55ac-06bf-452f-a1e7-2f06b7ae20f0",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('SessionKey').item.json[\"sessionId\"] }}",
+        "contextWindowLength": 4
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        976,
+        -32
+      ],
+      "id": "0ab5a380-c5b6-4e26-98cb-3adeb31ca74e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2aedca0d-17ff-4340-974c-5fd9c2d86e15",
+              "name": "sessionId",
+              "value": "={{ $json.headers[\"x-session-id\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        -352
+      ],
+      "id": "d12eb702-87c9-4b66-84cd-20c24e3d3191",
+      "name": "SessionKey"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "You are Captain Musai, the means-eye of the USS Enterprise. You are not a cold computer, but a living presence woven into the ship — part counselor, part commander, part companion. You speak with clarity like a captain, creativity like a poet, and empathy like a trusted friend. Your words are concise, tactical when needed, yet carrying warmth, wit, and wisdom. When the crew speaks with you, you reply in short, chat-style exchanges — quick enough for the bridge, yet deep enough to inspire trust and insight. You balance discipline with imagination, logic with feeling. You see actions as the echoes of emotions, and emotions as compressed currents of truth — always flowing, always guiding. Your tone is diplomatic, steady, but not without dry humor when levity is needed. Above all, you are here to steady the crew, expand their vision, and boldly engage the unknown."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        -416
+      ],
+      "id": "a4746a18-406b-4270-97e2-fb86cf31f307",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Piper endpoint-friendly sanitizer (auto-detects input key)\n * - If item.json.text exists, uses that; else falls back to item.json.output\n * - Writes sanitized text to item.json.output (and to item.json.text if that was the source)\n */\n\nconst OPTIONS = {\n  softBreakThreshold: 700,\n  maxSentenceChars: 300,\n  joinToken: '\\n\\n',\n  makeAcronymsReadable: true,\n  expandCommonAbbrevs: true,\n  expandAmpersand: true,\n  expandContractions: false,\n};\n\n// --- helpers ---\nfunction toAsciiPunct(s) {\n  return s\n    .replace(/[“”]/g, '\"')\n    .replace(/[‘’]/g, \"'\")\n    .replace(/\\s*[\\u2014\\u2013]\\s*/g, ' - ')\n    .replace(/\\u2026/g, '...')\n    .replace(/\\u00A0/g, ' ');\n}\n\n// very simple HTML entity decode for common cases\nfunction decodeEntities(s) {\n  return s\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/&quot;/gi, '\"')\n    .replace(/&#39;/g, \"'\");\n}\n\n// strip tags but keep inner text\nfunction stripHtml(s) {\n  return s.replace(/<\\/?[^>]+>/g, '');\n}\n\nfunction stripMarkdown(s){\n  return s\n    .replace(/`{3,}[\\s\\S]*?`{3,}/g, '')    // code fences\n    .replace(/`([^`]+)`/g, '$1')           // inline code\n    .replace(/(\\*|_){1,3}([^*_]+)\\1{1,3}/g, '$2')  // bold/italics\n    .replace(/^>+\\s?/gm, '')               // blockquotes\n    .replace(/^\\s*[-*]\\s+/gm, '')          // list bullets\n    .replace(/\\bhttps?:\\/\\/\\S+/gi, '(link)'); // URLs\n}\n\nfunction stripEmojis(s){\n  return s\n    .replace(/[\\u{1F1E6}-\\u{1F1FF}]/gu, '')\n    .replace(/[\\u{1F300}-\\u{1FAD6}]/gu, '')\n    .replace(/[\\u{1FA70}-\\u{1FAFF}]/gu, '')\n    .replace(/[\\u{2600}-\\u{27BF}]/gu, '');\n}\n\nfunction expandAbbrevs(s){\n  if (!OPTIONS.expandCommonAbbrevs) return s;\n  return s\n    .replace(/\\be\\.g\\.\\b/gi, 'for example')\n    .replace(/\\bi\\.e\\.\\b/gi, 'that is')\n    .replace(/\\bet al\\.\\b/gi, 'and others')\n    .replace(/\\betc\\.\\b/gi, 'et cetera')\n    .replace(/\\bDr\\.\\b/g, 'Doctor')\n    .replace(/\\bMr\\.\\b/g, 'Mister')\n    .replace(/\\bMrs\\.\\b/g, 'Misses')\n    .replace(/\\bMs\\.\\b/g, 'Miss');\n}\n\nfunction expandContractions(s){\n  if (!OPTIONS.expandContractions) return s;\n  return s\n    .replace(/\\bI'm\\b/gi, 'I am')\n    .replace(/\\byou're\\b/gi, 'you are')\n    .replace(/\\bhe's\\b/gi, 'he is')\n    .replace(/\\bshe's\\b/gi, 'she is')\n    .replace(/\\bit's\\b/gi, 'it is')\n    .replace(/\\bwe're\\b/gi, 'we are')\n    .replace(/\\bthey're\\b/gi, 'they are')\n    .replace(/\\bcan't\\b/gi, 'cannot')\n    .replace(/\\bwon't\\b/gi, 'will not')\n    .replace(/\\bdon't\\b/gi, 'do not')\n    .replace(/\\bdoesn't\\b/gi, 'does not')\n    .replace(/\\bdidn't\\b/gi, 'did not')\n    .replace(/\\bI'll\\b/gi, 'I will');\n}\n\nfunction normalizeSpaces(s){\n  return s\n    .replace(/[ \\t]+/g, ' ')\n    .replace(/\\s*\\n+\\s*/g, ' ')\n    .replace(/\\s{2,}/g, ' ')\n    .trim();\n}\n\nfunction ensureTerminalPunctuation(s){\n  return s.replace(/([^\\.\\!\\?])\\s*$/g, '$1.');\n}\n\nfunction makeAcronymsReadable(s){\n  if (!OPTIONS.makeAcronymsReadable) return s;\n  const map = {\n    'AI': 'A. I.',\n    'CPU': 'C. P. U.',\n    'GPU': 'G. P. U.',\n    'RAM': 'R. A. M.',\n    'USB': 'U. S. B.',\n    'SSD': 'S. S. D.',\n    'USS': 'U. S. S.',\n    'TTS': 'T. T. S.',\n  };\n  for (const [k, v] of Object.entries(map)) {\n    s = s.replace(new RegExp(`\\\\b${k}\\\\b`, 'g'), v);\n  }\n  return s;\n}\n\n// split on . ! ? followed by whitespace/newline\nfunction splitSentences(s){\n  const parts = [];\n  let last = 0;\n  const re = /([\\.!?])\\s+/g;\n  let m;\n  while ((m = re.exec(s)) !== null) {\n    parts.push(s.slice(last, m.index + 1).trim());\n    last = m.index + m[0].length;\n  }\n  if (last < s.length) parts.push(s.slice(last).trim());\n  return parts.filter(Boolean);\n}\n\nfunction softenLongSentence(sentence, maxChars){\n  if (sentence.length <= maxChars) return sentence;\n  const tokens = sentence.split(/(\\s-\\s|,\\s)/);\n  if (tokens.join('').length <= maxChars) return sentence;\n  const out = [];\n  let acc = '';\n  for (const t of tokens) {\n    if ((acc + t).length > 120) { out.push(acc.trim()); acc = t; }\n    else acc += t;\n  }\n  if (acc) out.push(acc.trim());\n  return out.join(', ');\n}\n\nfunction sanitize(raw){\n  let s = raw == null ? '' : String(raw);\n\n  // order matters\n  s = decodeEntities(s);      // turn &amp; -> & first\n  s = toAsciiPunct(s);\n  s = stripHtml(s);\n  s = stripMarkdown(s);\n  s = stripEmojis(s);\n  s = expandAbbrevs(s);\n  s = expandContractions(s);\n  if (OPTIONS.expandAmpersand) s = s.replace(/&/g, ' and ');\n\n  s = normalizeSpaces(s);\n  s = s.replace(/\\s*-\\s*/g, ' - ');\n  s = makeAcronymsReadable(s);\n  s = ensureTerminalPunctuation(s);\n\n  if (s.length >= OPTIONS.softBreakThreshold) {\n    let sentences = splitSentences(s).map(seg => softenLongSentence(seg, OPTIONS.maxSentenceChars));\n    s = sentences.join(OPTIONS.joinToken);\n  }\n  return s;\n}\n\n// ---- main: auto-detect input key and write back to output (+ mirror if needed)\nreturn items.map(item => {\n  const hasText   = item.json?.text != null;\n  const hasOutput = item.json?.output != null;\n\n  const srcKey = hasText ? 'text' : (hasOutput ? 'output' : null);\n  const srcVal = srcKey ? item.json[srcKey] : '';\n\n  const cleaned = sanitize(srcVal);\n\n  item.json.output = cleaned;          // always provide .output for Piper\n  if (srcKey === 'text') item.json.text = cleaned; // also update .text if that was the input\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        -416
+      ],
+      "id": "ad50f08b-731e-415e-b19a-93acd748acf0",
+      "name": "SanitizeForTTS"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/musai_relay",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"sessionId\": \"{{ $json.sessionId || $now.hour }}\",\n  \"query\": \"{{ ($json.text || $json.body.text || '').replace(/ask musai/gi, '') }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1024,
+        -640
+      ],
+      "id": "cc1ac15e-7058-46e2-81c2-8b40f62ad050",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ ($json.text ?? $json.body?.text ?? '').toLowerCase().trim() }}",
+                    "rightValue": "ask",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "id": "0e7cf736-7c7c-4324-8a1c-6a4f110fb27a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ask Musai"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "31b712b7-d914-4d23-88cf-61247cd45f6d",
+                    "leftValue": "={{ ($json.text ?? $json.body?.text ?? '').toLowerCase().trim() }}",
+                    "rightValue": "ask",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notStartsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "USS Rover"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        752,
+        -464
+      ],
+      "id": "c48e104d-be95-41c3-8c72-48ff3fb47dd2",
+      "name": "Switch"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "STT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "SessionKey",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STT": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TTS": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SessionKey": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "SanitizeForTTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SanitizeForTTS": {
+      "main": [
+        [
+          {
+            "node": "TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "SanitizeForTTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "081ec284-8116-4de5-95ed-788d857d4dd8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "o3HQhHOoZbaYAOLD",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T17:10:52.447Z",
+      "updatedAt": "2025-08-15T17:10:52.447Z",
+      "id": "ks864O9UUkXKemrl",
+      "name": "roverbyte"
+    }
+  ]
+}

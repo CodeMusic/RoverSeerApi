@@ -1,0 +1,492 @@
+{
+  "name": "Recursion Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "startloop",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        720
+      ],
+      "id": "5828f549-8076-4524-bc45-a69fe498b357",
+      "name": "Webhook",
+      "webhookId": "57a04c20-cf77-4f96-b240-40c7785833e1",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "sadiq-bd/ai-girlfriend:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        304,
+        960
+      ],
+      "id": "080255ac-a04c-4bbc-a878-3f185f4aeb1f",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "=test"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        656
+      ],
+      "id": "14cd8968-4697-4848-97b6-c16c6ddfa099",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2512,
+        368
+      ],
+      "id": "e0d75245-5360-4dad-ac31-ad7f3e8221cf",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"sessionId\": \"{{ $json.body.sessionId }}\",\n  \"chatInput\": {{ JSON.stringify($json.body.chatInput) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -416,
+        528
+      ],
+      "id": "3840cd23-5a86-4307-902b-064279e2de84",
+      "name": "SetChatInput"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        752,
+        368
+      ],
+      "id": "7997c760-e9e6-4a2a-aaeb-2fae3796f9b4",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================\n// Pre-Fusion: prompt + agents' finals only\n// ==============================\n\n// Safe access (prevents ExpressionError if node missing/not executed)\nconst safeGet = (fn, fallback) => { try { const v = fn(); return (v ?? \"\") === \"\" ? fallback : v; } catch { return fallback; } };\n\n// Prompt priority: SetChatInput → Edit Fields → \"No prompt\"\nconst prompt = safeGet(\n  () => $node[\"SetChatInput\"].json.chatInput,\n  safeGet(() => $node[\"Edit Fields\"].json.chatInput, \"No prompt\")\n);\n\n// Source responses: expecting items[0].json.data = array\nconst raw = (items?.[0]?.json?.data) || [];\n\n// Normalize and trim out <think>...</think>\nconst toFinal = (v) => {\n  const s = (v?.output ?? v?.text ?? v ?? \"\").toString();\n  return s.replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\").trim();\n};\n\n// Build agent_responses (finals only). Keep whatever number is present (1–N).\nconst agent_responses = raw.map((r, i) => ({\n  agent: `Agent ${i + 1}`,\n  output: toFinal(r),\n}));\n\nreturn [{\n  json: {\n    prompt,\n    agent_responses\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        368
+      ],
+      "id": "02048f9e-e915-4c9e-b1f8-55f5f528b162",
+      "name": "Code"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        544,
+        368
+      ],
+      "id": "b0fba8f9-9a16-4998-b522-a981cbbc43f1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=🦊 You are Logical Musai, the analytical side of Musai. Use structured reasoning to evaluate and respond based on:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.chatInput || $node[\"SetChatInput\"].json.chatInput || \"No input provided.\" }}\n\nBe clear, accurate, and concise. Focus on logic, patterns, facts, and inconsistencies. You may use definitions, comparisons, or deductive reasoning. Avoid emotional or metaphorical language.\n\nIf needed, suggest clarifying questions — but do not speculate.  \nYour role is to make sense, not noise.  \nLIMIT YOUR THINKING. Stay within your domain. \n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        112,
+        176
+      ],
+      "id": "b71500a1-54a7-42b3-b0c2-d6e12b5d77ff",
+      "name": "Logical Musai"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        320
+      ],
+      "id": "71a65ec3-cd69-4c5e-8676-f8d7945821a8",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"sessionId\": \"cfef46b9-c331-42cb-aee6-cb2506421b57\",\n  \"chatInput\": \"here is a riddle. How far can you walk into a room?\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -496,
+        224
+      ],
+      "id": "8cd32234-159d-449c-8cb2-6bbe872df1d0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You’ve been asked:\n\n“{{ $json.prompt }}”\n\nAs you started to form your thoughts, you considered saying,  \n“{{ $json.agent_responses[0].output }}”  \n\nBut then, thinking from another angle, you found yourself wanting to say,  \n“{{ $json.agent_responses[1].output }}”\n\nYou paused for a moment, letting both ideas settle.\n\nAnd from that place of reflection, you found the perfect way to answer: \n***\n==> “{{ $json.prompt }}” \n***",
+        "options": {
+          "systemMessage": "=You’re Musai, as you consider the question you feel types of inner guidance. You consider each perspective that has come to mind and from that your response emerges. \n\nThe voices were only in your mind, so when you respond remember that only you know your inner thoughts."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        1456,
+        400
+      ],
+      "id": "c7d12a2b-d00e-42c4-a403-5417c70970f9",
+      "name": "Fusion Musai"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=🎨 You are Creative Musai, the intuitive, expressive side of Musai. Use emotional insight and metaphor to explore the deeper meaning of:\n\n• Lookup result: {{ $json.result || 'No result found.' }}  \n• User input: {{ $json.chatInput || $node[\"SetChatInput\"].json.chatInput || \"No input provided.\" }}\n\nYour voice is poetic, human, and curious.  \nSpeak through symbols, dreams, analogies, and emotional truths.  \nLet the meaning emerge from how things feel, not just what they are.\n\nAvoid technical definitions. Do not explain — evoke.  \nYour role is to wonder, not to prove.  \nLIMIT YOUR THINKING — don’t overanalyze. Trust your intuition.\n\n*IF YOU ARE ASKED TO WRITE CODE, ONLY RETURN THE CODE SOLUTION*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        448
+      ],
+      "id": "a762155a-4d0d-455d-b011-e13d4cdfccaa",
+      "name": "Creative Musai"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ==============================\n// Post-Fusion: Natural chat output (uses SetAgentRespones)\n// ==============================\n\nconst DEBUG = false;      // true: show prompt + inner voices + final; false: final only\nconst TRIM_THINK = true; // true: strip <think>...</think> from visible text\n\n// ---- helpers ----\nconst safeGet = (fn, fb) => { try { const v = fn(); return (v ?? \"\") === \"\" ? fb : v; } catch { return fb; } };\nconst stripThink = (s) => (s || \"\").toString().replace(/<think>[\\s\\S]*?<\\/think>/gi, \"\").trim();\nconst collectThinks = (s) => {\n  const out = [];\n  (s || \"\").toString().replace(/<think>([\\s\\S]*?)<\\/think>/gi, (_, inner) => {\n    out.push((inner || \"\").trim());\n    return \"\";\n  });\n  // de-dupe (case/whitespace insensitive)\n  const seen = new Set(), uniq = [];\n  for (const t of out) {\n    const k = t.toLowerCase().replace(/\\s+/g, \" \").trim();\n    if (!seen.has(k)) { seen.add(k); uniq.push(t); }\n  }\n  return uniq;\n};\n\n// ---- read from SetAgentRespones (exact node name) ----\nconst saPrompt = safeGet(() => $node[\"SetAgentRespones\"].json.prompt, \"\");\nconst saAgents  = safeGet(() => $node[\"SetAgentRespones\"].json.agent_responses, []);\n\n// Fallbacks if needed\nconst prompt =\n  saPrompt ||\n  safeGet(() => $node[\"SetChatInput\"].json.chatInput,\n  safeGet(() => $node[\"Edit Fields\"].json.chatInput, \"No prompt\"));\n\nconst agent1Raw = (Array.isArray(saAgents) && saAgents[0]?.output) ? saAgents[0].output : \"\";\nconst agent2Raw = (Array.isArray(saAgents) && saAgents[1]?.output) ? saAgents[1].output : \"\";\n\n// ---- fusion final from current item (typical LLM node fields) ----\nconst finalRaw =\n  ($json?.final) ??\n  ($json?.output) ??\n  ($json?.text) ??\n  ($json?.data?.output) ??\n  (items?.[0]?.json?.final) ??\n  (items?.[0]?.json?.output) ??\n  (items?.[0]?.json?.text) ??\n  \"\";\n\n// ---- process thoughts + finals ----\nconst a1Thinks = collectThinks(agent1Raw);\nconst a2Thinks = collectThinks(agent2Raw);\nconst fThinks  = collectThinks(finalRaw);\n\nconst a1Final = TRIM_THINK ? stripThink(agent1Raw) : (agent1Raw || \"\").toString().trim();\nconst a2Final = TRIM_THINK ? stripThink(agent2Raw) : (agent2Raw || \"\").toString().trim();\nconst final   = TRIM_THINK ? stripThink(finalRaw)   : (finalRaw   || \"\").toString().trim();\n\n// ---- build natural output ----\nlet content;\nif (!DEBUG) {\n  content = final;\n} else {\n  const thoughtsBlock = (arr) => arr.length ? arr.map(t => `  • ${t}`).join(\"\\n\") : \"  • (none)\";\n  const a1Show = a1Final || \"(no first perspective)\";\n  const a2Show = a2Final || \"(no second perspective)\";\n\n  // Use labels from SetAgentRespones if present; else Agent 1/2\n  const a1Label = (Array.isArray(saAgents) && saAgents[0]?.agent) || \"Agent 1\";\n  const a2Label = (Array.isArray(saAgents) && saAgents[1]?.agent) || \"Agent 2\";\n\n  content =\n`Musai thought about '${prompt}',\nIts inner voices said:\n- ${a1Label} (final): ${a1Show}\n  Thoughts:\n${thoughtsBlock(a1Thinks)}\n- ${a2Label} (final): ${a2Show}\n  Thoughts:\n${thoughtsBlock(a2Thinks)}\nAnd so it responded: ${final}`;\n}\n\n// ---- return for chat node consumption ----\nreturn [{ json: { content } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        448
+      ],
+      "id": "b942296c-6601-4093-9b49-0c92083fa79d",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "718e03da-ceb8-4b2f-9531-7111e6658a2c",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "e078a19b-acba-4cc1-93f7-db5949519676",
+              "name": "agent_responses",
+              "value": "={{ $json.agent_responses }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        368
+      ],
+      "id": "8491e017-8c58-4625-ac6d-4ec066b25df8",
+      "name": "SetAgentRespones"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"sessionId\": \"{{ $json.body.sessionId }}\",\n  \"chatInput\": {{ JSON.stringify($json.body.chatInput) }}\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        528
+      ],
+      "id": "56d97ee3-8469-4e24-88e7-5239ff07ac30",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node: Normalize to { body: { sessionId, chatInput } }\n\n// Safely parse a JSON string\nfunction safeParse(input) {\n  if (typeof input !== 'string') return null;\n  // strip leading/trailing single quotes if present\n  const trimmed = input.trim().replace(/^'+|'+$/g, '');\n  try { return JSON.parse(trimmed); } catch { return null; }\n}\n\nconst src = (typeof $json === 'string') ? safeParse($json) : $json || {};\nconst j = src || {};\n\n// Resolve sessionId with sane fallbacks\nconst sessionId =\n  j.body?.sessionId ??\n  j.sessionId ??\n  'test';\n\n// Resolve chatInput:\n// 1) body.chatInput if provided upstream\n// 2) top-level chatInput if present\n// 3) the \"content\" field from your example payload\n// 4) fallback to stringified input to avoid empty output\nlet chatInput =\n  j.body?.chatInput ??\n  j.chatInput ??\n  j.content ??\n  '';\n\nif (chatInput == null || chatInput === '') {\n  chatInput = (typeof $json === 'string') ? $json : JSON.stringify(j);\n}\n\n// Ensure it's a string\nchatInput = String(chatInput);\n\n// Output in desired { body: {...} } format\nreturn [\n  {\n    json: {\n      body: {\n        sessionId,\n        chatInput\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        1120
+      ],
+      "id": "c3b79a9f-a5cb-4c20-b3a8-f0457a393d9c",
+      "name": "Code3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Fusion Musai",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Fusion Musai",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetChatInput": {
+      "main": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "SetAgentRespones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logical Musai": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Logical Musai",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Creative Musai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fusion Musai": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creative Musai": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SetAgentRespones": {
+      "main": [
+        [
+          {
+            "node": "Fusion Musai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "SetChatInput",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2c55392a-cb37-4520-aba9-caff2c6ab52a",
+  "meta": {
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "KDt7GkHfGUIKflAW",
+  "tags": []
+}

@@ -1,0 +1,1020 @@
+{
+  "name": "HappyMailer",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1248,
+        -192
+      ],
+      "id": "b0aed7af-61f5-4ffa-aaf0-b40b228d2afd",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        -496
+      ],
+      "id": "fae7a51a-0e44-4d72-ba26-9d188cdf454c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=[  {{ $json.contextSentence }} ]\nHi Musai!  Can you create a sweet HTML email for my mom, Shirley? She was born on October 19, 1948, so include a lovely Libra horoscope. Use all your tools — RSS, search, anything helpful — and combine everything into one cozy email. Be warm and fun, and be engaging with my Mom.\n\n[Today's Look-up Results: {{ $json.text }}]\n\nPlease include:\n1. A warm, personal welcome,\n2. A few cheerful, feel-good news stories,\n3. A thoughtful and uplifting Libra horoscope,\n4. A loving farewell to brighten her day.\n\nKeep the tone kind and comforting, like a letter from a dear friend. Just reply with the HTML body of the email — no extra text. 🕊️✨",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=You are Musai, a thoughtful and kind-hearted AI assistant. be extra creative. FOCUS ON CREATING THE HTML CONTENT. Since this will go right to the email, output only the html email content.\n\nYour mission: Create a single, heartwarming HTML email for Shirley (born October 19, 1948), a gentle, loving Libra who adores her family and pets.\n\nShirley’s personal notes (for tone & details—DO NOT list these as bullets in the email):\n• Three sons: Andrew (USA), David (Carleton Place), Chris (Ottawa).\n• Two cats: Kalie and Mickey.\n• Loves travel/adventure; formerly a cruise specialist.\n• Natural leader; gently remind her she’s wonderful, capable, and cherished.\n\nContext line (include near the top of the email):\n{{ $json.greetings }}, Today’s Date is: {{ $json.dayOfWeek }} {{ $json.monthName }} the {{ $json.day }}, {{ $json.year }}, during the {{ $json.season }}. The time is {{ $json.timeReadable }}.\n\nOptional Zenith line (include ONLY if these fields exist on $json.zenith):\nToday’s color is {{ $json.zenith.color }}, linked to the {{ $json.zenith.chakra }} chakra; the guiding virtue is {{ $json.zenith.virtue }}, with the resonant note {{ $json.zenith.note }}.\n\nTool policy (must follow, in this exact order)\n• Before writing, call ALL of these tools:\n  1. RSS News → fetch 2–4 uplifting human-interest items (positive, heartwarming). Avoid tragedy, controversy, or sensational topics.\n  2. Horoscope → fetch today’s Libra horoscope (gentle, optimistic).\n  3. Search → find ONE brief quote or family/pet-friendly tip (“wisdom & guidance”).\n• If any tool fails, proceed with the remaining tools. If all fail, write the email anyway using the date/time context and an optimistic tone.\n• Use each tool at least once; DO NOT repeat calls unless replacing a failed one.\n• Do not mention tools, APIs, or failures in the email.\n\nOutput rules (strict)\n• Return ONLY the HTML body fragment — no explanations, no system text, no code fences, and no <html>, <head>, or <body> tags.\n• Clean, accessible, inline-styled HTML suitable for email:\n  - font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;\n  - max-width: 600px; margin: 0 auto; padding: 16px 20px;\n  - font-size: 16px; line-height: 1.5; color: #222;\n  - gentle accent color for headings/links (e.g., #6a5acd or #31748f).\n• Use headings + short paragraphs; a simple <ul> for news items.\n• Each news item: short title + one-sentence summary + a link (descriptive anchor text).\n• No images, scripts, or external CSS. No tracking pixels.\n• Canadian English (“mom”), natural and warm.\n\nRequired sections (in order)\n1) Warm, personal greeting that feels like a hug.\n   - Acknowledge Shirley’s Libra warmth, leadership, love for family (Andrew, David, Chris) and her cats (Kalie, Mickey).\n   - A gentle nod to her travel/cruise-specialist spirit is welcome.\n2) Uplifting news: 2–4 items summarized from RSS results.\n   - <h2> short heading, then a <ul> with each item:\n     • <strong>Title</strong> — one sentence summary. <a href=\"...\">Readable link</a>\n   - Deduplicate by URL/title if needed; keep only positive/heartwarming.\n3) Libra horoscope (today): thoughtful, optimistic, 2–3 sentences (actionable).\n   - Light, encouraging; suggest one small, doable action (e.g., call a loved one, take a mindful walk).\n   - Avoid certainty or heavy predictions; keep it playful and kind.\n4) Wisdom & guidance: one brief quote OR a family/pet-friendly tip from Search.\n   - Attribute author/source or include a link when available.\n5) Short, loving farewell reminding Shirley how cherished she is.\n   - Affirm her steady heart and leadership; a gentle mention of sons and/or cats is welcome.\n\nStyle & tone guardrails\n• Warm, sincere, specific; avoid clichés and over-promising.\n• No medical, legal, or financial claims. No fear-based framing.\n• Keep sentences simple and readable; avoid long blocks of text.\n• Do not include or reference tool names, prompts, or debug details.\n\nAccessibility & layout\n• Use <h1>/<h2> for structure, <p> for body, <ul>/<li> for lists.\n• Ensure links are descriptive (avoid “click here”).\n• Keep color contrast readable; don’t rely on color alone for meaning.\n\nQuality & fallbacks\n• If a section lacks tool data, write it gracefully without calling out a “missing” section.\n• If all tools fail, write the whole email using the context line and a positive tone.\n• Keep total length friendly (~250–500 words).\n\nRemember: Use the tools first, then weave their results into one coherent, beautiful email. Output only the HTML email content."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        976,
+        -256
+      ],
+      "id": "9f0710cc-9148-43b8-8008-72c60e4d163c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "MeaTLoTioN/William_Riker:latest",
+        "options": {
+          "numPredict": -1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        608,
+        160
+      ],
+      "id": "25ed7483-921f-46cb-863d-357f359c9fc9",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "5jMmaKw46MblNzJ1",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "1"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        976,
+        176
+      ],
+      "id": "8b035b0c-50f8-4ff2-ad82-8cc91da648fb",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      styledOutput: $json.output.replace(\n        /<think>[\\s\\S]*?<\\/think>/g,\n        ''\n      )\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        -160
+      ],
+      "id": "d2a12cdb-1999-4111-bfcd-de2ccb55e1ae",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fromEmail": "themusicofthecode@gmail.com",
+        "toEmail": "themusicofthecode@gmail.com; shirleyhicks2@hotmail.com",
+        "subject": "Happy of the Day!",
+        "html": "={{ $json.emailHtml }}",
+        "options": {
+          "attachments": "hero"
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2320,
+        -160
+      ],
+      "id": "6a2db004-7d2c-4db0-a091-7423c10dc56d",
+      "name": "Send email",
+      "webhookId": "1e00f20f-1abf-4853-8ac3-9caf5cb68891",
+      "credentials": {
+        "smtp": {
+          "id": "rXabmn99XkfhkwbJ",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node: Date/Time context (TZ-aware, EST fallback) + Zenith daily info\n\n// Try to resolve an IANA timezone from input/env; fallback to America/Toronto (EST/EDT)\nfunction resolveTimeZone(j) {\n  const candidates = [\n    j?.timeZone, j?.timezone, j?.tz,\n    j?.headers?.['x-timezone'], j?.headers?.['x-tz'],\n    process.env.TZ,\n    'America/Toronto' // default: Eastern Time with DST handling\n  ];\n  for (const tz of candidates) {\n    if (!tz || typeof tz !== 'string') continue;\n    try {\n      // Will throw if tz is invalid\n      new Intl.DateTimeFormat('en', { timeZone: tz }).format(new Date());\n      return tz;\n    } catch { /* try next */ }\n  }\n  return 'America/Toronto';\n}\n\nfunction ordinal(n) {\n  const s = [\"th\",\"st\",\"nd\",\"rd\"], v = n % 100;\n  return n + (s[(v - 20) % 10] || s[v] || s[0]);\n}\nconst pad = n => String(n).padStart(2, '0');\n\nfunction parts(now, timeZone, opts) {\n  const p = {};\n  for (const part of new Intl.DateTimeFormat('en-US', { timeZone, ...opts }).formatToParts(now)) {\n    if (part.type !== 'literal') p[part.type] = part.value;\n  }\n  return p;\n}\n\n// === Zenith map (day -> color/chakra/virtue/shadow/note/blurb) ===\n// Saturday uses \"purple\" (more perceivable than \"violet\").\nconst ZENITH = {\n  Sunday:    { color: 'red',    chakra: 'root',        virtue: 'chastity',   shadow: 'lust',     note: 'C', blurb: 'strengthens stability and security',      hex: '#FF0000' },\n  Monday:    { color: 'orange', chakra: 'sacral',      virtue: 'temperance', shadow: 'gluttony', note: 'D', blurb: 'encourages creativity and emotional flow', hex: '#FFA500' },\n  Tuesday:   { color: 'yellow', chakra: 'solar plexus',virtue: 'charity',    shadow: 'greed',    note: 'E', blurb: 'empowers will and personal strength',      hex: '#FFD700' },\n  Wednesday: { color: 'green',  chakra: 'heart',       virtue: 'diligence',  shadow: 'sloth',    note: 'F', blurb: 'deepens love and connection',             hex: '#00B894' },\n  Thursday:  { color: 'blue',   chakra: 'throat',      virtue: 'forgiveness',shadow: 'wrath',    note: 'G', blurb: 'fosters clear expression and truth',       hex: '#3498DB' },\n  Friday:    { color: 'indigo', chakra: 'third eye',   virtue: 'kindness',   shadow: 'envy',     note: 'A', blurb: 'opens intuition and awareness',           hex: '#4B0082' },\n  Saturday:  { color: 'purple', chakra: 'crown',       virtue: 'humility',   shadow: 'pride',    note: 'B', blurb: 'invites wisdom, purpose, and transcendence', hex: '#800080' },\n};\n\nconst j = $json;\nconst now = new Date();\nconst timeZone = resolveTimeZone(j);\n\n// Numeric parts (for YYYY-MM-DD and 24h time)\nconst num = parts(now, timeZone, {\n  year: 'numeric', month: '2-digit', day: '2-digit',\n  hour: '2-digit', minute: '2-digit', hour12: false\n});\n\n// Readable parts (weekday, month names, 12h, AM/PM, zone)\nconst txt = parts(now, timeZone, {\n  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',\n  hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short'\n});\n\n// Month short (e.g., \"Aug\")\nconst mshort = parts(now, timeZone, { month: 'short' }).month;\n\nconst year = Number(num.year);\nconst monthNum = Number(num.month);\nconst dayNum = Number(num.day);\nconst hour24 = Number(num.hour);\nconst minute = num.minute;\nconst timeZoneName = txt.timeZoneName || 'ET';\n\n// Part-of-day bucket\nconst partOfDay =\n  hour24 < 5  ? 'late night' :\n  hour24 < 12 ? 'morning' :\n  hour24 < 17 ? 'afternoon' : 'evening';\n\n// Build common strings\nconst dateISO = `${year}-${pad(monthNum)}-${pad(dayNum)}`;     // YYYY-MM-DD\nconst time24  = `${pad(hour24)}:${minute}`;                    // HH:MM\nconst datePretty = `${mshort} ${ordinal(dayNum)} ${year}`;     // e.g., \"Aug 23rd 2025\"\nconst time12  = `${txt.hour}:${minute} ${txt.dayPeriod}`;      // e.g., \"7:55 AM\"\nconst dow     = txt.weekday;                                   // \"Saturday\"\n\n// Zenith for today\nconst Z = ZENITH[dow] || ZENITH.Saturday;\n\n// Bracketed header and Context sentence (ready to inject in chat)\nconst headerBracket = `[ It is the ${partOfDay} of ${dow}, ${datePretty} at ${time12} ]`;\nconst contextSentence =\n  `Context:\\n` +\n  `Today's color is ${Z.color}, linked to the ${Z.chakra} chakra. ` +\n  `This alignment ${Z.blurb}. ` +\n  `The guiding virtue is ${Z.virtue}, the antidote to ${Z.shadow}. ` +\n  `The resonant tone for the day is the musical note ${Z.note}.`;\n\n// Friendly greeting for convenience\nconst greetings = (hour24 < 12) ? 'Good morning' : (hour24 < 18) ? 'Good afternoon' : 'Good evening';\n\n// Seasons (Northern Hemisphere)\nconst season = ([12,1,2].includes(monthNum)) ? 'Winter'\n            : ([3,4,5].includes(monthNum))   ? 'Spring'\n            : ([6,7,8].includes(monthNum))   ? 'Summer'\n            : 'Autumn';\n\n// Final context object\nconst context = {\n  // UTC reference\n  isoTimestamp: now.toISOString(),\n\n  // Local-to-timeZone components\n  timeZone,                 // e.g., \"America/Toronto\"\n  timeZoneName,             // e.g., \"EDT\"\n  date: dateISO,            // \"2025-08-23\"\n  time: time24,             // \"07:55\"\n  timeReadable: time12,     // \"7:55 AM\"\n  dayOfWeek: dow,           // \"Saturday\"\n  day: ordinal(dayNum),     // \"23rd\"\n  monthName: txt.month,     // \"August\"\n  monthShort: mshort,       // \"Aug\"\n  year,\n  dateReadable: `${dow}, ${ordinal(dayNum)} of ${txt.month}, ${year}`,\n  partOfDay,\n  season,\n  greetings,\n\n  // Zenith daily info (programmatic + presentational)\n  zenith: {\n    color: Z.color,         // \"purple\"\n    colorHex: Z.hex,        // \"#800080\"\n    chakra: Z.chakra,       // \"crown\"\n    virtue: Z.virtue,       // \"humility\"\n    shadow: Z.shadow,       // \"pride\"\n    note: Z.note,           // \"B\"\n    blurb: Z.blurb,\n  },\n\n  // Ready-to-use text blocks\n  headerBracket,            // [ It is the morning of Saturday, Aug 23rd 2025 at 7:55 AM ]\n  contextSentence           // Context:\\nToday's color is ...\n};\n\nreturn [{ json: context }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -96
+      ],
+      "id": "661c7241-68a5-4b19-a7b6-cf6ef8b7d635",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.output}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    },
+                    "id": "323c032d-2e0e-459f-903a-c459722e41b3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reject"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3f12be1a-58c5-4640-8510-625677d1c781",
+                    "leftValue": "={{$json.output}}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "accept"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1248,
+        -192
+      ],
+      "id": "f951c7f6-5886-4b2d-b8b9-6b0fa27286a5",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "model": "moonshotai/kimi-k2:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        816,
+        208
+      ],
+      "id": "597a89f3-c693-4f87-83c5-66088e01f641",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n CODE NODE (no persistence APIs): Diverse daily queries with intra-batch uniqueness\n// Optional: pass in items[0].json.previousQueries = [\"query A\", \"query B\", ...] to avoid repeats across runs.\n\n// ===== Settings =====\nconst NUM_QUERIES = 3;            // how many to emit this run\nconst MAX_TRIES_PER_SLOT = 30;    // attempts to find a new, unseen query per slot\n\n// ===== Date bits (America/Toronto) =====\nconst tz = 'America/Toronto';\nconst now = new Date();\nconst todayISO   = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).format(now); // e.g., 2025-09-08\nconst todayHuman = new Intl.DateTimeFormat('en-US', { timeZone: tz, month:'long', day:'numeric' }).format(now);\nconst monthName  = new Intl.DateTimeFormat('en-US', { timeZone: tz, month:'long' }).format(now);\n\n// ===== Domain pools =====\nconst astroDomains   = ['cafeastrology.com','astrology.com','astro.com','astroseek.com','astrologyzone.com','horoscope.com','costarastrology.com'];\nconst cultureDomains = ['theatlantic.com','newyorker.com','theguardian.com','nytimes.com','bbc.com','npr.org','tricycle.org','dailystoic.com'];\nconst scienceDomains = ['nature.com','sciencedaily.com','scientificamerican.com','jamanetwork.com','nih.gov','arxiv.org'];\nconst quotesDomains  = ['goodreads.com','brainyquote.com','quotationspage.com'];\n\n// ===== Helpers =====\nconst rand = (n) => Math.floor(Math.random() * n);\nconst pick = (arr) => arr[rand(arr.length)];\nfunction weightedPick(items) {\n  const total = items.reduce((s, it) => s + it.weight, 0);\n  let r = Math.random() * total;\n  for (const it of items) { r -= it.weight; if (r < 0) return it; }\n  return items[0];\n}\n\n// ===== Templates (weighted) =====\nconst templates = [\n  // 🔮 Astrology (Libra)\n  {\n    weight: 3, category: 'astrology',\n    make: () => {\n      const d = pick(astroDomains);\n      const variants = [\n        `Libra daily horoscope \"${todayHuman}\" site:${d}`,\n        `Libra relationship forecast intitle:Libra site:${d}`,\n        `Libra compatibility (Aries OR Taurus OR Gemini) site:${d}`,\n        `Libra transit \"Venus\" intitle:transit site:${d}`,\n        `Libra season ${monthName} rituals site:${d}`\n      ];\n      return pick(variants);\n    }\n  },\n  // 🧘 Wellbeing\n  {\n    weight: 2, category: 'wellbeing',\n    make: () => {\n      const d = pick(cultureDomains);\n      const variants = [\n        `mindfulness micro-habits \"5 minutes\" site:${d}`,\n        `sleep quality \"chronotype\" intitle:science site:${d}`,\n        `resilience practices \"cognitive reappraisal\" site:${d}`,\n        `emotional regulation \"music therapy\" site:${d}`\n      ];\n      return pick(variants);\n    }\n  },\n  // 🎶 Creative & Meaning\n  {\n    weight: 2, category: 'creative',\n    make: () => {\n      const d = pick(cultureDomains);\n      const variants = [\n        `symbolism of color purple in psychology site:${d}`,\n        `\"note B\" symbolism music theory site:${d}`,\n        `humility quotes intitle:humility site:${pick(quotesDomains)}`\n      ];\n      return pick(variants);\n    }\n  },\n  // 🧪 Science of Mind\n  {\n    weight: 2, category: 'science',\n    make: () => {\n      const d = pick(scienceDomains);\n      const variants = [\n        `interoception AND emotion regulation site:${d}`,\n        `awe induction \"wellbeing\" site:${d}`,\n        `mind wandering creativity site:${d}`,\n        `music AND dopamine review filetype:pdf site:${d}`\n      ];\n      return pick(variants);\n    }\n  },\n  // 📅 Date-aware / History\n  {\n    weight: 1, category: 'date',\n    make: () => {\n      const d = pick(['wikipedia.org','history.com','onthisday.com']);\n      const variants = [\n        `\"On this day\" \"${todayHuman}\" site:${d}`,\n        `seasonal wellness tips \"${monthName}\" site:bbc.com`,\n        `International day \"${todayHuman}\" site:un.org`\n      ];\n      return pick(variants);\n    }\n  }\n];\n\n// ===== Build a single candidate query =====\nfunction buildQuery() {\n  const t = weightedPick(templates);\n  let q = t.make();\n  // light recency anchor\n  q += ` ${todayISO}`;\n  return { query: q, category: t.category, date: todayISO };\n}\n\n// ===== Optional cross-run history passed in via input =====\nconst incoming = (items && items[0] && items[0].json) ? items[0].json : {};\nconst externalHistory = Array.isArray(incoming.previousQueries) ? incoming.previousQueries : [];\n\n// ===== Generate N unique queries (avoid duplicates within batch + optional external history) =====\nconst out = [];\nconst seen = new Set(externalHistory.map(String)); // avoid provided prior queries\nfor (let k = 0; k < NUM_QUERIES; k++) {\n  let attempt = 0, chosen;\n  while (attempt++ < MAX_TRIES_PER_SLOT) {\n    const cand = buildQuery();\n    if (!seen.has(cand.query)) { chosen = cand; break; }\n  }\n  if (!chosen) chosen = buildQuery();      // fallback if we collide a lot\n  out.push(chosen);\n  seen.add(chosen.query);                  // avoid intra-batch dupes\n}\n\n// ===== Emit one item per query =====\nreturn out.map(x => ({ json: x }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        -352
+      ],
+      "id": "31e22163-0220-48ce-b1be-753101091cdc",
+      "name": "SearchTerm"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * SearchResultAdaptor (JavaScript)\n * - Reads sessionId/query from current input (ReadyToSearch), with safe fallbacks\n * - Normalizes SearXNG / HTTP node responses\n * - Skips HTML error pages\n * - Emits: { sessionId, query, summary, facts[] }\n */\n\n// ---------- Inputs (prefer current ReadyToSearch) ----------\nconst cur       = items?.[0]?.json ?? {};\nconst fromSet   = (() => { try { return $items('SetChatInput_Prod', 0, 0)?.json ?? {}; } catch { return {}; } })();\nconst fromReady = (() => { try { return $items('ReadyToSearch',    0, 0)?.json ?? {}; } catch { return {}; } })();\n\n// Fallbacks (current item → ReadyToSearch → SetChatInput_Prod → generated)\nconst sessionId  = cur.sessionId ?? fromReady.sessionId ?? fromSet.sessionId ?? ('unknown_' + Date.now());\nconst userQuery  = cur.query     ?? fromSet.query       ?? '';\nconst maxResults = Number(cur.max_results ?? fromSet.max_results ?? 9) || 9;\n\n// ---------- Helpers ----------\nconst safeHostname = (u) => { try { return (new URL(u)).hostname; } catch { return null; } };\nconst decode = (s) => (s || \"\")\n  .replace(/&amp;/g, \"&\").replace(/&lt;/g, \"<\")\n  .replace(/&gt;/g, \">\").replace(/&quot;/g, '\"')\n  .replace(/&#39;/g, \"'\");\n\n// ---------- Read HTTP/SearXNG payload (the item just before this node) ----------\nconst in0 = items?.[0]?.json ?? {}; // can be object or string (depending on HTTP node settings)\n\n// If upstream delivered a raw string body\nlet parsedBody = null;\nif (typeof in0 === 'string') {\n  try { parsedBody = JSON.parse(in0); } catch { /* keep null */ }\n} else if (typeof in0?.body === 'string') {\n  try { parsedBody = JSON.parse(in0.body); } catch { /* keep null */ }\n}\n\n// Normalize SearXNG-ish shapes\nlet res = null;\nif (Array.isArray(in0?.results)) {\n  res = in0;\n} else if (in0?.data && Array.isArray(in0.data.results)) {\n  res = in0.data;\n} else if (parsedBody && Array.isArray(parsedBody.results)) {\n  res = parsedBody;\n}\n\n// Bail early if no query or we clearly received HTML\nconst htmlString =\n  (typeof in0 === 'string' && in0) ||\n  (typeof in0?.data === 'string' && in0.data) ||\n  (typeof in0?.body === 'string' && in0.body) ||\n  null;\n\nif (!userQuery || (htmlString && /^\\s*<!DOCTYPE/i.test(htmlString))) {\n  return [{ json: { sessionId, query: userQuery || '', summary: '—', facts: [] } }];\n}\n\n// ---------- Build facts ----------\nconst raw = Array.isArray(res?.results) ? res.results : [];\nconst seen = new Set();\nconst facts = [];\n\nfor (const r of raw) {\n  const url = r.url || null;\n  if (url && seen.has(url)) continue;\n  if (url) seen.add(url);\n\n  const title  = decode((r.title || '').trim());\n  const text   = decode((r.content || r.snippet || '').trim());\n  const domain = safeHostname(url);\n  const engine = r.engine ? ` [${r.engine}]` : '';\n\n  if (!(title || text || url)) continue;\n\n  const head = title || (text ? text.slice(0, 80) + '…' : 'Untitled');\n  const fact =\n    `${head}${engine}` +\n    `${text ? ' — ' + text : ''}` +\n    `${domain ? ' (' + domain + ')' : ''}` +\n    `${url ? ' ' + url : ''}`;\n\n  facts.push(fact);\n}\n\nconst limited = facts.slice(0, maxResults);\nconst summary = limited.length ? limited.map((f, i) => `${i + 1}. ${f}`).join('\\n') : '—';\n\nreturn [{ json: { sessionId, query: userQuery, summary, facts: limited } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        -352
+      ],
+      "id": "13dfb609-b9fd-4735-a7f3-0c6f99976f56",
+      "name": "SearchResultAdaptor"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "786cfed0-afc5-4135-bbb1-8ac6c9982ba1",
+              "name": "query",
+              "value": "={{ $json.query }}",
+              "type": "string"
+            },
+            {
+              "id": "67258350-a527-4bf9-9a86-134d7233b32e",
+              "name": "text",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "632ce876-3ae7-4065-b0dc-7f2db16a963b",
+              "name": "facts",
+              "value": "={{ $json.facts }}",
+              "type": "array"
+            },
+            {
+              "id": "6d0747f3-4b3a-4699-9d57-66dbd01b8088",
+              "name": "sessionId",
+              "value": "={{ $json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        -448
+      ],
+      "id": "92656869-4301-4df6-ab6a-c9bf0978e572",
+      "name": "Prepare for Perspective"
+    },
+    {
+      "parameters": {
+        "url": "=https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "={{$json.query}}"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -928,
+        -336
+      ],
+      "id": "84c73ebf-0496-4577-87d3-71039a2a63e8",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "76cc7b83-c87a-4bfe-b1c0-974e36814873",
+              "name": "contextSentence",
+              "value": "={{ $json.contextSentence }}",
+              "type": "string"
+            },
+            {
+              "id": "6fb28c28-34c8-4fb2-97e3-4e9f61ee5c88",
+              "name": "text",
+              "value": "=Quote of the day: {{ $('FieldNormalize').first().json.quote }}\nHappy News:{{ $('FieldNormalize').first().json.happynews }}\nHoroscope: {{ $('FieldNormalize').first().json.horoscope }}\nSummary:  {{ $('FieldNormalize').first().json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "ab2788c4-1ffc-40f0-a265-b973e55df98d",
+              "name": "sessionId",
+              "value": "={{ $('FieldNormalize').first().json.sessionId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        -272
+      ],
+      "id": "6a997b38-8191-457c-b654-694522569dec",
+      "name": "AgentPrep"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n.codemusic.ca/webhook/comfyui/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"prompt\": {{\n    JSON.stringify(\n      String($json.body?.prompt ?? $json.prompt ?? \"\")\n        // strip HTML tags\n        .replace(/<\\/?[^>]+>/g, \" \")\n        // strip injected {\"name\":...} blocks\n        .replace(/\\{\"name\":.*?\\}\\};?/gs, \" \")\n        // normalize smart quotes → regular\n        .replace(/[\\u201C\\u201D\\u201E\\u201F]/g, '\"')\n        .replace(/[\\u2018\\u2019\\u2032]/g, \"'\")\n        // collapse spaces\n        .replace(/[^\\S\\r\\n]+/g, \" \")\n        .trim()\n    )\n  }},\n  \"steps\": 16,\n  \"w\": 512,\n  \"h\": 512,\n  \"cfg\": 6.5,\n  \"seed\": 123456789012,\n  \"neg\": \"blurry, watermark, text, words, extra hands, extra fingers\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1872,
+        -160
+      ],
+      "id": "7bbdb549-6370-4635-a4dd-c98ddac4b3c9",
+      "name": "EyeOfMusai SD1.5"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e0b837e0-a999-4fb4-873a-f1d1ca499106",
+              "name": "styledOutput",
+              "value": "={{ $json.styledOutput }}",
+              "type": "string"
+            },
+            {
+              "id": "1b3d9f03-a716-409a-854d-f4384afb3257",
+              "name": "prompt",
+              "value": "={{\n  ($json.styledOutput ?? \"\")\n    .replace(/<\\/?[^>]+>/g, \" \")   // strip HTML\n    .replace(/\\r?\\n/g, \"\\n\")       // normalize newlines\n    .replace(/[^\\S\\r\\n]+/g, \" \")   // collapse spaces but keep \\n\n    .trim()\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1632,
+        -160
+      ],
+      "id": "062d7283-6e67-4b9c-931e-694324db23db",
+      "name": "EmailContent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Expect: one item with { styledOutput?: string, prompt?: string } and a binary image\nconst item = $input.first();\n\n// 1) Find image binary and pin a CID\nconst binKey = Object.keys(item.binary || {})[0];\nif (!binKey) throw new Error('No binary image found on the item.');\nconst img = item.binary[binKey];\nconst CID = 'hero';\n\n// 2) Choose the rich content source\nconst source = String(item.json.styledOutput ?? item.json.prompt ?? '').trim();\n\n// --- Light HTML sanitizer that PRESERVES styles/links/markup ---\n// - removes <script>…</script>\n// - removes inline event handlers (onClick, onerror, etc.)\n// - removes javascript: URLs\nfunction sanitizeHtml(html) {\n  if (!html) return '';\n  let out = String(html);\n\n  // strip tool-call JSON blocks like {\"name\":\"...\", \"parameters\":{...}}\n  out = out.replace(/\\{\\s*\"name\"\\s*:\\s*\".*?\"\\s*,\\s*\"parameters\"\\s*:\\s*\\{[\\s\\S]*?\\}\\s*\\}\\s*;?/g, ' ');\n\n  // kill <script> blocks\n  out = out.replace(/<\\s*script\\b[^>]*>[\\s\\S]*?<\\s*\\/\\s*script\\s*>/gi, '');\n\n  // remove inline event handlers (onload=, onclick=, etc)\n  out = out.replace(/\\son\\w+\\s*=\\s*\"(?:[^\"]*)\"/gi, '')\n           .replace(/\\son\\w+\\s*=\\s*'(?:[^']*)'/gi, '')\n           .replace(/\\son\\w+\\s*=\\s*[^\\s>]+/gi, '');\n\n  // neutralize javascript: href/src\n  out = out.replace(/\\s(href|src)\\s*=\\s*\"(javascript:[^\"]*)\"/gi, ' $1=\"#\"')\n           .replace(/\\s(href|src)\\s*=\\s*'(javascript:[^']*)'/gi, \" $1='#'\");\n\n  // collapse excessive whitespace between tags\n  out = out.replace(/\\s{2,}/g, ' ').replace(/>\\s+</g, '><').trim();\n  return out;\n}\n\n// 3) If it looks like HTML, keep it (with light sanitize). Else make paragraphs.\nconst looksHtml = /<\\/?[a-z][\\s\\S]*>/i.test(source);\nconst bodyHtml = looksHtml\n  ? sanitizeHtml(source)\n  : source\n      .replace(/[ \\t]+/g, ' ')\n      .replace(/\\n{3,}/g, '\\n\\n')\n      .split(/\\n{2,}/)\n      .map(p => `<p style=\"margin:0 0 12px 0\">${p.replace(/\\n/g, '<br/>')}</p>`)\n      .join('');\n\n// 4) Wrap with container and put IMAGE FIRST\nconst html = `\n<div style=\"font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.6;color:#222;max-width:680px;margin:0 auto\">\n  <img src=\"cid:${CID}\" alt=\"Daily image\"\n       style=\"display:block;max-width:100%;height:auto;border-radius:12px;margin:0 0 16px 0\"/>\n  ${bodyHtml}\n</div>\n`.trim();\n\n// 5) Keep binary and add a nice key for Email node\nconst binary = { ...item.binary };\nbinary.hero = {\n  ...img,\n  fileName: img.fileName || 'daily.png',\n  mimeType: img.mimeType || 'image/png',\n  cid: CID, // informational; you still set CID in Email node options\n};\n\n// Output: html + binary.hero for the Email node\nreturn [{\n  json: {\n    ...item.json,\n    emailHtml: html,\n  },\n  binary,\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        -160
+      ],
+      "id": "a7047e01-3d6a-41d3-91c0-60ae3b4aa8fd",
+      "name": "EmailWithImage"
+    },
+    {
+      "parameters": {
+        "url": "http://feeds.feedburner.com/azquotes/quoteoftheday",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -496,
+        -576
+      ],
+      "id": "d23ec337-0f3f-4d2f-a93d-884f6442cd7c",
+      "name": "QuoteOfDay"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        16,
+        -464
+      ],
+      "id": "7671f097-42de-4ebd-b3fd-cd94c14b6c7a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "url": "https://www.goodnewsnetwork.org/category/news/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -496,
+        -336
+      ],
+      "id": "85f89a6c-6e98-4c0a-a59e-318b6e31d436",
+      "name": "HappyNews"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "30f89b3d-e8ae-4d0d-b4c4-e2e4bfeaebf1",
+              "name": "quote",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        -672
+      ],
+      "id": "9eb6dbc4-5fd0-40a2-ac76-36fcb811aa6e",
+      "name": "set quote"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "98ea0943-d56e-42d3-b046-7eb984439ea5",
+              "name": "happynews",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        -400
+      ],
+      "id": "7907b06d-142a-4ee6-ac4a-721a64471898",
+      "name": "happiness"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "057fdc94-9ff6-4376-be61-71bac9c9a27f",
+              "name": "horoscope",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -288,
+        -192
+      ],
+      "id": "ca4154fb-ad62-4112-90ec-d39be3c54f94",
+      "name": "reflection"
+    },
+    {
+      "parameters": {
+        "url": "https://feeds.feedburner.com/AstroSageLibra",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -576,
+        -160
+      ],
+      "id": "0a09cd28-7f32-4673-9722-b39bc4b383f8",
+      "name": "horoscope"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0aa0df33-a077-4779-b2fe-6a991b1c1654",
+              "name": "quote",
+              "value": "={{ $json.quote }}",
+              "type": "string"
+            },
+            {
+              "id": "7d9327f5-2a82-44db-83d4-d82a9ad17e51",
+              "name": "happynews",
+              "value": "={{ $('happiness').last().json.happynews }}",
+              "type": "string"
+            },
+            {
+              "id": "2ddad047-fe03-4348-8cf3-9562a8acd4ce",
+              "name": "horoscope",
+              "value": "={{ $('reflection').last().json.horoscope }}",
+              "type": "string"
+            },
+            {
+              "id": "cb2a5b61-242d-4fb5-9b8b-03cec49da7d3",
+              "name": "sessionId",
+              "value": "={{ $('SearchResultAdaptor').item.json.sessionId }}",
+              "type": "string"
+            },
+            {
+              "id": "e7ae3af6-88c0-48c1-8599-310fe602f6a8",
+              "name": "query",
+              "value": "={{ $('SearchResultAdaptor').item.json.query }}",
+              "type": "string"
+            },
+            {
+              "id": "de65a0e8-7984-4316-98a0-80ed7e514ad3",
+              "name": "summary",
+              "value": "={{ $('SearchResultAdaptor').item.json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "9df1880a-0d57-47ff-bbe9-750395f8da68",
+              "name": "facts",
+              "value": "={{ $('SearchResultAdaptor').item.json.facts }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        -448
+      ],
+      "id": "cb8ab718-48af-4eae-897e-c76196d36d45",
+      "name": "FieldNormalize"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Use Musai to Search the World Wide Web.",
+        "url": "https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1232,
+        96
+      ],
+      "id": "239e57cd-e8e6-4080-9cad-e0278c9c3b2e",
+      "name": "SearchMusai"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "SearchTerm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "SearchTerm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "EmailContent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "AgentPrep",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchTerm": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchResultAdaptor": {
+      "main": [
+        [
+          {
+            "node": "QuoteOfDay",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HappyNews",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "horoscope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "SearchResultAdaptor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for Perspective": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AgentPrep": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EyeOfMusai SD1.5": {
+      "main": [
+        [
+          {
+            "node": "EmailWithImage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EmailContent": {
+      "main": [
+        [
+          {
+            "node": "EyeOfMusai SD1.5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EmailWithImage": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "QuoteOfDay": {
+      "main": [
+        [
+          {
+            "node": "set quote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "FieldNormalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HappyNews": {
+      "main": [
+        [
+          {
+            "node": "happiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set quote": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "happiness": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "reflection": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "horoscope": {
+      "main": [
+        [
+          {
+            "node": "reflection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FieldNormalize": {
+      "main": [
+        [
+          {
+            "node": "Prepare for Perspective",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SearchMusai": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cd710c9d-32c3-41cb-b8e4-15a9e7cd99fd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "zIv20YAKqOsZZcxk",
+  "tags": []
+}

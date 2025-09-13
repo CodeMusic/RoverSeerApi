@@ -1,0 +1,1111 @@
+{
+  "name": "EyeOfMusai_Perception",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/comfyui/generate",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        368,
+        -544
+      ],
+      "id": "b1c8c1f8-2ab5-466e-a3ec-b334df34cee1",
+      "name": "Webhook",
+      "webhookId": "cbae9bbd-8fb8-4d6f-aeda-65bf3d5ead46"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6e4852cf-30ec-4041-8f6e-3c38c6496e3f",
+              "leftValue": "={{ $json.hist?.status?.completed === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1808,
+        -240
+      ],
+      "id": "4f3613f3-3619-4d36-9f97-62d89b8befce",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "amount": "={{$node[\"InitTries\"].json.sleepMs / 1000 || 1}}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        112
+      ],
+      "id": "a7186d21-f51d-480e-9ed8-c1b8b7b3a449",
+      "name": "Wait",
+      "webhookId": "740d3b89-ef23-4c07-ba1d-de1275b6f306"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('InitTries').item.json.comfyUrl }}/history/{{$node[\"InitTries\"].json.prompt_id}}\n\n\n",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        48
+      ],
+      "id": "ba982178-55ce-4b19-b000-ea2776bce5e7",
+      "name": "Check HistoryPoll",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.comfyUrl}}/prompt",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"n8n\",\n  \"prompt\": {\n    \"1\": { \"class_type\": \"CheckpointLoaderSimple\", \"inputs\": { \"ckpt_name\": {{ \"\\\"dreamshaper_8.safetensors\\\"\" || JSON.stringify($json.model || \"\\\"v1-5-pruned-emaonly-fp16.safetensors\\\"\") }} } },\n    \"2\": { \"class_type\": \"CLIPTextEncode\", \"inputs\": { \"text\": {{ JSON.stringify(String($json.prompt || \"a cinematic red fox in a foggy forest\").replace(/\\{\\s*\"name\"\\s*:\\s*\".*?\"\\s*,\\s*\"parameters\"\\s*:\\s*\\{.*?\\}\\s*\\}\\s*;?\\s*/gs,\" \").replace(/<\\/?[^>]+>/g,\" \").replace(/\\r?\\n/g,\"\\n\").replace(/[ \\t]+/g,\" \").trim()) }}, \"clip\": [\"1\",1] } },\n    \"3\": { \"class_type\": \"CLIPTextEncode\", \"inputs\": { \"text\": {{ JSON.stringify($json.neg || \"nsfw, nudity, explicit, pornography, erotic, sexual, underage, child, teen, minor, suggestive, lingerie, bikini, cleavage, nipple, lewd, fetish, gore, violence, dismemberment, blurry, watermark, text, words, extra hands, extra fingers\") }}, \"clip\": [\"1\",1] } },\n    \"4\": { \"class_type\": \"EmptyLatentImage\", \"inputs\": { \"width\": {{ $json.w || 512 }}, \"height\": {{ $json.h || 512 }}, \"batch_size\": 1 } },\n    \"5\": { \"class_type\": \"KSampler\", \"inputs\": { \"model\": [\"1\",0], \"positive\": [\"2\",0], \"negative\": [\"3\",0], \"latent_image\": [\"4\",0], \"seed\": {{ $json.seed ?? Math.floor(Math.random()*1e12) }}, \"steps\": {{ $json.steps || 16 }}, \"cfg\": {{ $json.cfg || 6.5 }}, \"sampler_name\": \"dpmpp_2m\", \"scheduler\": \"karras\", \"denoise\": 1.0 } },\n    \"6\": { \"class_type\": \"VAEDecode\", \"inputs\": { \"samples\": [\"5\",0], \"vae\": [\"1\",2] } },\n\n    \"8\": { \"class_type\": \"YetAnotherSafetyChecker\", \"inputs\": { \"image\": [\"6\",0], \"threshold\": {{ $json.safety_threshold || 0.4 }}, \"cuda\": false } },\n\n    \"7\": { \"class_type\": \"SaveImage\", \"inputs\": { \"images\": [\"8\",0], \"filename_prefix\": {{ JSON.stringify($json.filename_prefix || \"eyeofmusai_15fast\") }} } }\n  }\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1072,
+        -304
+      ],
+      "id": "554fcf5e-506b-4245-8578-1ab9da28c8e1",
+      "name": "ComfyUI Prompt ImageGen"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"tries\": 0,\n  \"max\": 90,\n  \"sleepMs\": 1000,\n  \"prompt_id\": \"{{ $json.prompt_id }}\",\n  \"safety_threshold\": {{ $json.safety_threshold ?? 0.8 }},\n  \"comfyUrl\": \"https://comfyui.codemusic.ca\"\n\n}",
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1424,
+        -176
+      ],
+      "id": "75e5308c-e3d4-491a-81a4-127a79ccc50f",
+      "name": "InitTries"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f9ff1026-aed8-42f0-a697-59818a2eae10",
+              "leftValue": "={{ $runIndex >= ($node[\"InitTries\"].json.max || 90) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1648,
+        -416
+      ],
+      "id": "952d8685-4002-4f0e-b867-483141c0f03d",
+      "name": "ExceededTries?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"processing\",\"prompt_id\":\"={{$json.prompt_id}}\"}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1968,
+        -512
+      ],
+      "id": "75c52bce-baca-4b5b-8fe9-29d15e55dad0",
+      "name": "ExceededTries-StillProcessing"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('InitTries').item.json.comfyUrl }}/view?filename={{encodeURIComponent($json.filename)}}&subfolder={{encodeURIComponent($json.subfolder || '')}}&type={{encodeURIComponent($json.type || 'output')}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3168,
+        128
+      ],
+      "id": "2f8916ad-2767-4389-90c8-e320616a3d14",
+      "name": "Get Image"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "={{ $json.filename.endsWith('.jpg') || $json.filename.endsWith('.jpeg') ? 'image/jpeg' : 'image/png' }}"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "=attachment; filename=\"{{$json.filename}}\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3408,
+        208
+      ],
+      "id": "f63062fc-4d98-4769-89d1-1155035ca9f4",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -368
+      ],
+      "id": "16a7e71b-ab83-4897-8f15-8131b10da51a",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) Normalize history shape so we always have `hist`\nlet root = $json.body ?? $json;\nif (typeof root === \"string\") {\n  try { root = JSON.parse(root); } catch { root = {}; }\n}\n\nlet hist;\nif (root && root.status) {\n  hist = root;\n} else {\n  const id = Object.keys(root || {})[0];\n  hist = root?.[id] || {};\n}\n\n// 2) Pull prompt object and find checker node id\nlet promptObj = hist.prompt;\nif (Array.isArray(promptObj)) promptObj = promptObj[2];\n\nlet checkerId = null;\nif (promptObj && typeof promptObj === \"object\") {\n  for (const [nid, node] of Object.entries(promptObj)) {\n    if (node?.class_type === \"YetAnotherSafetyChecker\") {\n      checkerId = nid;\n      break;\n    }\n  }\n}\n\n// 3) Look for checker outputs (may be null if not run)\nlet label = null;\nif (checkerId && hist.outputs && hist.outputs[checkerId]) {\n  const o = hist.outputs[checkerId];\n\n  // try common keys\n  for (const k of [\"string\", \"text\", \"label\", \"status\", \"message\", \"STRING\"]) {\n    if (k in o) {\n      const v = Array.isArray(o[k]) ? o[k][0] : o[k];\n      if (typeof v === \"string\" && v.trim()) { label = v.trim(); break; }\n    }\n  }\n  if (!label && Array.isArray(o.output) && typeof o.output[1] === \"string\") {\n    label = o.output[1].trim();\n  }\n}\n\n// 4) Decide if blocked (only true if label says unsafe/nsfw/blocked)\nconst blocked = !!(label && /unsafe|nsfw|blocked/i.test(label));\n\nreturn [{\n  ...$json,\n  hist,\n  checkerId,\n  label: label ?? null,\n  blocked\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        48
+      ],
+      "id": "f83bab09-df98-4f09-a10b-dff2ef0d9616",
+      "name": "NormalizeResponse"
+    },
+    {
+      "parameters": {
+        "jsCode": "let root = $json.history ?? $items(\"Check HistoryPoll\", 0, 0)?.json ?? $json;\nif (Buffer.isBuffer(root)) root = root.toString(\"utf8\");\nif (typeof root === \"string\") { try { root = JSON.parse(root); } catch { root = {}; } }\nif (!root.status && typeof root === \"object\") {\n  const k = Object.keys(root||{})[0];\n  if (k && root[k]?.status) root = root[k];\n}\nlet promptObj = root?.prompt;\nif (Array.isArray(promptObj)) promptObj = promptObj[2];\n\nlet saveIds = [];\nif (promptObj && typeof promptObj === \"object\") {\n  for (const [nid, node] of Object.entries(promptObj)) {\n    if (node?.class_type === \"SaveImage\") saveIds.push(nid);\n  }\n}\n\nconst outs = root?.outputs || {};\nlet imgs = [];\nfor (const sid of saveIds) {\n  const arr = outs?.[sid]?.images;\n  if (Array.isArray(arr) && arr.length) { imgs = arr; break; }\n}\nif (!imgs.length) {\n  for (const v of Object.values(outs)) {\n    if (Array.isArray(v?.images) && v.images.length) { imgs = v.images; break; }\n  }\n}\n\nconst img = imgs[0] || {};\nreturn [{\n  filename: img.filename || \"\",\n  subfolder: img.subfolder || \"\",\n  type: img.type || \"output\",\n  hist: root,\n  debug_save_ids: saveIds,\n  debug_output_keys: Object.keys(outs||{})\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2928,
+        240
+      ],
+      "id": "b5e0d68f-1bb7-4004-a50b-3296607a6cb7",
+      "name": "ExtractImageFromHistory"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"baseComfyURL\": \"https://comfyui.codemusic.ca\",\n  \"altComfyURL\": \"http://m2cbook.local:8008\",\n  \"prompt\": \"the cat is alive.\",\n  \"steps\": 16,\n  \"w\": 512,\n  \"h\": 512,\n  \"cfg\": 6.5,\n  \"seed\": {{ Math.floor(Math.random() * 1e12) }},\n  \"neg\": \"blurry, watermark, extra fingers\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        -256
+      ],
+      "id": "4acf42c9-9c29-4f50-9cea-ad03f6bb014f",
+      "name": "Test Values"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"baseComfyURL\": \"https://comfyui.codemusic.ca\",\n  \"altComfyURL\": \"http://m2cbook.local:8008\",\n  \"prompt\": {{\n    JSON.stringify(\n      String($json.body?.prompt ?? $json.prompt ?? \"\")\n        // strip HTML tags\n        .replace(/<\\/?[^>]+>/g, \" \")\n        // strip injected {\"name\":...} blocks\n        .replace(/\\{\"name\":.*?\\}\\};?/gs, \" \")\n        // normalize smart quotes → regular\n        .replace(/[\\u201C\\u201D\\u201E\\u201F]/g, '\"')\n        .replace(/[\\u2018\\u2019\\u2032]/g, \"'\")\n        // collapse spaces\n        .replace(/[^\\S\\r\\n]+/g, \" \")\n        .trim()\n    )\n  }},\n  \"steps\": {{$json.body.steps || $json.steps || 16}},\n  \"w\": {{$json.body.w || $json.w || 512}},\n  \"h\": {{$json.body.h || $json.h || 512}},\n  \"cfg\": {{$json.body.cfg || $json.cfg || 6.5}},\n  \"seed\": {{ Math.floor(Math.random() * 1e12) }},\n  \"neg\": \"{{$json.body.neg || $json.neg || 'blurry, watermark'}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        -592
+      ],
+      "id": "59cab9cc-04f3-4513-a495-6eb1b3887050",
+      "name": "PrepInputs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input contract:\n// $json.comfyUrl   → base URL (trimmed later), optional\n// $json.body       → full /prompt response or history blob (object or stringified)\n// Falls back to https://comfyui.codemusic.ca if comfyUrl missing\n\n// 1) comfyUrl (no external node refs)\nconst comfyUrl = String(($json.comfyUrl || 'https://comfyui.codemusic.ca')).replace(/\\/+$/,'');\n\n// 2) normalize \"root\" from $json.body (accept string or object)\nlet root = $json.body ?? $json;\nif (typeof root === 'string') { try { root = JSON.parse(root); } catch { root = {}; } }\n\n// 3) some history payloads wrap under the first key; unwrap if needed\nif (!root.status && typeof root === 'object') {\n  const k = Object.keys(root || {})[0];\n  if (k && root[k] && typeof root[k] === 'object' && 'status' in root[k]) {\n    root = root[k];\n  }\n}\n\n// 4) handle graph location (some APIs return [ok, msg, prompt])\nlet P = root.prompt;\nif (Array.isArray(P)) P = P[2];\n\n// 5) discover nodes\nlet checkerId = null, saveIds = [];\nfor (const [nid, node] of Object.entries(P || {})) {\n  if (node?.class_type === 'YetAnotherSafetyChecker') checkerId = nid;\n  if (node?.class_type === 'SaveImage') saveIds.push(nid);\n}\n\n// 6) pick images from outputs (prefer SaveImage ids, else first images array found)\nconst outs = root.outputs || {};\nlet imgs = [];\nfor (const sid of saveIds) {\n  const arr = outs?.[sid]?.images;\n  if (Array.isArray(arr) && arr.length) { imgs = arr; break; }\n}\nif (!imgs.length) {\n  for (const v of Object.values(outs)) {\n    if (Array.isArray(v?.images) && v.images.length) { imgs = v.images; break; }\n  }\n}\nconst img = imgs[0] || {};\nconst filename = img.filename || '';\nconst subfolder = img.subfolder || '';\nconst type = img.type || 'output';\n\n// 7) read safety checker label → blocked?\nlet label = null;\nif (checkerId && outs[checkerId]) {\n  const o = outs[checkerId];\n  for (const k of ['string','text','label','status','message']) {\n    if (k in o) {\n      const v = Array.isArray(o[k]) ? o[k][0] : o[k];\n      if (typeof v === 'string' && v.trim()) { label = v.trim(); break; }\n    }\n  }\n  // some builds use o.output = [tensor, \"label\"]\n  if (!label && Array.isArray(o.output) && typeof o.output[1] === 'string') {\n    label = o.output[1].trim();\n  }\n}\nconst blocked = !!(label && /unsafe|nsfw|blocked/i.test(label));\n\n// 8) view URL for convenience\nconst viewUrl = filename\n  ? `${comfyUrl}/view?filename=${encodeURIComponent(filename)}&subfolder=${encodeURIComponent(subfolder)}&type=${encodeURIComponent(type)}`\n  : null;\n\nreturn [{\n  json: {\n    hist: root,\n    checkerId,\n    saveIds,\n    filename, subfolder, type,\n    label: label ?? null,\n    blocked,\n    comfyUrl,\n    viewUrl\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        16
+      ],
+      "id": "1ab80b8f-3745-4d1a-8a18-5c4a02ef23e4",
+      "name": "ParseSafetyResults"
+    },
+    {
+      "parameters": {
+        "url": "https://codemusic.ca/assets/img/forbidden/l_6.png",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2944,
+        -304
+      ],
+      "id": "f4f9be5e-e632-477d-b056-3577e47e1a1e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "image/png"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "inline; filename=\"forbidden.png\""
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3168,
+        -304
+      ],
+      "id": "2494cb3b-2f53-4a34-a7e3-79fb1d84bb84",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "content": "## Reject Image",
+        "height": 352,
+        "width": 528,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        -400
+      ],
+      "id": "df38d60d-dc5f-4fa8-b6de-d338db9432c7",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Accept Image",
+        "height": 352,
+        "width": 752,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        48
+      ],
+      "id": "bb3d834c-f4ce-471e-b1f0-0c35ff7c834b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Image Processing after Max Polling Duration",
+        "height": 416,
+        "width": 624
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        -560
+      ],
+      "id": "5d417749-70cd-41b1-b757-2a52af2430c8",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Check for Sensitive Content",
+        "height": 496,
+        "width": 592,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        -80
+      ],
+      "id": "d9e81173-86e8-4ef1-847b-455c77942661",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "##                         Diffusion Results Polling Loop",
+        "height": 496,
+        "width": 944,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -80
+      ],
+      "id": "2c0d129c-9e5e-4c28-b94e-50b5a0c61fa5",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b0de2767-7be7-4bf0-b903-8299fc8c2cb0",
+              "leftValue": "={{ $json.censored }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2704,
+        -48
+      ],
+      "id": "1f568121-019e-4b4e-8d6d-c8d3ea4eaea8",
+      "name": "Reject?"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.viewUrl}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "img"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        48
+      ],
+      "id": "72e56831-f5dd-44e7-a7fe-f054a55f4598",
+      "name": "GetSecondLayer4Review"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  const bin = item.binary?.img;\n  if (!bin?.data) {\n    return { json: { ...item.json, censored: null, blocked: Boolean(item.json?.blocked), reason: \"no_binary\" }, binary: item.binary || {} };\n  }\n  const buf = bin.data;\n  const tiny = buf.length < 4096;\n\n  const start = Math.min(2048, Math.max(0, buf.length - 1));\n  const end   = Math.min(buf.length, start + 8192);\n  const span  = Math.max(0, end - start);\n  const step  = Math.max(1, Math.floor((span || 1) / 512));\n\n  let n = 0, mean = 0, M2 = 0;\n  const uniq = new Set();\n  for (let i = start; i < end; i += step) {\n    const x = (buf[i] & 0xff);\n    uniq.add(x);\n    n++;\n    const d = x - mean;\n    mean += d / n;\n    M2   += d * (x - mean);\n  }\n  const variance = n > 1 ? (M2 / (n - 1)) : 0;\n\n  const veryLowVar = variance < 2;\n  const lowUnique  = uniq.size <= 4;\n  const censored   = tiny || (veryLowVar && lowUnique);\n  const blocked    = Boolean(item.json?.blocked) || censored;\n\n  return {\n    json: { ...item.json, censored, blocked, debug: { size: buf.length, variance, unique: uniq.size, step, start } },\n    binary: item.binary\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        -48
+      ],
+      "id": "84c00fd6-0361-480d-8a65-777adb57849f",
+      "name": "Infer CensorLevelRedaction"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/comfyui/magiceye",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        304,
+        -880
+      ],
+      "id": "04cecdfe-9e2e-4885-b5a1-c0a8ad5d668f",
+      "name": "Webhook1",
+      "webhookId": "cbae9bbd-8fb8-4d6f-aeda-65bf3d5ead46"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b45a7f2-970b-4311-8e3a-bf3b8f0916eb",
+              "name": "creativity",
+              "value": "={{ (Math.random() * (0.80 - 0.65) + 0.65).toFixed(3) }}",
+              "type": "string"
+            },
+            {
+              "id": "5658732f-1133-480d-9ae3-afb4bd9d65dc",
+              "name": "strictness",
+              "value": "={{ (Math.random() * (5.8 - 5.0) + 5.0).toFixed(2) }}",
+              "type": "number"
+            },
+            {
+              "id": "e5724e79-1dcc-4eca-a930-b8fa7e3e3ff1",
+              "name": "prompt",
+              "value": "8-bit pixel art, retro sprite, limited color palette, hard 1px outlines, chunky pixels, block shading, minimal gradient, dithering, video game character, low-res aesthetic with a tiny paw print hidden in image.",
+              "type": "string"
+            },
+            {
+              "id": "10addfc5-53a3-4321-8fe8-1e47c4ca3a7c",
+              "name": "safety_threshold",
+              "value": "0.4",
+              "type": "string"
+            },
+            {
+              "id": "36e76210-2c6d-47a5-a28d-6833416adb7c",
+              "name": "comfyUrl",
+              "value": "https://comfyui.codemusic.ca",
+              "type": "string"
+            },
+            {
+              "id": "08df0aa0-2747-47a1-9466-8c71c6864150",
+              "name": "steps",
+              "value": "={{$json.body.steps || $json.steps || 16}}",
+              "type": "number"
+            },
+            {
+              "id": "4adac053-58b7-438f-8589-69a64931cc3b",
+              "name": "neg",
+              "value": "={{$json.body.neg || $json.neg || 'blurry, watermark'}} photorealistic, smooth gradients, high frequency detail, glossy, soft shadows, painterly, nsfw, nudity, explicit, pornography, erotic, sexual, underage, child, teen, minor, suggestive, lingerie, bikini, cleavage, nipple, lewd, fetish, gore, violence, dismemberment, blurry, watermark, text, words, extra hands, extra fingers",
+              "type": "string"
+            },
+            {
+              "id": "6842dcd0-4cdd-442c-98d1-2b4107fb92b3",
+              "name": "filename_prefix",
+              "value": "eyeofmusai_p2p",
+              "type": "string"
+            },
+            {
+              "id": "59f95090-d5c7-43b4-80cd-4e6451051425",
+              "name": "model",
+              "value": "dreamshaper_8.safetensors",
+              "type": "string"
+            },
+            {
+              "id": "6da50f8b-69c3-4cd6-a7a7-c6a207a6c531",
+              "name": "fileName",
+              "value": "={{$json.image_filename}}",
+              "type": "string"
+            },
+            {
+              "id": "89734054-6986-4745-8a8b-fc3690f08076",
+              "name": "sampler_name",
+              "value": "={{ JSON.stringify($json.sampler_name ?? \"dpmpp_2m\") }}",
+              "type": "string"
+            },
+            {
+              "id": "1bf18679-dea6-4e97-baa0-01c148343268",
+              "name": "scheduler",
+              "value": "={{ JSON.stringify($json.scheduler ?? \"karras\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        -960
+      ],
+      "id": "bb038a1f-7e09-4fcf-a6ed-2bb9aeb0f001",
+      "name": "PrepInputs1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1bfbf50f-3945-41f7-a360-6ecb4a989b0d",
+              "name": "image_filename",
+              "value": "={{$json.name}}",
+              "type": "string"
+            },
+            {
+              "id": "d74b8b18-773a-47c7-b00c-76f52dd84886",
+              "name": "neg",
+              "value": "={{ $('PrepInputs1').first().json.neg }}",
+              "type": "string"
+            },
+            {
+              "id": "79dc70b3-b26e-4064-bc4f-1b35dc195aa7",
+              "name": "steps",
+              "value": "={{ $('PrepInputs1').first().json.steps }}",
+              "type": "string"
+            },
+            {
+              "id": "39e381fb-1e4c-4e54-b43d-29c70f207ecb",
+              "name": "cfg",
+              "value": "={{ $('PrepInputs1').first().json.cfg }}",
+              "type": "string"
+            },
+            {
+              "id": "7ea9c781-61c0-47e4-b0ec-6f34a25b225f",
+              "name": "prompt",
+              "value": "={{ $('PrepInputs1').first().json.prompt }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1296,
+        -736
+      ],
+      "id": "71836c87-0a0d-4fcf-b628-50a897db1c04",
+      "name": "ConsolidateFields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.comfyUrl}}/upload/image",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.fileName }}"
+            },
+            {
+              "name": "overwrite",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 300000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1296,
+        -976
+      ],
+      "id": "7d37f12c-0260-4875-b1eb-b1a48fd47383",
+      "name": "Upload image to comfyui"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('PrepInputs1').first().json.comfyUrl }}/prompt",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"client_id\": \"n8n\",\n  \"prompt\": {\n    \"1\": { \"class_type\": \"CheckpointLoaderSimple\",\n      \"inputs\": { \"ckpt_name\": {{ JSON.stringify($json.model ?? \"dreamshaper_8.safetensors\") }} } },\n\n    \"2\": { \"class_type\": \"CLIPTextEncode\",\n      \"inputs\": { \"text\": {{ JSON.stringify($json.merged_prompt ?? $json.prompt ?? \"subject photo, cinematic lighting\") }}, \"clip\": [\"1\", 1] } },\n\n    \"3\": { \"class_type\": \"CLIPTextEncode\",\n      \"inputs\": { \"text\": {{ JSON.stringify($json.neg ?? $json.body?.neg ?? \"nsfw, nudity, explicit, sexual, underage, violence, gore, watermark, text, extra fingers, extra hands, lowres, blurry\") }},\n                  \"clip\": [\"1\", 1] } },\n\n    \"4\": { \"class_type\": \"LoadImage\",\n      \"inputs\": { \"image\": {{ JSON.stringify($json.image_filename ?? \"eyeofmusai.png\") }} } },\n\n    \"5\": { \"class_type\": \"VAEEncode\",\n      \"inputs\": { \"pixels\": [\"4\", 0], \"vae\": [\"1\", 2] } },\n\n    \"6\": { \"class_type\": \"KSampler\",\n      \"inputs\": {\n        \"model\": [\"1\", 0],\n        \"positive\": [\"2\", 0],\n        \"negative\": [\"3\", 0],\n        \"latent_image\": [\"5\", 0],\n        \"seed\": {{ $json.seed ?? Math.floor(Math.random() * 1e12) }},\n        \"steps\": {{ Number($json.steps ?? $json.body?.steps ?? 18) }},\n        \"cfg\":   {{ Number($json.strictness ?? $json.cfg   ?? $json.body?.cfg   ?? 6.5) }},\n        \"sampler_name\": {{ JSON.stringify($json.sampler_name ?? \"dpmpp_2m\") }},\n        \"scheduler\":    {{ JSON.stringify($json.scheduler    ?? \"karras\") }},\n        \"denoise\": {{ Number($json.creativity ?? $json.denoise ?? $json.body?.denoise ?? 0.3) }}\n      } },\n\n    \"7\": { \"class_type\": \"VAEDecode\",\n      \"inputs\": { \"samples\": [\"6\", 0], \"vae\": [\"1\", 2] } },\n\n    \"8\": { \"class_type\": \"YetAnotherSafetyChecker\",\n      \"inputs\": {\n        \"image\": [\"7\", 0],\n        \"threshold\": {{ Number($json.safety_threshold ?? 0.80) }},\n        \"cuda\": {{ $json.safety_cuda ?? false }}\n       \n      } },\n\n    \"9\": { \"class_type\": \"SaveImage\",\n      \"inputs\": { \"images\": [\"8\", 0],\n                  \"filename_prefix\": {{ JSON.stringify($json.filename_prefix ?? \"eyeofmusai_p2p\") }} } }\n  }\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1024,
+        -512
+      ],
+      "id": "44c5ac71-33d8-4334-973f-c97cd820ef68",
+      "name": "ComfyUI Prompt ImageGen from image"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Webhook1 body fields: base64Image, mimeType, fileName\nfunction padB64(s){const r=s.length%4; if(r===0)return s; if(r===2)return s+\"==\"; if(r===3)return s+\"=\"; throw new Error(\"Invalid base64 length (mod 4 = 1)\");}\nfunction stripDataUrl(s){const m=/^data:([^;]+);base64,(.*)$/i.exec(s); return m?{mime:m[1],b64:m[2]}:{mime:null,b64:s};}\nfunction detectMime(buf){\n  if(buf.length>=8 && buf[0]===0x89&&buf[1]===0x50&&buf[2]===0x4E&&buf[3]===0x47&&buf[4]===0x0D&&buf[5]===0x0A&&buf[6]===0x1A&&buf[7]===0x0A) return \"image/png\";\n  if(buf.length>=3 && buf[0]===0xFF&&buf[1]===0xD8&&buf[2]===0xFF) return \"image/jpeg\";\n  if(buf.length>=12 && buf[0]===0x52&&buf[1]===0x49&&buf[2]===0x46&&buf[3]===0x46 && buf[8]===0x57&&buf[9]===0x45&&buf[10]===0x42&&buf[11]===0x50) return \"image/webp\";\n  return \"application/octet-stream\";\n}\nfunction extForMime(m){return m===\"image/png\"?\".png\":m===\"image/jpeg\"?\".jpg\":m===\"image/webp\"?\".webp\":\".bin\";}\n\nlet raw = $json?.body?.base64Image;\nlet mime = $json?.body?.mimeType || null;\nlet fileName = $json?.body?.fileName || \"upload\";\n\nif (typeof raw !== \"string\" || !raw.trim()) throw new Error(\"Missing body.base64Image\");\n\nconst { mime: fromURL, b64 } = stripDataUrl(raw.trim());\nif (fromURL && !mime) mime = fromURL;\n\nlet cleaned = b64.replace(/\\s+/g,\"\").replace(/-/g,\"+\").replace(/_/g,\"/\");\ncleaned = padB64(cleaned);\n\nconst buf = Buffer.from(cleaned, \"base64\");\nif (!buf.length) throw new Error(\"Decoded buffer empty\");\n\n// sniff mime if missing/generic\nconst sniff = detectMime(buf);\nif (!mime || mime === \"application/octet-stream\") mime = sniff;\n\n// normalize extension\nconst wantExt = extForMime(mime);\nif (!fileName.toLowerCase().endsWith(wantExt)) {\n  fileName = fileName.replace(/\\.[a-z0-9]+$/i,\"\") + wantExt;\n}\n\n// ➕ make filename unique (timestamp + short random suffix)\nconst ts = new Date().toISOString().replace(/[-:.TZ]/g,\"\"); // e.g. 20250913T162355\nconst rand = Math.floor(Math.random() * 1e6).toString().padStart(6,\"0\");\nconst uniqueFileName = fileName.replace(/\\.[^.]+$/, `_${ts}_${rand}$&`);\n\n// debug magic\nconst magicHex = [...buf.subarray(0,12)].map(b=>b.toString(16).padStart(2,\"0\")).join(\" \");\n\nreturn {\n  json: {\n    ...$json,\n    base64: cleaned,\n    dataUrl: `data:${mime};base64,${cleaned}`,\n    fileName: uniqueFileName,        // 🔥 use unique name downstream\n    mimeType: mime,\n    _decodedSize: buf.length,\n    _magic: magicHex\n  },\n  binary: {\n    data: { data: buf.toString(\"base64\"), fileName: uniqueFileName, mimeType: mime }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -880
+      ],
+      "id": "efe467d2-d604-4e26-bdab-1bbd8be7acf9",
+      "name": "PrepFile"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "caf204dc-be53-4f2f-b1ef-523b5b1a095b",
+              "name": "safety_threshold",
+              "value": "0.2",
+              "type": "string"
+            },
+            {
+              "id": "2f5cf47a-ca61-4644-8037-a12516f7483d",
+              "name": "comfyUrl",
+              "value": "={{ $json.baseComfyURL }}",
+              "type": "string"
+            },
+            {
+              "id": "e528068a-7104-4a82-924d-2de48cd905cd",
+              "name": "neg",
+              "value": "={{ $json.neg }} nsfw, nudity, explicit, pornography, erotic, sexual, underage, child, teen, minor, suggestive, lingerie, bikini, cleavage, nipple, lewd, fetish, gore, violence, dismemberment, blurry, watermark, text, words, extra hands, extra fingers",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        864,
+        -416
+      ],
+      "id": "e4903866-04ed-4dc2-8f21-87bd8fca6c85",
+      "name": "GenerativeFields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "PrepInputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "ParseSafetyResults",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check HistoryPoll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check HistoryPoll": {
+      "main": [
+        [
+          {
+            "node": "NormalizeResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ComfyUI Prompt ImageGen": {
+      "main": [
+        [
+          {
+            "node": "InitTries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "InitTries": {
+      "main": [
+        [
+          {
+            "node": "Check HistoryPoll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExceededTries?": {
+      "main": [
+        [
+          {
+            "node": "ExceededTries-StillProcessing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Image": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Test Values",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NormalizeResponse": {
+      "main": [
+        [
+          {
+            "node": "ExceededTries?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtractImageFromHistory": {
+      "main": [
+        [
+          {
+            "node": "Get Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Values": {
+      "main": [
+        [
+          {
+            "node": "GenerativeFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepInputs": {
+      "main": [
+        [
+          {
+            "node": "GenerativeFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseSafetyResults": {
+      "main": [
+        [
+          {
+            "node": "GetSecondLayer4Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject?": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ExtractImageFromHistory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetSecondLayer4Review": {
+      "main": [
+        [
+          {
+            "node": "Infer CensorLevelRedaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Infer CensorLevelRedaction": {
+      "main": [
+        [
+          {
+            "node": "Reject?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "PrepFile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepInputs1": {
+      "main": [
+        [
+          {
+            "node": "Upload image to comfyui",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConsolidateFields": {
+      "main": [
+        [
+          {
+            "node": "ComfyUI Prompt ImageGen from image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload image to comfyui": {
+      "main": [
+        [
+          {
+            "node": "ConsolidateFields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ComfyUI Prompt ImageGen from image": {
+      "main": [
+        [
+          {
+            "node": "InitTries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepFile": {
+      "main": [
+        [
+          {
+            "node": "PrepInputs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GenerativeFields": {
+      "main": [
+        [
+          {
+            "node": "ComfyUI Prompt ImageGen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bcbc3ae6-786c-45ca-be7f-c40ae1ba6836",
+  "meta": {
+    "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
+  },
+  "id": "RS8qKqUFWdOjKED6",
+  "tags": [
+    {
+      "createdAt": "2025-08-15T15:44:14.646Z",
+      "updatedAt": "2025-08-15T15:44:14.646Z",
+      "id": "PC19MdgjapOHg5hW",
+      "name": "musai"
+    },
+    {
+      "createdAt": "2025-08-15T17:11:30.462Z",
+      "updatedAt": "2025-08-15T17:11:30.462Z",
+      "id": "e356SACzIc1UsM1s",
+      "name": "codemusic.ca"
+    },
+    {
+      "createdAt": "2025-08-15T17:10:52.447Z",
+      "updatedAt": "2025-08-15T17:10:52.447Z",
+      "id": "ks864O9UUkXKemrl",
+      "name": "roverbyte"
+    },
+    {
+      "createdAt": "2025-08-23T13:06:57.041Z",
+      "updatedAt": "2025-08-23T13:06:57.041Z",
+      "id": "ttw0kPFQtIM6Xxya",
+      "name": "musaisearch"
+    }
+  ]
+}

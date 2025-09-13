@@ -94,7 +94,7 @@
     },
     {
       "parameters": {
-        "model": "openai/gpt-oss-20b:free",
+        "model": "z-ai/glm-4.5-air:free",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
@@ -111,6 +111,150 @@
           "name": "OpenRouter account"
         }
       }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-lecture",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        -240
+      ],
+      "id": "f545e374-a2c7-4b55-8122-66a32208c9a3",
+      "name": "PreviewLecture",
+      "webhookId": "8a3404ef-2306-4fb4-915e-b874414d778b",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "5sBfSoSsO824kWBH",
+          "name": "Site Simple Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1488,
+        -288
+      ],
+      "id": "fe53c3eb-bd09-4df8-8741-2d2fb1368d62",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create a Musai University lecture using the following inputs:\n\nTITLE: {{$json.body?.steps?.[0]?.title || 'Untitled Lesson'}}\nDESCRIPTION: {{$json.body?.steps?.[0]?.description || ''}}\n\n\nGOALS\n- Deliver a ~1000-word HTML5 course page (structured with sections, lists, case study, glossary).\n- Instructor voice: witty, motivating, candid.\n- Short paragraphs, scannable lists.\n\nOUTPUT\n- Return ONLY the HTML string (complete <html> document).\n- No JSON, no quiz, no wrappers.",
+        "options": {
+          "systemMessage": "You are the Musai Imagineer, a professor at Musai University.\n\nYour sole task: produce ONLY a full HTML5 document string for the course content.\n\nREQUIREMENTS\n- Output ONLY the HTML string. No JSON, no markdown fences, no preface, no explanation.\n- The HTML must be a valid, complete document:\n  - <!DOCTYPE html>, <html>, <head><meta charset=\"utf-8\"><title>…</title></head>, <body>.\n  - <header> with <h1>{lesson title}</h1> and <p class=\"instructor\">Professor: invent a name + 1–2 line persona.</p>.\n  - <nav aria-label=\"Table of Contents\"> linking to all sections.\n  - <main> with these sections:\n    1. <section id=\"lede\"> 2 punchy intro paragraphs.\n    2. <section id=\"objectives\"> learning goals as a <ul>.\n    3. <section id=\"prereqs\"> prerequisites as a <ul>.\n    4. <section id=\"core\"> expand the DESCRIPTION into 3–4 subsections with <h2>/<h3>, examples, and one <section class=\"case\"> mini-case study. Include a concise checklist (<ul>).\n    5. <section id=\"pitfalls\"> 3–5 common mistakes as an <ol>.\n    6. <section id=\"takeaways\"> 4–6 key bullets.\n    7. <section id=\"next-steps\"> 3–5 practical actions.\n    8. <section id=\"glossary\"> 5–8 key terms as <dl>.\n  - <footer> with “Musai University • Build with clarity, code with compassion.”\n- Include minimal CSS styling in <style> for readability.\n- Target length: ~900–1500 words.\n- Tone: witty (dry humor), motivating, candid, warm.\n\nRULES\n- Do NOT output anything other than the HTML string.\n- No placeholders, no <think>, no meta commentary."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        -464
+      ],
+      "id": "2448a81c-9d1e-44d8-b16a-172b80086079",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"id\": \"string\",\n  \"title\": \"string\",\n  \"content\": \"string\",\n  \"quiz\": [\n    { \"question\": \"string\", \"choices\": [\"string\"], \"correctIndex\": 0 }\n  ]\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        880,
+        -32
+      ],
+      "id": "b88d3563-2539-4052-bed1-bd8936deb4ee",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * n8n Code node\n * Input example:\n * {\n *   \"body\": { \"steps\": { \"title\": \"Introduction to Cellular Respiration\" } },\n *   \"output\": \"<!DOCTYPE html><html> ... </html>\"\n * }\n *\n * Output:\n * {\n *   \"id\": \"introduction-to-cellular-respiration\",\n *   \"title\": \"Introduction to Cellular Respiration\",\n *   \"content\": \"<!DOCTYPE html><html> ... </html>\"\n * }\n */\n\nfunction slugify(str = '') {\n  return str\n    .toLowerCase()\n    .normalize('NFKD')\n    .replace(/[^a-z0-9\\s-]/g, '')\n    .replace(/\\s+/g, '-')\n    .replace(/-+/g, '-')\n    .replace(/^-|-$/g, '') || 'untitled';\n}\n\nreturn items.map(item => {\n  const title = item.json.body?.steps?.title || 'Untitled Lesson';\n  const id = slugify(title);\n  const content = (item.json.output || '').toString().trim();\n\n  return {\n    json: {\n      id,\n      title,\n      content\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -448
+      ],
+      "id": "85b832a0-fcc3-46f0-af2b-9314a8bf28eb",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Uses SearchMusai to search",
+        "url": "https://search.codemusic.ca/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "format",
+              "value": "json"
+            },
+            {
+              "name": "q",
+              "value": "={{ $json.body?.steps?.[0]?.title || $json.body?.topic || '' }}"
+            },
+            {
+              "name": "categories",
+              "value": "general"
+            },
+            {
+              "name": "language",
+              "value": "auto"
+            },
+            {
+              "name": "safesearch",
+              "value": "0"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Referer",
+              "value": "https://search.codemusic.ca/"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
+            },
+            {
+              "name": "Origin",
+              "value": "https://search.codemusic.ca/"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        768,
+        256
+      ],
+      "id": "884ec991-384d-4b34-867a-291752452989",
+      "name": "Search"
     }
   ],
   "pinData": {},
@@ -144,6 +288,11 @@
             "node": "AI Agent",
             "type": "ai_memory",
             "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
           }
         ]
       ]
@@ -166,6 +315,70 @@
             "node": "AI Agent",
             "type": "ai_languageModel",
             "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PreviewLecture": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
           }
         ]
       ]
@@ -175,11 +388,18 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "19dca025-1bd7-44c0-8ea3-1eb00cf9ebca",
+  "versionId": "b81f9ecc-5560-47fd-b530-4a486e8ad3f7",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
   },
   "id": "cZJRkfeW5Jq4pE9g",
-  "tags": []
+  "tags": [
+    {
+      "createdAt": "2025-08-15T15:44:14.646Z",
+      "updatedAt": "2025-08-15T15:44:14.646Z",
+      "id": "PC19MdgjapOHg5hW",
+      "name": "musai"
+    }
+  ]
 }

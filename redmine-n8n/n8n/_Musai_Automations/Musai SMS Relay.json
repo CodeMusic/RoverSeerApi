@@ -14,19 +14,6 @@
     },
     {
       "parameters": {
-        "jsCode": "// Force Eastern Time (Toronto)\nconst TZ = 'America/Toronto';\nconst now = new Date();\n\n// Format time (hh:mm AM/PM ET)\nconst time12 = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true,\n}).format(now);\n\n// Format date (MMM dd{suffix} YYYY)\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  month: 'short',\n  day: 'numeric',\n  year: 'numeric',\n}).formatToParts(now);\n\nconst get = (type) => parts.find(p => p.type === type)?.value || '';\nconst month = get('month');\nconst dayNum = Number(get('day'));\nconst year = get('year');\nconst suffix = (d) => (d > 3 && d < 21) ? 'th' : (['th','st','nd','rd'][Math.min(d % 10, 4)] || 'th');\nconst datePretty = `${month} ${dayNum}${suffix(dayNum)} ${year}`;\n\n// Weekday + part of day\nconst dow = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(now);\nconst hourET = Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now));\nconst partOfDay = hourET < 5 ? 'late night' : hourET < 12 ? 'morning' : hourET < 17 ? 'afternoon' : 'evening';\n\n// Map items\nreturn items.map(item => {\n  const src = item.json?.body ?? item.json ?? {};\n  \n  const sessionId = src.sessionId ?? null;\n\n    const action = src.action ?? null;\n\n    const meta = src.meta ?? null;\n\n  \n  const query = src.query ?? '';\n\n  // Append context in a private-style block at the end of the query\n  item.json = {\n    sessionId,\n    query: `\n[ It is the ${partOfDay} of ${dow}, ${datePretty} at ${time12}]\n\n${query}\n\n`, action: `${action}`\n    ,\"meta\" :`${meta}`\n  };\n\n  return item;\n});"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        352,
-        352
-      ],
-      "id": "33b04478-8c8d-4faa-9ae3-a91d592d06af",
-      "name": "Code2"
-    },
-    {
-      "parameters": {
         "mode": "raw",
         "jsonOutput": "={{\n  {\n    \"sessionId\": $json.data?.from ?? \"UNKNOWN\",\n    \"query\": `[NEW SMS From: ${$json.data?.fromCity || ''}, ${$json.data?.fromState || ''}, ${$json.data?.fromCountry || ''}] ${($json.data?.body || '').replace(/\\s+/g,' ').trim()}`,\n    \"action\": \"webhookChat\",\n    \"meta\": $json.data?.from\n  }\n}}",
         "options": {}
@@ -94,6 +81,7 @@
       "parameters": {
         "promptType": "define",
         "text": "=The user asked:\n\"{{ ($json.body?.query ?? $json.query ?? '').toString().replace(/\\[[^\\]]*\\]/g,'').replace(/\\s+/g,' ').trim() }}\"\n\nAnswer with one word only: musaisearch or musaichat.",
+        "needsFallback": true,
         "options": {
           "systemMessage": "=You are the Musai intent selector. Output one word only: musaisearch or musaichat.\nRule: if the query contains any of: look up, lookup, search, find, news, latest, update, check, verify, compare, today, now, this week, this month, price, score → musaisearch.\nNever explain or add punctuation. If uncertain, choose musaisearch.\nExamples:\nQ: “look up X” → musaisearch\nQ: “tell me a joke” → musaichat\nQ: “how are you?” → musaichat\nQ: “what is the latest on the president” → musaisearch\n"
         }
@@ -115,8 +103,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
       "typeVersion": 1,
       "position": [
-        480,
-        688
+        496,
+        992
       ],
       "id": "2ce86134-0fe8-4e55-8303-3f38836a5e8b",
       "name": "Ollama Chat Model",
@@ -209,7 +197,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{\n  {\n    \"sessionId\": $node[\"SetChatInput_forSMS\"].json.sessionId,\n    \"query\": $node[\"SetChatInput_forSMS\"].json.query,\n    \"action\": \"webhookChat\",\n    \"meta\": $node[\"SetChatInput_forSMS\"].json.meta,\n    \"perspective\": \"true\"\n  }\n}}",
+        "body": "={{   {     \"sessionId\": $node[\"Prepped\"].json.sessionId,     \"query\": $node[\"Prepped\"].json.query,     \"action\": \"webhookChat\",     \"meta\": $node[\"Prepped\"].json.meta,     \"perspective\": \"true\"   } }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -236,7 +224,7 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "application/json",
-        "body": "={{\n  {\n    \"sessionId\": $node[\"SetChatInput_forSMS\"].json.sessionId,\n    \"query\": $node[\"SetChatInput_forSMS\"].json.query,\n    \"action\": \"webhookSearch\",\n    \"meta\": $node[\"SetChatInput_forSMS\"].json.meta\n  }\n}}",
+        "body": "={{\n  {\n    \"sessionId\": $node[\"Prepped\"].json.sessionId,\n    \"query\": $node[\"Prepped\"].json.query,\n    \"action\": \"webhookSearch\",\n    \"meta\": $node[\"Prepped\"].json.meta\n  }\n}}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -264,7 +252,7 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
       "position": [
-        1936,
+        2352,
         336
       ],
       "id": "62962c19-5b0f-42eb-a6f6-345537f14845",
@@ -288,6 +276,62 @@
       ],
       "id": "a40747ad-d2bf-48a8-8b07-9d5e3f29b330",
       "name": "TransformForSMS"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Force Eastern Time (Toronto)\nconst TZ = 'America/Toronto';\nconst now = new Date();\n\n// Format time (hh:mm AM/PM ET)\nconst time12 = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  hour: 'numeric',\n  minute: '2-digit',\n  hour12: true,\n}).format(now);\n\n// Format date (MMM dd{suffix} YYYY)\nconst parts = new Intl.DateTimeFormat('en-US', {\n  timeZone: TZ,\n  month: 'short',\n  day: 'numeric',\n  year: 'numeric',\n}).formatToParts(now);\n\nconst get = (type) => parts.find(p => p.type === type)?.value || '';\nconst month = get('month');\nconst dayNum = Number(get('day'));\nconst year = get('year');\nconst suffix = (d) => (d > 3 && d < 21) ? 'th' : (['th','st','nd','rd'][Math.min(d % 10, 4)] || 'th');\nconst datePretty = `${month} ${dayNum}${suffix(dayNum)} ${year}`;\n\n// Weekday + part of day\nconst dow = new Intl.DateTimeFormat('en-US', { timeZone: TZ, weekday: 'long' }).format(now);\nconst hourET = Number(new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hour12: false }).format(now));\nconst partOfDay = hourET < 5 ? 'late night' : hourET < 12 ? 'morning' : hourET < 17 ? 'afternoon' : 'evening';\n\n// Map items\nreturn items.map(item => {\n  const src = item.json?.body ?? item.json ?? {};\n  \n  const sessionId = src.sessionId ?? null;\n\n    const action = src.action ?? null;\n\n    const meta = src.meta ?? null;\n\n  \n  const query = src.query ?? '';\n\n  // Append context in a private-style block at the end of the query\n  item.json = {\n    sessionId,\n    query: `\n[ It is the ${partOfDay} of ${dow}, ${datePretty} at ${time12}]\n\n${query.replace(\"'\",\"\")}\n\n`, action: `${action}`\n    ,\"meta\" :`${meta}`\n  };\n\n  return item;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        352
+      ],
+      "id": "33b04478-8c8d-4faa-9ae3-a91d592d06af",
+      "name": "Prepped"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        416,
+        704
+      ],
+      "id": "29d98393-5d96-4574-99f6-96216d88ed91",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "RxyKtpL6w66Rr6sy",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.text ?? $json.output ?? $json.response}}",
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are Musai. You must prep this content for SMS text message delivery. Summarize and reply with at max a few sentences."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1792,
+        288
+      ],
+      "id": "6b7e3d68-f608-4bab-8b52-a3a2f3d2a54f",
+      "name": "Basic LLM Chain"
     }
   ],
   "pinData": {},
@@ -307,7 +351,7 @@
       "main": [
         [
           {
-            "node": "Code2",
+            "node": "Prepped",
             "type": "main",
             "index": 0
           }
@@ -329,18 +373,7 @@
       "main": [
         [
           {
-            "node": "Code2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code2": {
-      "main": [
-        [
-          {
-            "node": "AI Agent",
+            "node": "Prepped",
             "type": "main",
             "index": 0
           }
@@ -353,7 +386,12 @@
           {
             "node": "AI Agent",
             "type": "ai_languageModel",
-            "index": 0
+            "index": 1
+          },
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 1
           }
         ]
       ]
@@ -402,7 +440,7 @@
       "main": [
         [
           {
-            "node": "Send an SMS/MMS/WhatsApp message",
+            "node": "Basic LLM Chain",
             "type": "main",
             "index": 0
           }
@@ -424,6 +462,44 @@
       "main": [
         [
           {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepped": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
             "node": "Send an SMS/MMS/WhatsApp message",
             "type": "main",
             "index": 0
@@ -436,7 +512,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "c0f602ed-930a-49d3-ad12-1c9c9ea899b5",
+  "versionId": "412f3ddf-b9fa-4291-8f57-5d98fc9174a5",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "c3b1e9547a17eff9a9182eaa8e9809764c7c0d79f0473fb55f9aea874ddf90c9"
