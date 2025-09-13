@@ -126,6 +126,22 @@ export const EyeWorkbenchPanel: React.FC<EyeWorkbenchPanelProps> = ({ seed, onCa
     }
   }, [seed.autoRun, seed.autoRunMagicEye, seed.initialPrompt, sessionImages.length]);
 
+  // Reusable helper to convert a Blob image to a data URL for consistent storage
+  const blobToDataUrl = (b: Blob) => new Promise<string>((resolve, reject) =>
+  {
+    try
+    {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = reject;
+      fr.readAsDataURL(b);
+    }
+    catch (e)
+    {
+      reject(e);
+    }
+  });
+
   const perceiveWithPrompt = async (text: string) =>
   {
     setIsSubmitting(true);
@@ -133,15 +149,7 @@ export const EyeWorkbenchPanel: React.FC<EyeWorkbenchPanelProps> = ({ seed, onCa
     try
     {
       const blob = await eyeApi.generateImage(text);
-      const toDataUrl = (b: Blob) => new Promise<string>((resolve, reject) => {
-        try {
-          const fr = new FileReader();
-          fr.onload = () => resolve(String(fr.result || ''));
-          fr.onerror = reject;
-          fr.readAsDataURL(b);
-        } catch (e) { reject(e); }
-      });
-      const url = await toDataUrl(blob);
+      const url = await blobToDataUrl(blob);
       const mime = blob.type || null;
       setSessionImages(prev =>
       {
@@ -260,7 +268,7 @@ export const EyeWorkbenchPanel: React.FC<EyeWorkbenchPanelProps> = ({ seed, onCa
       {
         if (res.type && res.type.startsWith('image/'))
         {
-          const url = URL.createObjectURL(res);
+          const url = await blobToDataUrl(res);
           setMagicEyeResult({ type: 'image', mimeType: res.type, size: res.size });
           setSessionImages(prev =>
           {

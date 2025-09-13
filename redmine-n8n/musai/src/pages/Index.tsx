@@ -898,7 +898,7 @@ const Index = () => {
       {
         const seed: EyeWorkbenchSeed = eyePerceivePrompt
           ? { initialPrompt: eyePerceivePrompt, autoRun: true }
-          : { initialImage: eyeReflectPayload!.preview, autoRun: !eyeReflectPayload!.autoMagic, autoRunMagicEye: Boolean(eyeReflectPayload!.autoMagic) };
+          : { initialImage: eyeReflectPayload!.preview, autoRun: false, autoRunMagicEye: false };
         return (
           <EyeWorkbenchPanel
             seed={seed}
@@ -988,7 +988,7 @@ const Index = () => {
       if (currentTab === APP_TERMS.TAB_EYE && (eyePerceivePrompt || eyeReflectPayload)) {
         const seed: EyeWorkbenchSeed = eyePerceivePrompt
           ? { initialPrompt: eyePerceivePrompt, autoRun: true }
-          : { initialImage: eyeReflectPayload!.preview, autoRun: !eyeReflectPayload!.autoMagic, autoRunMagicEye: Boolean(eyeReflectPayload!.autoMagic) };
+          : { initialImage: eyeReflectPayload!.preview, autoRun: false, autoRunMagicEye: false };
         return (
           <EyeWorkbenchPanel
             seed={seed}
