@@ -258,6 +258,25 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
     return `${courseTitle}::${lectureTitle}`;
   };
 
+  const hasMeaningfulLecturePayload = (payload?: { content: string; isHtml: boolean; title: string }): boolean =>
+  {
+    if (!payload || typeof payload.content !== 'string')
+    {
+      return false;
+    }
+    const raw = payload.content;
+    const text = payload.isHtml
+      ? raw.replace(/<[^>]*>/g, ' ')
+      : raw;
+    const stripped = text
+      .replace(/!\[[^\]]*\]\([^\)]+\)/g, ' ')
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/[#*>`*_>-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return stripped.length >= 20;
+  };
+
   const areAllLecturesGenerated = (): boolean => 
   {
     const list = (isEditing ? editedData?.syllabus : generatedData?.syllabus) || [];
@@ -265,7 +284,10 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
     {
       return false;
     }
-    return list.every(s => Boolean(previewCache[getCacheKeyForLecture(s.title)]));
+    return list.every(s => {
+      const payload = previewCache[getCacheKeyForLecture(s.title)];
+      return hasMeaningfulLecturePayload(payload);
+    });
   };
 
   const handleExportCourseHtml = (): void => 

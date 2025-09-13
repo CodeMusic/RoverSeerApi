@@ -56,28 +56,40 @@ export function LecturePreviewModal({ open, onClose, title, summary, courseTitle
     {
       try 
       {
-        // Serve from cache if available
+        // Serve from cache only if meaningful; otherwise regenerate
         if (cachedContent)
         {
-          setIsLoading(false);
-          setResolvedTitle(cachedResolvedTitle || title);
-          setContent(cachedContent);
-          setIsHtml(Boolean(cachedIsHtml));
-          // Attempt to pull cached image if previously generated
-          try
+          const cachedLooksHtml = Boolean(cachedIsHtml);
+          const textCandidate = cachedLooksHtml ? cachedContent.replace(/<[^>]*>/g, ' ') : cachedContent;
+          const stripped = textCandidate
+            .replace(/!\[[^\]]*\]\([^\)]+\)/g, ' ')
+            .replace(/```[\s\S]*?```/g, ' ')
+            .replace(/[#*>`*_>-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const meaningful = stripped.length >= 20;
+          if (meaningful)
           {
-            const imgKey = cacheKey ? `lecturePreviewImage::${cacheKey}` : (resolvedTitle ? `lecturePreviewImage::${resolvedTitle}` : '');
-            if (imgKey)
+            setIsLoading(false);
+            setResolvedTitle(cachedResolvedTitle || title);
+            setContent(cachedContent);
+            setIsHtml(cachedLooksHtml);
+            // Attempt to pull cached image if previously generated
+            try
             {
-              const cachedImg = window.localStorage.getItem(imgKey);
-              if (cachedImg)
+              const imgKey = cacheKey ? `lecturePreviewImage::${cacheKey}` : (resolvedTitle ? `lecturePreviewImage::${resolvedTitle}` : '');
+              if (imgKey)
               {
-                setFeatureImageUrl(cachedImg);
+                const cachedImg = window.localStorage.getItem(imgKey);
+                if (cachedImg)
+                {
+                  setFeatureImageUrl(cachedImg);
+                }
               }
             }
+            catch {}
+            return;
           }
-          catch {}
-          return;
         }
         // Build stable signature to prevent duplicate runs from focus/re-render
         const syllabusSig = Array.isArray(syllabus) ? syllabus.map(s => `${s.title}::${s.summary ?? ''}::${s.duration ?? ''}`).join('|') : '';
