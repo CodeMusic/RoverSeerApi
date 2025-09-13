@@ -328,11 +328,15 @@ class UniversityApiService
   {
     try 
     {
-      const response = await this.axiosInstance.post('/course/generate-from-topic', {
-        topic,
-        includeSyllabus: true,
-        includeMetadata: true
-      });
+      const response = await this.axiosInstance.post(
+        '/course/generate-from-topic',
+        {
+          topic,
+          includeSyllabus: true,
+          includeMetadata: true
+        },
+        { timeout: 600000 }
+      );
       const parsed = this.parseN8nLikePayload(response.data);
       const normalized = this.coerceCourseFromTopicSchema(parsed);
       return normalized;
