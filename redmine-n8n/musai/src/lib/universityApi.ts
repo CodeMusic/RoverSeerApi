@@ -211,12 +211,17 @@ class UniversityApiService
     tags: string[];
   }
   {
-    const title = (data?.title || data?.courseTitle || '').toString() || 'New Course';
-    const description = (data?.description || data?.summary || '').toString();
-    const instructor = (data?.instructor || 'Musai Instructor').toString();
+    // Some workflows return { name, parameters: { ...actual fields... } }
+    const src = (data && typeof data === 'object' && (data as any).parameters && typeof (data as any).parameters === 'object')
+      ? (data as any).parameters
+      : data;
 
-    const rawSyllabus = Array.isArray(data?.syllabus) ? data.syllabus
-      : Array.isArray(data?.lectures) ? data.lectures
+    const title = (src?.title || src?.courseTitle || '').toString() || 'New Course';
+    const description = (src?.description || src?.summary || '').toString();
+    const instructor = (src?.instructor || 'Musai Instructor').toString();
+
+    const rawSyllabus = Array.isArray(src?.syllabus) ? src.syllabus
+      : Array.isArray(src?.lectures) ? src.lectures
       : [];
     const syllabus = rawSyllabus.map((item: any) =>
     {
@@ -227,9 +232,9 @@ class UniversityApiService
       return { title: t, summary: s, duration: d };
     });
 
-    const estimatedDuration = (data?.estimatedDuration || (syllabus.length > 0 ? `${syllabus.length * 45} min` : '45 min')).toString();
-    const difficulty = (data?.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced';
-    const tags = Array.isArray(data?.tags) ? data.tags.map((t: any) => String(t)) : [];
+    const estimatedDuration = (src?.estimatedDuration || (syllabus.length > 0 ? `${syllabus.length * 45} min` : '45 min')).toString();
+    const difficulty = (src?.difficulty || 'beginner') as 'beginner' | 'intermediate' | 'advanced';
+    const tags = Array.isArray(src?.tags) ? src.tags.map((t: any) => String(t)) : [];
 
     return {
       title,
