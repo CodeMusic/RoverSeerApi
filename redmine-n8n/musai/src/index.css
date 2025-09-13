@@ -1241,3 +1241,51 @@ textarea, input, button {
     backdrop-filter: blur(0px) !important;
   }
 }
+
+/* === MagicEye Aurora (oil slick) button effect === */
+@keyframes magiceyeAuroraShift {
+  0% { background-position: 0% 50%; filter: hue-rotate(0deg) saturate(1.05); }
+  50% { background-position: 100% 50%; filter: hue-rotate(25deg) saturate(1.15); }
+  100% { background-position: 0% 50%; filter: hue-rotate(0deg) saturate(1.05); }
+}
+
+.magiceye-aurora {
+  position: relative;
+  isolation: isolate;
+  color: #fff !important;
+  background: linear-gradient(120deg,
+    #ff8a00 0%,
+    #e52e71 12%,
+    #a166ab 24%,
+    #3b82f6 36%,
+    #06b6d4 48%,
+    #10b981 60%,
+    #f59e0b 72%,
+    #ef4444 84%,
+    #8b5cf6 100%
+  );
+  background-size: 200% 200%;
+  animation: magiceyeAuroraShift 6s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.25), inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+
+.magiceye-aurora:disabled,
+.magiceye-aurora[aria-disabled="true"] {
+  opacity: 0.6;
+  filter: grayscale(0.15) saturate(0.8);
+}
+
+/* Subtle aurora pill for MagicEye badge */
+.magiceye-aurora-soft {
+  background: linear-gradient(120deg,
+    rgba(229, 46, 113, 0.85) 0%,
+    rgba(161, 102, 171, 0.85) 24%,
+    rgba(59, 130, 246, 0.85) 48%,
+    rgba(16, 185, 129, 0.85) 72%,
+    rgba(139, 92, 246, 0.85) 100%
+  );
+  background-size: 200% 200%;
+  animation: magiceyeAuroraShift 8s ease-in-out infinite;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.25), inset 0 0 0 1px rgba(255,255,255,0.15);
+}

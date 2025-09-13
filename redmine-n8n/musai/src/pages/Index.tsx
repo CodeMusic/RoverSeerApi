@@ -27,8 +27,7 @@ import { useDevSessions } from "@/hooks/useDevSessions";
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
-import { EyePerceivePanel } from '@/components/eye/EyePerceivePanel';
-import { EyeReflectPanel } from '@/components/eye/EyeReflectPanel';
+import EyeWorkbenchPanel, { EyeWorkbenchSeed } from '@/components/eye/EyeWorkbenchPanel';
 
 const Index = () => {
   const location = useLocation();
@@ -46,7 +45,7 @@ const Index = () => {
   const [isCreatingNarrative, setIsCreatingNarrative] = useState<boolean>(false);
   const [isProcessingMedical, setIsProcessingMedical] = useState<boolean>(false);
   const [eyePerceivePrompt, setEyePerceivePrompt] = useState<string | null>(null);
-  const [eyeReflectPayload, setEyeReflectPayload] = useState<{ payload: any; preview: { data: string; mimeType: string; fileName?: string } } | null>(null);
+  const [eyeReflectPayload, setEyeReflectPayload] = useState<{ payload: any; preview: { data: string; mimeType: string; fileName?: string }; autoMagic?: boolean } | null>(null);
   const [currentTab, setCurrentTab] = useState<string>(
     location.state?.switchToTab || 
     (searchParams.get('mode') === 'search' ? APP_TERMS.TAB_SEARCH :
@@ -895,26 +894,17 @@ const Index = () => {
     // Eye: always render Eye workspace (panels or PreMusai), regardless of session message model
     if (currentTab === APP_TERMS.TAB_EYE)
     {
-      if (eyePerceivePrompt)
+      if (eyePerceivePrompt || eyeReflectPayload)
       {
+        const seed: EyeWorkbenchSeed = eyePerceivePrompt
+          ? { initialPrompt: eyePerceivePrompt, autoRun: true }
+          : { initialImage: eyeReflectPayload!.preview, autoRun: !eyeReflectPayload!.autoMagic, autoRunMagicEye: Boolean(eyeReflectPayload!.autoMagic) };
         return (
-          <EyePerceivePanel
-            prompt={eyePerceivePrompt}
-            onCancel={() => setEyePerceivePrompt(null)}
-            autoRun
+          <EyeWorkbenchPanel
+            seed={seed}
+            onCancel={() => { setEyePerceivePrompt(null); setEyeReflectPayload(null); }}
             eyeSessionId={eyeCurrentSessionId}
             onAppendPrompt={(p) => { if (eyeCurrentSessionId) appendEyePrompt(eyeCurrentSessionId, p); }}
-          />
-        );
-      }
-      if (eyeReflectPayload)
-      {
-        return (
-          <EyeReflectPanel
-            payload={eyeReflectPayload.payload as any}
-            preview={eyeReflectPayload.preview}
-            onCancel={() => setEyeReflectPayload(null)}
-            autoRun
           />
         );
       }
@@ -922,12 +912,12 @@ const Index = () => {
       return (
         <PreMusaiPage
           type="eye"
-          onSubmit={(input, file) => {
+          onSubmit={(input, file, mode) => {
             if (file)
             {
               // Reflect path (image-based)
               prepareFileData(file).then(imageData => {
-                setEyeReflectPayload({ payload: { image: imageData }, preview: imageData });
+                setEyeReflectPayload({ payload: { image: imageData }, preview: imageData, autoMagic: mode === 'magiceye' });
               });
               return;
             }
@@ -995,24 +985,14 @@ const Index = () => {
 
     // Show PreMusai page for any tab without a current session (except narrative which uses its own flow)
     if (shouldShowPreMusai && currentTab !== APP_TERMS.TAB_NARRATIVE) {
-      // Eye: if Perceive prompt is active, show in-app panel inside shell
-      if (currentTab === APP_TERMS.TAB_EYE && eyePerceivePrompt) {
+      if (currentTab === APP_TERMS.TAB_EYE && (eyePerceivePrompt || eyeReflectPayload)) {
+        const seed: EyeWorkbenchSeed = eyePerceivePrompt
+          ? { initialPrompt: eyePerceivePrompt, autoRun: true }
+          : { initialImage: eyeReflectPayload!.preview, autoRun: !eyeReflectPayload!.autoMagic, autoRunMagicEye: Boolean(eyeReflectPayload!.autoMagic) };
         return (
-          <EyePerceivePanel
-            prompt={eyePerceivePrompt}
-            onCancel={() => setEyePerceivePrompt(null)}
-            autoRun
-          />
-        );
-      }
-      // Eye: if Reflect payload is active, show inline panel
-      if (currentTab === APP_TERMS.TAB_EYE && eyeReflectPayload) {
-        return (
-          <EyeReflectPanel
-            payload={eyeReflectPayload.payload as any}
-            preview={eyeReflectPayload.preview}
-            onCancel={() => setEyeReflectPayload(null)}
-            autoRun
+          <EyeWorkbenchPanel
+            seed={seed}
+            onCancel={() => { setEyePerceivePrompt(null); setEyeReflectPayload(null); }}
           />
         );
       }

@@ -70,6 +70,8 @@ export const N8N_ENDPOINTS = {
     RECOGNIZE: '/eye/recognize',
     // Generate image from prompt
     GENERATE: '/eye/generate',
+    // MagicEye (ComfyUI workflow uploader)
+    MAGIC_EYE: '/eye/magic',
   },
 
   // CodeMusai Endpoints

@@ -53,7 +53,8 @@ class EyeApiService {
     return res.json();
   }
 
-  public async recognize(payload: EyeRecognizeRequest): Promise<EyeRecognizeResponse> {
+  public async recognize(payload: EyeRecognizeRequest): Promise<EyeRecognizeResponse>
+  {
     const url = n8nApi.getEndpointUrl(N8N_ENDPOINTS.EYE.RECOGNIZE);
     const res = await queuedFetch(url, {
       method: 'POST',
@@ -69,7 +70,56 @@ class EyeApiService {
       }),
     }, TIMEOUTS.API_REQUEST);
     if (!res.ok) throw new Error(`Eye recognize failed: ${res.status}`);
-    return res.json();
+
+    const contentType = (res.headers.get('Content-Type') || '').toLowerCase();
+
+    // Accept both JSON and plain text. Map any text content to summary.
+    if (contentType.includes('application/json') || contentType.includes('text/plain'))
+    {
+      try
+      {
+        // Prefer JSON parse; if it fails for text/plain, fall back to text
+        const maybeJson = contentType.includes('application/json') ? await res.json() : undefined;
+        if (maybeJson && typeof maybeJson === 'object')
+        {
+          const boxes = Array.isArray((maybeJson as any).boxes) ? (maybeJson as any).boxes : [];
+          const summary =
+            typeof (maybeJson as any).summary === 'string' ? (maybeJson as any).summary :
+            typeof (maybeJson as any).text === 'string' ? (maybeJson as any).text :
+            typeof (maybeJson as any).message === 'string' ? (maybeJson as any).message :
+            typeof (maybeJson as any).result === 'string' ? (maybeJson as any).result :
+            undefined;
+          return { boxes, summary } as EyeRecognizeResponse;
+        }
+      }
+      catch
+      {
+        // ignore and try text path
+      }
+
+      try
+      {
+        const text = await res.text();
+        return { boxes: [], summary: text } as EyeRecognizeResponse;
+      }
+      catch
+      {
+        // fall through
+      }
+    }
+
+    // Fallback: attempt JSON; if it fails, throw a helpful error
+    try
+    {
+      const json = await res.json();
+      const boxes = Array.isArray((json as any).boxes) ? (json as any).boxes : [];
+      const summary = typeof (json as any).summary === 'string' ? (json as any).summary : undefined;
+      return { boxes, summary } as EyeRecognizeResponse;
+    }
+    catch (e)
+    {
+      throw new Error('Eye recognize returned an unexpected format.');
+    }
   }
 
   /**
@@ -175,6 +225,35 @@ class EyeApiService {
 
     // Unknown content type
     throw new Error(`Unexpected content type: ${contentType || 'unknown'}`);
+  }
+
+  /**
+   * MagicEye upload — post the given image to the ComfyUI MagicEye webhook.
+   * Server returns a job or image response depending on workflow configuration.
+   */
+  public async magicEyeUpload(payload: EyeRecognizeRequest, _prompt?: string): Promise<any>
+  {
+    const url = n8nApi.getEndpointUrl(N8N_ENDPOINTS.EYE.MAGIC_EYE);
+    const res = await queuedFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: 'MagicEye upload',
+        params: {
+          module: MUSAI_MODULES.EYE,
+          debug: true,
+          image: payload.image
+        }
+      })
+    }, TIMEOUTS.API_REQUEST);
+    if (!res.ok) throw new Error(`MagicEye upload failed: ${res.status}`);
+    const contentType = (res.headers.get('Content-Type') || '').toLowerCase();
+    if (contentType.includes('application/json') || contentType.includes('text/plain'))
+    {
+      return res.json();
+    }
+    // If pipeline returns an image blob directly
+    return res.blob();
   }
 }
 

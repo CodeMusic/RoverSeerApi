@@ -33,7 +33,7 @@ export const ROUTES = {
   MUSAI_STUDIO: '/musai-studio',
   ROADMAP: '/roadmap',
   
-  // Eye operation pages
+  // Eye operation pages (legacy routes retained for now except recognize)
   EYE_TRAIN: '/eye/train',
   EYE_RECOGNIZE: '/eye/recognize',
   EYE_GENERATE: '/eye/generate',

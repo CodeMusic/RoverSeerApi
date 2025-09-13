@@ -330,6 +330,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  
   // POV toggle (Quick vs Perspective Thinking) available pre-chat
   const [povEnabled, setPovEnabled] = useState<boolean>(() =>
   {
@@ -429,6 +430,12 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
 
   const openFilePicker = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleMagicEye = () =>
+  {
+    if (!selectedImage) return;
+    onSubmit('Analyze this image', selectedImage, 'magiceye');
   };
 
   // Eye of Musai: Enter triggers Perceive when text exists, otherwise Reflect (open upload)
@@ -753,6 +760,9 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                     <Button onClick={() => onSubmit('Analyze this image', selectedImage!)} className="rounded-xl">
                       <Eye className="w-4 h-4 mr-2" /> Analyze
                     </Button>
+                    <Button variant="secondary" onClick={handleMagicEye} className="rounded-xl magiceye-aurora">
+                      <Sparkles className="w-4 h-4 mr-2" /> MagicEye
+                    </Button>
                     <Button variant="secondary" onClick={() => onSubmit(`TRAIN:${input || ''}`, selectedImage!)} className="rounded-xl">
                       Train
                     </Button>
@@ -760,6 +770,7 @@ export const PreMusaiPage: React.FC<PreMusaiPageProps> = ({
                       Clear
                     </Button>
                   </div>
+                  
                 </div>
               )}
 
