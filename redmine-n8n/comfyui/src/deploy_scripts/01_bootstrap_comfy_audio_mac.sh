@@ -13,7 +13,7 @@ VENV="$COMFY_ROOT/.venv"
 PYBIN="$VENV/bin/python"
 PIP="$VENV/bin/pip"
 
-# Hugging Face cache (keeps all HF artifacts in your shared cache)
+# Hugging Face cache (shared across tools)
 export HF_HOME="${HF_HOME:-$HOME/redmine-n8n/ai-model-cache/huggingface}"
 mkdir -p "$HF_HOME"
 echo "➜ HF cache: $HF_HOME"
@@ -29,9 +29,15 @@ fi
 # ── Deps (no audiocraft/xformers) ──────────────────────────────────────────────
 echo "➜ Installing base Python deps"
 "$PIP" install -U "pip<25.3" wheel setuptools
-"$PIP" install "numpy<2" soundfile ffmpeg-python "librosa==0.10.2.post1" "transformers>=4.48,<5" torchaudio
 
-# Optional ffmpeg (system)
+# Core audio + HF stack (Mac friendly)
+"$PIP" install -U \
+  "numpy<2" \
+  soundfile ffmpeg-python "librosa==0.10.2.post1" torchaudio \
+  # ⬇️ Bake in the exact ask so MusicGenHFNode has `generate_audio()`
+  "transformers>=4.50.2,<5" accelerate sentencepiece safetensors
+
+# Optional system ffmpeg
 if ! command -v ffmpeg >/dev/null 2>&1; then
   if command -v brew >/dev/null 2>&1; then
     echo "➜ Installing ffmpeg via Homebrew"
@@ -52,7 +58,7 @@ else
   git -C ComfyUI-audio pull --ff-only || true
 fi
 
-# ── Model layout (only MusicGen TFM) ───────────────────────────────────────────
+# ── Model layout (MusicGen TFM only) ───────────────────────────────────────────
 mkdir -p "$MODEL_CACHE/music/musicgen"
 mkdir -p "$COMFY_ROOT/models"
 ln -snf "$MODEL_CACHE/music/musicgen" "$COMFY_ROOT/models/musicgen"
@@ -68,8 +74,7 @@ def fetch(repo, outdir, patterns):
     local = snapshot_download(repo_id=repo, allow_patterns=patterns)
     for f in glob.glob(os.path.join(local, "*")):
         try: shutil.copy2(f, outdir)
-        except Exception:
-            pass
+        except Exception: pass
     print("✓", repo, "→", outdir)
 
 base = os.path.expanduser('~/redmine-n8n/ai-model-cache/comfyui-models/music/musicgen')
@@ -80,11 +85,14 @@ fetch('facebook/musicgen-small',  os.path.join(base, 'musicgen-small'),  pattern
 fetch('facebook/musicgen-melody', os.path.join(base, 'musicgen-melody'), patterns)
 PY
 
-# ── Run script ─────────────────────────────────────────────────────────────────
+# ── Run script (auto-ensure correct Transformers on launch) ────────────────────
 cat > "$COMFY_ROOT/run_comfy_audio.sh" <<'SH'
 #!/bin/zsh
 set -euo pipefail
 APP_ROOT="$HOME/redmine-n8n/comfyui/src"
+VENV="$APP_ROOT/.venv"
+PYBIN="$VENV/bin/python"
+PIP="$VENV/bin/pip"
 cd "$APP_ROOT"
 
 # Mac/MPS friendly
@@ -92,13 +100,16 @@ export PYTORCH_ENABLE_MPS_FALLBACK=1
 export PYTHONNOUSERSITE=1
 
 # Skip API nodes (avoid pyav etc. nagging)
-export COMFYUI_SKIP_API_NODES=1
+export COMFYUI_DISABLE_API_NODES=1
 
 # Paths Comfy should scan
 export COMFYUI_CUSTOM_NODE_PATHS="$APP_ROOT/custom_nodes"
 export COMFYUI_MODEL_PATHS="$HOME/redmine-n8n/ai-model-cache/comfyui-models"
 
-exec "$APP_ROOT/.venv/bin/python" main.py --listen 0.0.0.0 --port 8008
+# 🔒 Ensure the right HF stack for MusicGenHFNode (idempotent, quick if satisfied)
+$PIP install -q -U "transformers>=4.50.2,<5" accelerate sentencepiece safetensors >/dev/null || true
+
+exec "$PYBIN" main.py --listen 0.0.0.0 --port 8008
 SH
 chmod +x "$COMFY_ROOT/run_comfy_audio.sh"
 
@@ -111,4 +122,4 @@ echo "In the UI (Nodes): eigenpunk • ComfyUI-audio"
 echo "  • MusicGen (TFM)           — text→music"
 echo "  • MusicGen (TFM Melody)    — melody-conditioned"
 echo
-echo "Note: AudioGen (SFX) is intentionally skipped on Mac (needs audiocraft/xformers)."
+echo "Note: AudioGen (SFX) is intentionally skipped on Mac (it needs audiocraft/xformers)."
