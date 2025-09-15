@@ -343,7 +343,9 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
       const imageKey = `lecturePreviewImage::${cacheKey}`;
       let imageDataUrl: string | null = null;
       try { imageDataUrl = window.localStorage.getItem(imageKey); } catch {}
-      const imageBlock = imageDataUrl ? `<div class="feature-image"><img src="${imageDataUrl}" alt="${escapeHtml(s.title)}" /></div>` : '';
+      // Avoid duplicate image: if HTML content already contains an <img> near the top, skip separate image block
+      const contentHasLeadingImage = Boolean(payload?.isHtml && typeof payload?.content === 'string' && /<img\b/i.test(payload.content.slice(0, 600)));
+      const imageBlock = (!contentHasLeadingImage && imageDataUrl) ? `<div class="feature-image"><img src="${imageDataUrl}" alt="${escapeHtml(s.title)}" /></div>` : '';
       const contentBlock = payload.isHtml
         ? `<div class="lecture-content">${payload.content}</div>`
         : `<pre class="lecture-content-md">${escapeHtml(payload.content)}</pre>`;
