@@ -34,7 +34,6 @@ echo "➜ Installing base Python deps"
 "$PIP" install -U \
   "numpy<2" \
   soundfile ffmpeg-python "librosa==0.10.2.post1" torchaudio \
-  # ⬇️ Bake in the exact ask so MusicGenHFNode has `generate_audio()`
   "transformers>=4.50.2,<5" accelerate sentencepiece safetensors
 
 # Optional system ffmpeg
