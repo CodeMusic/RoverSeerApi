@@ -16,12 +16,23 @@
     'videos': 'play',
 }  -%}
 <div id="categories" class="search_categories">{{- '' -}}
+    <div class="categories_toolbar">
+        <button id="categories_icon_toggle" type="button" aria-pressed="false"
+            title="{{ _('Show icons only') }}"
+            data-label-off="{{ _('Symbols') }}"
+            data-label-on="{{ _('Labels') }}"
+            data-title-off="{{ _('Show icons only') }}"
+            data-title-on="{{ _('Show search type names') }}">
+            <span class="icon" aria-hidden="true">✦</span>
+            <span class="label">{{ _('Symbols') }}</span>
+        </button>
+    </div>
     <div id="categories_container">
         {%- if not search_on_category_select or not display_tooltip -%}
             {%- for category in categories -%}
                 <div class="category category_checkbox">{{- '' -}}
                     <input type="checkbox" id="checkbox_{{ category|replace(' ', '_') }}" name="category_{{ category }}"{% if category in selected_categories %} checked="checked"{% endif %}>
-                    <label for="checkbox_{{ category|replace(' ', '_') }}" class="tooltips">
+                    <label for="checkbox_{{ category|replace(' ', '_') }}" class="tooltips" title="{{ _('TV') if category == 'TV' else _(category)|title }}">
                         {{- icon_big(category_icons[category]) if category in category_icons  else icon_big('globe') -}}
                         <div class="category_name">{{- _(category) -}}</div>
                     </label>
@@ -30,7 +41,8 @@
             {%- if display_tooltip %}<div class="help">{{ _('Click on the magnifier to perform search') }}</div>{% endif -%}
         {%- else -%}
             {%- for category in categories -%}{{- '\n' -}}
-                <button type="submit" name="category_{{ category }}" class="category category_button {% if category in selected_categories %}selected{% endif %}">
+                <button type="submit" name="category_{{ category }}" class="category category_button {% if category in selected_categories %}selected{% endif %}"
+                    title="{{ _('TV') if category == 'TV' else _(category)|title }}">
                     {{- icon_big(category_icons[category]) if category in category_icons else icon_big('globe') -}}
                     <div class="category_name">{{- _(category) -}}</div>{{- '' -}}
                 </button>{{- '' -}}
@@ -223,5 +235,47 @@
     });
   }
   catch (e) { /* no-op */ }
+})();
+</script>
+<script>
+(function initCategoryIconToggle()
+{
+  try
+  {
+    var toggle = document.getElementById('categories_icon_toggle');
+    var container = document.getElementById('categories_container');
+    if (!toggle || !container) { return; }
+
+    var labelEl = toggle.querySelector('.label');
+    var offLabel = toggle.getAttribute('data-label-off') || 'Symbols';
+    var onLabel = toggle.getAttribute('data-label-on') || 'Labels';
+    var offTitle = toggle.getAttribute('data-title-off') || 'Show icons only';
+    var onTitle = toggle.getAttribute('data-title-on') || 'Show search type names';
+    var storageKey = 'musai_categories_icon_mode';
+
+    var apply = function(active)
+    {
+      container.classList.toggle('icon-only', !!active);
+      toggle.setAttribute('aria-pressed', active ? 'true' : 'false');
+      toggle.setAttribute('title', active ? onTitle : offTitle);
+      if (labelEl) { labelEl.textContent = active ? onLabel : offLabel; }
+    };
+
+    var initial = false;
+    try { initial = localStorage.getItem(storageKey) === '1'; } catch (_) { initial = false; }
+    apply(initial);
+
+    toggle.addEventListener('click', function()
+    {
+      var next = !container.classList.contains('icon-only');
+      apply(next);
+      try { localStorage.setItem(storageKey, next ? '1' : '0'); } catch (_) { /* no-op */ }
+      try { window.dispatchEvent(new Event('resize')); } catch (_) { /* no-op */ }
+    });
+  }
+  catch (_)
+  {
+    /* no-op */
+  }
 })();
 </script>
