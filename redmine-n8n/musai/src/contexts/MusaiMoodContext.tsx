@@ -413,6 +413,8 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
           return RouteUtils.mainAppWithMode('search', query);
         case 'tale':
           return RouteUtils.mainAppWithMode('narrative', query);
+        case 'story':
+          return RouteUtils.mainAppWithMode('narrative', query);
         case 'search':
         case 'chat':
         case 'university':
@@ -430,15 +432,8 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
     })();
     if (target)
     {
-      if (target.startsWith('http'))
-      {
-        window.location.assign(target);
-      }
-      else
-      {
-        window.history.pushState({}, '', target);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-      }
+      // Use full navigation to guarantee Router picks up the route and query params
+      window.location.assign(target);
     }
   }
 
