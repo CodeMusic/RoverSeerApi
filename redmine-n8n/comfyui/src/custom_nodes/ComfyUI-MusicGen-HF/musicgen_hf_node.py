@@ -1,100 +1,107 @@
-import os, torch
-from typing import List, Optional
+# musicgen_hf_node.py
+import os
+import numpy as np
+import torch
+from typing import Optional, Dict, Any
+
 from transformers import AutoProcessor, MusicgenForConditionalGeneration
 
-def _device():
-    if torch.cuda.is_available(): return "cuda"
-    if torch.backends.mps.is_available(): return "mps"
-    return "cpu"
+# --------- helpers ---------
+def _audio_from_comfy(a: Dict[str, Any]) -> Optional[torch.Tensor]:
+    """Accept Comfy AUDIO dict -> (1,T) float32 mono at 32kHz (resample if needed)."""
+    if not (isinstance(a, dict) and "waveform" in a and "sample_rate" in a):
+        return None
+    wf = a["waveform"]   # expected (1,C,T) or (C,T)
+    sr = int(a["sample_rate"])
+    if wf.ndim == 3:     # (1,C,T) -> (C,T)
+        wf = wf[0]
+    if wf.ndim == 1:     # (T) -> (1,T)
+        wf = wf.unsqueeze(0)
+    if wf.ndim == 2 and wf.shape[0] > 1:  # mix to mono
+        wf = wf.mean(dim=0, keepdim=True)
+    wf = wf.clamp(-1, 1).to(torch.float32)
 
-def _sr_from_config(model):
-    # MusicGen default is 32000
-    return int(getattr(getattr(model, "config", object()), "sampling_rate", 32000))
+    if sr != 32000:
+        import torchaudio
+        wf = torchaudio.functional.resample(wf, sr, 32000)
+    return wf  # (1,T)
 
-class MusicGenHFNode:
-    def __init__(self):
-        self.device = _device()
-        self.cache = {}  # (repo_path, melody_flag)->(model, processor)
+# --------- main node ---------
+class MusicGen:
+    """
+    HF MusicGen for ComfyUI.
+    Uses model.generate(...). Works on CPU/MPS. No CUDA or bfloat16 assumptions.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model_variant": (["musicgen-small", "musicgen-melody"], {"default": "musicgen-small"}),
-                "prompt": ("STRING", {"multiline": True, "default": "warm indie folk with gentle acoustic guitar"}),
-                "duration_sec": ("INT", {"default": 10, "min": 1, "max": 60, "step": 1}),
+                "prompt": ("STRING", {"multiline": True, "default": "indie folk, warm acoustic guitar, gentle reverb"}),
+                "model_variant": ([
+                    "facebook/musicgen-small",
+                    "facebook/musicgen-melody",
+                ], {"default": "facebook/musicgen-small"}),
+                "max_new_tokens": ("INT", {"default": 256, "min": 64, "max": 2048, "step": 64}),
+                "guidance_scale": ("FLOAT", {"default": 2.0, "min": 0.0, "max": 6.0, "step": 0.1}),
+                "temperature": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 2.0, "step": 0.1}),
+                "top_k": ("INT", {"default": 50, "min": 0, "max": 200, "step": 1}),
+                "top_p": ("FLOAT", {"default": 0.95, "min": 0.1, "max": 1.0, "step": 0.01}),
             },
             "optional": {
-                "melody_wav": ("AUDIO", ),
-                "models_root": ("STRING", {"default": os.path.expanduser("~/redmine-n8n/ai-model-cache/comfyui-models/music/musicgen")}),
-                "max_new_tokens": ("INT", {"default": 1024, "min": 64, "max": 4096, "step": 64}),
-                "guidance_scale": ("FLOAT", {"default": 3.0, "min": 0.0, "max": 10.0, "step": 0.1}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 2**31-1}),
+                # Provide either a Comfy AUDIO dict or leave empty for text-only
+                "melody": ("AUDIO",),
             }
         }
 
-    CATEGORY = "🎧 Audio • Generators"
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
-    FUNCTION = "generate"
+    FUNCTION = "run"
+    CATEGORY = "Audio • MusicGen"
 
-    def _load(self, models_root: str, model_variant: str):
-        local_dir = os.path.join(models_root, model_variant)
-        key = (local_dir, model_variant == "musicgen-melody", self.device)
-        if key in self.cache:
-            return self.cache[key]
-        if not os.path.isdir(local_dir):
-            raise FileNotFoundError(f"MusicGen weights not found at: {local_dir}")
+    def run(self, prompt: str, model_variant: str,
+            max_new_tokens: int, guidance_scale: float, temperature: float,
+            top_k: int, top_p: float, melody=None):
 
-        model = MusicgenForConditionalGeneration.from_pretrained(local_dir, torch_dtype=torch.float32)
-        processor = AutoProcessor.from_pretrained(local_dir)
-        model.to(self.device)
-        model.eval()
-        self.cache[key] = (model, processor)
-        return model, processor
+        device = "mps" if torch.backends.mps.is_available() else "cpu"
 
-    def generate(self, model_variant: str, prompt: str, duration_sec: int,
-                 melody_wav=None, models_root: str = None, max_new_tokens: int = 1024,
-                 guidance_scale: float = 3.0, seed: int = 0):
-        torch.manual_seed(seed if seed != 0 else torch.seed())
+        processor = AutoProcessor.from_pretrained(model_variant)
+        model = MusicgenForConditionalGeneration.from_pretrained(model_variant)
+        model = model.to(device)  # keep float32 on MPS
 
-        model, processor = self._load(models_root, model_variant)
+        # Build inputs with processor
+        kwargs = dict(text=[prompt], return_tensors="pt", padding=True)
+        mel = _audio_from_comfy(melody) if melody is not None else None
+        if mel is not None:
+            kwargs["audio"] = mel
+        inputs = processor(**kwargs).to(device)
 
-        # Prepare inputs
-        inputs = processor(
-            text=[prompt],
-            padding=True,
-            return_tensors="pt"
-        ).to(self.device)
+        # Ensure pad/eos tokens exist
+        if model.config.pad_token_id is None:
+            model.config.pad_token_id = processor.tokenizer.pad_token_id
+        if model.config.eos_token_id is None:
+            model.config.eos_token_id = processor.tokenizer.eos_token_id
 
-        # Optional melody conditioning (musicgen-melody)
-        if model_variant == "musicgen-melody" and melody_wav is not None:
-            wav = melody_wav["waveform"]
-            sr = melody_wav["sample_rate"]
-            # Processor will resample as needed when given "audio" kwarg
-            mel_inputs = processor(
-                audio=wav.squeeze(0).cpu().numpy(),
-                sampling_rate=int(sr),
-                return_tensors="pt"
-            ).to(self.device)
-            inputs.update(mel_inputs)
-
-        # Generation params
-        gen_kw = dict(
-            do_sample=True,
-            guidance_scale=guidance_scale,
-            max_new_tokens=max_new_tokens,
-        )
-        # duration control via pad/stride is handled inside model; max_new_tokens proportional to seconds
         with torch.inference_mode():
-            audio_tokens = model.generate(**inputs, **gen_kw)
+            out = model.generate(
+                **inputs,
+                do_sample=True,
+                guidance_scale=float(guidance_scale),
+                max_new_tokens=int(max_new_tokens),
+                temperature=float(temperature),
+                top_k=int(top_k),
+                top_p=float(top_p),
+            )
+            # out: (B, C, T)
+        audio = out[0].to("cpu")  # (C,T)
+        sr = getattr(getattr(model.config, "audio_encoder", None), "sampling_rate", 32000) or 32000
 
-        # Decode to waveform
-        sr = _sr_from_config(model)
-        audio = model.generate_audio(audio_tokens, do_sample=False)[0]  # [channels, samples]
-        if audio.dim() == 1:
-            audio = audio.unsqueeze(0)
-        return ({"waveform": audio.contiguous().cpu(), "sample_rate": int(sr)},)
+        # Comfy AUDIO dict expects (1, C, T)
+        return ({"waveform": audio.unsqueeze(0), "sample_rate": int(sr)},)
 
-NODE_CLASS_MAPPINGS = {"MusicGenHFNode": MusicGenHFNode}
-NODE_DISPLAY_NAME_MAPPINGS = {"MusicGenHFNode": "MusicGen (Transformers)"}
+NODE_CLASS_MAPPINGS = {
+    "MusicGen": MusicGen,
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "MusicGen": "MusicGen",
+}
