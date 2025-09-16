@@ -9,6 +9,7 @@ export type MusaiDiscoverModule =
   | 'research'
   | 'university'
   | 'tale'
+  | 'story'
   | 'eye'
   | 'medical'
   | 'therapy'
@@ -75,9 +76,11 @@ const normalizeModule = (value: string): MusaiDiscoverModule =>
     case 'school':
       return 'university';
     case 'tale':
-    case 'story':
     case 'narrative':
       return 'tale';
+    case 'story':
+    case 'storymode':
+      return 'story';
     case 'eye':
     case 'vision':
     case 'perceive':

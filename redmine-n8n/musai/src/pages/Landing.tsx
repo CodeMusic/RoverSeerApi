@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Sparkles, Brain, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart, Stethoscope, Music, Map } from "lucide-react";
+import { Send, Sparkles, Brain, MessageSquare, Theater, GraduationCap, Search, Bot, ChevronDown, Cpu, Code, Eye, Target, Heart, Stethoscope, Music, Map, LogIn } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useChatSessions } from "@/hooks/useChatSessions";
 import { MusaiLifeLogo } from "@/components/effects/MusaiEffects";
@@ -20,7 +20,7 @@ import { IconTileList } from "@/components/common/IconTileList";
 import type { IconTileItem } from "@/components/common/IconTileList";
 import { discoverMusaiModule, MusaiDiscoverModule } from "@/lib/discoveryApi";
 
-type DiscoverExperience = 'auto' | MusaiDiscoverModule;
+type DiscoverExperience = 'auto' | MusaiDiscoverModule | 'story';
 type FeaturedTile = { label: string; to: string; Icon: LucideIcon };
 
 const HERO_CONTENT: Record<DiscoverExperience, { title: string; tagline: string; placeholder: string; detail: string }> = {
@@ -59,6 +59,12 @@ const HERO_CONTENT: Record<DiscoverExperience, { title: string; tagline: string;
     tagline: "Story emergence and perspective thinking",
     placeholder: "Whisper the opening of a story...",
     detail: "Explore story emergence and perspective thinking. Weave narratives that balance logic and imagination with an AI co-author who feels the arc with you.",
+  },
+  story: {
+    title: "MusaiTale — Story",
+    tagline: "Forge a story from your idea",
+    placeholder: "Describe the story idea...",
+    detail: "Jump straight into Story mode. Provide an idea and open Storyforge for immediate iteration.",
   },
   eye: {
     title: "Eye of Musai",
@@ -105,6 +111,7 @@ const EXPERIENCE_ACCENT: Record<DiscoverExperience, string> = {
   research: "border-amber-500/30 focus:border-amber-500/50 focus:ring-amber-500/20",
   university: "border-green-500/30 focus:border-green-500/50 focus:ring-green-500/20",
   tale: "border-blue-500/30 focus:border-blue-500/50 focus:ring-blue-500/20",
+  story: "border-blue-500/30 focus:border-blue-500/50 focus:ring-blue-500/20",
   eye: "border-cyan-500/30 focus:border-cyan-500/50 focus:ring-cyan-500/20",
   medical: "border-emerald-500/30 focus:border-emerald-500/50 focus:ring-emerald-500/20",
   therapy: "border-pink-500/30 focus:border-pink-500/50 focus:ring-pink-500/20",
@@ -127,7 +134,19 @@ const Landing = () => {
   const siteMapRef = useRef<HTMLDivElement | null>(null);
   const [siteMapRevealed, setSiteMapRevealed] = useState(false);
   const featuredMiddleRef = useRef<FeaturedTile | null>(null);
+  // Input attention anchor for default focus on arrival
+  const attentionAnchorRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => () => { mountedRef.current = false; }, []);
+
+  // Direct focus toward the message input when idle so users can type immediately
+  useEffect(() =>
+  {
+    if (!isAnimating && !isDiscovering)
+    {
+      // Defer to end of paint to avoid fighting with animations
+      setTimeout(() => attentionAnchorRef.current?.focus(), 0);
+    }
+  }, [isAnimating, isDiscovering]);
 
   // Marketing/info links (used by carousel) – labels remain as-is
   type InfoLink = { label: string; icon: LucideIcon; to: string };
@@ -180,7 +199,8 @@ const Landing = () => {
     { to: ROUTES.CFM_INFO, label: 'Contextual Feedback Model (CFM)', Icon: Brain },
     { to: ROUTES.LOCAL_AI, label: 'Local AI Architecture', Icon: Cpu },
     { to: ROUTES.ROADMAP, label: 'Roadmap', Icon: Map },
-  ].filter((item): item is IconTileItem => supportingLinks.some(l => l.to === item.to));
+  ]
+  .filter((item) => supportingLinks.some(l => l.to === item.to)) as IconTileItem[];
 
   // Carousel: keep marketing labels but enforce canonical ordering
   const carouselExclusions = new Set<string>([
@@ -238,6 +258,7 @@ const Landing = () => {
       navigate(ROUTES.MAIN_APP, { 
         state: { 
           newSession: true,
+          sessionId,
           initialMessage: initialMessage 
         } 
       });
@@ -305,6 +326,13 @@ const Landing = () => {
         navigateAfterDelay(() => {
           navigate(RouteUtils.mainAppWithMode('narrative', trimmed), {
             state: { switchToTab: APP_TERMS.TAB_NARRATIVE, initialQuery: trimmed },
+          });
+        });
+        return;
+      case 'story':
+        navigateAfterDelay(() => {
+          navigate(RouteUtils.mainAppWithMode('narrative', trimmed), {
+            state: { switchToTab: APP_TERMS.TAB_NARRATIVE, initialQuery: trimmed, narrativeMode: 'story' },
           });
         });
         return;
@@ -418,10 +446,20 @@ const Landing = () => {
               <div className="absolute -inset-1.5 sm:-inset-2 bg-gradient-to-br from-purple-500 to-orange-500 rounded-full opacity-15 blur-[2px]" />
             </div>
           </div>
-          
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
-            {hero.title}
-          </h1>
+
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-600 to-orange-600 bg-clip-text text-transparent">
+              {hero.title}
+            </h1>
+            <button
+              type="button"
+              onClick={() => navigate(ROUTES.MAIN_APP)}
+              aria-label="Enter Musai"
+              className="group relative inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-full text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 transition-all duration-300"
+            >
+              <LogIn className="w-5 h-5 sm:w-5 sm:h-5 group-hover:scale-105 transition-transform duration-300" />
+            </button>
+          </div>
 
           <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             {hero.tagline}
@@ -448,6 +486,8 @@ const Landing = () => {
                 }
               }}
               disabled={isAnimating || isDiscovering}
+              autoFocus
+              ref={attentionAnchorRef}
               className={`flex-1 px-4 py-3 text-lg rounded-xl border-2 focus:ring-2 transition-all duration-300 ${inputAccentClass}`}
             />
             <Button

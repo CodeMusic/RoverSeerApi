@@ -71,11 +71,12 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   leftSidebarGetSessionName
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   const [isSearchSidebarVisible, setIsSearchSidebarVisible] = useState(false);
   const [sidebarAnimated, setSidebarAnimated] = useState(false);
   const [magicLevel, setMagicLevel] = useState(0);
+  const [searchSidebarLabel, setSearchSidebarLabel] = useState<'Search' | 'Research'>('Search');
   const { preferences } = useUserPreferences();
   const isMobile = useIsMobile();
   const rightContent = renderRightSidebar ? renderRightSidebar() : null;
@@ -119,7 +120,26 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     );
   })() as BaseSession[];
 
-  // Initialize left and right sidebars from persisted state; default expanded on desktop, collapsed on mobile
+  const resolvedSidebarTitle = leftSidebarTitle ?? (
+    UI_STRINGS.musai[currentTab]?.sidebarTitle ?? UI_STRINGS.defaults.sidebarTitle
+  );
+  const resolvedNewSessionText = leftSidebarNewSessionText ?? (
+    UI_STRINGS.musai[currentTab]?.newSessionText ?? UI_STRINGS.defaults.newSessionText
+  );
+  const collapsedLabelMap: Record<string, string> = {
+    [APP_TERMS.TAB_EYE]: 'Eye',
+    [APP_TERMS.TAB_CHAT]: 'Chat',
+    [APP_TERMS.TAB_SEARCH]: searchSidebarLabel,
+    [APP_TERMS.TAB_UNIVERSITY]: 'Course',
+    [APP_TERMS.TAB_THERAPY]: 'Therapy',
+    [APP_TERMS.TAB_MEDICAL]: 'Medical',
+    [APP_TERMS.TAB_CODE]: 'Code',
+    [APP_TERMS.TAB_TASK]: 'Studio',
+    studio: 'Studio',
+  };
+  const effectiveCollapsedTitle = collapsedLabelMap[currentTab] || resolvedSidebarTitle;
+
+  // Initialize left and right sidebars from persisted state; default collapsed everywhere
   useEffect(() => {
     try
     {
@@ -129,7 +149,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       const storedLeft = localStorage.getItem(leftKey);
       const storedRight = localStorage.getItem(rightKey);
 
-      const defaultLeftCollapsed = isMobile ? true : false;
+      const defaultLeftCollapsed = true;
       const defaultRightCollapsed = false;
 
       const nextLeftCollapsed = storedLeft != null ? storedLeft === 'true' : defaultLeftCollapsed;
@@ -138,22 +158,12 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       setIsSidebarCollapsed(nextLeftCollapsed);
       setIsRightSidebarCollapsed(nextRightCollapsed);
 
-      // On mobile, avoid auto-opening overlay; only open when the user explicitly expands
-      if (isMobile)
-      {
-        setIsSidebarOpen(false);
-      }
-      else
-      {
-        // On desktop, if not collapsed, ensure visible; if collapsed, hidden
-        setIsSidebarOpen(!nextLeftCollapsed);
-      }
+      setIsSidebarOpen(!nextLeftCollapsed && !isMobile);
     }
     catch
     {
-      // Fail safe: default desktop expanded, mobile collapsed
-      setIsSidebarCollapsed(isMobile);
-      setIsSidebarOpen(!isMobile);
+      setIsSidebarCollapsed(true);
+      setIsSidebarOpen(false);
     }
   }, [currentTab, isMobile]);
 
@@ -176,6 +186,23 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     const id = requestAnimationFrame(() => setSidebarAnimated(true));
     return () => cancelAnimationFrame(id);
   }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    const handler = (event: Event) =>
+    {
+      const detail = (event as CustomEvent<{ mode?: string }>).detail;
+      if (detail && detail.mode === 'research')
+      {
+        setSearchSidebarLabel('Research');
+      }
+      else
+      {
+        setSearchSidebarLabel('Search');
+      }
+    };
+    window.addEventListener('musai-search-mode-change', handler as EventListener);
+    return () => window.removeEventListener('musai-search-mode-change', handler as EventListener);
+  }, []);
 
   // Removed PreMusai visibility gating so the hamburger remains available when the sidebar is collapsed
 
@@ -313,12 +340,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                   sessions={sidebarSessions}
                   currentSessionId={currentSessionId}
                   isSidebarOpen={isMobile ? isSidebarOpen : true}
-                  title={leftSidebarTitle ?? (
-                    UI_STRINGS.musai[currentTab]?.sidebarTitle ?? UI_STRINGS.defaults.sidebarTitle
-                  )}
-                  newSessionText={leftSidebarNewSessionText ?? (
-                    UI_STRINGS.musai[currentTab]?.newSessionText ?? UI_STRINGS.defaults.newSessionText
-                  )}
+                  title={resolvedSidebarTitle}
+                  newSessionText={resolvedNewSessionText}
                   getSessionIcon={leftSidebarGetSessionIcon ?? ((session) => (
                     (session as any).code ? <Code className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />
                   ))}
@@ -355,8 +378,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           ) && (
             <div
               className={cn(
-                "w-12 border-l border-border bg-background flex flex-col relative",
-                // Visually extend the white strip under the top app bar without affecting layout
+                "w-32 border-l border-border bg-background flex flex-col items-start py-4 relative",
                 hideTopAppBar ? undefined : "-mt-16 pt-16"
               )}
             >
@@ -367,14 +389,17 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                     window.dispatchEvent(evt);
                   } else {
                     setIsSidebarCollapsed(false);
-                    setIsSidebarOpen(isMobile ? true : true);
+                    setIsSidebarOpen(true);
                     try { localStorage.setItem(leftCollapseStorageKey(currentTab, isMobile), 'false'); } catch {}
                   }
                 }}
-                className="p-3 hover:bg-accent hover:text-accent-foreground transition-colors text-muted-foreground"
-                title="Expand Sidebar"
+                className="mx-3 w-full px-3 py-2 flex items-center gap-2 rounded-xl border border-primary/40 text-primary/80 hover:text-primary hover:bg-primary/10 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                title={`Show ${effectiveCollapsedTitle}`}
               >
                 <Menu className="h-4 w-4" />
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                  {effectiveCollapsedTitle}
+                </span>
               </button>
             </div>
           )}

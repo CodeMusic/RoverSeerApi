@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { MusaiDiscoverModule } from '@/lib/discoveryApi';
 
 interface MusaiMoodContextType {
   currentMood: string;
@@ -102,6 +103,7 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   const [isRainbowActive, setIsRainbowActive] = useState(false);
   const [isPartyActive, setIsPartyActive] = useState(false);
   const [isCareerMusaiActive, setIsCareerMusaiActive] = useState(false);
+  const [isStatusBarForced, setIsStatusBarForced] = useState(false);
 
   const accentColor = musicalMoodColors[currentMood as keyof typeof musicalMoodColors] || musicalMoodColors.default;
 
@@ -250,7 +252,8 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
 • zen - Enter zen mode
 • test-emotion - Test AI emotion effects
 • careermusai - Toggle hidden career development tool
-• colors - Show all available mood colors` };
+• colors - Show all available mood colors
+• stats - Toggle live status banner` };
       
       case 'status':
         return { message: `Musai Status:
@@ -282,11 +285,19 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       case 'party':
         toggleParty();
         return { message: isPartyActive ? 'Party mode deactivated.' : '🎉 Party mode activated! Musai is now energetic!' };
-      
+
       case 'zen':
         setMood('zen');
         return { message: '🧘 Zen mode activated. Musai is now serene and focused.' };
-      
+
+      case 'stats':
+      {
+        const next = !isStatusBarForced;
+        setIsStatusBarForced(next);
+        window.dispatchEvent(new CustomEvent('musai-status-override', { detail: { active: next } }));
+        return { message: next ? 'Status banner activated.' : 'Status banner hidden.' };
+      }
+
       case 'test-emotion':
         return { message: 'Testing emotion effects... Try saying: "🎉 Congratulations! This is amazing!" or "🔮 This is mysterious and intriguing..." or "🎨 This is so creative and artistic!"' };
       
@@ -377,6 +388,7 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
         // ignore storage errors
       }
       window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module, query } }));
+      await navigateForModule(module, query);
     }
     catch
     {
@@ -386,6 +398,47 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       }
       catch {}
       window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module: 'chat', query } }));
+      await navigateForModule('chat', query);
+    }
+  }
+
+  async function navigateForModule(module: MusaiDiscoverModule | string, query: string)
+  {
+    const { RouteUtils, ROUTES } = await import('@/config/routes');
+    const target = (() =>
+    {
+      switch (module)
+      {
+        case 'research':
+          return RouteUtils.mainAppWithMode('search', query);
+        case 'tale':
+          return RouteUtils.mainAppWithMode('narrative', query);
+        case 'search':
+        case 'chat':
+        case 'university':
+        case 'eye':
+        case 'medical':
+        case 'therapy':
+        case 'career':
+        case 'code':
+          return RouteUtils.mainAppWithMode(module, query);
+        case 'agile':
+          return ROUTES.TASK_MUSAI_CONSOLE;
+        default:
+          return RouteUtils.mainAppWithMode('chat', query);
+      }
+    })();
+    if (target)
+    {
+      if (target.startsWith('http'))
+      {
+        window.location.assign(target);
+      }
+      else
+      {
+        window.history.pushState({}, '', target);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }
     }
   }
 

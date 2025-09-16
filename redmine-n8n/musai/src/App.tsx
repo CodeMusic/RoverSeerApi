@@ -75,7 +75,7 @@ import EyeGenerate from "@/pages/eye/EyeGenerate";
 // Routes
 import { ROUTES, RouteUtils } from "@/config/routes";
 import { SystemStatusBar } from "@/components/common/SystemStatusBar";
-import { DEBUG_FLAGS, APP_TERMS } from "@/config/constants";
+import { APP_TERMS } from "@/config/constants";
 import type { MusaiDiscoverModule } from '@/lib/discoveryApi';
 
 function App() {
@@ -352,7 +352,7 @@ function DevConsoleHotkey()
         return;
       }
       // Only trigger on Shift+Backquote (tilde on US keyboards)
-      if (e.code === 'Backquote' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey)
+      if (e.code === 'Backquote' && !e.ctrlKey && !e.metaKey && !e.altKey)
       {
         e.preventDefault();
         toggleDevConsole();
@@ -368,17 +368,18 @@ function DevConsoleHotkey()
 // A config flag can force it to show everywhere when needed.
 function StatusBarGate()
 {
-  const [hasSidebar, setHasSidebar] = React.useState(false);
   const [riddleActive, setRiddleActive] = React.useState(false);
+  const [overrideActive, setOverrideActive] = React.useState(false);
+
   React.useEffect(() =>
   {
     const handler = (e: Event) =>
     {
-      const detail = (e as CustomEvent).detail as { hasSidebar?: boolean } | undefined;
-      setHasSidebar(Boolean(detail?.hasSidebar));
+      const detail = (e as CustomEvent).detail as { active?: boolean } | undefined;
+      setOverrideActive(Boolean(detail?.active));
     };
-    window.addEventListener('musai-sidebar-presence', handler as EventListener);
-    return () => window.removeEventListener('musai-sidebar-presence', handler as EventListener);
+    window.addEventListener('musai-status-override', handler as EventListener);
+    return () => window.removeEventListener('musai-status-override', handler as EventListener);
   }, []);
 
   React.useEffect(() =>
@@ -392,16 +393,7 @@ function StatusBarGate()
     return () => window.removeEventListener('musai-riddle-presence', handler as EventListener);
   }, []);
 
-  // Always show inside the unified app shell; marketing/info pages are gated by flag
-  const location = useLocation();
-  const isMainApp = RouteUtils.isMainApp(location.pathname);
-  const showOutside = String(DEBUG_FLAGS.showStatusBarOutsideApp) === 'true';
-  // Hide on the RiddleGate page regardless of other heuristics
-  if (riddleActive)
-  {
-    return null;
-  }
-  if (!isMainApp && !hasSidebar && !showOutside)
+  if (riddleActive || !overrideActive)
   {
     return null;
   }

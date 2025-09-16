@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Terminal, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +24,7 @@ export function MusaiDevConsole() {
   const [currentCommand, setCurrentCommand] = useState('');
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isForwarding, setIsForwarding] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
@@ -32,6 +33,10 @@ export function MusaiDevConsole() {
   useEffect(() => {
     if (isDevConsoleOpen && inputRef.current) {
       inputRef.current.focus();
+    }
+    if (!isDevConsoleOpen)
+    {
+      setIsForwarding(false);
     }
   }, [isDevConsoleOpen]);
 
@@ -119,6 +124,7 @@ export function MusaiDevConsole() {
     scrollToBottom();
 
     if (result.code === 'forward') {
+      setIsForwarding(true);
       setTimeout(() => {
         toggleDevConsole();
       }, 350);
@@ -233,6 +239,18 @@ export function MusaiDevConsole() {
                 ))}
               </div>
             </ScrollArea>
+
+            {isForwarding && (
+              <div className="absolute inset-x-0 bottom-16 px-6">
+                <div className="relative rounded-lg border border-primary/40 bg-primary/10 text-primary-foreground px-4 py-3 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-[shimmer_1.5s_linear_infinite] opacity-70" />
+                  <div className="relative flex items-center gap-3 text-sm font-medium">
+                    <div className="w-3 h-3 rounded-full bg-primary-foreground/80 animate-ping" />
+                    <span>Musai is aligning with your intent…</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-4 border-t" style={{ borderColor: accentColor }}>

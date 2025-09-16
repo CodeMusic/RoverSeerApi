@@ -37,7 +37,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
   const [clientIpHash, setClientIpHash] = useState<string | null>(getStoredClientIpHash());
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const isMobile = useIsMobile();
   const { preference } = useTheme();
 
@@ -45,6 +45,10 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
   const [mode, setMode] = useState<SearchMode>(initialMode ?? 'standard');
   const hasAppliedInitialMode = useRef(false);
   const [sources, setSources] = useState<SearchSource[]>(['web']);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('musai-search-mode-change', { detail: { mode } }));
+  }, [mode]);
 
   useEffect(() => {
     if (!initialMode || hasAppliedInitialMode.current)

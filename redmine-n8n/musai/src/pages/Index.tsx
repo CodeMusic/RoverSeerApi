@@ -17,6 +17,8 @@ import { prepareFileData } from '@/utils/fileOperations';
 import { eyeApi } from '@/lib/eyeApi';
 import { medicalApi } from '@/lib/medicalApi';
 import { PreMusaiPageType } from "@/components/common/PreMusaiPage";
+import { Button } from "@/components/ui/button";
+import { cn } from '@/lib/utils';
 import NarrativePanel from "@/components/narrative/NarrativePanel";
 import TherapyPanel from "@/components/therapy/TherapyPanel";
 import { NarrativeSidebar, ConceptSeedingPanel, CharacterCreationPanel, ArcGenerationPanel, SceneRunner } from "@/components/narrative";
@@ -36,6 +38,10 @@ const Index = () => {
   const hasSentInitialMessage = useRef(false);
   const initialMessageKey = useRef<string | null>(null);
   const discoverPayloadRef = useRef<{ module: MusaiDiscoverModule | string; query: string } | null>(null);
+  // Narrative state must be declared before any effects that reference it
+  const [narrativeMode, setNarrativeMode] = useState<'tale' | 'story'>('tale');
+  const [storyIdea, setStoryIdea] = useState<string | null>(null);
+  const [storyInput, setStoryInput] = useState('');
   useEffect(() => {
     try
     {
@@ -45,7 +51,17 @@ const Index = () => {
         const parsed = JSON.parse(raw) as { module?: string; query?: string } | null;
         if (parsed && typeof parsed?.query === 'string')
         {
-          discoverPayloadRef.current = { module: parsed.module ?? 'chat', query: parsed.query };
+          const module = parsed.module ?? 'chat';
+          discoverPayloadRef.current = { module, query: parsed.query };
+          if (module === 'tale')
+          {
+            setNarrativeMode('tale');
+          }
+          if (module === 'story')
+          {
+            setNarrativeMode('story');
+            setStoryIdea(parsed.query);
+          }
         }
         sessionStorage.removeItem('musai-discover-payload');
       }
@@ -55,6 +71,39 @@ const Index = () => {
       discoverPayloadRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) =>
+    {
+      const detail = (event as CustomEvent<{ module?: MusaiDiscoverModule | string; query: string }>).detail;
+      if (!detail || !detail.query)
+      {
+        return;
+      }
+      const module = detail.module ?? 'chat';
+      discoverPayloadRef.current = { module, query: detail.query };
+      hasSentInitialMessage.current = false;
+      initialMessageKey.current = null;
+      if (module === 'tale')
+      {
+        setNarrativeMode('tale');
+      }
+      if (module === 'story')
+      {
+        setNarrativeMode('story');
+        setStoryIdea(detail.query);
+      }
+    };
+    window.addEventListener('musai-discover-request', handler as EventListener);
+    return () => window.removeEventListener('musai-discover-request', handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (storyIdea)
+    {
+      setStoryInput(storyIdea);
+    }
+  }, [storyIdea]);
   
   // Navigation and layout state
   const navigate = useNavigate();
@@ -523,7 +572,7 @@ const Index = () => {
     if (currentTab === APP_TERMS.TAB_SEARCH) {
       return <></>;
     }
-    if (currentTab !== APP_TERMS.TAB_NARRATIVE) {
+    if (currentTab !== APP_TERMS.TAB_NARRATIVE || narrativeMode === 'story') {
       return null;
     }
     const hasNarrative = Boolean(getCurrentNarrativeSession());
@@ -626,13 +675,31 @@ const Index = () => {
       
       // If there's an initial message and we haven't sent it yet, send it automatically
       if (location.state?.initialMessage && !hasSentInitialMessage.current) {
-        const initialMessage = location.state.initialMessage;
+        const initialMessage = location.state.initialMessage as string;
+        const sessionIdFromLanding = (location.state as any)?.sessionId as string | undefined;
+        // Prefer the explicitly passed session id, if present
+        if (sessionIdFromLanding) {
+          setCurrentSessionId(sessionIdFromLanding);
+        }
+        // Ensure the chat UI renders instead of PreMusai while we send
+        setForceChatUI(true);
         hasSentInitialMessage.current = true;
-        initialMessageKey.current = `${currentSessionId}-${initialMessage}`;
-        // Use a longer delay to ensure the session is properly set and we can get its messages
-        setTimeout(() => {
-          sendInitialMessage(initialMessage);
-        }, 200);
+        initialMessageKey.current = `${sessionIdFromLanding || currentSessionId}-${initialMessage}`;
+        // Wait for the session to be visible in state, then send
+        const attemptSend = async () => {
+          const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
+          for (let i = 0; i < 20; i++) {
+            const s = getCurrentSessionForTab();
+            if (s && (!sessionIdFromLanding || s.id === sessionIdFromLanding)) {
+              sendMessage(initialMessage);
+              return;
+            }
+            await wait(50);
+          }
+          // Fallback: attempt send anyway
+          sendMessage(initialMessage);
+        };
+        attemptSend();
       }
     } else if (location.state?.viewPastChats) {
       // User wants to view past chats
@@ -670,6 +737,18 @@ const Index = () => {
 
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
     {
+      // Allow landing to force story mode explicitly
+      if (stateAny?.narrativeMode === 'story')
+      {
+        setNarrativeMode('story');
+        setStoryIdea(initialMessage);
+        return;
+      }
+      if (narrativeMode === 'story')
+      {
+        setStoryIdea(initialMessage);
+        return;
+      }
       // New flow: Seed → Framework; do NOT create yet
       setIsCreatingNarrative(true);
       createNewNarrative();
@@ -1126,6 +1205,67 @@ const Index = () => {
     // Narrative workspace main content
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
     {
+      const toggle = (
+        <div className="mb-4 flex items-center gap-2">
+          {(['tale', 'story'] as const).map(option => (
+            <button
+              key={option}
+              onClick={() => setNarrativeMode(option)}
+              className={cn(
+                "px-3 py-1 rounded-full text-xs font-semibold transition-colors",
+                narrativeMode === option
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {option === 'tale' ? 'Tale' : 'Story'}
+            </button>
+          ))}
+        </div>
+      );
+
+      if (narrativeMode === 'story')
+      {
+        const idea = storyIdea?.trim();
+        const storyUrl = idea
+          ? `https://story.codemusic.ca/Storyforge/?idea=${encodeURIComponent(idea)}`
+          : 'https://story.codemusic.ca';
+        return (
+          <div className="h-full flex flex-col p-4 gap-4">
+            {toggle}
+            <form
+              className="flex items-center gap-2"
+              onSubmit={(e) =>
+              {
+                e.preventDefault();
+                const cleaned = storyInput.trim();
+                if (cleaned)
+                {
+                  setStoryIdea(cleaned);
+                }
+              }}
+            >
+              <input
+                value={storyInput}
+                onChange={e => setStoryInput(e.target.value)}
+                className="flex-1 px-3 py-2 rounded border bg-background"
+                placeholder="Describe the story idea..."
+              />
+              <Button type="submit" variant="secondary">Forge</Button>
+            </form>
+            <div className="flex-1 border rounded-lg overflow-hidden shadow-sm bg-background">
+              <iframe
+                key={storyUrl}
+                src={storyUrl}
+                title="Musai Storyforge"
+                className="w-full h-full"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        );
+      }
+
       const ns = getCurrentNarrativeSession();
       if (!ns)
       {
@@ -1133,7 +1273,9 @@ const Index = () => {
         // On submit: immediately open the editor by creating a local session and show a spinner
         // while we call n8n in the background to fetch the official summary/title/id.
         return (
-          <div className="relative">
+          <div className="h-full flex flex-col p-4">
+            {toggle}
+            <div className="relative flex-1">
             <PreMusaiPage
               type="narrative"
               onSubmit={async (seed: string) => {
@@ -1196,13 +1338,16 @@ const Index = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
         );
       }
       const update = (data: any) => updateNarrative(ns.id, data);
       const go = (step: typeof narrativeStep) => setNarrativeStep(step);
       const withOverlay = (content: React.ReactNode) => (
-        <div className="relative">
+        <div className="h-full flex flex-col p-4">
+          {toggle}
+          <div className="relative flex-1">
           {content}
           {isCreatingNarrative && (
             <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20" aria-live="polite" aria-busy="true">
@@ -1210,6 +1355,7 @@ const Index = () => {
               <span className="ml-3 text-sm text-muted-foreground">Musai is composing…</span>
             </div>
           )}
+          </div>
         </div>
       );
 
@@ -1255,7 +1401,9 @@ const Index = () => {
     }
 
     // Show chat pane for sessions with messages (Chat, Career, Task, Therapy)
-    if ('messages' in currentSession) {
+    const activeTyping = currentTab === APP_TERMS.TAB_THERAPY ? therapyIsTyping : isTyping;
+
+    if (currentSession && typeof currentSession === 'object' && 'messages' in currentSession) {
       // Map tab to module for theming/behavior
       const tabToModule: Record<string, 'therapy' | 'chat' | 'code' | 'university' | 'career' | 'search' | 'narrative' | 'task' | 'eye'> = {
         [APP_TERMS.TAB_THERAPY]: 'therapy',
@@ -1276,7 +1424,7 @@ const Index = () => {
           roleConfig={{ user: 'You', assistant: 'Musai' }}
           messageList={currentSession.messages}
           onMessageSend={async (text, file) => { await sendMessage(text, file); }}
-          isTyping={isTyping}
+          isTyping={activeTyping}
           isLoading={isLoading}
         />
       );
@@ -1303,7 +1451,7 @@ const Index = () => {
           roleConfig={{ user: 'You', assistant: 'Musai' }}
           messageList={[]}
           onMessageSend={async (text, file) => { await sendMessage(text, file); }}
-          isTyping={isTyping}
+          isTyping={activeTyping}
           isLoading={isLoading}
         />
       );

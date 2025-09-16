@@ -47,16 +47,38 @@ export const StudioGenerators: React.FC<StudioGeneratorsProps> = ({ onAddGenerat
 
   const handleTts = async () =>
   {
+    const text = ttsText.trim();
+    if (!text)
+    {
+      return;
+    }
     setIsBusy(true);
     try
     {
-      const blob = await n8nApi.ttsPiper(ttsText, 'en_US-lessac', 1.0);
-      if (!blob) return;
+      const response = await fetch('http://musai-api:9000/tts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+      if (!response.ok)
+      {
+        throw new Error(`TTS request failed with status ${response.status}`);
+      }
+      const blob = await response.blob();
       const buffer = await audioEngine.decodeBlobToBuffer(blob);
-      const meta: AudioClip = { id: uuidv4(), name: `voice: ${ttsText.slice(0, 18)}`, durationSec: buffer.duration, color: '#f59e0b', sourceType: 'tts' };
+      const meta: AudioClip = { id: uuidv4(), name: `voice: ${text.slice(0, 18)}`, durationSec: buffer.duration, color: '#f59e0b', sourceType: 'tts' };
       onAddGeneratedClip(meta, buffer);
     }
-    finally { setIsBusy(false); }
+    catch (error)
+    {
+      console.warn('Piper TTS failed', error);
+    }
+    finally
+    {
+      setIsBusy(false);
+    }
   };
 
   return (
@@ -82,5 +104,4 @@ export const StudioGenerators: React.FC<StudioGeneratorsProps> = ({ onAddGenerat
 };
 
 export default StudioGenerators;
-
 
