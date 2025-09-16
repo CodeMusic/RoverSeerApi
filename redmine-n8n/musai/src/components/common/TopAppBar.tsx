@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Map } from 'lucide-react';
@@ -14,12 +14,19 @@ export function TopAppBar()
 {
   const { alerts, dismissAlert, markAsRead, toggleAlerts, isAlertsOpen, closeAlerts } = useMusaiAlerts() as any;
   const [isRoadmapOpen, setIsRoadmapOpen] = useState<boolean>(false);
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() =>
+  {
+    const id = requestAnimationFrame(() => setIsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const { preferences } = useUserPreferences();
   const navigate = useNavigate();
 
   return (
     <div className={cn(
-      'fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60'
+      'fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 magic-reactive magic-topbar',
+      isReady && 'magical-topbar-enter'
     )}>
       <div className="px-3 h-16 flex items-center justify-between">
         {/* Left: (empty for now) */}
@@ -89,5 +96,4 @@ export function TopAppBar()
 }
 
 export default TopAppBar;
-
 

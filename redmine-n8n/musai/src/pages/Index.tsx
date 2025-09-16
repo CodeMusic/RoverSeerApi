@@ -28,12 +28,33 @@ import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
 import EyeWorkbenchPanel, { EyeWorkbenchSeed } from '@/components/eye/EyeWorkbenchPanel';
+import type { MusaiDiscoverModule } from '@/lib/discoveryApi';
 
 const Index = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const hasSentInitialMessage = useRef(false);
   const initialMessageKey = useRef<string | null>(null);
+  const discoverPayloadRef = useRef<{ module: MusaiDiscoverModule | string; query: string } | null>(null);
+  useEffect(() => {
+    try
+    {
+      const raw = sessionStorage.getItem('musai-discover-payload');
+      if (raw)
+      {
+        const parsed = JSON.parse(raw) as { module?: string; query?: string } | null;
+        if (parsed && typeof parsed?.query === 'string')
+        {
+          discoverPayloadRef.current = { module: parsed.module ?? 'chat', query: parsed.query };
+        }
+        sessionStorage.removeItem('musai-discover-payload');
+      }
+    }
+    catch
+    {
+      discoverPayloadRef.current = null;
+    }
+  }, []);
   
   // Navigation and layout state
   const navigate = useNavigate();
@@ -624,8 +645,9 @@ const Index = () => {
   useEffect(() => {
     const stateAny = location.state as any;
     const queryParam = searchParams.get('q');
+    const storedDiscover = discoverPayloadRef.current;
     const stateQuery = stateAny?.initialQuery;
-    const initialMessage = (stateQuery || queryParam || '').trim();
+    const initialMessage = (stateQuery || queryParam || storedDiscover?.query || '').trim();
 
     if (!initialMessage || hasSentInitialMessage.current) {
       return;
@@ -640,6 +662,10 @@ const Index = () => {
     }
 
     hasSentInitialMessage.current = true;
+    if (!stateQuery && !queryParam && storedDiscover)
+    {
+      discoverPayloadRef.current = null;
+    }
     initialMessageKey.current = `${currentTab}-${initialMessage}`;
 
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
@@ -951,11 +977,17 @@ const Index = () => {
     // Dedicated curated search UI (non-chat)
     if (currentTab === APP_TERMS.TAB_SEARCH) {
       const stateAny = location.state as any;
-      const initialQuery = (stateAny?.initialQuery || searchParams.get('q') || '').trim();
+      const fallbackDiscover = discoverPayloadRef.current;
+      const initialQuery = (stateAny?.initialQuery || searchParams.get('q') || fallbackDiscover?.query || '').trim();
+      if (!stateAny?.initialQuery && !searchParams.get('q') && fallbackDiscover)
+      {
+        discoverPayloadRef.current = null;
+      }
       return (
         <SearchLayout 
           onClose={() => handleTabChange(APP_TERMS.TAB_CHAT)} 
           initialQuery={initialQuery || undefined}
+          initialMode={stateAny?.searchMode === 'research' ? 'research' : (fallbackDiscover?.module === 'research' ? 'research' : undefined)}
         />
       );
     }

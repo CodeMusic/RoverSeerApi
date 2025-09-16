@@ -251,5 +251,5 @@ export const ACCESS_GATES = {
   riddleGateMode:
     ((typeof window !== 'undefined' && (window as any).env?.VITE_RIDDLE_GATE_MODE)
       ?? import.meta.env.VITE_RIDDLE_GATE_MODE
-      ?? 'preview') as 'on' | 'off' | 'preview',
+      ?? 'off') as 'on' | 'off' | 'preview',
 } as const;

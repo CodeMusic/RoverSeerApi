@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { MusaiMoodProvider, useMusaiMood } from "@/contexts/MusaiMoodContext";
@@ -75,7 +75,8 @@ import EyeGenerate from "@/pages/eye/EyeGenerate";
 // Routes
 import { ROUTES, RouteUtils } from "@/config/routes";
 import { SystemStatusBar } from "@/components/common/SystemStatusBar";
-import { DEBUG_FLAGS } from "@/config/constants";
+import { DEBUG_FLAGS, APP_TERMS } from "@/config/constants";
+import type { MusaiDiscoverModule } from '@/lib/discoveryApi';
 
 function App() {
   return (
@@ -89,6 +90,7 @@ function App() {
               <Router>
                 <SmartRouter>
                   <BootMetrics />
+                  <DevConsoleRoutingBridge />
                   <DevConsoleHotkey />
                   <AttentionalScrollReset />
                   <ErrorBoundary>
@@ -154,6 +156,79 @@ function App() {
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function DevConsoleRoutingBridge()
+{
+  const navigate = useNavigate();
+
+  useEffect(() =>
+  {
+    const handle = (event: Event) =>
+    {
+      const detail = (event as CustomEvent<{ module?: MusaiDiscoverModule | string; query: string }>).detail;
+      if (!detail || !detail.query)
+      {
+        return;
+      }
+      const module = (detail.module ?? 'chat') as MusaiDiscoverModule | string;
+      const query = detail.query.trim();
+      if (!query)
+      {
+        return;
+      }
+
+      const navigateMain = (mode: string, tab: string, extraState: Record<string, unknown> = {}) =>
+      {
+        navigate(RouteUtils.mainAppWithMode(mode, query), {
+          state: { switchToTab: tab, initialQuery: query, ...extraState }
+        });
+      };
+
+      switch (module)
+      {
+        case 'research':
+          navigateMain('search', APP_TERMS.TAB_SEARCH, { searchMode: 'research' });
+          break;
+        case 'search':
+          navigateMain('search', APP_TERMS.TAB_SEARCH);
+          break;
+        case 'university':
+          navigateMain('university', APP_TERMS.TAB_UNIVERSITY);
+          break;
+        case 'tale':
+          navigateMain('narrative', APP_TERMS.TAB_NARRATIVE);
+          break;
+        case 'eye':
+          navigateMain('eye', APP_TERMS.TAB_EYE);
+          break;
+        case 'medical':
+          navigateMain('medical', APP_TERMS.TAB_MEDICAL);
+          break;
+        case 'therapy':
+          navigateMain('therapy', APP_TERMS.TAB_THERAPY);
+          break;
+        case 'agile':
+          navigate(ROUTES.TASK_MUSAI_CONSOLE, { state: { initialRequest: query } });
+          break;
+        case 'code':
+          navigateMain('code', APP_TERMS.TAB_CODE);
+          break;
+        case 'career':
+          navigateMain('career', APP_TERMS.TAB_CAREER);
+          break;
+        case 'chat':
+        default:
+          navigateMain('chat', APP_TERMS.TAB_CHAT);
+          break;
+      }
+    };
+
+    window.addEventListener('musai-discover-request', handle as EventListener);
+    return () => window.removeEventListener('musai-discover-request', handle as EventListener);
+  }, [navigate]);
+
+  return null;
 }
 
 function RouteAwareToaster() {

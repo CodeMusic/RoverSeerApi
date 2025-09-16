@@ -12,6 +12,8 @@ import { APP_TERMS } from '@/config/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UI_STRINGS } from '@/config/uiStrings';
 import { getStoredClientIpHash } from '@/utils/ip';
+import { attentionalRequestQueue } from '@/lib/AttentionalRequestQueue';
+import type { QueueMetrics } from '@/lib/AttentionalRequestQueue';
 
 interface BaseLayoutProps {
   // Layout structure
@@ -72,6 +74,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
   const [isSearchSidebarVisible, setIsSearchSidebarVisible] = useState(false);
+  const [sidebarAnimated, setSidebarAnimated] = useState(false);
+  const [magicLevel, setMagicLevel] = useState(0);
   const { preferences } = useUserPreferences();
   const isMobile = useIsMobile();
   const rightContent = renderRightSidebar ? renderRightSidebar() : null;
@@ -163,6 +167,16 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     return () => window.removeEventListener('musai-search-visibility-change', handler as EventListener);
   }, []);
 
+  useEffect(() => {
+    if (isSidebarCollapsed)
+    {
+      setSidebarAnimated(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setSidebarAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, [isSidebarCollapsed]);
+
   // Removed PreMusai visibility gating so the hamburger remains available when the sidebar is collapsed
 
   // Global events to control the left sidebar (used by CodeMusai and others)
@@ -191,6 +205,53 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       window.removeEventListener('musai-left-sidebar-collapse', collapse);
       window.removeEventListener('musai-left-sidebar-expand', expand);
       window.removeEventListener('musai-left-sidebar-toggle', toggle);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleMetrics = (event: Event) =>
+    {
+      const detail = (event as CustomEvent<QueueMetrics>).detail;
+      if (!detail)
+      {
+        setMagicLevel(0);
+        return;
+      }
+      const activeCount = detail.activeCount ?? 0;
+      const maxConcurrent = detail.maxConcurrent ?? 1;
+      const ratio = maxConcurrent > 0 ? Math.min(1, activeCount / maxConcurrent) : (activeCount > 0 ? 1 : 0);
+      setMagicLevel(ratio);
+    };
+
+    attentionalRequestQueue.addEventListener('metrics', handleMetrics as EventListener);
+    return () => attentionalRequestQueue.removeEventListener('metrics', handleMetrics as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined')
+    {
+      return;
+    }
+    const baseAmount = 0.12;
+    const dynamicAmount = baseAmount + magicLevel * 0.25;
+    const clamped = Math.min(0.45, Math.max(0.08, dynamicAmount));
+    document.documentElement.style.setProperty('--musai-magic-amount', clamped.toFixed(3));
+    document.body.dataset.magicActive = clamped > baseAmount ? '1' : '0';
+  }, [magicLevel]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined')
+    {
+      return;
+    }
+    if (!document.body.dataset.magicActive)
+    {
+      document.body.dataset.magicActive = '0';
+    }
+    return () =>
+    {
+      document.documentElement.style.setProperty('--musai-magic-amount', '0.12');
+      document.body.dataset.magicActive = '0';
     };
   }, []);
 
@@ -239,10 +300,11 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           {/* Left Sidebar (disabled for Search; Search manages its own sidebar) */}
           {currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed && (
             <div className={cn(
-              "w-96 border-r border-border bg-background h-full",
-              "transition-all duration-300 ease-in-out",
+              "w-96 border-r border-border bg-background h-full transition-all duration-300 ease-in-out relative",
+              "magic-reactive magical-sidebar",
+              sidebarAnimated && "magical-sidebar-enter",
               // On mobile, render as overlay to avoid affecting layout width
-              isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg w-[85vw] max-w-[85vw] overflow-y-auto" : undefined,
+              isMobile ? "absolute top-0 left-0 h-full z-20 shadow-lg w-[85vw] max-w-[85vw] overflow-y-auto" : "relative",
               // Slide it offscreen when closed on mobile; fixed/absolute avoids layout shift
               isMobile && !isSidebarOpen ? "-translate-x-full" : undefined
             )}>

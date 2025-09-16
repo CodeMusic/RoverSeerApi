@@ -138,6 +138,7 @@
     --musai-accent: #8b5cf6;
     --musai-accent-rgb: 139, 92, 246;
     --transition-duration: 0.5s;
+    --musai-magic-amount: 0.12;
   }
 
   .dark {
@@ -627,6 +628,11 @@ textarea, input, button {
   --glow-spread: 20px;
 }
 
+body[data-magic-active='1'] .mystical-glow {
+  animation-duration: 1.4s;
+  box-shadow: 0 0 calc(var(--glow-spread, 20px) * 1.15) rgba(var(--musai-accent-rgb, 139, 92, 246), 0.38);
+}
+
 .mystical-pulse {
   animation: mysticalPulse 1.5s ease-in-out infinite;
   transition: all var(--transition-duration, 0.5s) ease-in-out;
@@ -645,6 +651,151 @@ textarea, input, button {
 .mystical-dots {
   animation: mysticalDots 1.4s ease-in-out infinite;
   transition: all var(--transition-duration, 0.5s) ease-in-out;
+}
+
+.magic-reactive {
+  isolation: isolate;
+}
+
+.magic-reactive::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 8%,
+    rgba(139, 92, 246, calc(var(--musai-magic-amount, 0.12) * 0.45)) 40%,
+    rgba(236, 72, 153, calc(var(--musai-magic-amount, 0.12) * 0.35)) 52%,
+    rgba(59, 130, 246, calc(var(--musai-magic-amount, 0.12) * 0.4)) 64%,
+    transparent 92%
+  );
+  background-size: 260% 100%;
+  opacity: calc(var(--musai-magic-amount, 0.12) * 0.82);
+  mix-blend-mode: screen;
+  animation: mysticalShimmer 18s ease-in-out infinite;
+  transition: opacity 0.6s ease, filter 0.6s ease;
+}
+
+.magic-reactive > * {
+  position: relative;
+  z-index: 1;
+}
+
+body[data-magic-active='0'] .magic-reactive::after {
+  opacity: calc(var(--musai-magic-amount, 0.12) * 0.55);
+  filter: saturate(0.85);
+}
+
+body[data-magic-active='1'] .magic-reactive::after {
+  opacity: calc(var(--musai-magic-amount, 0.12) * 1.15);
+  filter: saturate(1.15);
+}
+
+.magical-sidebar {
+  opacity: 0;
+  transform: translateX(-28px);
+}
+
+.magical-sidebar-enter {
+  animation: magicalSidebarIn 0.68s ease-out forwards;
+}
+
+@keyframes magicalSidebarIn {
+  0% {
+    opacity: 0.05;
+    transform: translateX(-36px);
+    filter: blur(10px);
+  }
+  65% {
+    opacity: 1;
+    transform: translateX(6px);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0px);
+  }
+}
+
+.magical-nav {
+  opacity: 0;
+  transform: translateX(-18px);
+}
+
+.magical-nav-enter {
+  animation: magicalNavIn 0.62s ease-out forwards;
+}
+
+@keyframes magicalNavIn {
+  0% {
+    opacity: 0.05;
+    transform: translateX(-24px);
+    filter: blur(8px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(3px);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0px);
+  }
+}
+
+.magic-topbar {
+  opacity: 0;
+  transform: translateY(-14px);
+}
+
+.magical-topbar-enter {
+  animation: magicalTopbarIn 0.55s ease-out forwards;
+}
+
+@keyframes magicalTopbarIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-18px);
+    filter: blur(8px);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(3px);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+@keyframes mysticOrbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes mysticTrace {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.7; }
+  50% { transform: rotate(180deg) scale(1.04); opacity: 1; }
+}
+
+@keyframes mysticSheen {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-mystic-orbit {
+  animation: mysticOrbit 1.6s linear infinite;
+}
+
+.animate-mystic-trace {
+  animation: mysticTrace 2.2s ease-in-out infinite;
+}
+
+.animate-mystic-sheen {
+  animation: mysticSheen 1.4s ease-in-out infinite;
 }
 
 /* POV panel visual effects */

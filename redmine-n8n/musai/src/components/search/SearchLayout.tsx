@@ -25,9 +25,10 @@ interface SearchSession extends SearchSessionModel {}
 interface SearchLayoutProps {
   onClose: () => void;
   initialQuery?: string;
+  initialMode?: SearchMode;
 }
 
-export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
+export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayoutProps) => {
   const [currentQuery, setCurrentQuery] = useState("");
   const [searchSessions, setSearchSessions] = useState<SearchSession[]>([]);
 
@@ -41,8 +42,18 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   const { preference } = useTheme();
 
   // MuseEyeSearch parameters
-  const [mode, setMode] = useState<SearchMode>('standard');
+  const [mode, setMode] = useState<SearchMode>(initialMode ?? 'standard');
+  const hasAppliedInitialMode = useRef(false);
   const [sources, setSources] = useState<SearchSource[]>(['web']);
+
+  useEffect(() => {
+    if (!initialMode || hasAppliedInitialMode.current)
+    {
+      return;
+    }
+    hasAppliedInitialMode.current = true;
+    setMode(initialMode);
+  }, [initialMode]);
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
   const hasSearched = currentSessionId !== null;
@@ -312,11 +323,6 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
   // Handle initial query from navigation - placed after handleSearch declaration
   // On refresh, do NOT re-run if we already have a session for this query.
   useEffect(() => {
-    // Wait until storage hydration to avoid racing and duplicating sessions
-    if (!hasInitializedFromStorage) {
-      return;
-    }
-
     if (!initialQuery || hasProcessedInitialQuery) {
       return;
     }
@@ -338,7 +344,7 @@ export const SearchLayout = ({ onClose, initialQuery }: SearchLayoutProps) => {
     console.log('Auto-executing initial search query:', trimmed);
     setHasProcessedInitialQuery(true);
     handleSearch(trimmed);
-  }, [initialQuery, hasProcessedInitialQuery, handleSearch, hasInitializedFromStorage, searchSessions]);
+  }, [initialQuery, hasProcessedInitialQuery, handleSearch, searchSessions]);
 
   const handleFollowUp = useCallback(async (followUpQuery: string) => {
     if (!currentSession || !followUpQuery.trim()) return;

@@ -13,6 +13,11 @@ const resolveBaseUrl = (): string => {
 export const N8N_ENDPOINTS = {
   BASE_URL: resolveBaseUrl(),
 
+  // Module discovery routing
+  DISCOVERY: {
+    DISCOVER: '/musai/discover',
+  },
+
   // PreMusai Dynamic Content
   PREMUSAI: {
     GET_CONTENT: '/premusai/{type}',

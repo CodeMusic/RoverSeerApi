@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Theater, GraduationCap, Search, Bot, Settings, Code, Sparkles, TrendingUp, Heart, Eye, Stethoscope, Music } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/config/routes";
 import { APP_TERMS, MUSAI_COLORS, CANONICAL_TOOL_ORDER } from "@/config/constants";
@@ -28,6 +28,11 @@ export const NavigationBar = ({
   onToggleExpanded,
 }: NavigationBarProps) => {
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setIsReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toggleDevConsole, setToolColor, isCareerMusaiActive } = useMusaiMood();
@@ -176,13 +181,14 @@ export const NavigationBar = ({
   return (
     <div
       className={cn(
-        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-[60] transition-all duration-300",
+        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-[60] transition-all duration-300 magic-reactive magical-nav",
         isMobile 
           ? "w-12 items-center" // Always compact on mobile
           : isExpanded 
             ? "w-48 items-start px-3" // Expanded with text
             : "w-16 items-center", // Collapsed icons only
-        "backdrop-blur-sm"
+        "backdrop-blur-sm",
+        isReady && "magical-nav-enter"
       )}
     >
       {/* Musai Logo Header */}

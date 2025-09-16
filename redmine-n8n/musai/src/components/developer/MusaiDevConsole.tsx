@@ -17,7 +17,7 @@ export function MusaiDevConsole() {
   const [entries, setEntries] = useState<ConsoleEntry[]>([
     {
       type: 'output',
-      content: 'Musai Developer Console v1.0.0\nType "help" for available commands.',
+      content: 'Musai Developer Console v1.0.0\nType "help" for system commands or just describe what you need—Musai will route it.',
       timestamp: new Date()
     }
   ]);
@@ -94,17 +94,17 @@ export function MusaiDevConsole() {
     const result = executeCommand(currentCommand);
     
     // Handle special commands
-    if (result === 'CLEAR_CONSOLE') {
+    if (result.code === 'clear') {
       setEntries([{
         type: 'output',
-        content: 'Console cleared.',
+        content: result.message,
         timestamp: new Date()
       }]);
     } else {
       // Add result to entries
       const resultEntry: ConsoleEntry = {
         type: 'output',
-        content: result,
+        content: result.message,
         timestamp: new Date()
       };
       setEntries(prev => [...prev, commandEntry, resultEntry]);
@@ -114,9 +114,15 @@ export function MusaiDevConsole() {
     setCommandHistory(prev => [...prev, currentCommand]);
     setCurrentCommand('');
     setHistoryIndex(-1);
-    
+
     // Scroll to bottom after command execution
     scrollToBottom();
+
+    if (result.code === 'forward') {
+      setTimeout(() => {
+        toggleDevConsole();
+      }, 350);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -237,7 +243,7 @@ export function MusaiDevConsole() {
                   value={currentCommand}
                   onChange={(e) => setCurrentCommand(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Enter command..."
+                  placeholder="Type a command or ask Musai..."
                   className="bg-transparent border-none text-white font-mono focus:ring-0 focus:ring-offset-0"
                   style={{ caretColor: accentColor }}
                 />

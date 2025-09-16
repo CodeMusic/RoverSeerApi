@@ -22,7 +22,7 @@ interface MusaiMoodContextType {
   decrementRainbowPersistence: () => void;
   toggleParty: () => void;
   disableEffects: () => void;
-  executeCommand: (command: string) => string;
+  executeCommand: (command: string) => { message: string; code?: 'clear' | 'forward' };
 }
 
 const MusaiMoodContext = createContext<MusaiMoodContextType | undefined>(undefined);
@@ -234,12 +234,12 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('musai-career-mode', String(newState));
   };
 
-  const executeCommand = (command: string): string => {
+  const executeCommand = (command: string): { message: string; code?: 'clear' | 'forward' } => {
     const cmd = command.toLowerCase().trim();
-    
+
     switch (cmd) {
       case 'help':
-        return `Available commands:
+        return { message: `Available commands:
 • mood <name> - Change Musai's mood (${Object.keys(musicalMoodColors).join(', ')})
 • moodphrase <phrase> - Set mood phrase for n8n processing
 • status - Show current system status
@@ -250,10 +250,10 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
 • zen - Enter zen mode
 • test-emotion - Test AI emotion effects
 • careermusai - Toggle hidden career development tool
-• colors - Show all available mood colors`;
+• colors - Show all available mood colors` };
       
       case 'status':
-        return `Musai Status:
+        return { message: `Musai Status:
 • Mood: ${currentMood}
 • Mood Phrase: ${moodPhrase || 'Not set'}
 • Accent Color: ${accentColor}
@@ -262,58 +262,59 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
 • Rainbow: ${isRainbowActive ? 'Active' : 'Inactive'}
 • Party: ${isPartyActive ? 'Active' : 'Inactive'}
 • CareerMusai: ${isCareerMusaiActive ? 'Active' : 'Inactive'}
-• Theme: ${document.documentElement.classList.contains('dark') ? 'Dark' : 'Light'}`;
+• Theme: ${document.documentElement.classList.contains('dark') ? 'Dark' : 'Light'}` };
       
       case 'colors':
-        return `Available mood colors:
-${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color}`).join('\n')}`;
+        return { message: `Available mood colors:
+${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color}`).join('\n')}` };
       
       case 'clear':
-        return 'CLEAR_CONSOLE';
+        return { message: 'Console cleared.', code: 'clear' };
       
       case 'matrix':
         toggleMatrix();
-        return isMatrixActive ? 'Matrix effect deactivated.' : 'Matrix effect activated... Welcome to the Musai reality.';
+        return { message: isMatrixActive ? 'Matrix effect deactivated.' : 'Matrix effect activated... Welcome to the Musai reality.' };
       
       case 'rainbow':
         toggleRainbow();
-        return isRainbowActive ? 'Rainbow mode deactivated.' : '🌈 Rainbow mode activated! Cycling through all moods...';
+        return { message: isRainbowActive ? 'Rainbow mode deactivated.' : '🌈 Rainbow mode activated! Cycling through all moods...' };
       
       case 'party':
         toggleParty();
-        return isPartyActive ? 'Party mode deactivated.' : '🎉 Party mode activated! Musai is now energetic!';
+        return { message: isPartyActive ? 'Party mode deactivated.' : '🎉 Party mode activated! Musai is now energetic!' };
       
       case 'zen':
         setMood('zen');
-        return '🧘 Zen mode activated. Musai is now serene and focused.';
+        return { message: '🧘 Zen mode activated. Musai is now serene and focused.' };
       
       case 'test-emotion':
-        return 'Testing emotion effects... Try saying: "🎉 Congratulations! This is amazing!" or "🔮 This is mysterious and intriguing..." or "🎨 This is so creative and artistic!"';
+        return { message: 'Testing emotion effects... Try saying: "🎉 Congratulations! This is amazing!" or "🔮 This is mysterious and intriguing..." or "🎨 This is so creative and artistic!"' };
       
       case 'careermusai':
         const newCareerState = !isCareerMusaiActive;
         setIsCareerMusaiActive(newCareerState);
         localStorage.setItem('musai-career-mode', String(newCareerState));
-        return newCareerState ? '🎯 CareerMusai mode activated! Career development tool is now available in the navigation menu.' : '🎯 CareerMusai mode deactivated.';
+        return { message: newCareerState ? '🎯 CareerMusai mode activated! Career development tool is now available in the navigation menu.' : '🎯 CareerMusai mode deactivated.' };
       
       default:
         if (cmd.startsWith('mood ')) {
           const newMood = cmd.substring(5);
           if (musicalMoodColors[newMood as keyof typeof musicalMoodColors]) {
             setMood(newMood);
-            return `Mood changed to: ${newMood}`;
+            return { message: `Mood changed to: ${newMood}` };
           } else {
-            return `Unknown mood: ${newMood}. Available: ${Object.keys(musicalMoodColors).join(', ')}`;
+            return { message: `Unknown mood: ${newMood}. Available: ${Object.keys(musicalMoodColors).join(', ')}` };
           }
         }
         if (cmd.startsWith('moodphrase ')) {
           const phrase = cmd.substring(11);
           updateMoodPhrase(phrase);
-          return `Mood phrase set to: "${phrase}". This will be processed by n8n to determine the actual mood.`;
+          return { message: `Mood phrase set to: "${phrase}". This will be processed by n8n to determine the actual mood.` };
         }
         // Fall through: forward unknown command to n8n
         forwardUnknownCommandToN8n(command);
-        return `Forwarded to Musai n8n: ${command}`;
+        triggerMusaiDiscover(command);
+        return { message: `Musai heard “${command}”. Routing to the right Muse…`, code: 'forward' };
     }
   };
 
@@ -353,6 +354,38 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
     catch
     {
       // Swallow network errors in UI; console remains responsive
+    }
+  }
+
+  async function triggerMusaiDiscover(rawCommand: string)
+  {
+    const query = rawCommand.trim();
+    if (!query)
+    {
+      return;
+    }
+    try
+    {
+      const { discoverMusaiModule } = await import('@/lib/discoveryApi');
+      const module = await discoverMusaiModule(query);
+      try
+      {
+        sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module, query }));
+      }
+      catch
+      {
+        // ignore storage errors
+      }
+      window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module, query } }));
+    }
+    catch
+    {
+      try
+      {
+        sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module: 'chat', query }));
+      }
+      catch {}
+      window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module: 'chat', query } }));
     }
   }
 
