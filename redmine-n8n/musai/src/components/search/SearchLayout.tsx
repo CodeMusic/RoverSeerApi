@@ -135,10 +135,56 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
     computeAndStoreClientIpHash().then(hash => { if (hash) setClientIpHash(hash); });
   }, []);
 
+  // Prevent storage quota crashes by pruning large payloads on write
   const persistSessions = (updater: (prev: SearchSession[]) => SearchSession[]) => {
+    const MAX_SESSIONS_TO_PERSIST = 8;
+    const MAX_RESULTS_PER_SESSION = 10;
+    const MAX_CONTENT_LENGTH = 4000;
+
+    const pruneSessionsForStorage = (sessions: SearchSession[]): SearchSession[] => {
+      const limited = sessions.slice(0, MAX_SESSIONS_TO_PERSIST);
+      return limited.map((s) => {
+        const safeResults = (s.results || []).slice(0, MAX_RESULTS_PER_SESSION).map((r: any) => ({
+          title: r.title,
+          content: typeof r.content === 'string' ? r.content.slice(0, MAX_CONTENT_LENGTH) : '',
+          url: r.url,
+          snippet: r.snippet,
+          type: r.type,
+          sourcesUsed: r.sourcesUsed,
+        }));
+        const safeFollowUps = (s.followUps || []).slice(-5).map((f: any) => ({
+          query: f.query,
+          result: { content: typeof f?.result?.content === 'string' ? f.result.content.slice(0, 1200) : '' },
+          timestamp: f.timestamp,
+        }));
+        return {
+          id: s.id,
+          query: s.query,
+          intent: s.intent,
+          mode: s.mode,
+          sources: s.sources,
+          clientIpHash: s.clientIpHash,
+          serverSessionId: s.serverSessionId,
+          results: safeResults as any,
+          followUps: safeFollowUps as any,
+          timestamp: s.timestamp,
+          name: (s as any).name,
+          favorite: (s as any).favorite,
+        } as SearchSession;
+      });
+    };
+
     setSearchSessions(prev => {
       const next = updater(prev);
-      localStorage.setItem('search_sessions_v1', JSON.stringify(next));
+      try {
+        localStorage.setItem('search_sessions_v1', JSON.stringify(next));
+      } catch (e) {
+        // Quota likely exceeded: prune and try again; if it still fails, swallow to avoid crashing UI
+        try {
+          const pruned = pruneSessionsForStorage(next);
+          localStorage.setItem('search_sessions_v1', JSON.stringify(pruned));
+        } catch {}
+      }
       return next;
     });
   };
@@ -268,7 +314,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
         if (s.id !== provisionalSessionId) return s;
         const mappedResults = results.map((result, index) => {
           const content = result.text || result.content || result.response || result.answer || "No content available";
-          console.log(`Mapping result ${index} content:`, content.substring(0, 100) + "...");
+          console.log(`Mapping result ${index} content:`, String(content).substring(0, 100) + "...");
           const mapped: SearchResult = {
             title: result.title || `AI Response for: ${query}`,
             content,
@@ -276,11 +322,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
             snippet: result.snippet || result.summary || "",
             type: intent,
             sourcesUsed: result.sourcesUsed || result.sources || effectiveSources,
-            bicameral: result.bicameral,
-            conflicts: result.conflicts,
-            personalization: result.personalization,
-            raw: result,
-          };
+          } as any;
           return mapped;
         });
         return { ...s, intent, results: mappedResults, timestamp: Date.now() };
