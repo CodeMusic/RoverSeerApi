@@ -50,4 +50,7 @@ fi
 
 # ── Launch ComfyUI ─────────────────────────────────────────────────────────────
 # Use tee so logs are saved but still visible on screen
+export PYTORCH_ENABLE_MPS_FALLBACK=1
+export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+
 exec "$PYBIN" main.py --listen 0.0.0.0 --port 8008 | tee -a "$LOG"
