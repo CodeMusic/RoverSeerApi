@@ -9,7 +9,7 @@ try:
     NODE_CLASS_MAPPINGS.update(_M)
     NODE_DISPLAY_NAME_MAPPINGS.update(_DM)
 except Exception as e:
-    print("[ComfyUI-MusicGen-HF] Failed to import:", e)
+    print("[ComfyUI-MusicGen] Failed to import:", e)
     traceback.print_exc()
 
 def get_category():

@@ -27,7 +27,7 @@ def _audio_from_comfy(a: Dict[str, Any]) -> Optional[torch.Tensor]:
     return wf  # (1,T)
 
 # --------- main node ---------
-class MusicGenHFFixed:
+class MusicGen:
     """
     HF MusicGen for ComfyUI.
     Uses model.generate(...). Works on CPU/MPS. No CUDA or bfloat16 assumptions.
@@ -100,8 +100,8 @@ class MusicGenHFFixed:
         return ({"waveform": audio.unsqueeze(0), "sample_rate": int(sr)},)
 
 NODE_CLASS_MAPPINGS = {
-    "MusicGenHFFixed": MusicGenHFFixed,
+    "MusicGen": MusicGen,
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "MusicGenHFFixed": "MusicGen (HF • Fixed)",
+    "MusicGen": "MusicGen",
 }
