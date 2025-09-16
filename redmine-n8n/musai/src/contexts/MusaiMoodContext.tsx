@@ -95,6 +95,17 @@ const monthToColor = {
   'december': 'b-violet'
 };
 
+// Day of week to color mapping (initial default mood)
+const dayToColor = {
+  'sunday': 'c-red',
+  'monday': 'd-orange',
+  'tuesday': 'e-yellow',
+  'wednesday': 'f-green',
+  'thursday': 'g-blue',
+  'friday': 'a-indigo',
+  'saturday': 'b-violet'
+};
+
 export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   const [currentMood, setCurrentMood] = useState('default');
   const [moodPhrase, setMoodPhrase] = useState('');
@@ -116,6 +127,11 @@ export function MusaiMoodProvider({ children }: { children: React.ReactNode }) {
   const setMood = (mood: string) => {
     setCurrentMood(mood);
     localStorage.setItem('musai-mood', mood);
+    try
+    {
+      localStorage.setItem('musai-mood-date', getTodayKey());
+    }
+    catch {}
   };
 
   const updateMoodPhrase = (phrase: string) => {
@@ -445,16 +461,23 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
     return monthToColor[monthNames[currentMonth] as keyof typeof monthToColor] || 'default';
   };
 
-  // Load saved mood on mount, or use current month
+  // Load saved mood on mount, or use current day-of-week default
   useEffect(() => {
     const savedMood = localStorage.getItem('musai-mood');
-    if (savedMood && musicalMoodColors[savedMood as keyof typeof musicalMoodColors]) {
+    const savedDate = localStorage.getItem('musai-mood-date');
+    const todayKey = getTodayKey();
+
+    if (savedMood && savedDate === todayKey && musicalMoodColors[savedMood as keyof typeof musicalMoodColors])
+    {
       setCurrentMood(savedMood);
-    } else {
-      // Auto-set based on current month if no saved preference
-      const monthMood = getCurrentMonthMood();
-      setCurrentMood(monthMood);
-      localStorage.setItem('musai-mood', monthMood);
+    }
+    else
+    {
+      // Auto-set based on current day of week if no valid saved preference for today
+      const dayMood = getCurrentDayMood();
+      setCurrentMood(dayMood);
+      localStorage.setItem('musai-mood', dayMood);
+      try { localStorage.setItem('musai-mood-date', todayKey); } catch {}
     }
 
     // Load saved mood phrase
@@ -468,7 +491,54 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
     if (savedCareerState === 'true') {
       setIsCareerMusaiActive(true);
     }
+    // Schedule reset at next local midnight to rotate mood with day change
+    const scheduleReset = () =>
+    {
+      const ms = msUntilMidnight();
+      return window.setTimeout(() =>
+      {
+        const nextMood = getCurrentDayMood();
+        setCurrentMood(nextMood);
+        try
+        {
+          localStorage.setItem('musai-mood', nextMood);
+          localStorage.setItem('musai-mood-date', getTodayKey());
+        }
+        catch {}
+        // Reschedule for subsequent midnights
+        timerId = scheduleReset();
+      }, ms);
+    };
+
+    let timerId = scheduleReset();
+    return () => { if (timerId) { clearTimeout(timerId); } };
   }, []);
+
+  // Determine mood based on current day of week
+  function getCurrentDayMood()
+  {
+    const dayIndex = new Date().getDay(); // 0 (Sun) - 6 (Sat)
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return dayToColor[dayNames[dayIndex] as keyof typeof dayToColor] || 'default';
+  }
+
+  // Return YYYY-MM-DD in local time for day comparisons
+  function getTodayKey()
+  {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Milliseconds until next local midnight
+  function msUntilMidnight()
+  {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+    return Math.max(0, midnight.getTime() - now.getTime());
+  }
 
   return (
     <MusaiMoodContext.Provider value={{

@@ -47,6 +47,44 @@ export const useChatSessions = () => {
 
 
 
+  // Prune and safely persist sessions to avoid quota errors
+  const safePersistSessions = (list: (ChatSession | CareerSession)[]) => {
+    const MAX_SESSIONS = 12;
+    const MAX_MESSAGES = 50;
+    const MAX_TEXT = 4000;
+    const prune = (input: (ChatSession | CareerSession)[]) => {
+      return input.slice(0, MAX_SESSIONS).map((s) => {
+        if (s.type === 'career')
+        {
+          const cs = s as CareerSession;
+          return {
+            ...cs,
+            messages: (cs.messages || []).slice(-MAX_MESSAGES).map(m => ({
+              ...m,
+              content: typeof m.content === 'string' ? m.content.slice(0, MAX_TEXT) : m.content
+            }))
+          } as CareerSession;
+        }
+        const ch = s as ChatSession;
+        return {
+          ...ch,
+          messages: (ch.messages || []).slice(-MAX_MESSAGES).map(m => ({
+            ...m,
+            content: typeof m.content === 'string' ? m.content.slice(0, MAX_TEXT) : m.content
+          }))
+        } as ChatSession;
+      });
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(prune(list)));
+      } catch {}
+    }
+  };
+
   const updateSession = (sessionId: string, messages: Message[]) => {
     setSessions(prev => {
       const updatedSessions = prev.map(session => 
@@ -54,8 +92,7 @@ export const useChatSessions = () => {
           ? { ...session, messages, lastUpdated: Date.now() }
           : session
       );
-      // Immediately persist to localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+      safePersistSessions(updatedSessions);
       return updatedSessions;
     });
     queryClient.setQueryData(['chatSessions', sessionId], messages);
@@ -159,7 +196,7 @@ export const useChatSessions = () => {
       };
       setSessions(prev => {
         const updatedSessions = [newSession, ...prev];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+        safePersistSessions(updatedSessions);
         console.log('Career sessions after creating new:', updatedSessions.length);
         return updatedSessions;
       });
@@ -177,7 +214,7 @@ export const useChatSessions = () => {
       };
       setSessions(prev => {
         const updatedSessions = [newSession, ...prev];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+        safePersistSessions(updatedSessions);
         console.log('Sessions after creating new:', updatedSessions.length);
         return updatedSessions;
       });
@@ -197,7 +234,7 @@ export const useChatSessions = () => {
   const deleteSession = (sessionId: string) => {
     setSessions(prev => {
       const remainingSessions = prev.filter(session => session.id !== sessionId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(remainingSessions));
+      safePersistSessions(remainingSessions);
       
       // Clean up localStorage entries for the deleted session
       const keysToRemove = [];
@@ -228,7 +265,7 @@ export const useChatSessions = () => {
           ? { ...session, name: newName }
           : session
       );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+      safePersistSessions(updatedSessions);
       return updatedSessions;
     });
     toast.success("Chat renamed successfully");
@@ -250,7 +287,7 @@ export const useChatSessions = () => {
           lastUpdated: Date.now(),
         } as CareerSession;
       });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+      safePersistSessions(updatedSessions);
       return updatedSessions;
     });
   };
@@ -293,7 +330,7 @@ export const useChatSessions = () => {
           ? { ...session, favorite: !session.favorite }
           : session
       );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedSessions));
+      safePersistSessions(updatedSessions);
       return updatedSessions;
     });
     const session = sessions.find(s => s.id === sessionId);
