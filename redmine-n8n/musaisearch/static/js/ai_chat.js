@@ -45,6 +45,19 @@
           var next = Math.max(8, currentBottom + overflow + 8);
           aiSection.style.bottom = next + 'px';
         }
+        else
+        {
+          // Reset any previously applied upward offset so the dock is flush
+          try
+          {
+            var inlineBottom = parseFloat(aiSection.style.bottom || '0') || 0;
+            if (inlineBottom !== 0)
+            {
+              aiSection.style.bottom = '0px';
+            }
+          }
+          catch (_) { /* no-op */ }
+        }
       }
       catch (_) { /* no-op */ }
     }
