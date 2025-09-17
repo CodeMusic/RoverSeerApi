@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { APP_TERMS } from '@/config/constants';
 import type { Lecture, Course, StandaloneLecture } from '@/types/university';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import { MusaiCopilotSummon } from '@/components/common/MusaiCopilotSummon';
 
 const University = () => {
   const [lectures, setLectures] = useState<any[]>([]);
@@ -106,7 +107,7 @@ const University = () => {
     }
 
     return (
-      <div className="p-6">
+      <div className="relative p-6 pb-32">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
@@ -471,6 +472,10 @@ const University = () => {
             )}
           </TabsContent>
         </Tabs>
+
+        <div className="mt-10 flex justify-center">
+          <MusaiCopilotSummon className="w-full max-w-2xl" />
+        </div>
           </>
         )}
       </div>

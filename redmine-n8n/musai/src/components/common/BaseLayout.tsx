@@ -1,9 +1,23 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Menu, Code } from 'lucide-react';
+import {
+  Menu,
+  Code,
+  MessageSquare,
+  Search,
+  GraduationCap,
+  Theater,
+  TrendingUp,
+  Heart,
+  Eye,
+  Stethoscope,
+  Bot,
+  Music,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react';
 import { NavigationBar } from '@/components/common/NavigationBar';
 import TopAppBar from '@/components/common/TopAppBar';
 import { BaseSessionSidebar } from '@/components/common/BaseSessionSidebar';
-import { MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
@@ -138,6 +152,21 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     studio: 'Studio',
   };
   const effectiveCollapsedTitle = collapsedLabelMap[currentTab] || resolvedSidebarTitle;
+  const collapsedIconMap: Record<string, LucideIcon> = {
+    [APP_TERMS.TAB_CHAT]: MessageSquare,
+    [APP_TERMS.TAB_SEARCH]: Search,
+    [APP_TERMS.TAB_EYE]: Eye,
+    [APP_TERMS.TAB_CODE]: Code,
+    [APP_TERMS.TAB_UNIVERSITY]: GraduationCap,
+    [APP_TERMS.TAB_NARRATIVE]: Theater,
+    [APP_TERMS.TAB_THERAPY]: Heart,
+    [APP_TERMS.TAB_MEDICAL]: Stethoscope,
+    [APP_TERMS.TAB_CAREER]: TrendingUp,
+    [APP_TERMS.TAB_TASK]: Bot,
+    studio: Music,
+    curations: Sparkles,
+  };
+  const CollapsedIcon = collapsedIconMap[currentTab] || MessageSquare;
 
   // Initialize left and right sidebars from persisted state; default collapsed everywhere
   useEffect(() => {
@@ -313,16 +342,16 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
       {/* Main Layout below top bar */}
       <div className={cn(
         "flex-1 transition-all duration-300 relative z-10 bg-background",
-        // Top app bar height
-        hideTopAppBar ? undefined : "pt-16",
+        // Top app bar height offset (desktop only; mobile top bar is not fixed)
+        hideTopAppBar ? undefined : "md:pt-16",
         // Offset for fixed left navigation bar
         "ml-12",
         isNavigationExpanded ? "md:ml-48" : "md:ml-16"
       )}>
         <div className={cn(
-          // Ensure main content fits viewport. If top bar is visible (pt-14 = 3.5rem), subtract it.
-          hideTopAppBar ? "h-[100dvh] md:h-[100svh]" : "h-[calc(100dvh-4rem)] md:h-[calc(100svh-4rem)]",
-          "flex overflow-x-hidden"
+          // Ensure main content fits viewport. Only subtract top bar height on desktop.
+          hideTopAppBar ? "h-[100dvh] md:h-[100svh]" : "h-[100dvh] md:h-[calc(100svh-4rem)]",
+          "flex overflow-x-hidden musai-spa-surface"
         )}>
           {/* Left Sidebar (disabled for Search; Search manages its own sidebar) */}
           {currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed && (
@@ -378,8 +407,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           ) && (
             <div
               className={cn(
-                "w-32 border-l border-border bg-background flex flex-col items-start py-4 relative",
-                hideTopAppBar ? undefined : "-mt-16 pt-16"
+                "w-20 flex flex-col items-center py-4 relative",
+                hideTopAppBar ? undefined : "md:-mt-16 md:pt-20"
               )}
             >
               <button
@@ -393,13 +422,13 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                     try { localStorage.setItem(leftCollapseStorageKey(currentTab, isMobile), 'false'); } catch {}
                   }
                 }}
-                className="mx-3 w-full px-3 py-2 flex items-center gap-2 rounded-xl border border-primary/40 text-primary/80 hover:text-primary hover:bg-primary/10 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="mx-auto w-16 px-2 py-2 flex items-center justify-center gap-2 rounded-xl border border-primary/40 text-primary/80 hover:text-primary hover:bg-primary/10 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 title={`Show ${effectiveCollapsedTitle}`}
+                aria-label={`Show ${effectiveCollapsedTitle}`}
               >
                 <Menu className="h-4 w-4" />
-                <span className="text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                  {effectiveCollapsedTitle}
-                </span>
+                <CollapsedIcon className="h-4 w-4" />
+                <span className="sr-only">{`Show ${effectiveCollapsedTitle}`}</span>
               </button>
             </div>
           )}

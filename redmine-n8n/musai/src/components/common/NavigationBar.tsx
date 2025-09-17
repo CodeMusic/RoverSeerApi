@@ -181,7 +181,7 @@ export const NavigationBar = ({
   return (
     <div
       className={cn(
-        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-[60] transition-all duration-300 magic-reactive magical-nav",
+        "fixed left-0 top-0 h-full bg-sidebar flex flex-col py-4 z-[100] pointer-events-auto transition-all duration-300 magic-reactive magical-nav",
         isMobile 
           ? "w-12 items-center" // Always compact on mobile
           : isExpanded 

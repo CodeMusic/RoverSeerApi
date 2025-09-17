@@ -1393,6 +1393,272 @@ body[data-magic-active='1'] .magic-reactive::after {
   }
 }
 
+/* Musai Copilot dock */
+.musai-copilot-dock {
+  position: relative;
+  border-radius: 28px;
+  isolation: isolate;
+}
+
+.musai-copilot-glow {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  /* Drive glow color from weekday mood via --musai-accent-rgb */
+  background:
+    radial-gradient(circle at 10% 20%, rgba(var(--musai-accent-rgb, 139, 92, 246), 0.55), transparent 55%),
+    radial-gradient(circle at 90% 80%, rgba(var(--musai-accent-rgb, 139, 92, 246), 0.35), transparent 55%),
+    linear-gradient(135deg,
+      rgba(var(--musai-accent-rgb, 139, 92, 246), 0.35),
+      rgba(var(--musai-accent-rgb, 139, 92, 246), 0.20)
+    );
+  filter: blur(32px);
+  opacity: 0.85;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.musai-copilot-dock:hover .musai-copilot-glow {
+  opacity: 1;
+}
+
+.musai-copilot-panel {
+  position: relative;
+  z-index: 1;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(30, 27, 75, 0.88));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35);
+  color: #f8fafc;
+  padding: 18px 20px 22px;
+}
+
+.musai-copilot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.musai-copilot-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.musai-copilot-badge {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+.musai-copilot-mood {
+  margin-bottom: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.musai-copilot-mood-label {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.musai-copilot-mood-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  transition: background 0.3s ease, transform 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.musai-copilot-mood-chip:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.musai-copilot-mood-chip--active {
+  background: linear-gradient(120deg, rgba(99, 102, 241, 0.85), rgba(236, 72, 153, 0.85));
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.musai-copilot-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.musai-copilot-label {
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.musai-copilot-toggle {
+  display: inline-flex;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.musai-copilot-toggle-button {
+  padding: 8px 14px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.musai-copilot-toggle-button.is-active {
+  background: rgba(255, 255, 255, 0.24);
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.musai-copilot-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.musai-copilot-switch-control {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.musai-copilot-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.musai-copilot-input {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.musai-copilot-textarea {
+  width: 100%;
+  min-height: 52px;
+  max-height: 140px;
+  resize: none;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  padding-right: 48px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 15px;
+  line-height: 1.5;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.musai-copilot-textarea:focus-visible {
+  outline: none;
+  border-color: rgba(196, 181, 253, 0.7);
+  box-shadow: 0 0 0 2px rgba(196, 181, 253, 0.28);
+}
+
+.musai-copilot-attach {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  height: 34px;
+  width: 34px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(15, 23, 42, 0.92);
+  transition: background 0.3s ease;
+}
+
+.musai-copilot-attach:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.musai-copilot-send {
+  height: 52px;
+  width: 52px;
+  border-radius: 18px;
+  background: linear-gradient(120deg, rgba(129, 140, 248, 0.85), rgba(236, 72, 153, 0.85));
+  color: white;
+  box-shadow: 0 10px 28px rgba(129, 140, 248, 0.35);
+}
+
+.musai-copilot-send:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.musai-copilot-plugins {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.musai-copilot-plugin {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  gap: 6px;
+}
+
+.musai-copilot-plugin svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-width: 640px) {
+  .musai-copilot-panel {
+    padding: 16px;
+  }
+
+  .musai-copilot-header {
+    font-size: 10px;
+    letter-spacing: 0.24em;
+  }
+
+  .musai-copilot-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .musai-copilot-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .musai-copilot-send {
+    align-self: flex-end;
+    width: 48px;
+    height: 48px;
+  }
+}
+
 /* === MagicEye Aurora (oil slick) button effect === */
 @keyframes magiceyeAuroraShift {
   0% { background-position: 0% 50%; filter: hue-rotate(0deg) saturate(1.05); }
@@ -1439,4 +1705,94 @@ body[data-magic-active='1'] .magic-reactive::after {
   animation: magiceyeAuroraShift 8s ease-in-out infinite;
   color: #fff;
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.25), inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+
+/* Top bar aurora shell */
+.topbar-aurora {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.topbar-aurora::before,
+.topbar-aurora::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+.topbar-aurora::before {
+  z-index: 0;
+  background: radial-gradient(120% 120% at 8% -20%, rgba(99, 102, 241, 0.45), transparent 55%),
+    radial-gradient(120% 160% at 90% -60%, rgba(14, 165, 233, 0.35), transparent 65%),
+    linear-gradient(120deg, rgba(79, 70, 229, 0.5), rgba(236, 72, 153, 0.35));
+  filter: blur(24px);
+}
+
+.topbar-aurora::after {
+  z-index: 0;
+  /* Light theme: soft glass with subtle shadow */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.35));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.dark .topbar-aurora::after {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.9));
+}
+
+.topbar-aurora > * {
+  position: relative;
+  z-index: 1;
+}
+
+.topbar-aurora:hover::before {
+  opacity: 1;
+}
+
+/* Shared SPA background */
+.musai-spa-surface {
+  position: relative;
+  isolation: isolate;
+  /* Light theme: use base background with very subtle tints */
+  background: radial-gradient(140% 140% at 0% 0%, rgba(99, 102, 241, 0.06), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(236, 72, 153, 0.05), transparent 60%),
+    hsl(var(--background));
+}
+
+/* Dark theme variant retains the deep navy gradient */
+.dark .musai-spa-surface {
+  background: radial-gradient(140% 140% at 0% 0%, rgba(99, 102, 241, 0.12), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(236, 72, 153, 0.1), transparent 60%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.96));
+}
+
+.musai-spa-surface::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% -20%, rgba(56, 189, 248, 0.12), transparent 60%);
+  filter: blur(42px);
+  opacity: 0.4; /* lighter for light theme */
+  transition: opacity 0.6s ease;
+}
+
+.dark .musai-spa-surface::before {
+  opacity: 0.8;
+}
+
+.musai-spa-surface:hover::before {
+  opacity: 0.6;
+}
+
+.dark .musai-spa-surface:hover::before {
+  opacity: 1;
+}
+
+/* Ensure overlays/background stay behind content without breaking positioned children */
+.musai-spa-surface > *:not(.fixed):not(.absolute):not(.sticky) {
+  position: relative;
+  z-index: 1;
 }

@@ -235,7 +235,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
       {/* Input Area */}
       {!readOnly && (
-        <div className={`border-t ${theme.border} bg-background/50`}>
+        <div className="px-4 pb-6 pt-4">
           <ChatInput
             module={module}
             onMessageSend={onMessageSend}
@@ -250,7 +250,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             onToggleEffects={(enabled) => {
               setEffectsEnabled(enabled);
               try { (window as any).__musai_effects_enabled = enabled; } catch {}
-              if (!enabled) {
+              if (!enabled)
+              {
                 try { disableEffects(); } catch {}
               }
             }}

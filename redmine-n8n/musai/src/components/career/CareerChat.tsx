@@ -157,7 +157,7 @@ Always provide actionable, specific advice and consider the user's context when 
       )}
 
       {/* Chat Input */}
-      <div className="p-4 border-t">
+      <div className="px-4 pb-6 pt-4">
         <ChatInput
           module="career"
           onMessageSend={async (text) => handleSendMessage(text)}

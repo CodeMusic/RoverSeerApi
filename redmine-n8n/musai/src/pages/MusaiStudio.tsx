@@ -8,6 +8,7 @@ import { StudioGenerators } from '@/components/studio/StudioGenerators';
 import audioEngine from '@/lib/audio/AudioEngine';
 import { AudioClip, TimelineClip } from '@/types/studio';
 import { ROUTES } from '@/config/routes';
+import { MusaiCopilotSummon } from '@/components/common/MusaiCopilotSummon';
 
 const MusaiStudio: React.FC = () =>
 {
@@ -106,7 +107,7 @@ const MusaiStudio: React.FC = () =>
   };
 
 	const renderMainContent = () => (
-		<div className="p-6 md:p-8 lg:p-10">
+		<div className="relative p-6 md:p-8 lg:p-10 pb-28">
 			<div className="container mx-auto max-w-6xl space-y-4">
 				<div className="text-center space-y-2">
 					<h1 className="text-4xl md:text-5xl font-bold">Musai Studio</h1>
@@ -134,6 +135,10 @@ const MusaiStudio: React.FC = () =>
 						/>
 					</div>
 				</div>
+
+				<div className="mt-10 flex justify-center">
+					<MusaiCopilotSummon className="w-full max-w-2xl" />
+				</div>
 			</div>
 		</div>
 	);
@@ -159,5 +164,4 @@ const MusaiStudio: React.FC = () =>
 };
 
 export default MusaiStudio;
-
 

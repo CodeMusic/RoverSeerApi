@@ -161,6 +161,7 @@ function App() {
 function DevConsoleRoutingBridge()
 {
   const navigate = useNavigate();
+  const { toggleDevConsole, isDevConsoleOpen } = useMusaiMood();
 
   useEffect(() =>
   {
@@ -181,8 +182,11 @@ function DevConsoleRoutingBridge()
       const navigateMain = (mode: string, tab: string, extraState: Record<string, unknown> = {}) =>
       {
         navigate(RouteUtils.mainAppWithMode(mode, query), {
-          state: { switchToTab: tab, initialQuery: query, ...extraState }
+          state: { switchToTab: tab, initialQuery: query, newSession: true, initialMessage: query, ...extraState }
         });
+        // If the Dev Console is currently open, close it after a brief delay.
+        // Never open the console implicitly.
+        setTimeout(() => { try { if (isDevConsoleOpen) toggleDevConsole(); } catch {} }, 350);
       };
 
       switch (module)
@@ -226,7 +230,7 @@ function DevConsoleRoutingBridge()
 
     window.addEventListener('musai-discover-request', handle as EventListener);
     return () => window.removeEventListener('musai-discover-request', handle as EventListener);
-  }, [navigate]);
+  }, [navigate, toggleDevConsole, isDevConsoleOpen]);
 
   return null;
 }

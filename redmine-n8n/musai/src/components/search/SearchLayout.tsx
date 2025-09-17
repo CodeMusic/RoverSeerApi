@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/contexts/ThemeContext";
+// Note: Do not show the global Musai Copilot Navigator on the Search screens
 
 interface SearchSession extends SearchSessionModel {}
 
@@ -781,7 +782,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
   );
 
   return (
-    <div className="flex h-[100dvh] relative bg-background overflow-x-hidden">
+    <div className="flex h-full relative overflow-x-hidden musai-spa-surface">
       {/* Mobile hamburger: show only when sidebar not visible */}
       {isMobile && !shouldShowSidebar && (
         <button
@@ -799,7 +800,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
       {/* Search Sidebar (only in Research mode) */}
       {isResearchMode && shouldShowSidebar && (
         <div className={cn(
-          "transition-all duration-300 h-[100dvh] min-h-0 overflow-hidden",
+          "transition-all duration-300 h-full min-h-0 overflow-hidden",
           // On mobile, render as overlay so it doesn't push content width
           // Use higher z-index than the backdrop overlay to keep it clickable
           isMobile ? "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r shadow-lg" : "w-96 flex-shrink-0",
@@ -831,15 +832,15 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
 
       {/* Main Content Area */}
       <div ref={mainScrollRef} className={cn(
-        "flex-1 min-h-0 flex flex-col bg-background h-[100dvh] overflow-y-auto transition-all duration-300",
+        "flex-1 min-h-0 flex flex-col bg-background h-full overflow-y-auto transition-all duration-300 pb-0",
         isResearchMode && hasSearched && !isMobile && !isSidebarCollapsed ? "ml-0" : "ml-0"
       )}>
         {/* Mode Toggle Header - always visible */}
-        <div className="sticky top-0 z-30 px-6 pt-3 pb-2 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
+        <div className="sticky top-0 z-30 px-6 pt-3 pb-2 border-b border-border bg-white/85 dark:bg-slate-950/70 backdrop-blur supports-[backdrop-filter]:bg-white/65 dark:supports-[backdrop-filter]:bg-slate-950/55" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)' }}>
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
               <Label htmlFor="mode-switch" className="text-xs text-muted-foreground">Research mode</Label>
-              <Switch id="mode-switch" checked={isResearchMode} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} disabled={isLoading} aria-label="Toggle research mode" />
+              <Switch id="mode-switch" checked={isResearchMode} onCheckedChange={(v) => setMode(v ? 'research' : 'standard')} aria-label="Toggle research mode" />
               <Badge variant="secondary">{isResearchMode ? 'research' : 'search'}</Badge>
             </div>
             {isResearchMode && (
@@ -856,7 +857,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
                           return prev.filter((x) => x !== s);
                         });
                       }}
-                      disabled={isLoading}
+                      
                       aria-label={`Toggle source ${s}`}
                     />
                     <span className="text-xs text-muted-foreground">{s}</span>
@@ -932,7 +933,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
         />
       )}
 
-      {/* No rail opener; desktop uses hamburger above */}
+      {/* No copilot dock on Search/Research screens */}
     </div>
   );
 };

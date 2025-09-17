@@ -30,7 +30,7 @@ import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 import { useMusaiMood } from '@/contexts/MusaiMoodContext';
 import { useCurationsAvailability } from '@/hooks/useCurationsAvailability';
 import EyeWorkbenchPanel, { EyeWorkbenchSeed } from '@/components/eye/EyeWorkbenchPanel';
-import type { MusaiDiscoverModule } from '@/lib/discoveryApi';
+import { discoverMusaiModule, type MusaiDiscoverModule } from '@/lib/discoveryApi';
 
 const Index = () => {
   const location = useLocation();
@@ -72,31 +72,7 @@ const Index = () => {
     }
   }, []);
 
-  useEffect(() => {
-    const handler = (event: Event) =>
-    {
-      const detail = (event as CustomEvent<{ module?: MusaiDiscoverModule | string; query: string }>).detail;
-      if (!detail || !detail.query)
-      {
-        return;
-      }
-      const module = detail.module ?? 'chat';
-      discoverPayloadRef.current = { module, query: detail.query };
-      hasSentInitialMessage.current = false;
-      initialMessageKey.current = null;
-      if (module === 'tale')
-      {
-        setNarrativeMode('tale');
-      }
-      if (module === 'story')
-      {
-        setNarrativeMode('story');
-        setStoryIdea(detail.query);
-      }
-    };
-    window.addEventListener('musai-discover-request', handler as EventListener);
-    return () => window.removeEventListener('musai-discover-request', handler as EventListener);
-  }, []);
+  
 
   useEffect(() => {
     if (storyIdea)
@@ -127,6 +103,32 @@ const Index = () => {
      searchParams.get('mode') === 'eye' ? APP_TERMS.TAB_EYE :
      APP_TERMS.TAB_CHAT)
   );
+	// Keep currentTab in sync with navigation state and ?mode= when navigating from Topbar/DevConsole
+	useEffect(() => {
+		const stateAny = location.state as any;
+		const stateTab = stateAny?.switchToTab as string | undefined;
+		const mode = searchParams.get('mode');
+		const modeToTab = (m?: string): string => {
+			switch (m) {
+				case 'search': return APP_TERMS.TAB_SEARCH;
+				case 'code': return APP_TERMS.TAB_CODE;
+				case 'narrative': return APP_TERMS.TAB_NARRATIVE;
+				case 'university': return APP_TERMS.TAB_UNIVERSITY;
+				case 'career': return APP_TERMS.TAB_CAREER;
+				case 'therapy': return APP_TERMS.TAB_THERAPY;
+				case 'eye': return APP_TERMS.TAB_EYE;
+				case 'task': return APP_TERMS.TAB_TASK;
+				case 'chat':
+				default: return APP_TERMS.TAB_CHAT;
+			}
+		};
+		const desiredTab = stateTab || modeToTab(mode || undefined);
+		if (desiredTab && desiredTab !== currentTab) {
+			// Use the unified handler to perform transitions and keep URL in sync
+			handleTabChange(desiredTab);
+		}
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [location.state, location.search]);
   // Animate leave/enter when tab changes and sync URL ?mode=...
   const handleTabChange = (nextTab: string) => {
     if (nextTab === currentTab) return setPortalPhase('none');
@@ -345,8 +347,21 @@ const Index = () => {
 
   // Reset the ref when location changes (new navigation)
   useEffect(() => {
-    hasSentInitialMessage.current = false;
-    initialMessageKey.current = null;
+    const statePayload = location.state as Record<string, unknown> | null;
+    const hasInitialIntent = Boolean(
+      statePayload && (
+        'initialMessage' in statePayload ||
+        'initialQuery' in statePayload ||
+        'newSession' in statePayload ||
+        'sessionId' in statePayload
+      )
+    );
+
+    if (hasInitialIntent)
+    {
+      hasSentInitialMessage.current = false;
+      initialMessageKey.current = null;
+    }
   }, [location.state]);
 
   // Handle tab changes - clear current session when switching to incompatible tab
@@ -640,12 +655,47 @@ const Index = () => {
   }, [currentTab, sendTherapyMessage, sendChatMessage]);
 
   // Create a stable callback for sending the initial message
-  const sendInitialMessage = useCallback((message: string) => {
-    const currentSession = getCurrentSessionForTab();
-    if (currentSession) {
-      sendMessage(message);
+  const sendInitialMessage = useCallback(async (message: string) => {
+    const first = getCurrentSessionForTab();
+    // If no session or session is empty, prefer discovery-first flow
+    const isFirstMessage = !first || (('messages' in first) && first.messages.length === 0);
+    if (isFirstMessage) {
+      const trimmed = (message || '').trim();
+      if (trimmed) {
+        try {
+          const mod = await discoverMusaiModule(trimmed);
+          // Switch to discovered tab and stash payload so module-specific view handles it
+          const toTab: Record<string, string> = {
+            search: APP_TERMS.TAB_SEARCH,
+            research: APP_TERMS.TAB_SEARCH,
+            tale: APP_TERMS.TAB_NARRATIVE,
+            story: APP_TERMS.TAB_NARRATIVE,
+            university: APP_TERMS.TAB_UNIVERSITY,
+            eye: APP_TERMS.TAB_EYE,
+            medical: APP_TERMS.TAB_MEDICAL,
+            therapy: APP_TERMS.TAB_THERAPY,
+            career: APP_TERMS.TAB_CAREER,
+            code: APP_TERMS.TAB_CODE,
+            agile: APP_TERMS.TAB_TASK,
+            task: APP_TERMS.TAB_TASK,
+            chat: APP_TERMS.TAB_CHAT,
+          };
+          handleTabChange(toTab[String(mod)] || APP_TERMS.TAB_CHAT);
+          try { sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module: mod, query: trimmed })); } catch {}
+          // Also push ?q for views that read from URL
+          const params = new URLSearchParams(location.search);
+          params.set('q', trimmed);
+          navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+          return;
+        } catch {
+          // fall through to chat send
+        }
+      }
     }
-  }, [getCurrentSessionForTab, sendMessage]);
+    if (first) {
+      await sendMessage(message);
+    }
+  }, [getCurrentSessionForTab, sendMessage, handleTabChange, navigate, location.search]);
 
   // Handle navigation state from landing page
   useEffect(() => {
@@ -672,10 +722,16 @@ const Index = () => {
       // A new session was created from the landing page
       // The session is already created and selected by createNewSession()
       // We don't need to override the selection
-      
+      const rawInitialMessage = typeof location.state?.initialMessage === 'string'
+        ? location.state.initialMessage.trim()
+        : '';
+      if (rawInitialMessage && initialMessageKey.current !== rawInitialMessage)
+      {
+        hasSentInitialMessage.current = false;
+      }
+
       // If there's an initial message and we haven't sent it yet, send it automatically
-      if (location.state?.initialMessage && !hasSentInitialMessage.current) {
-        const initialMessage = location.state.initialMessage as string;
+      if (rawInitialMessage && !hasSentInitialMessage.current) {
         const sessionIdFromLanding = (location.state as any)?.sessionId as string | undefined;
         // Prefer the explicitly passed session id, if present
         if (sessionIdFromLanding) {
@@ -684,20 +740,20 @@ const Index = () => {
         // Ensure the chat UI renders instead of PreMusai while we send
         setForceChatUI(true);
         hasSentInitialMessage.current = true;
-        initialMessageKey.current = `${sessionIdFromLanding || currentSessionId}-${initialMessage}`;
+        initialMessageKey.current = rawInitialMessage;
         // Wait for the session to be visible in state, then send
         const attemptSend = async () => {
           const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
           for (let i = 0; i < 20; i++) {
             const s = getCurrentSessionForTab();
             if (s && (!sessionIdFromLanding || s.id === sessionIdFromLanding)) {
-              sendMessage(initialMessage);
+              sendMessage(rawInitialMessage);
               return;
             }
             await wait(50);
           }
           // Fallback: attempt send anyway
-          sendMessage(initialMessage);
+          sendMessage(rawInitialMessage);
         };
         attemptSend();
       }
@@ -716,7 +772,16 @@ const Index = () => {
     const stateQuery = stateAny?.initialQuery;
     const initialMessage = (stateQuery || queryParam || storedDiscover?.query || '').trim();
 
-    if (!initialMessage || hasSentInitialMessage.current) {
+    if (!initialMessage) {
+      return;
+    }
+
+    if (initialMessageKey.current !== initialMessage)
+    {
+      hasSentInitialMessage.current = false;
+    }
+
+    if (hasSentInitialMessage.current) {
       return;
     }
 
@@ -733,7 +798,7 @@ const Index = () => {
     {
       discoverPayloadRef.current = null;
     }
-    initialMessageKey.current = `${currentTab}-${initialMessage}`;
+    initialMessageKey.current = initialMessage;
 
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
     {
@@ -825,17 +890,47 @@ const Index = () => {
       return;
     }
 
-    // Non-narrative/non-task/university: ensure chat UI while session spins and message is sent
-    setForceChatUI(true);
-    const existingSession = getCurrentSessionForTab();
-    if (!existingSession) {
-      handleNewSession();
-      setTimeout(() => {
+    // Discovery-first for first message within main app
+    (async () => {
+      const existingSession = getCurrentSessionForTab();
+      const isFirst = !existingSession || (('messages' in existingSession) && existingSession.messages.length === 0);
+      if (isFirst) {
+        try {
+          const mod = await discoverMusaiModule(initialMessage);
+          const toTab: Record<string, string> = {
+            search: APP_TERMS.TAB_SEARCH,
+            research: APP_TERMS.TAB_SEARCH,
+            tale: APP_TERMS.TAB_NARRATIVE,
+            story: APP_TERMS.TAB_NARRATIVE,
+            university: APP_TERMS.TAB_UNIVERSITY,
+            eye: APP_TERMS.TAB_EYE,
+            medical: APP_TERMS.TAB_MEDICAL,
+            therapy: APP_TERMS.TAB_THERAPY,
+            career: APP_TERMS.TAB_CAREER,
+            code: APP_TERMS.TAB_CODE,
+            agile: APP_TERMS.TAB_TASK,
+            task: APP_TERMS.TAB_TASK,
+            chat: APP_TERMS.TAB_CHAT,
+          };
+          handleTabChange(toTab[String(mod)] || APP_TERMS.TAB_CHAT);
+          try { sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module: mod, query: initialMessage })); } catch {}
+          const params = new URLSearchParams(location.search);
+          params.set('q', initialMessage);
+          navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+          return;
+        } catch {
+          // fall through to chat send
+        }
+      }
+      // If not first message or discovery failed, send normally into current tab
+      setForceChatUI(true);
+      if (!existingSession) {
+        handleNewSession();
+        setTimeout(() => sendInitialMessage(initialMessage), 150);
+      } else {
         sendInitialMessage(initialMessage);
-      }, 150);
-    } else {
-      sendInitialMessage(initialMessage);
-    }
+      }
+    })();
   }, [location.search, location.state, currentTab]);
 
   // Handle session selection based on tab
@@ -1057,16 +1152,17 @@ const Index = () => {
     if (currentTab === APP_TERMS.TAB_SEARCH) {
       const stateAny = location.state as any;
       const fallbackDiscover = discoverPayloadRef.current;
-      const initialQuery = (stateAny?.initialQuery || searchParams.get('q') || fallbackDiscover?.query || '').trim();
-      if (!stateAny?.initialQuery && !searchParams.get('q') && fallbackDiscover)
-      {
-        discoverPayloadRef.current = null;
-      }
+      // Do NOT reuse previous queries from URL or discovery. Only use an explicitly
+      // provided initialQuery from navigation state. This prevents accidental
+      // auto-researching of an old chat query when the user opens Search/Research.
+      const initialQuery = (stateAny?.initialQuery || '').trim();
+      // Clear any leftover discovery payload so it cannot seed Search implicitly
+      if (fallbackDiscover) { discoverPayloadRef.current = null; }
       return (
         <SearchLayout 
           onClose={() => handleTabChange(APP_TERMS.TAB_CHAT)} 
           initialQuery={initialQuery || undefined}
-          initialMode={stateAny?.searchMode === 'research' ? 'research' : (fallbackDiscover?.module === 'research' ? 'research' : undefined)}
+          initialMode={stateAny?.searchMode === 'research' ? 'research' : undefined}
         />
       );
     }

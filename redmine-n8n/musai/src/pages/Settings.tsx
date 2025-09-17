@@ -47,9 +47,9 @@ export const Settings: React.FC = () => {
       />
       <TopAppBar />
 
-      {/* Offset main content for fixed nav and top bar (match BaseLayout spacing) */}
-      <div className={`flex-1 transition-all duration-300 relative z-10 bg-background pt-16 ml-12 ${isNavigationExpanded ? 'md:ml-48' : 'md:ml-16'}`}>
-        <div className="h-[calc(100dvh-4rem)] md:h-[calc(100svh-4rem)] flex overflow-x-hidden">
+      {/* Offset main content for fixed nav and top bar (desktop only; match BaseLayout spacing) */}
+      <div className={`flex-1 transition-all duration-300 relative z-10 bg-background md:pt-16 ml-12 ${isNavigationExpanded ? 'md:ml-48' : 'md:ml-16'}`}>
+        <div className="h-[100dvh] md:h-[calc(100svh-4rem)] flex overflow-x-hidden">
           <div className="flex-1 flex flex-col min-w-0 min-h-0 p-4">
             <SettingsPanel onClose={() => {}} />
           </div>

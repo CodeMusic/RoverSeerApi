@@ -403,7 +403,6 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
       {
         // ignore storage errors
       }
-      window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module, query } }));
       await navigateForModule(module, query);
     }
     catch
@@ -413,44 +412,15 @@ ${Object.entries(musicalMoodColors).map(([mood, color]) => `• ${mood}: ${color
         sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module: 'chat', query }));
       }
       catch {}
-      window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module: 'chat', query } }));
       await navigateForModule('chat', query);
     }
   }
 
   async function navigateForModule(module: MusaiDiscoverModule | string, query: string)
   {
-    const { RouteUtils, ROUTES } = await import('@/config/routes');
-    const target = (() =>
-    {
-      switch (module)
-      {
-        case 'research':
-          return RouteUtils.mainAppWithMode('search', query);
-        case 'tale':
-          return RouteUtils.mainAppWithMode('narrative', query);
-        case 'story':
-          return RouteUtils.mainAppWithMode('narrative', query);
-        case 'search':
-        case 'chat':
-        case 'university':
-        case 'eye':
-        case 'medical':
-        case 'therapy':
-        case 'career':
-        case 'code':
-          return RouteUtils.mainAppWithMode(module, query);
-        case 'agile':
-          return ROUTES.TASK_MUSAI_CONSOLE;
-        default:
-          return RouteUtils.mainAppWithMode('chat', query);
-      }
-    })();
-    if (target)
-    {
-      // Use full navigation to guarantee Router picks up the route and query params
-      window.location.assign(target);
-    }
+    // Prefer SPA navigation: re-dispatch event and let the App-level bridge handle routing.
+    // This preserves navigation state (e.g., initialQuery) and avoids a full reload.
+    window.dispatchEvent(new CustomEvent('musai-discover-request', { detail: { module, query } }));
   }
 
   // Automatically set mood based on current month if no saved mood

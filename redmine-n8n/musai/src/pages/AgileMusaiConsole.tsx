@@ -165,8 +165,10 @@ export default function AgileMusaiConsole()
   const phase = status?.phase ?? 'intake';
 
   return (
-    <div className="container mx-auto px-4 py-10 max-w-6xl relative">
-      <div className="mb-8">
+    <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 text-slate-100">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.22),_transparent_62%),radial-gradient(circle_at_bottom_right,_rgba(236,72,153,0.18),_transparent_58%),linear-gradient(180deg,rgba(15,23,42,0.9),rgba(2,6,23,0.94))]" aria-hidden />
+      <div className="container mx-auto px-4 py-10 max-w-6xl relative z-10">
+        <div className="mb-8">
         <h1 className="text-3xl font-bold">AgileMusai Console</h1>
         <div className="text-muted-foreground">Scrum orchestration via n8n with Redmine memory</div>
       </div>
@@ -264,6 +266,9 @@ export default function AgileMusaiConsole()
           </div>
         </div>
       )}
+      </div>
+
+      <MusaiCopilotSummon className="fixed bottom-5 sm:bottom-8 left-1/2 -translate-x-1/2 w-[min(92vw,440px)] sm:w-[min(640px,90vw)] z-40" />
     </div>
   );
 }
@@ -280,5 +285,4 @@ function FeedbackForm({ onSubmit, disabled }: { onSubmit: (text: string) => void
     </div>
   );
 }
-
 

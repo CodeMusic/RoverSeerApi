@@ -124,10 +124,8 @@ export function MusaiDevConsole() {
     scrollToBottom();
 
     if (result.code === 'forward') {
+      // Show shimmering spinner while Musai aligns; keep console open until navigation/unmount
       setIsForwarding(true);
-      setTimeout(() => {
-        toggleDevConsole();
-      }, 350);
     }
   };
 
@@ -242,10 +240,22 @@ export function MusaiDevConsole() {
 
             {isForwarding && (
               <div className="absolute inset-x-0 bottom-16 px-6">
-                <div className="relative rounded-lg border border-primary/40 bg-primary/10 text-primary-foreground px-4 py-3 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/40 to-transparent animate-[shimmer_1.5s_linear_infinite] opacity-70" />
+                <div
+                  className="relative rounded-lg border px-4 py-3 overflow-hidden"
+                  style={{
+                    borderColor: accentColor,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    color: '#ffffff',
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 animate-[shimmer_1.5s_linear_infinite] opacity-70"
+                    style={{
+                      backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0) 0%, ${accentColor}66 50%, rgba(0,0,0,0) 100%)`,
+                    }}
+                  />
                   <div className="relative flex items-center gap-3 text-sm font-medium">
-                    <div className="w-3 h-3 rounded-full bg-primary-foreground/80 animate-ping" />
+                    <div className="w-3 h-3 rounded-full animate-ping" style={{ backgroundColor: '#ffffffcc' }} />
                     <span>Musai is aligning with your intent…</span>
                   </div>
                 </div>
