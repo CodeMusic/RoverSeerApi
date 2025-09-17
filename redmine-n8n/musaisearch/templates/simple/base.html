@@ -1368,23 +1368,23 @@
     }
   </style>
   <style>
-    /* Home page: keep AI chat visible but slightly above the edge */
-    body.index_endpoint #ai_chat { bottom: clamp(0px, 4vh, 28px); }
+    /* Dock: keep flush with bottom edge on all pages */
+    body.index_endpoint #ai_chat { bottom: 0; }
   </style>
   <style>
-    /* Elevate the AI dock further on results and embedded contexts */
+    /* Ensure AI dock remains flush on results and embedded contexts */
     body.search_endpoint #ai_chat,
     body.results_endpoint #ai_chat
     {
-      bottom: clamp(12px, 10vh, 88px);
+      bottom: 0;
     }
     html.in-iframe #ai_chat
     {
-      bottom: clamp(16px, 12vh, 96px);
+      bottom: 0;
     }
     html.musai-overlay-open #ai_chat
     {
-      bottom: clamp(16px, 14vh, 112px);
+      bottom: 0;
     }
   </style>
 </head>
