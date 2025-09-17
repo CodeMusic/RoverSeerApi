@@ -12,7 +12,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { AllSessions } from "@/types/chat";
 import { useEyeSessions } from "@/hooks/useEyeSessions";
 import { APP_TERMS, CANONICAL_TOOL_ORDER } from "@/config/constants";
-import { ROUTES } from "@/config/routes";
+import { ROUTES, RouteUtils } from "@/config/routes";
 import { prepareFileData } from '@/utils/fileOperations';
 import { eyeApi } from '@/lib/eyeApi';
 import { medicalApi } from '@/lib/medicalApi';
@@ -680,12 +680,22 @@ const Index = () => {
             task: APP_TERMS.TAB_TASK,
             chat: APP_TERMS.TAB_CHAT,
           };
-          handleTabChange(toTab[String(mod)] || APP_TERMS.TAB_CHAT);
+          const nextTab = toTab[String(mod)] || APP_TERMS.TAB_CHAT;
+          const toMode: Record<string, string> = {
+            [APP_TERMS.TAB_SEARCH]: 'search',
+            [APP_TERMS.TAB_NARRATIVE]: 'narrative',
+            [APP_TERMS.TAB_UNIVERSITY]: 'university',
+            [APP_TERMS.TAB_EYE]: 'eye',
+            [APP_TERMS.TAB_MEDICAL]: 'medical',
+            [APP_TERMS.TAB_THERAPY]: 'therapy',
+            [APP_TERMS.TAB_CAREER]: 'career',
+            [APP_TERMS.TAB_CODE]: 'code',
+            [APP_TERMS.TAB_TASK]: 'task',
+            [APP_TERMS.TAB_CHAT]: 'chat',
+          };
+          const nextMode = toMode[nextTab] || 'chat';
           try { sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module: mod, query: trimmed })); } catch {}
-          // Also push ?q for views that read from URL
-          const params = new URLSearchParams(location.search);
-          params.set('q', trimmed);
-          navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+          navigate(RouteUtils.mainAppWithMode(nextMode), { state: { switchToTab: nextTab, initialQuery: trimmed, ...(String(mod) === 'research' ? { searchMode: 'research' } : {}) } });
           return;
         } catch {
           // fall through to chat send
@@ -800,6 +810,13 @@ const Index = () => {
     }
     initialMessageKey.current = initialMessage;
 
+    // Eye: seed prompt directly into the Eye workbench so it auto-renders
+    if (currentTab === APP_TERMS.TAB_EYE)
+    {
+      setEyePerceivePrompt(initialMessage);
+      return;
+    }
+
     if (currentTab === APP_TERMS.TAB_NARRATIVE)
     {
       // Allow landing to force story mode explicitly
@@ -893,7 +910,7 @@ const Index = () => {
     // Discovery-first for first message within main app
     (async () => {
       const existingSession = getCurrentSessionForTab();
-      const isFirst = !existingSession || (('messages' in existingSession) && existingSession.messages.length === 0);
+      const isFirst = !existingSession || (("messages" in existingSession) && existingSession.messages.length === 0);
       if (isFirst) {
         try {
           const mod = await discoverMusaiModule(initialMessage);
@@ -912,11 +929,22 @@ const Index = () => {
             task: APP_TERMS.TAB_TASK,
             chat: APP_TERMS.TAB_CHAT,
           };
-          handleTabChange(toTab[String(mod)] || APP_TERMS.TAB_CHAT);
+          const nextTab = toTab[String(mod)] || APP_TERMS.TAB_CHAT;
+          const toMode: Record<string, string> = {
+            [APP_TERMS.TAB_SEARCH]: 'search',
+            [APP_TERMS.TAB_NARRATIVE]: 'narrative',
+            [APP_TERMS.TAB_UNIVERSITY]: 'university',
+            [APP_TERMS.TAB_EYE]: 'eye',
+            [APP_TERMS.TAB_MEDICAL]: 'medical',
+            [APP_TERMS.TAB_THERAPY]: 'therapy',
+            [APP_TERMS.TAB_CAREER]: 'career',
+            [APP_TERMS.TAB_CODE]: 'code',
+            [APP_TERMS.TAB_TASK]: 'task',
+            [APP_TERMS.TAB_CHAT]: 'chat',
+          };
+          const nextMode = toMode[nextTab] || 'chat';
           try { sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module: mod, query: initialMessage })); } catch {}
-          const params = new URLSearchParams(location.search);
-          params.set('q', initialMessage);
-          navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+          navigate(RouteUtils.mainAppWithMode(nextMode), { state: { switchToTab: nextTab, initialQuery: initialMessage, ...(String(mod) === 'research' ? { searchMode: 'research' } : {}) } });
           return;
         } catch {
           // fall through to chat send

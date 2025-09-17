@@ -13,10 +13,6 @@ export const TopCopilotLauncher: React.FC<TopCopilotLauncherProps> = ({ classNam
 {
   const [query, setQuery] = useState('');
   const { isDiscovering, runDiscovery } = useMusaiDiscovery();
-  const [perspectiveEnabled, setPerspectiveEnabled] = useState<boolean>(() =>
-  {
-    try { return (window as any).__musai_perspective_enabled !== false; } catch { return true; }
-  });
 
   const placeholder = useMemo(() =>
   {
@@ -26,17 +22,6 @@ export const TopCopilotLauncher: React.FC<TopCopilotLauncherProps> = ({ classNam
     }
     return 'Press enter to summon the right Muse';
   }, [query]);
-
-  const handleTogglePerspective = useCallback(() =>
-  {
-    setPerspectiveEnabled(prev =>
-    {
-      const next = !prev;
-      try { (window as any).__musai_perspective_enabled = next; } catch {}
-      window.dispatchEvent(new CustomEvent('musai-perspective-toggle', { detail: { enabled: next } }));
-      return next;
-    });
-  }, []);
 
   const handleSubmit = useCallback(async (event?: React.FormEvent) =>
   {
@@ -54,19 +39,6 @@ export const TopCopilotLauncher: React.FC<TopCopilotLauncherProps> = ({ classNam
     >
       <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-sky-500 opacity-60 blur-xl group-hover:opacity-80 transition-opacity duration-500" aria-hidden />
       <div className="relative flex items-center gap-2 rounded-3xl border border-white/20 bg-slate-950/30 backdrop-blur-xl shadow-lg overflow-hidden w-full px-3 py-2">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className={cn(
-            'h-9 rounded-full px-4 text-xs font-semibold transition-all backdrop-blur-sm border-white/20 bg-white/10 text-white hover:bg-white/20',
-            perspectiveEnabled && 'bg-white/30 text-slate-900 shadow-inner'
-          )}
-          onClick={handleTogglePerspective}
-          aria-pressed={perspectiveEnabled}
-        >
-          POV
-        </Button>
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}

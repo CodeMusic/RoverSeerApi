@@ -179,9 +179,16 @@ function DevConsoleRoutingBridge()
         return;
       }
 
+      // Persist payload so the target page can consume without relying on URL params
+      try
+      {
+        sessionStorage.setItem('musai-discover-payload', JSON.stringify({ module, query }));
+      }
+      catch {}
+
       const navigateMain = (mode: string, tab: string, extraState: Record<string, unknown> = {}) =>
       {
-        navigate(RouteUtils.mainAppWithMode(mode, query), {
+        navigate(RouteUtils.mainAppWithMode(mode), {
           state: { switchToTab: tab, initialQuery: query, newSession: true, initialMessage: query, ...extraState }
         });
         // If the Dev Console is currently open, close it after a brief delay.

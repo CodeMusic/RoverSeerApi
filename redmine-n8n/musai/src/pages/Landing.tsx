@@ -303,56 +303,56 @@ const Landing = () => {
         return;
       case 'search':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('search', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('search'), {
             state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: trimmed },
           });
         });
         return;
       case 'research':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('search', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('search'), {
             state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: trimmed, searchMode: 'research' },
           });
         });
         return;
       case 'university':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('university', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('university'), {
             state: { switchToTab: APP_TERMS.TAB_UNIVERSITY, initialQuery: trimmed },
           });
         });
         return;
       case 'tale':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('narrative', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('narrative'), {
             state: { switchToTab: APP_TERMS.TAB_NARRATIVE, initialQuery: trimmed },
           });
         });
         return;
       case 'story':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('narrative', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('narrative'), {
             state: { switchToTab: APP_TERMS.TAB_NARRATIVE, initialQuery: trimmed, narrativeMode: 'story' },
           });
         });
         return;
       case 'eye':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('eye', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('eye'), {
             state: { switchToTab: APP_TERMS.TAB_EYE, initialQuery: trimmed },
           });
         });
         return;
       case 'medical':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('medical', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('medical'), {
             state: { switchToTab: APP_TERMS.TAB_MEDICAL, initialQuery: trimmed },
           });
         });
         return;
       case 'therapy':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('therapy', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('therapy'), {
             state: { switchToTab: APP_TERMS.TAB_THERAPY, initialQuery: trimmed },
           });
         });
@@ -366,14 +366,14 @@ const Landing = () => {
         return;
       case 'code':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('code', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('code'), {
             state: { switchToTab: APP_TERMS.TAB_CODE, initialQuery: trimmed },
           });
         });
         return;
       case 'career':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('career', trimmed), {
+          navigate(RouteUtils.mainAppWithMode('career'), {
             state: { switchToTab: APP_TERMS.TAB_CAREER, initialQuery: trimmed },
           });
         });
