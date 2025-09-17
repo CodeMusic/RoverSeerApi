@@ -39,11 +39,8 @@
         var overflow = rect.bottom - viewportBottom;
         if (overflow > 0)
         {
-          var cs = (window.getComputedStyle ? window.getComputedStyle(aiSection) : null);
-          var currentBottom = 0;
-          try { currentBottom = cs ? (parseFloat(cs.bottom) || 0) : (parseFloat(aiSection.style.bottom) || 0); } catch (_) { currentBottom = 0; }
-          var next = Math.max(8, currentBottom + overflow + 8);
-          aiSection.style.bottom = next + 'px';
+          // Keep dock flush; do not nudge upward even if content grows
+          aiSection.style.bottom = '0px';
         }
         else
         {
