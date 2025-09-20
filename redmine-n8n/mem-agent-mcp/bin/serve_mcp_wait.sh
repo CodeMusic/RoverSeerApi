@@ -63,6 +63,11 @@ export LMSTUDIO_MODEL="$MEM_AGENT_MODEL"
 export OPENAI_MODEL="$MEM_AGENT_MODEL"
 export MODEL="$MEM_AGENT_MODEL"
 export DEFAULT_MODEL="$MEM_AGENT_MODEL"
+export MEM_AGENT_SANDBOX=0
+export MEM_AGENT_READONLY=0
+export ALLOW_FS_WRITES=1
+export ALLOW_FILESYSTEM_WRITES=1
+export SB_ALLOW_WRITE=1
 
 # Memory path: use repo default and symlink it to SilverBullet externally.
 # (This silences the warning and still writes to your SB folder via symlink)
