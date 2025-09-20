@@ -4,7 +4,26 @@ set -euo pipefail
 # ---------- paths ----------
 REPO="${REPO:-$HOME/redmine-n8n/mem-agent-mcp}"
 UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
-LMS_BIN="${LMS_BIN:-/Users/christopherhicks/.cache/lm-studio/bin/lms}"  # your detected path
+LMS_BIN="${LMS_BIN:-/Users/christopherhicks/.cache/lm-studio/bin/lms}"  # detected path
+
+# --- single-instance guard (avoid duplicates) ---
+if command -v flock >/dev/null 2>&1; then
+  LOCKROOT="$REPO/.locks"
+  mkdir -p "$LOCKROOT"
+  LOCKFILE="$LOCKROOT/mcp.lock"
+  exec 9>"$LOCKFILE" || true
+  if ! /usr/bin/flock -n 9; then
+    echo "[MCP] Another instance is running; exiting."
+    exit 0
+  fi
+else
+  LOCKDIR="$REPO/.mcp.lockdir"
+  if ! /bin/mkdir "$LOCKDIR" 2>/dev/null; then
+    echo "[MCP] Another instance is running; exiting."
+    exit 0
+  fi
+  trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
+fi
 
 # ---------- config ----------
 export LMSTUDIO_BASE_URL="${LMSTUDIO_BASE_URL:-http://127.0.0.1:8000}"
@@ -26,12 +45,8 @@ export MEM_AGENT_MEMORY_DIR="$MEMORY_DIR"
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:/Users/christopherhicks/.cache/lm-studio/bin"
 
 # ---------- sanity ----------
-if ! command -v jq >/dev/null 2>&1; then
-  echo "[MCP] ERROR: jq missing (brew install jq)"; exit 127
-fi
-if ! command -v uv >/dev/null 2>&1; then
-  echo "[MCP] ERROR: uv missing"; exit 127
-fi
+command -v jq >/dev/null 2>&1 || { echo "[MCP] ERROR: jq missing (brew install jq)"; exit 127; }
+command -v uv >/dev/null 2>&1 || { echo "[MCP] ERROR: uv missing"; exit 127; }
 
 mkdir -p "$MEMORY_DIR/entities"
 [ -f "$MEMORY_DIR/user.md" ] || printf "# User Information\n\n## User Relationships\n" > "$MEMORY_DIR/user.md"
@@ -54,19 +69,30 @@ wait_for_api() {
   return 1
 }
 
+preheat() {
+  # fire a few tiny requests with growing max_tokens to warm compile paths
+  for t in 1 4 16; do
+    /usr/bin/curl -sS --max-time 6 \
+      -H 'Content-Type: application/json' \
+      -d "{\"model\":\"$MEM_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"warmup $t\"}],\"max_tokens\":$t}" \
+      "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
+    /bin/sleep 0.5
+  done
+}
+
 have_model() {
   /usr/bin/curl -fsS "$LMSTUDIO_BASE_URL/v1/models" \
     | jq -e --arg m "$MEM_AGENT_MODEL" 'any(.data[].id; . == $m)' >/dev/null
 }
 
 ensure_single_model_loaded() {
-  # Prefer JIT: a tiny prompt forces load & evicts other instances if needed
+  # Prefer JIT: a tiny prompt forces load
   /usr/bin/curl -sS --max-time 6 \
     -H 'Content-Type: application/json' \
     -d "{\"model\":\"$MEM_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}" \
     "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
 
-  # If still not listed, try LMS CLI (idempotent). Ignore failures.
+  # If still not listed, try LMS CLI (idempotent)
   if ! have_model && [ -x "$LMS_BIN" ]; then
     echo "[MCP] Loading via LMS CLI: $MEM_AGENT_MODEL ..."
     "$LMS_BIN" load "$MEM_AGENT_MODEL" || true
@@ -99,7 +125,19 @@ wait_port_free() {
 # ---------- sequence ----------
 wait_for_api
 ensure_single_model_loaded
+preheat
 wait_port_free 8081
+
+# keep-warm (run BEFORE exec so it survives via the parent shell)
+(
+  while :; do
+    /usr/bin/curl -fsS -H 'Content-Type: application/json' \
+      -d '{"model":"'"$MEM_AGENT_MODEL"'","messages":[{"role":"user","content":"ping"}],"max_tokens":1}' \
+      "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
+    # 45–60s with a little jitter
+    sleep "$((45 + RANDOM % 15))"
+  done
+) &
 
 echo "🌐 Starting MCP-Compliant HTTP Server for ChatGPT..."
 echo "🔗 MCP endpoint: http://localhost:8081/mcp"
