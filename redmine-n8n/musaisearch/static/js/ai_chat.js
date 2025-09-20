@@ -545,6 +545,179 @@
       }
     }
 
+    /**
+     * Render markdown with safety heuristics, preserving <br/> and common emphasis
+     * This supports a subset: bold, italics, inline/code blocks, line breaks
+     */
+    function escapeHtmlPreserveBr(input)
+    {
+      try
+      {
+        var s = (input == null ? '' : String(input));
+        var brSentinel = '[[[MUSAI_BR_SENTINEL]]]';
+        s = s.replace(/<\s*br\s*\/?>(?![^]*<\/code>)/gi, brSentinel);
+        s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        s = s.replace(/\"/g, '&quot;').replace(/'/g, '&#39;');
+        s = s.replace(new RegExp(brSentinel, 'g'), '<br/>' );
+        return s;
+      }
+      catch (_)
+      {
+        return String(input || '');
+      }
+    }
+
+    function miniMarkdownToHtml(input)
+    {
+      try
+      {
+        var s = escapeHtmlPreserveBr(input);
+        // Normalize newlines
+        s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        // Fence code blocks ```...```
+        var codeBlocks = [];
+        s = s.replace(/```([\s\S]*?)```/g, function(_, code)
+        {
+          var idx = codeBlocks.length;
+          codeBlocks.push('<pre><code>' + code + '</code></pre>');
+          return '[[[MUSAI_CODE_BLOCK_' + idx + ']]]';
+        });
+
+        // Inline code `...`
+        s = s.replace(/`([^`]+?)`/g, function(_, code)
+        {
+          return '<code>' + code + '</code>';
+        });
+
+        // Bold and italics
+        s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
+        s = s.replace(/\*(?!\s)([^*]+?)\*/g, '<em>$1</em>');
+        s = s.replace(/_(?!\s)([^_]+?)_/g, '<em>$1</em>');
+
+        // Convert remaining newlines to <br/>
+        s = s.replace(/\n/g, '<br/>');
+
+        // Restore fenced code blocks
+        s = s.replace(/\[\[\[MUSAI_CODE_BLOCK_(\d+)\]\]\]/g, function(_, idx)
+        {
+          var i = parseInt(idx, 10);
+          return (codeBlocks[i] || '');
+        });
+        return s;
+      }
+      catch (_)
+      {
+        return escapeHtmlPreserveBr(input);
+      }
+    }
+
+    function sanitizeTrustedHtml(html)
+    {
+      try
+      {
+        var container = document.createElement('div');
+        container.innerHTML = String(html || '');
+        var allowedTags = {
+          'BR': true,
+          'STRONG': true,
+          'EM': true,
+          'CODE': true,
+          'PRE': true,
+          'P': true,
+          'UL': true,
+          'OL': true,
+          'LI': true,
+          'A': true,
+          'H1': true,
+          'H2': true,
+          'H3': true,
+          'H4': true,
+          'H5': true,
+          'H6': true
+        };
+
+        var walk = function(node)
+        {
+          var child = node.firstChild;
+          while (child)
+          {
+            var next = child.nextSibling;
+            if (child.nodeType === 1)
+            {
+              var tag = child.tagName;
+              if (!allowedTags[tag])
+              {
+                var textNode = document.createTextNode(child.textContent || '');
+                node.replaceChild(textNode, child);
+              }
+              else
+              {
+                for (var i = child.attributes.length - 1; i >= 0; i--)
+                {
+                  var name = child.attributes[i].name.toLowerCase();
+                  if (tag === 'A')
+                  {
+                    if (name !== 'href' && name !== 'title' && name !== 'target' && name !== 'rel')
+                    {
+                      child.removeAttribute(name);
+                    }
+                  }
+                  else
+                  {
+                    if (name !== 'title')
+                    {
+                      child.removeAttribute(name);
+                    }
+                  }
+                }
+                if (tag === 'A')
+                {
+                  var href = child.getAttribute('href') || '';
+                  var safe = /^(?:https?:|mailto:|#)/i.test(href);
+                  if (!safe)
+                  {
+                    child.removeAttribute('href');
+                  }
+                  else
+                  {
+                    child.setAttribute('target', '_blank');
+                    child.setAttribute('rel', 'noopener noreferrer nofollow');
+                  }
+                }
+                walk(child);
+              }
+            }
+            else if (child.nodeType === 8)
+            {
+              node.removeChild(child);
+            }
+            child = next;
+          }
+        };
+        walk(container);
+        return container.innerHTML;
+      }
+      catch (_)
+      {
+        return String(html || '');
+      }
+    }
+
+    function renderMarkdownSafe(input)
+    {
+      try
+      {
+        var html = miniMarkdownToHtml(input);
+        return sanitizeTrustedHtml(html);
+      }
+      catch (_)
+      {
+        return escapeHtmlPreserveBr(input);
+      }
+    }
+
     /** Submit handler */
     var typingEl = null;
     aiForm && aiForm.addEventListener('submit', function(ev)
@@ -883,8 +1056,7 @@
           // Ensure the main bubble has content even when there are no POV items
           try
           {
-            var primaryText = perspectiveThought ? perspectiveThought : (responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : ''));
-            main.textContent = primaryText;
+            main.innerHTML = '';
           }
           catch (_) { /* no-op */ }
 
@@ -926,17 +1098,17 @@
 
             var redPanel = document.createElement('div');
             redPanel.className = 'ai-pov-panel red';
-            redPanel.textContent = logicalThought || '';
+          redPanel.innerHTML = renderMarkdownSafe(logicalThought || '');
             redPanel.hidden = true;
 
             var bluePanel = document.createElement('div');
             bluePanel.className = 'ai-pov-panel blue';
-            bluePanel.textContent = creativeThought || '';
+          bluePanel.innerHTML = renderMarkdownSafe(creativeThought || '');
             bluePanel.hidden = true;
 
             var violetPanel = document.createElement('div');
             violetPanel.className = 'ai-pov-panel violet';
-            violetPanel.textContent = perspectiveThought || '';
+          violetPanel.innerHTML = renderMarkdownSafe(perspectiveThought || '');
             violetPanel.hidden = true;
 
             function setActive(which)
@@ -982,7 +1154,7 @@
               toggles.appendChild(blueBtn);
               toggles.appendChild(violetBtn);
               // Content already set above; set again defensively in the POV path
-              main.textContent = perspectiveThought ? perspectiveThought : (responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : ''));
+              main.innerHTML = renderMarkdownSafe(perspectiveThought ? perspectiveThought : (responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : '')));
               aiOut.appendChild(main);
               aiOut.appendChild(redPanel);
               aiOut.appendChild(bluePanel);
@@ -994,6 +1166,12 @@
           }
           else
           {
+            try
+            {
+              var simpleText = responseText || (Object.keys(record).length ? JSON.stringify(record, null, 2) : '');
+              main.innerHTML = renderMarkdownSafe(simpleText);
+            }
+            catch (_) { /* no-op */ }
             if (aiOut) { aiOut.appendChild(main); }
             // Add hide control (X) for the simple output case
             (function(){ try { if (aiOut) { var hideBtn2 = createHideButton(); if (hideBtn2) { aiOut.appendChild(hideBtn2); } } } catch (_) { /* no-op */ } })();
