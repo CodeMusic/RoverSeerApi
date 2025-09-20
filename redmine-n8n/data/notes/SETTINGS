@@ -1,0 +1,7 @@
+ai:
+  textModels:
+    - name: deepseek-r1
+      provider: ollama
+      modelName: deepseek-r1:8b
+      baseUrl: http://host.docker.internal:11434/v1
+      requireAuth: false
