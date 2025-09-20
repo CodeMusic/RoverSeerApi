@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: mysql:8.0
@@ -25,9 +23,9 @@ services:
     depends_on:
       - db
     environment:
-      BUNDLE_FORCE_RUBY_PLATFORM: "true"
+      BUNDLE_FORCE_RUBY_PLATFORM: true
       REDMINE_HOST: m2cbook.local
-      REDMINE_HTTPS: "true"
+      REDMINE_HTTPS: true
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PORT: 3306
       REDMINE_DB_DATABASE: redmine_db
@@ -66,13 +64,13 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n/plugins:/data/packages
-      - ./silverbullet/data/notes:/space   # so n8n can write memories directly into SB space
+      - ${HOME}/redmine-n8n/silverbullet/data:/space
     networks: [ai_net]
 
   musai:
     build:
       context: ./musai
-    dockerfile: Dockerfile
+      dockerfile: Dockerfile
     container_name: musai
     restart: always
     ports:
@@ -149,30 +147,6 @@ services:
       timeout: 5s
       retries: 10
 
-  wyoming-whisper:
-    image: rhasspy/wyoming-whisper
-    restart: unless-stopped
-    command: --model base.en --language en --uri tcp://0.0.0.0:10300
-    ports: ["10300:10300"]
-    networks:
-      ai_net:
-        aliases: [wyoming-whisper]
-
-  wyoming-piper:
-    image: rhasspy/wyoming-piper
-    restart: unless-stopped
-    volumes:
-      - ./ai-model-cache/piper-voices:/voices
-    command: >
-      --model  /voices/en_US-GlaDOS-medium.onnx
-      --config /voices/en_US-GlaDOS-medium.onnx.json
-      --uri    tcp://0.0.0.0:10200
-    ports: ["10200:10200"]
-    networks:
-      ai_net:
-        aliases: [wyoming-piper]
-
-  # SilverBullet (Space at /space). mem-agent-mcp will share this volume.
   silverbullet:
     build:
       context: .
@@ -182,37 +156,11 @@ services:
     ports:
       - "3030:3000"
     volumes:
-      - ./silverbullet/data/notes:/space
-      - ./silverbullet/PLUGINS/silverbullet-ai:/space/PLUGINS/silverbullet-ai
-      - ./silverbullet/SECRETS:/space/SECRETS
-      - ./silverbullet/SETTINGS:/space/SETTINGS
+      - ${HOME}/redmine-n8n/silverbullet/data:/space
     environment:
-      - BASE_URL=http://localhost:3030
-      - SB_USER=admin:EnterPasswordHere!!
+      - BASE_URL=http://im1ac.local:3030
+      - SB_USER=admin:Cl@rity!
     networks: [ai_net]
-
-
-  # NEW: mem-agent-mcp wired to SilverBullet Space (/space)
-  mem-agent-mcp:
-    build:
-      context: ./mem-agent-mcp
-      dockerfile: Dockerfile
-    container_name: mem-agent-mcp
-    depends_on: [silverbullet]
-    restart: unless-stopped
-    ports: ["8081:8081"]
-    environment:
-      MEMORY_DIR: /space/MusaiMemory
-      LMSTUDIO_BASE_URL: http://host.docker.internal:1234
-    volumes:
-      - ./data/notes:/space
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    working_dir: /app
-    command: >
-      bash -lc "mkdir -p /space/MusaiMemory/entities && make serve-mcp-http"
-    networks:
-      - ai_net
 
 
   homeassistant:
@@ -220,13 +168,39 @@ services:
     container_name: homeassistant
     restart: unless-stopped
     ports:
-      - "8123:8123"  # Keep private; access via VPN or n8n
-    volumes:  #Use a local folder unique to this environment:
-      - ./homeassist-configs/dev-config:/config #Macbook
-#  - ./homeassist-configs/staging-config:/config #iMac
+      - "8123:8123"
+    volumes:
+#      - ./homeassist-configs/dev-config:/config #Macbook
+      - ./homeassist-configs/staging-config:/config #iMac
 #  - ./homeassist-configs/prod-config:/config #Pi5
       - /etc/localtime:/etc/localtime:ro
     networks: [ai_net]
+
+  # -------------------------------------------------------------
+  # mem-agent-mcp (COMMENTED OUT for MLX Option A: run on host)
+  # If you later want to run mem-agent in a container (LM Studio mode),
+  # uncomment this block and point to LM Studio's API.
+  #
+  # mem-agent-mcp:
+  #   build:
+  #     context: ./mem-agent-mcp
+  #     dockerfile: Dockerfile
+  #   container_name: mem-agent-mcp
+  #   depends_on: [silverbullet]
+  #   restart: unless-stopped
+  #   ports: ["8081:8081"]
+  #   environment:
+  #     MEMORY_DIR: /space/MusaiMemory
+  #     LMSTUDIO_BASE_URL: http://host.docker.internal:1234
+  #   volumes:
+  #     - ./silverbullet/data/notes:/space
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   working_dir: /app
+  #   command: >
+  #     bash -lc "mkdir -p /space/MusaiMemory/entities && make serve-mcp-http"
+  #   networks: [ai_net]
+  # -------------------------------------------------------------
 
 volumes:
   mysql_data:

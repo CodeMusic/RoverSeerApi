@@ -1,15 +1,40 @@
 #!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP HTTP server wrapper for LM Studio (macOS)
+#
+# QUICK EDIT: change the active model here, then restart (see below).
+MEM_AGENT_MODEL="${MEM_AGENT_MODEL:-mem-agent-mlx}"
+#
+# RESTART (LaunchAgent):
+#   REPO="$HOME/redmine-n8n/mem-agent-mcp"
+#   PL="$HOME/Library/LaunchAgents/com.musai.memagent.wrapper.plist"
+#   rm -f "$REPO/.locks/mcp.lock" 2>/dev/null || true
+#   rmdir "$REPO/.mcp.lockdir"     2>/dev/null || true
+#   launchctl bootout  gui/$(id -u) com.musai.memagent.wrapper 2>/dev/null || true
+#   launchctl bootstrap gui/$(id -u) "$PL"
+#   launchctl kickstart -k gui/$(id -u)/com.musai.memagent.wrapper
+#
+# TEST:
+#   curl -s http://127.0.0.1:8081/mcp
+#   curl -s -H 'Content-Type: application/json' \
+#     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+#     http://127.0.0.1:8081/mcp
+#   curl -s -H 'Content-Type: application/json' \
+#     -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"use_memory_agent","arguments":{"question":"Reply \"ACK\" only. No memory ops."}}}' \
+#     http://127.0.0.1:8081/mcp
+# ─────────────────────────────────────────────────────────────────────────────
+
 set -euo pipefail
 
 # ---------- paths ----------
 REPO="${REPO:-$HOME/redmine-n8n/mem-agent-mcp}"
 UV_BIN="${UV_BIN:-$HOME/.local/bin/uv}"
-LMS_BIN="${LMS_BIN:-/Users/christopherhicks/.cache/lm-studio/bin/lms}"  # detected path
+LMS_BIN="${LMS_BIN:-/Users/christopherhicks/.cache/lm-studio/bin/lms}"
 
-# --- single-instance guard (avoid duplicates) ---
+# --- single-instance guard (prefer flock; fallback mkdir) ---
+LOCKROOT="$REPO/.locks"
+mkdir -p "$LOCKROOT"
 if command -v flock >/dev/null 2>&1; then
-  LOCKROOT="$REPO/.locks"
-  mkdir -p "$LOCKROOT"
   LOCKFILE="$LOCKROOT/mcp.lock"
   exec 9>"$LOCKFILE" || true
   if ! /usr/bin/flock -n 9; then
@@ -18,6 +43,9 @@ if command -v flock >/dev/null 2>&1; then
   fi
 else
   LOCKDIR="$REPO/.mcp.lockdir"
+  if [ -d "$LOCKDIR" ] && ! /usr/sbin/lsof -nP -iTCP:8081 -sTCP:LISTEN >/dev/null 2>&1; then
+    rmdir "$LOCKDIR" 2>/dev/null || true
+  fi
   if ! /bin/mkdir "$LOCKDIR" 2>/dev/null; then
     echo "[MCP] Another instance is running; exiting."
     exit 0
@@ -27,19 +55,19 @@ fi
 
 # ---------- config ----------
 export LMSTUDIO_BASE_URL="${LMSTUDIO_BASE_URL:-http://127.0.0.1:8000}"
-export MEM_AGENT_MODEL="${MEM_AGENT_MODEL:-mem-agent-mlx}"   # single source of truth
 
-# expose for any library that looks for these
+# Single source of truth for the model; also set common aliases
+export MEM_AGENT_MODEL
 export LMS_MODEL="$MEM_AGENT_MODEL"
 export LMSTUDIO_MODEL="$MEM_AGENT_MODEL"
 export OPENAI_MODEL="$MEM_AGENT_MODEL"
 export MODEL="$MEM_AGENT_MODEL"
 export DEFAULT_MODEL="$MEM_AGENT_MODEL"
 
-# Memory root (SilverBullet-backed)
-export MEMORY_DIR="${MEMORY_DIR:-$HOME/redmine-n8n/data/notes/MusaiMemory}"
-export MEMORY_PATH="$MEMORY_DIR"
-export MEM_AGENT_MEMORY_DIR="$MEMORY_DIR"
+# Memory path: use repo default and symlink it to SilverBullet externally.
+# (This silences the warning and still writes to your SB folder via symlink)
+export MEMORY_PATH="$REPO/memory/mcp-server"
+unset MEMORY_DIR MEM_AGENT_MEMORY_DIR 2>/dev/null || true
 
 # PATH (include uv + lms)
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin:/Users/christopherhicks/.cache/lm-studio/bin"
@@ -48,12 +76,11 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOM
 command -v jq >/dev/null 2>&1 || { echo "[MCP] ERROR: jq missing (brew install jq)"; exit 127; }
 command -v uv >/dev/null 2>&1 || { echo "[MCP] ERROR: uv missing"; exit 127; }
 
-mkdir -p "$MEMORY_DIR/entities"
-[ -f "$MEMORY_DIR/user.md" ] || printf "# User Information\n\n## User Relationships\n" > "$MEMORY_DIR/user.md"
-
-# quiet the “Memory path not found” notice
+# ensure memory folder exists (the symlink target is handled outside this script)
 mkdir -p "$REPO/memory"
-ln -snf "$MEMORY_DIR" "$REPO/memory/mcp-server" || true
+# Example (run once outside): ln -snf "$HOME/redmine-n8n/silverbullet/data/notes/MusaiMemory" "$REPO/memory/mcp-server"
+mkdir -p "$MEMORY_PATH/entities"
+[ -f "$MEMORY_PATH/user.md" ] || printf "# User Information\n\n## User Relationships\n" > "$MEMORY_PATH/user.md"
 
 # ---------- helpers ----------
 wait_for_api() {
@@ -69,25 +96,14 @@ wait_for_api() {
   return 1
 }
 
-preheat() {
-  # fire a few tiny requests with growing max_tokens to warm compile paths
-  for t in 1 4 16; do
-    /usr/bin/curl -sS --max-time 6 \
-      -H 'Content-Type: application/json' \
-      -d "{\"model\":\"$MEM_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"warmup $t\"}],\"max_tokens\":$t}" \
-      "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
-    /bin/sleep 0.5
-  done
-}
-
 have_model() {
   /usr/bin/curl -fsS "$LMSTUDIO_BASE_URL/v1/models" \
     | jq -e --arg m "$MEM_AGENT_MODEL" 'any(.data[].id; . == $m)' >/dev/null
 }
 
 ensure_single_model_loaded() {
-  # Prefer JIT: a tiny prompt forces load
-  /usr/bin/curl -sS --max-time 6 \
+  # JIT ping first (often loads the model)
+  /usr/bin/curl -sS --max-time 8 \
     -H 'Content-Type: application/json' \
     -d "{\"model\":\"$MEM_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}],\"max_tokens\":1}" \
     "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
@@ -107,6 +123,17 @@ ensure_single_model_loaded() {
     /bin/sleep 2
   done
   echo "[MCP] WARNING: '$MEM_AGENT_MODEL' not listed; proceeding (JIT likely)."
+}
+
+preheat() {
+  # Warm up compilation paths
+  for t in 1 4 16; do
+    /usr/bin/curl -sS --max-time 8 \
+      -H 'Content-Type: application/json' \
+      -d "{\"model\":\"$MEM_AGENT_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"warmup $t\"}],\"max_tokens\":$t}" \
+      "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
+    /bin/sleep 0.5
+  done
 }
 
 wait_port_free() {
@@ -134,7 +161,6 @@ wait_port_free 8081
     /usr/bin/curl -fsS -H 'Content-Type: application/json' \
       -d '{"model":"'"$MEM_AGENT_MODEL"'","messages":[{"role":"user","content":"ping"}],"max_tokens":1}' \
       "$LMSTUDIO_BASE_URL/v1/chat/completions" >/dev/null 2>&1 || true
-    # 45–60s with a little jitter
     sleep "$((45 + RANDOM % 15))"
   done
 ) &

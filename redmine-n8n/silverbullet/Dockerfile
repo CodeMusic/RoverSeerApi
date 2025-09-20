@@ -1,4 +1,8 @@
 FROM ghcr.io/silverbulletmd/silverbullet:latest
+WORKDIR /space
+
+
+#FROM ghcr.io/silverbulletmd/silverbullet:latest
 
 # Copy AI plugin
 #COPY silverbullet/PLUGINS/silverbullet-ai /space/PLUGINS/silverbullet-ai
