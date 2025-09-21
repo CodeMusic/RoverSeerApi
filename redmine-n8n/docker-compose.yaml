@@ -89,7 +89,7 @@ services:
   musai-api:
     build: ./musai-api
     container_name: musai-api
-    restart: unless-stopped
+    restart: always
     ports:
       - "9000:9000"
     environment:
@@ -110,7 +110,7 @@ services:
   musaisearch:
     image: searxng/searxng:latest
     container_name: musaisearch
-    restart: unless-stopped
+    restart: always
     ports:
       - "8080:8080"
     depends_on: [morty]
@@ -133,7 +133,7 @@ services:
   morty:
     image: dalf/morty:latest
     container_name: morty
-    restart: unless-stopped
+    restart: always
     ports:
       - "3001:3000"
     environment:
@@ -152,7 +152,7 @@ services:
       context: .
       dockerfile: silverbullet/Dockerfile
     container_name: rovervault
-    restart: unless-stopped
+    restart: always
     ports:
       - "3030:3000"
     volumes:
@@ -166,7 +166,7 @@ services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
-    restart: unless-stopped
+    restart: always
     ports:
       - "8123:8123"
     volumes:
@@ -187,7 +187,7 @@ services:
   #     dockerfile: Dockerfile
   #   container_name: mem-agent-mcp
   #   depends_on: [silverbullet]
-  #   restart: unless-stopped
+  #   restart: always
   #   ports: ["8081:8081"]
   #   environment:
   #     MEMORY_DIR: /space/MusaiMemory
