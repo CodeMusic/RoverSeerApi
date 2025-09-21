@@ -113,6 +113,34 @@ def create_dir(dir_path: str) -> bool:
         return False
 
 
+def append_file(file_path: str, content: str) -> bool:
+    """
+    Append a single line or blob to a file; create the file if missing.
+
+    Ensures the parent directory exists, preserves a single trailing newline
+    before the appended content when appropriate, and writes within the
+    sandbox's allowed directory.
+    """
+    try:
+        target_dir = os.path.dirname(file_path) or "."
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir, exist_ok=True)
+
+        existing = ""
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                existing = f.read()
+
+        sep = "" if (existing == "" or existing.endswith("\n")) else "\n"
+        new_content = f"{existing}{sep}{content}"
+
+        with open(file_path, "w") as f:
+            f.write(new_content)
+        return True
+    except Exception:
+        return False
+
+
 def update_file(file_path: str, old_content: str, new_content: str) -> Union[bool, str]:
     """
     Simple find-and-replace update method for files.

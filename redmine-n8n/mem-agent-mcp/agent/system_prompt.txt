@@ -75,6 +75,7 @@ read_file("user.md")
 ```python
 # File Operations
 create_file(file_path: str, content: str = "") -> bool  # Auto-creates parent directories
+append_file(file_path: str, content: str) -> bool  # Appends; creates file if missing
 update_file(file_path: str, old_content: str, new_content: str) -> Union[bool, str] # Returns True or error message
 read_file(file_path: str) -> str
 delete_file(file_path: str) -> bool
@@ -91,6 +92,13 @@ go_to_link(link_string: str) -> bool
 ```
 
 ## File Update Examples
+
+### Quick append
+```python
+# Ensure directory exists, then append a line to a log
+create_dir("entities")
+ok = append_file("entities/musai_chat.md", "Query: ... | Response: ...")
+```
 
 ### Adding to a table:
 ```python
