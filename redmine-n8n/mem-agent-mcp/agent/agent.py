@@ -72,18 +72,33 @@ class Agent:
         # Ensure memory_path is absolute for consistency
         self.memory_path = os.path.abspath(self.memory_path)
 
-        # Debug logging controls
+        # Debug logging controls (scoped logger, do not touch root)
         self.session_id = uuid.uuid4().hex[:8]
         self._debug_extracts = os.getenv("MEM_AGENT_LOG_EXTRACTS", "0").lower() in ("1", "true", "yes", "on")
+        self._logger = logging.getLogger("mem_agent")
+        self._logger.propagate = False  # keep logs from bubbling to root
         if self._debug_extracts:
             level_name = os.getenv("MEM_AGENT_LOG_LEVEL", "INFO").upper()
             level = getattr(logging, level_name, logging.INFO)
-            try:
-                logging.basicConfig(level=level)
-            except Exception:
-                logging.basicConfig(level=logging.INFO)
-            logging.info("[mem-agent][%s] debug logging enabled (level=%s)", self.session_id, level_name)
-            logging.info("[mem-agent][%s] memory_path=%s", self.session_id, self.memory_path)
+            self._logger.setLevel(level)
+            if not self._logger.handlers:
+                handler = logging.StreamHandler()
+                formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
+                handler.setFormatter(formatter)
+                handler.setLevel(level)
+                self._logger.addHandler(handler)
+
+            # Silence verbose SDKs unless explicitly requested
+            verbose_sdk = os.getenv("MEM_AGENT_VERBOSE_SDK", "0").lower() in ("1", "true", "yes", "on")
+            if not verbose_sdk:
+                for noisy in ("openai", "httpx", "httpcore", "urllib3"):
+                    try:
+                        logging.getLogger(noisy).setLevel(logging.WARNING)
+                    except Exception:
+                        pass
+
+            self._logger.info("[mem-agent][%s] debug logging enabled (level=%s)", self.session_id, level_name)
+            self._logger.info("[mem-agent][%s] memory_path=%s", self.session_id, self.memory_path)
 
     def _add_message(self, message: Union[ChatMessage, dict]):
         """Add a message to the conversation history."""
@@ -135,7 +150,7 @@ class Agent:
         thoughts, reply, python_code = self.extract_response_parts(response)
 
         if self._debug_extracts:
-            logging.info(
+            self._logger.info(
                 "[mem-agent][%s] extracted: thoughts_len=%d reply_present=%s python_len=%d",
                 self.session_id,
                 len(thoughts or ""),
@@ -143,7 +158,7 @@ class Agent:
                 len(python_code or ""),
             )
             if python_code:
-                logging.info("[mem-agent][%s] <python>\n%s\n</python>", self.session_id, python_code)
+                self._logger.info("[mem-agent][%s] <python>\n%s\n</python>", self.session_id, python_code)
 
         # Execute the code from the agent's response
         result = ({}, "")
@@ -155,7 +170,7 @@ class Agent:
                 import_module="agent.tools",
             )
             if self._debug_extracts:
-                logging.info(
+                self._logger.info(
                     "[mem-agent][%s] execution: locals=%s error=%s",
                     self.session_id,
                     list(result[0].keys()),
@@ -181,7 +196,7 @@ class Agent:
             thoughts, reply, python_code = self.extract_response_parts(response)
 
             if self._debug_extracts:
-                logging.info(
+                self._logger.info(
                     "[mem-agent][%s] loop extracted: thoughts_len=%d reply_present=%s python_len=%d",
                     self.session_id,
                     len(thoughts or ""),
@@ -189,7 +204,7 @@ class Agent:
                     len(python_code or ""),
                 )
                 if python_code:
-                    logging.info("[mem-agent][%s] <python>\n%s\n</python>", self.session_id, python_code)
+                    self._logger.info("[mem-agent][%s] <python>\n%s\n</python>", self.session_id, python_code)
 
             self._add_message(ChatMessage(role=Role.ASSISTANT, content=response))
             if python_code:
@@ -200,7 +215,7 @@ class Agent:
                     import_module="agent.tools",
                 )
                 if self._debug_extracts:
-                    logging.info(
+                    self._logger.info(
                         "[mem-agent][%s] loop execution: locals=%s error=%s",
                         self.session_id,
                         list(result[0].keys()),
