@@ -56,6 +56,9 @@ export interface CourseMetadata
   imagePath?: string;
   passThreshold: number; // Default 50%
   processorFile?: ProcessorFile;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  estimatedDuration?: string;
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +68,7 @@ export interface CourseLecture
   id: string;
   title: string;
   summary: string;
+  duration?: string;
   status: 'locked' | 'unlocked' | 'in_progress' | 'completed';
   content?: string; // markdown content
   quiz?: QuizQuestion[];
@@ -152,6 +156,10 @@ export interface CourseCreationRequest
   imagePath?: string;
   passThreshold?: number;
   processorFile?: ProcessorFile;
+  syllabus?: Array<{ title: string; summary: string; duration?: string }>;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  estimatedDuration?: string;
+  tags?: string[];
 }
 
 export interface LectureGenerationRequest 
@@ -159,6 +167,7 @@ export interface LectureGenerationRequest
   courseId: string;
   lectureIndex: number;
   lectureTitle: string;
+  lectureSummary?: string;
   previousLectureContext?: string;
   processorFile?: ProcessorFile;
 }

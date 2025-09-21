@@ -310,6 +310,11 @@ const Landing = () => {
         return;
       case 'research':
         navigateAfterDelay(() => {
+          try
+          {
+            sessionStorage.setItem('musai-search-initial-mode', 'research');
+          }
+          catch {}
           navigate(RouteUtils.mainAppWithMode('search'), {
             state: { switchToTab: APP_TERMS.TAB_SEARCH, initialQuery: trimmed, searchMode: 'research' },
           });

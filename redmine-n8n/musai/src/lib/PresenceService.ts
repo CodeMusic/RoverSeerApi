@@ -124,17 +124,63 @@ class PresenceService extends EventTarget
   private resolveClientId(): string
   {
     const key = 'musai.clientId';
-    const existing = window.localStorage.getItem(key);
-    if (existing && existing.length > 0)
+    try
     {
-      return existing;
+      const existing = window.localStorage.getItem(key);
+      if (existing && existing.length > 0)
+      {
+        return existing;
+      }
     }
-    const next = crypto.randomUUID();
-    window.localStorage.setItem(key, next);
+    catch
+    {
+      // Access to localStorage can fail in some environments (e.g., private mode)
+    }
+
+    const createUuid = () =>
+    {
+      const globalCrypto = typeof globalThis !== 'undefined' ? (globalThis.crypto ?? undefined) : undefined;
+      if (globalCrypto)
+      {
+        if (typeof globalCrypto.randomUUID === 'function')
+        {
+          return globalCrypto.randomUUID();
+        }
+        if (typeof globalCrypto.getRandomValues === 'function')
+        {
+          const bytes = new Uint8Array(16);
+          globalCrypto.getRandomValues(bytes);
+          bytes[6] = (bytes[6] & 0x0f) | 0x40;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0'));
+          return [
+            hex.slice(0, 4).join(''),
+            hex.slice(4, 6).join(''),
+            hex.slice(6, 8).join(''),
+            hex.slice(8, 10).join(''),
+            hex.slice(10, 16).join('')
+          ].join('-');
+        }
+      }
+      const time = Date.now().toString(36);
+      const random = Math.random().toString(36).slice(2, 10);
+      return `musai-${time}-${random}`;
+    };
+
+    const next = createUuid();
+
+    try
+    {
+      window.localStorage.setItem(key, next);
+    }
+    catch
+    {
+      // Ignore persistence errors; caller will still receive the generated id
+    }
+
     return next;
   }
 }
 
 export const presenceService = new PresenceService();
-
 

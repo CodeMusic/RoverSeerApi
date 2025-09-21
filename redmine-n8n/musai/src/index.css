@@ -1632,6 +1632,55 @@ body[data-magic-active='1'] .magic-reactive::after {
   height: 12px;
 }
 
+.musai-copilot-dock--inline {
+  width: 100%;
+}
+
+.musai-copilot-panel--compact {
+  padding: 18px 20px 20px;
+  border-radius: 22px;
+}
+
+.musai-copilot-header--compact {
+  margin-bottom: 12px;
+}
+
+.musai-copilot-form--compact {
+  align-items: center;
+}
+
+.musai-copilot-input--single .musai-copilot-textarea {
+  padding-right: 16px;
+}
+
+.musai-copilot-textarea--single {
+  min-height: 44px;
+  max-height: 120px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.musai-copilot-send--compact {
+  width: 48px;
+  height: 48px;
+}
+
+.musai-copilot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.musai-copilot-status span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 @media (max-width: 640px) {
   .musai-copilot-panel {
     padding: 16px;

@@ -1,483 +1,438 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
+import { BaseLayout } from '@/components/common/BaseLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, BookOpen, Clock, CheckCircle, Download, GraduationCap, Sparkles } from 'lucide-react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import ROUTES, { RouteUtils } from '@/config/routes';
-import { universityApi } from '@/lib/universityApi';
-import { BaseLayout } from '@/components/common/BaseLayout';
-import { cn } from '@/lib/utils';
 import { APP_TERMS } from '@/config/constants';
-import type { Lecture, Course, StandaloneLecture } from '@/types/university';
-import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import { RouteUtils } from '@/config/routes';
+import { universityApi } from '@/lib/universityApi';
 import { MusaiCopilotSummon } from '@/components/common/MusaiCopilotSummon';
+import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import type { Course, Lecture, StandaloneLecture } from '@/types/university';
+import {
+  GraduationCap,
+  Sparkles,
+  BookOpen,
+  Clock,
+  ArrowRight,
+  BookmarkCheck,
+  Target,
+  RefreshCcw,
+  Calendar
+} from 'lucide-react';
 
-const University = () => {
-  const [lectures, setLectures] = useState<any[]>([]);
+interface RecentLectureEntry {
+  id: string;
+  title: string;
+  courseTitle?: string;
+  updatedAt: string;
+  status: string;
+  scope: 'course' | 'standalone' | 'legacy';
+  courseId?: string;
+}
+
+const buildRecentLectureEntries = (courses: Course[], standalone: StandaloneLecture[], legacy: Lecture[]): RecentLectureEntry[] =>
+{
+  const entries: RecentLectureEntry[] = [];
+
+  for (const course of courses)
+  {
+    for (const lecture of course.lectures)
+    {
+      entries.push({
+        id: lecture.id,
+        title: lecture.title,
+        courseTitle: course.metadata.title,
+        updatedAt: lecture.updatedAt || course.metadata.updatedAt || course.metadata.createdAt,
+        status: lecture.status ?? 'unlocked',
+        scope: 'course',
+        courseId: course.metadata.id
+      });
+    }
+  }
+
+  for (const lecture of standalone)
+  {
+    entries.push({
+      id: lecture.id,
+      title: lecture.title,
+      updatedAt: lecture.updatedAt || lecture.createdAt,
+      status: 'complete',
+      scope: 'standalone'
+    });
+  }
+
+  for (const lecture of legacy)
+  {
+    entries.push({
+      id: lecture.id,
+      title: lecture.title,
+      updatedAt: lecture.updatedAt || lecture.createdAt,
+      status: lecture.status,
+      scope: 'legacy'
+    });
+  }
+
+  return entries
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 6);
+};
+
+const University = () =>
+{
   const [courses, setCourses] = useState<Course[]>([]);
+  const [legacyLectures, setLegacyLectures] = useState<Lecture[]>([]);
   const [standaloneLectures, setStandaloneLectures] = useState<StandaloneLecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('courses');
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Handle initial query from landing page navigation or URL parameters
-  useEffect(() => {
-    const initialQuery = location.state?.initialQuery || searchParams.get('topic');
-    if (initialQuery) {
-      console.log('University page received initial query:', initialQuery);
-      // Auto-navigate to create new course with the query as topic
-      // Route into main app framework, University tab, preserving topic
-      navigate(`${ROUTES.MAIN_APP}?mode=university&q=${encodeURIComponent(initialQuery)}`, { 
-        state: { 
-          initialTopic: initialQuery,
-          fromLanding: true, 
-          switchToTab: 'university'
-        },
-        replace: true // Replace current history entry to prevent back button issues
-      });
-    }
-  }, [location.state, searchParams, navigate]);
-
-  const loadData = async () => {
-    try {
+  const loadCatalogue = useCallback(async () =>
+  {
+    try
+    {
       setIsLoading(true);
-      const [lecturesData, coursesData, standaloneData] = await Promise.all([
+      const [legacyData, courseData, standaloneData] = await Promise.all([
         universityApi.getLectures(),
         universityApi.getCourses(),
         universityApi.getStandaloneLectures()
       ]);
-      setLectures(lecturesData);
-      setCourses(coursesData);
-      setStandaloneLectures(standaloneData);
-    } 
-    catch (error) {
-      console.error('Failed to load data:', error);
-    } 
-    finally {
+      setLegacyLectures(Array.isArray(legacyData) ? legacyData : []);
+      setCourses(Array.isArray(courseData) ? courseData : []);
+      setStandaloneLectures(Array.isArray(standaloneData) ? standaloneData : []);
+    }
+    catch (error)
+    {
+      console.error('Failed to load Musai University catalogue', error);
+    }
+    finally
+    {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const getStatusBadge = (status: Lecture['status']) => {
-    const variants = {
-      planning: { variant: 'secondary' as const, text: 'Planning' },
-      in_progress: { variant: 'default' as const, text: 'In Progress' },
-      complete: { variant: 'success' as const, text: 'Complete' }
+  useEffect(() =>
+  {
+    loadCatalogue();
+  }, [loadCatalogue]);
+
+  const startCourseConcept = useCallback((topic?: string) =>
+  {
+    const query = topic ? `?topic=${encodeURIComponent(topic)}` : '';
+    navigate(`/university/course/new${query}`);
+  }, [navigate]);
+
+  useEffect(() =>
+  {
+    const initialTopic = location.state?.initialQuery || searchParams.get('topic');
+    if (initialTopic)
+    {
+      startCourseConcept(initialTopic);
+    }
+  }, [location.state, searchParams, startCourseConcept]);
+
+  const stats = useMemo(() =>
+  {
+    const totalCourseLectures = courses.reduce((acc, course) => acc + course.lectures.length, 0);
+    const totalCompletedLectures = courses.reduce((acc, course) => acc + course.completedLectures, 0);
+    return {
+      totalCourses: courses.length,
+      totalLectures: totalCourseLectures + legacyLectures.length + standaloneLectures.length,
+      completedCourses: courses.filter(course => course.overallProgress === 100).length,
+      inProgressCourses: courses.filter(course => course.overallProgress > 0 && course.overallProgress < 100).length,
+      completedLectures: totalCompletedLectures + standaloneLectures.length
     };
-    
-    const config = variants[status] || variants.planning;
-    return <Badge variant={config.variant}>{config.text}</Badge>;
-  };
+  }, [courses, legacyLectures.length, standaloneLectures.length]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  const recentLectures = useMemo(
+    () => buildRecentLectureEntries(courses, standaloneLectures, legacyLectures),
+    [courses, standaloneLectures, legacyLectures]
+  );
 
-  const getProgressPercentage = (lecture: Lecture) => {
-    if (lecture.steps.length === 0) return 0;
-    const completedSteps = lecture.steps.filter(step => step.completed).length;
-    return Math.round((completedSteps / lecture.steps.length) * 100);
-  };
+  const activeCourses = useMemo(() =>
+    courses
+      .slice()
+      .sort((a, b) => (b.metadata.updatedAt || b.metadata.createdAt).localeCompare(a.metadata.updatedAt || a.metadata.createdAt))
+      .slice(0, 4)
+  , [courses]);
 
+  const handleOpenCourse = useCallback((courseId: string) =>
+  {
+    navigate(`/university/course/${courseId}`);
+  }, [navigate]);
 
+  const handleOpenLecture = useCallback((lectureId: string) =>
+  {
+    navigate(`/university/lecture/${lectureId}`);
+  }, [navigate]);
 
-  const renderMainContent = () => {
-    if (isLoading) {
+  const handleOpenStandalone = useCallback((lectureId: string) =>
+  {
+    navigate(`/university/standalone/${lectureId}`);
+  }, [navigate]);
+
+  const hero = (
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white shadow-2xl">
+      <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_45%)]" />
+      <div className="relative px-6 py-10 sm:px-10 sm:py-12">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-3 max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-sm font-medium">
+              <Sparkles className="h-4 w-4" />
+              Generative Curriculum Studio
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
+              Musai University
+            </h1>
+            <p className="text-sm sm:text-base text-white/80 max-w-2xl">
+              Shape a bespoke syllabus, evolve lectures with AI scholars, and archive every insight in a living academy that grows alongside you.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-white/70">
+              <span className="inline-flex items-center gap-1">
+                <BookmarkCheck className="h-4 w-4" />
+                {stats.completedCourses} courses completed
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {stats.totalLectures} curated lectures
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Target className="h-4 w-4" />
+                {stats.inProgressCourses} currently in flight
+              </span>
+            </div>
+          </div>
+          <div className="grid gap-3 text-sm min-w-[220px]">
+            <Button
+              size="lg"
+              className="bg-white text-slate-900 hover:bg-slate-100"
+              onClick={() => startCourseConcept()}
+            >
+              <GraduationCap className="mr-2 h-5 w-5" />
+              Design a new course
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white/40 text-white hover:bg-white/10"
+              onClick={() => navigate('/university/lecture/new')}
+            >
+              <BookOpen className="mr-2 h-5 w-5" />
+              Compose a lecture
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMainContent = () =>
+  {
+    if (isLoading)
+    {
       return (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-300">Loading your lectures...</p>
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-indigo-500" />
+            <p>Compiling the faculty records…</p>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="relative p-6 pb-32">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
-            <div className="flex-1">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2 border-b-2 border-purple-200 dark:border-purple-800 pb-2">
-                🎓 Musai U
-              </h1>
-              <p className="text-base sm:text-lg text-gray-600 dark:text-gray-300">
-                AI-powered personalized learning experiences
-              </p>
-            </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Button 
-                onClick={() => navigate(ROUTES.MAIN_APP, { state: { switchToTab: 'university', initialQuery: 'course:new' } })}
-                className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
-                size="lg"
-              >
-                <GraduationCap className="mr-2 h-5 w-5" />
-                Create Course
-              </Button>
-              <Button 
-                onClick={() => navigate('/university/lecture/new')}
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                <Sparkles className="mr-2 h-5 w-5" />
-                Create Lecture
-              </Button>
-            </div>
+      <div className="relative h-full overflow-y-auto">
+        <div className="space-y-10 px-6 py-10 pb-32 md:px-10 lg:px-12">
+          {hero}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Card className="shadow-sm border-none bg-gradient-to-br from-indigo-50 via-white to-white dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-indigo-600 dark:text-indigo-300 uppercase tracking-[0.18em]">Active Courses</CardTitle>
+                <CardDescription className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {stats.totalCourses}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Programmes generated in this studio
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm border-none bg-gradient-to-br from-emerald-50 via-white to-white dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-emerald-600 dark:text-emerald-300 uppercase tracking-[0.18em]">Courses Completed</CardTitle>
+                <CardDescription className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {stats.completedCourses}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Fully mastered journeys
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm border-none bg-gradient-to-br from-amber-50 via-white to-white dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-amber-600 dark:text-amber-300 uppercase tracking-[0.18em]">Lectures Authored</CardTitle>
+                <CardDescription className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {stats.totalLectures}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Across courses & standalone studies
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm border-none bg-gradient-to-br from-purple-50 via-white to-white dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-purple-600 dark:text-purple-300 uppercase tracking-[0.18em]">Legacy Archives</CardTitle>
+                <CardDescription className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {legacyLectures.length}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Classic lecture transcripts preserved
+              </CardContent>
+            </Card>
           </div>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          <Card className="border-l-4 border-l-purple-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Courses
-              </CardTitle>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {courses.length}
-              </div>
-            </CardHeader>
-          </Card>
-          
-          <Card className="border-l-4 border-l-blue-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Total Lectures
-              </CardTitle>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {lectures.length + standaloneLectures.length}
-              </div>
-            </CardHeader>
-          </Card>
-          
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                In Progress
-              </CardTitle>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {courses.filter(c => c.overallProgress > 0 && c.overallProgress < 100).length}
-              </div>
-            </CardHeader>
-          </Card>
-          
-          <Card className="border-l-4 border-l-orange-500">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                Completed
-              </CardTitle>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                {courses.filter(c => c.overallProgress === 100).length}
-              </div>
-            </CardHeader>
-          </Card>
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2 shadow-md">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-semibold">Active Courses</CardTitle>
+                  <CardDescription>Continue where you left off or review completed syllabi.</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={loadCatalogue} className="gap-2">
+                  <RefreshCcw className="h-4 w-4" /> Sync
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {activeCourses.length === 0 ? (
+                  <div className="rounded-xl border border-dashed px-6 py-10 text-center text-muted-foreground">
+                    No active courses yet. Draft a new journey with the planner or revisit a completed program.
+                  </div>
+                ) : (
+                  activeCourses.map(course => (
+                    <div key={course.metadata.id} className="flex flex-col gap-4 rounded-2xl border bg-card/60 p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="uppercase tracking-[0.18em] text-xs">Course</Badge>
+                          {course.overallProgress === 100 && (
+                            <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-200">Completed</Badge>
+                          )}
+                        </div>
+                        <h3 className="text-xl font-semibold leading-tight">{course.metadata.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{course.metadata.description}</p>
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            Updated {formatDistanceToNow(new Date(course.metadata.updatedAt || course.metadata.createdAt), { addSuffix: true })}
+                          </span>
+                          <span>
+                            {course.completedLectures} / {course.lectures.length} lectures complete
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full lg:w-auto">
+                        <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"
+                            style={{ width: `${course.overallProgress}%` }}
+                          />
+                        </div>
+                        <Button className="w-full lg:w-auto" onClick={() => handleOpenCourse(course.metadata.id)}>
+                          Resume course
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Show PreMusaiPage if everything is empty */}
-        {!isLoading && courses.length === 0 && lectures.length === 0 && standaloneLectures.length === 0 ? (
-          <div className="mt-8">
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Recent lectures</CardTitle>
+                <CardDescription>Your latest generated lessons and archives.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentLectures.length === 0 ? (
+                  <div className="rounded-xl border border-dashed px-4 py-8 text-center text-muted-foreground">
+                    Lecture notes will appear here as you author new material.
+                  </div>
+                ) : (
+                  recentLectures.map(entry => (
+                    <div key={`${entry.scope}-${entry.id}`} className="rounded-xl border bg-card/60 p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            {entry.scope === 'course' && <span>Course lecture</span>}
+                            {entry.scope === 'standalone' && <span>Standalone</span>}
+                            {entry.scope === 'legacy' && <span>Legacy archive</span>}
+                          </div>
+                          <h4 className="text-sm font-semibold leading-snug">{entry.title}</h4>
+                          {entry.courseTitle && (
+                            <p className="text-xs text-muted-foreground">{entry.courseTitle}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end text-right text-[11px] text-muted-foreground">
+                          <span>{formatDistanceToNow(new Date(entry.updatedAt), { addSuffix: true })}</span>
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 uppercase tracking-[0.14em]">
+                            <Calendar className="h-3 w-3" />
+                            {entry.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-3 text-xs"
+                          onClick={() => {
+                            if (entry.scope === 'course' && entry.courseId)
+                            {
+                              handleOpenCourse(entry.courseId);
+                            }
+                            else if (entry.scope === 'standalone')
+                            {
+                              handleOpenStandalone(entry.id);
+                            }
+                            else
+                            {
+                              handleOpenLecture(entry.id);
+                            }
+                          }}
+                        >
+                          Review
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="rounded-3xl border bg-card/70 p-8 shadow-lg">
+            <div className="mb-6 space-y-2">
+              <h2 className="text-2xl font-semibold">Draft a new programme</h2>
+              <p className="text-sm text-muted-foreground">Invite Musai to architect a syllabus, generate lesson plans, and track your mastery session by session.</p>
+            </div>
             <PreMusaiPage
               type="university"
-              onSubmit={(input) => {
-                // Navigate to course creation with the topic
-                navigate(`/university/course/new?topic=${encodeURIComponent(input)}`);
+              onSubmit={(topic) => {
+                startCourseConcept(topic);
               }}
               isLoading={false}
             />
           </div>
-        ) : (
-          <>
-            {/* Content Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="courses" className="flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4" />
-                  Courses
-                </TabsTrigger>
-                <TabsTrigger value="lectures" className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  Lectures
-                </TabsTrigger>
-                <TabsTrigger value="standalone" className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Standalone
-                </TabsTrigger>
-              </TabsList>
 
-          {/* Courses Tab */}
-          <TabsContent value="courses" className="space-y-6">
-            {courses.length === 0 ? (
-              <Card className="text-center py-8 sm:py-12">
-                <CardContent className="px-4 sm:px-6">
-                  <GraduationCap className="mx-auto h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mb-4" />
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    No courses yet
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-6">
-                    Start your learning journey by creating your first course
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/university/course/new')}
-                    className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
-                  >
-                    <GraduationCap className="mr-2 h-4 w-4" />
-                    Create Your First Course
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {courses.map((course) => (
-                  <Card key={course.metadata.id} className="hover:shadow-lg transition-shadow duration-200 cursor-pointer"
-                        onClick={() => navigate(`/university/course/${course.metadata.id}`)}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base sm:text-lg font-semibold mb-2 line-clamp-2">
-                            {course.metadata.title}
-                          </CardTitle>
-                          <CardDescription className="line-clamp-1 text-sm">
-                            by {course.metadata.instructor}
-                          </CardDescription>
-                        </div>
-                        <Badge variant="outline">
-                          {course.lectures.length} lectures
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {/* Progress */}
-                        <div>
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                            <span className="font-medium">{course.overallProgress}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
-                              style={{ width: `${course.overallProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                        {/* Meta Information */}
-                        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <Clock className="mr-1 h-4 w-4" />
-                          Created {formatDate(course.metadata.createdAt)}
-                        </div>
-                        {/* Completion Status */}
-                        <div className="text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {course.completedLectures} of {course.lectures.length} completed
-                          </span>
-                          {course.overallProgress === 100 && (
-                            <span className="ml-2 text-green-600 dark:text-green-400">
-                              <CheckCircle className="inline h-4 w-4 mr-1" />
-                              Completed
-                            </span>
-                          )}
-                        </div>
-                        {/* Action Button */}
-                        <Button 
-                          className="w-full text-sm"
-                          variant={course.overallProgress === 100 ? 'outline' : 'default'}
-                        >
-                          {course.overallProgress === 100 ? 'Review' : 'Continue'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Lectures Tab */}
-          <TabsContent value="lectures" className="space-y-6">
-            {lectures.length === 0 ? (
-              <Card className="text-center py-8 sm:py-12">
-                <CardContent className="px-4 sm:px-6">
-                  <BookOpen className="mx-auto h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mb-4" />
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    No lectures yet
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-6">
-                    Start your learning journey by creating your first lecture
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/university/lecture/new')}
-                    className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
-                  >
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Create Your First Lecture
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {lectures.map((lecture) => (
-                  <Card key={lecture.id} className="hover:shadow-lg transition-shadow duration-200">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base sm:text-lg font-semibold mb-2 line-clamp-2">
-                            {lecture.title}
-                          </CardTitle>
-                          <CardDescription className="line-clamp-1 text-sm">
-                            {lecture.topic}
-                          </CardDescription>
-                        </div>
-                        {getStatusBadge(lecture.status)}
-                      </div>
-                    </CardHeader>
-                  
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Progress */}
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
-                          <span className="font-medium">{getProgressPercentage(lecture)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div 
-                            className="bg-purple-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${getProgressPercentage(lecture)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Meta Information */}
-                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                        <Clock className="mr-1 h-4 w-4" />
-                        Created {formatDate(lecture.createdAt)}
-                      </div>
-
-                      {/* Steps */}
-                      <div className="text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {lecture.steps.length} step{lecture.steps.length !== 1 ? 's' : ''}
-                        </span>
-                        {lecture.status === 'complete' && (
-                          <span className="ml-2 text-green-600 dark:text-green-400">
-                            <CheckCircle className="inline h-4 w-4 mr-1" />
-                            Completed
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-2 pt-2">
-                        <Button 
-                          onClick={() => navigate(`/university/lecture/${lecture.id}`)}
-                          className="flex-1 text-sm"
-                          variant={lecture.status === 'complete' ? 'outline' : 'default'}
-                        >
-                          {lecture.status === 'complete' ? 'Review' : 'Continue'}
-                        </Button>
-                        
-                        {lecture.status === 'complete' && !lecture.exported && (
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => {
-                              // TODO: Implement export functionality
-                              console.log('Export lecture:', lecture.id);
-                            }}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            )}
-          </TabsContent>
-
-          {/* Standalone Lectures Tab */}
-          <TabsContent value="standalone" className="space-y-6">
-            {standaloneLectures.length === 0 ? (
-              <Card className="text-center py-8 sm:py-12">
-                <CardContent className="px-4 sm:px-6">
-                  <Sparkles className="mx-auto h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mb-4" />
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                    No standalone lectures yet
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-6">
-                    Create individual lectures not tied to a course
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/university/standalone/new')}
-                    className="bg-purple-600 hover:bg-purple-700 text-white w-full sm:w-auto"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Create Standalone Lecture
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {standaloneLectures.map((lecture) => (
-                  <Card key={lecture.id} className="hover:shadow-lg transition-shadow duration-200">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base sm:text-lg font-semibold mb-2 line-clamp-2">
-                            {lecture.title}
-                          </CardTitle>
-                        </div>
-                        <Badge variant="outline">Standalone</Badge>
-                      </div>
-                    </CardHeader>
-                  
-                  <CardContent>
-                    <div className="space-y-4">
-                      {/* Meta Information */}
-                      <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                        <Clock className="mr-1 h-4 w-4" />
-                        Created {formatDate(lecture.createdAt)}
-                      </div>
-
-                      {/* Action Button */}
-                      <Button 
-                        onClick={() => navigate(`/university/standalone/${lecture.id}`)}
-                        className="w-full text-sm"
-                      >
-                        View Lecture
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            )}
-          </TabsContent>
-        </Tabs>
-
-        <div className="mt-10 flex justify-center">
-          <MusaiCopilotSummon className="w-full max-w-2xl" />
+          <div className="mt-12 flex justify-center">
+            <MusaiCopilotSummon className="w-full max-w-2xl" />
+          </div>
         </div>
-          </>
-        )}
       </div>
     );
   };
@@ -485,16 +440,15 @@ const University = () => {
   return (
     <BaseLayout
       currentTab={APP_TERMS.TAB_UNIVERSITY}
-      sessions={[]} // University doesn't use traditional sessions
+      sessions={[]}
       currentSessionId=""
-      onNewSession={() => {}} // No-op for university
-      onSessionSelect={() => {}} // No-op for university  
-      onDeleteSession={() => {}} // No-op for university
-      onRenameSession={() => {}} // No-op for university
-      onToggleFavorite={() => {}} // No-op for university
+      onNewSession={() => startCourseConcept()}
+      onSessionSelect={() => {}}
+      onDeleteSession={() => {}}
+      onRenameSession={() => {}}
+      onToggleFavorite={() => {}}
       renderMainContent={renderMainContent}
       onTabChange={(tab) => {
-        // Allow switching away via the left toolbar by routing through main app with mode
         const map: Record<string, string> = {
           [APP_TERMS.TAB_CHAT]: 'chat',
           [APP_TERMS.TAB_SEARCH]: 'search',
@@ -511,7 +465,8 @@ const University = () => {
         navigate(RouteUtils.mainAppWithMode(mode));
       }}
       isNavigationExpanded={isNavigationExpanded}
-      onToggleNavigation={() => setIsNavigationExpanded(!isNavigationExpanded)}
+      onToggleNavigation={() => setIsNavigationExpanded(prev => !prev)}
+      renderLeftSidebarOverride={() => null}
     />
   );
 };

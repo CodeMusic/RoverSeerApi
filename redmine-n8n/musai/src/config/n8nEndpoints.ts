@@ -107,8 +107,9 @@ export const N8N_ENDPOINTS = {
 
   // MusaiUniversity Endpoints
   UNIVERSITY: {
-    // Course and content generation
-    GENERATE_COURSE_CONTENT: '/university/courses/generate',
+    // Course and content generation (use only user-provided webhooks)
+    GENERATE_COURSE_CONTENT: '/course/generate-from-topic',
+    GENERATE_LECTURE: '/generate-lecture',
     GET_LECTURE_TEMPLATES: '/university/lectures/templates',
     CREATE_ADAPTIVE_CURRICULUM: '/university/curriculum/adaptive',
     

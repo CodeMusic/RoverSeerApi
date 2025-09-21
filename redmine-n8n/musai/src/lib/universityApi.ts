@@ -15,19 +15,13 @@ import type {
   ChatMessage,
   CourseExam,
   ExamType,
-  Lecture
+  Lecture,
+  LectureStep
 } from '@/types/university';
 import { getRandomWittyError } from '@/config/messages';
 
 // Base URL for n8n endpoints - prefer Vite proxy in development to avoid CORS
 const N8N_BASE_URL = N8N_ENDPOINTS.BASE_URL;
-
-// Types for the university system
-export interface LectureStep 
-{
-  title: string;
-  description: string;
-}
 
 export interface LecturePlan 
 {
@@ -247,73 +241,270 @@ class UniversityApiService
     };
   }
 
-  // Automation A: Course Creation
+  private normalizeQuizQuestions(raw: any): QuizQuestion[] | undefined
+  {
+    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.questions) ? raw.questions : undefined;
+    if (!list || list.length === 0)
+    {
+      return undefined;
+    }
+    const normalized = list.map((item: any, index: number): QuizQuestion =>
+    {
+      const questionText = (item?.question || item?.prompt || `Question ${index + 1}`).toString();
+      const rawChoices = Array.isArray(item?.choices)
+        ? item.choices
+        : Array.isArray(item?.options)
+          ? item.options
+          : Array.isArray(item?.answers)
+            ? item.answers
+            : [];
+      const choices = rawChoices.length > 0
+        ? rawChoices.map((choice: any) => choice?.toString?.() ?? String(choice))
+        : ['True', 'False'];
+      const deriveIndex = (): number =>
+      {
+        if (typeof item?.correctIndex === 'number') return item.correctIndex;
+        if (typeof item?.answerIndex === 'number') return item.answerIndex;
+        if (typeof item?.correct === 'number') return item.correct;
+        if (typeof item?.correct === 'string')
+        {
+          const idx = choices.findIndex(choice => choice.toLowerCase() === item.correct.toLowerCase());
+          return idx >= 0 ? idx : 0;
+        }
+        if (typeof item?.answer === 'string')
+        {
+          const idx = choices.findIndex(choice => choice.toLowerCase() === item.answer.toLowerCase());
+          return idx >= 0 ? idx : 0;
+        }
+        return 0;
+      };
+      const correctIndex = deriveIndex();
+      return {
+        question: questionText,
+        choices,
+        correctIndex: correctIndex >= 0 && correctIndex < choices.length ? correctIndex : 0
+      };
+    });
+    return normalized;
+  }
+
+  private normalizeQuizAttempts(raw: any): QuizAttempt[]
+  {
+    if (!Array.isArray(raw))
+    {
+      return [];
+    }
+    return raw.map((attempt: any, index: number): QuizAttempt =>
+    {
+      const answersSource = Array.isArray(attempt?.answers)
+        ? attempt.answers
+        : Array.isArray(attempt?.selected)
+          ? attempt.selected
+          : [];
+      const answers = answersSource.map((value: any) => Number(value));
+      const timestamp = typeof attempt?.timestamp === 'string' ? attempt.timestamp : new Date().toISOString();
+      const score = typeof attempt?.score === 'number' ? attempt.score : Number(attempt?.percent ?? attempt?.percentage ?? 0);
+      const passed = Boolean(attempt?.passed ?? attempt?.pass ?? (score >= 70));
+      return {
+        id: (attempt?.id || `attempt-${Date.now()}-${index}`).toString(),
+        answers,
+        score,
+        passed,
+        timestamp,
+      };
+    });
+  }
+
+  private normalizeChatHistory(raw: any): ChatMessage[]
+  {
+    if (!Array.isArray(raw))
+    {
+      return [];
+    }
+    return raw.map((message: any): ChatMessage =>
+    {
+      const role = message?.role === 'user' ? 'user' : 'agent';
+      const content = (message?.message || message?.content || '').toString();
+      const timestamp = typeof message?.timestamp === 'string' ? message.timestamp : new Date().toISOString();
+      return {
+        role,
+        message: content,
+        timestamp
+      };
+    }).filter(msg => Boolean(msg.message));
+  }
+
+  private coerceCourseLecture(data: any, request: LectureGenerationRequest): CourseLecture
+  {
+    const now = new Date().toISOString();
+    const source = (data && typeof data === 'object' && (data as any).parameters && typeof (data as any).parameters === 'object')
+      ? (data as any).parameters
+      : data;
+
+    const id = (source?.id || source?.lectureId || `${request.courseId}-lecture-${request.lectureIndex + 1}-${Date.now()}`).toString();
+    const title = (source?.title || source?.lectureTitle || request.lectureTitle || 'Generated Lecture').toString();
+    const summary = (source?.summary || source?.description || source?.synopsis || `AI generated lecture for ${title}`).toString();
+    const statusRaw = (source?.status || source?.state || 'unlocked').toString().toLowerCase();
+    const allowedStatuses: Array<CourseLecture['status']> = ['locked', 'unlocked', 'in_progress', 'completed'];
+    const status = (allowedStatuses.includes(statusRaw as CourseLecture['status']) ? statusRaw : 'unlocked') as CourseLecture['status'];
+
+    const duration = (source?.duration || source?.estimatedDuration || '').toString();
+
+    const deriveContent = (): string | undefined =>
+    {
+      if (typeof source?.content === 'string') return source.content;
+      if (typeof source?.markdown === 'string') return source.markdown;
+      if (typeof source?.html === 'string') return source.html;
+      if (Array.isArray(source?.sections))
+      {
+        return source.sections.map((section: any) => section?.body || section?.content || '').join('\n\n');
+      }
+      return undefined;
+    };
+
+    const quiz = this.normalizeQuizQuestions(source?.quiz ?? source?.questions);
+    const quizAttempts = this.normalizeQuizAttempts(source?.quizAttempts);
+    const chatHistory = this.normalizeChatHistory(source?.chatHistory);
+
+    const createdAt = typeof source?.createdAt === 'string' ? source.createdAt : now;
+    const updatedAt = typeof source?.updatedAt === 'string' ? source.updatedAt : now;
+
+    return {
+      id,
+      title,
+      summary,
+      status,
+      duration: duration || undefined,
+      content: deriveContent(),
+      quiz: quiz && quiz.length > 0 ? quiz : undefined,
+      quizAttempts,
+      chatHistory,
+      createdAt,
+      updatedAt
+    };
+  }
+
+  private normalizeCoursePayload(raw: any): Course
+  {
+    const now = new Date().toISOString();
+    const metadataSource = (raw && typeof raw === 'object' && raw.metadata && typeof raw.metadata === 'object') ? raw.metadata : raw;
+    const metadata: CourseMetadata = {
+      id: (metadataSource?.id || raw?.id || `course-${Date.now()}`).toString(),
+      title: (metadataSource?.title || raw?.title || 'New Course').toString(),
+      description: (metadataSource?.description || metadataSource?.summary || raw?.description || '').toString(),
+      instructor: (metadataSource?.instructor || raw?.instructor || 'Musai Instructor').toString(),
+      imagePath: metadataSource?.imagePath || raw?.imagePath,
+      passThreshold: typeof metadataSource?.passThreshold === 'number'
+        ? metadataSource.passThreshold
+        : typeof raw?.passThreshold === 'number'
+          ? raw.passThreshold
+          : 50,
+      processorFile: metadataSource?.processorFile || raw?.processorFile,
+      createdAt: metadataSource?.createdAt || now,
+      updatedAt: metadataSource?.updatedAt || now
+    };
+
+    const rawLectures = Array.isArray(raw?.lectures) ? raw.lectures : [];
+    const lectures: CourseLecture[] = rawLectures.map((lecture: any, index: number) =>
+    {
+      const lectureId = (lecture?.id || `${metadata.id}-lecture-${index + 1}`).toString();
+      const lectureTitle = (lecture?.title || lecture?.name || `Lecture ${index + 1}`).toString();
+      const lectureSummary = (lecture?.summary || lecture?.description || '').toString();
+      const lectureDuration = (lecture?.duration || lecture?.estimatedDuration || '').toString();
+      const statusCandidate = (lecture?.status || lecture?.state || (index === 0 ? 'unlocked' : 'locked')).toString().toLowerCase();
+      const allowedStatuses: Array<CourseLecture['status']> = ['locked', 'unlocked', 'in_progress', 'completed'];
+      const status = allowedStatuses.includes(statusCandidate as CourseLecture['status'])
+        ? statusCandidate as CourseLecture['status']
+        : (index === 0 ? 'unlocked' : 'locked');
+
+      const content = typeof lecture?.content === 'string'
+        ? lecture.content
+        : typeof lecture?.markdown === 'string'
+          ? lecture.markdown
+          : typeof lecture?.html === 'string'
+            ? lecture.html
+            : undefined;
+
+      const quiz = this.normalizeQuizQuestions(lecture?.quiz);
+      const quizAttempts = this.normalizeQuizAttempts(lecture?.quizAttempts);
+      const chatHistory = this.normalizeChatHistory(lecture?.chatHistory);
+
+      return {
+        id: lectureId,
+        title: lectureTitle,
+        summary: lectureSummary,
+        status,
+        content,
+        quiz: quiz && quiz.length > 0 ? quiz : undefined,
+        quizAttempts,
+        chatHistory,
+        createdAt: typeof lecture?.createdAt === 'string' ? lecture.createdAt : now,
+        updatedAt: typeof lecture?.updatedAt === 'string' ? lecture.updatedAt : now,
+        duration: lectureDuration || undefined
+      };
+    });
+
+    const completedLectures = typeof raw?.completedLectures === 'number'
+      ? raw.completedLectures
+      : lectures.filter(l => l.status === 'completed').length;
+
+    return {
+      metadata,
+      lectures,
+      currentLectureIndex: typeof raw?.currentLectureIndex === 'number' ? raw.currentLectureIndex : 0,
+      overallProgress: typeof raw?.overallProgress === 'number' ? raw.overallProgress : Math.round((completedLectures / Math.max(lectures.length, 1)) * 100),
+      completedLectures,
+      midtermExam: raw?.midtermExam,
+      finalExam: raw?.finalExam
+    };
+  }
+
+  // Automation A: Course Creation (local assembly using provided syllabus)
   async createCourse(request: CourseCreationRequest): Promise<Course> 
   {
-    try 
-    {
-      const response = await this.axiosInstance.post('/course/create', request);
-      return response.data;
-    } 
-    catch (error) 
-    {
-      console.error('Error creating course:', error);
-      // Return mock data for development
-      const courseId = `course-${Date.now()}`;
-      const now = new Date().toISOString();
-      
-      const course: Course = {
-        metadata: {
-          id: courseId,
-          title: request.title,
-          description: request.description,
-          instructor: request.instructor,
-          imagePath: request.imagePath,
-          passThreshold: request.passThreshold || 50,
-          createdAt: now,
-          updatedAt: now
-        },
-        lectures: [
-          {
-            id: `${courseId}-lecture-1`,
-            title: "Introduction to " + request.title,
-            summary: "Overview and foundations of the course",
-            status: 'unlocked',
-            quizAttempts: [],
-            chatHistory: [],
-            createdAt: now,
-            updatedAt: now
-          },
-          {
-            id: `${courseId}-lecture-2`,
-            title: "Core Concepts",
-            summary: "Key principles and theoretical foundations",
-            status: 'locked',
-            quizAttempts: [],
-            chatHistory: [],
-            createdAt: now,
-            updatedAt: now
-          },
-          {
-            id: `${courseId}-lecture-3`,
-            title: "Practical Applications",
-            summary: "Real-world examples and hands-on practice",
-            status: 'locked',
-            quizAttempts: [],
-            chatHistory: [],
-            createdAt: now,
-            updatedAt: now
-          }
-        ],
-        currentLectureIndex: 0,
-        overallProgress: 0,
-        completedLectures: 0
-      };
+    // Assemble the course locally to ensure the exact generated syllabus is preserved
+    const courseId = `course-${Date.now()}`;
+    const now = new Date().toISOString();
 
-      // Save to local storage
-      await this.saveCourse(course);
-      return course;
-    }
+    const lecturesFromSyllabus = Array.isArray(request.syllabus) ? request.syllabus : [];
+    const lectures = (lecturesFromSyllabus.length > 0
+      ? lecturesFromSyllabus
+      : []
+    ).map((item, index): CourseLecture => ({
+      id: `${courseId}-lecture-${index + 1}`,
+      title: String(item.title || `Lecture ${index + 1}`),
+      summary: String(item.summary || ''),
+      duration: item.duration ? String(item.duration) : undefined,
+      status: index === 0 ? 'unlocked' : 'locked',
+      quizAttempts: [],
+      chatHistory: [],
+      createdAt: now,
+      updatedAt: now
+    }));
+
+    const course: Course = {
+      metadata: {
+        id: courseId,
+        title: request.title,
+        description: request.description,
+        instructor: request.instructor,
+        imagePath: request.imagePath,
+        passThreshold: request.passThreshold || 50,
+        difficulty: request.difficulty,
+        estimatedDuration: request.estimatedDuration,
+        tags: request.tags,
+        createdAt: now,
+        updatedAt: now
+      },
+      lectures,
+      currentLectureIndex: 0,
+      overallProgress: 0,
+      completedLectures: 0
+    };
+
+    const normalizedCourse = this.normalizeCoursePayload(course);
+    await this.saveCourse(normalizedCourse);
+    return normalizedCourse;
   }
 
   // New method: Generate course from topic using n8n
@@ -333,18 +524,30 @@ class UniversityApiService
   {
     try 
     {
-      const response = await this.axiosInstance.post(
-        '/course/generate-from-topic',
-        {
-          topic,
-          includeSyllabus: true,
-          includeMetadata: true
-        },
-        { timeout: 600000 }
-      );
-      const parsed = this.parseN8nLikePayload(response.data);
-      const normalized = this.coerceCourseFromTopicSchema(parsed);
-      return normalized;
+      const attemptRequest = async (endpoint: string) =>
+      {
+        const response = await this.axiosInstance.post(
+          endpoint,
+          {
+            topic,
+            includeSyllabus: true,
+            includeMetadata: true
+          },
+          { timeout: 600000 }
+        );
+        const parsed = this.parseN8nLikePayload(response.data);
+        return this.coerceCourseFromTopicSchema(parsed);
+      };
+
+      try
+      {
+        return await attemptRequest(N8N_ENDPOINTS.UNIVERSITY.GENERATE_COURSE_CONTENT);
+      }
+      catch (primaryError)
+      {
+        console.warn('Primary course generation endpoint failed, falling back', primaryError);
+        return await attemptRequest('/course/generate-from-topic');
+      }
     } 
     catch (error) 
     {
@@ -402,11 +605,135 @@ class UniversityApiService
   // Automation B: Lecture Generation
   async generateLecture(request: LectureGenerationRequest): Promise<CourseLecture> 
   {
+    let courseContext: Course | null = null;
     try 
     {
-      // Long-running job: allow up to 10 minutes
-      const response = await this.axiosInstance.post('/lecture/generate', request, { timeout: 600000 });
-      return response.data;
+      courseContext = await this.getCourse(request.courseId).catch(() => null);
+      const lectureSummary = request.lectureSummary
+        || courseContext?.lectures?.[request.lectureIndex]?.summary
+        || `Develop a comprehensive lecture titled "${request.lectureTitle}".`;
+
+      const descriptionParts: string[] = [lectureSummary];
+      if (request.previousLectureContext)
+      {
+        descriptionParts.push(`Previous lecture context: ${request.previousLectureContext}`);
+      }
+      if (courseContext?.metadata?.description)
+      {
+        descriptionParts.push(`Course description: ${courseContext.metadata.description}`);
+      }
+
+      const processor = request.processorFile || courseContext?.metadata?.processorFile;
+      if (processor)
+      {
+        const personaPieces: string[] = [];
+        if (processor.persona) personaPieces.push(`Persona: ${processor.persona}`);
+        if (processor.teachingStyle) personaPieces.push(`Teaching style: ${processor.teachingStyle}`);
+        if (processor.tone) personaPieces.push(`Tone: ${processor.tone}`);
+        if (personaPieces.length > 0)
+        {
+          descriptionParts.push(personaPieces.join(' | '));
+        }
+        if (processor.customInstructions)
+        {
+          descriptionParts.push(`Custom guidance: ${processor.customInstructions}`);
+        }
+      }
+
+      const steps: LectureStep[] = [
+        {
+          title: request.lectureTitle,
+          description: descriptionParts.filter(Boolean).join('\n\n')
+        }
+      ];
+
+      const syllabusContext = courseContext?.lectures?.map((lecture) => ({
+        title: lecture.title,
+        summary: lecture.summary
+      }));
+
+      const lectureContent = await this.generateLectureContent(steps, {
+        courseTitle: courseContext?.metadata?.title,
+        courseDescription: courseContext?.metadata?.description,
+        instructor: courseContext?.metadata?.instructor,
+        tags: courseContext?.metadata?.processorFile ? [courseContext.metadata.processorFile.persona].filter(Boolean) : undefined,
+        syllabus: syllabusContext,
+        currentIndex: request.lectureIndex
+      });
+
+      const now = new Date().toISOString();
+      const resolvedTitle = typeof lectureContent === 'object' && lectureContent && 'title' in lectureContent && lectureContent.title
+        ? String((lectureContent as { title: unknown }).title)
+        : request.lectureTitle;
+
+      let resolvedContent = (() =>
+      {
+        if (typeof lectureContent === 'string')
+        {
+          return lectureContent;
+        }
+        if (lectureContent && typeof lectureContent === 'object')
+        {
+          const candidate = (lectureContent as any).content ?? (lectureContent as any).html ?? (lectureContent as any).markdown;
+          if (typeof candidate === 'string' && candidate.trim().length > 0)
+          {
+            return candidate;
+          }
+        }
+        return '';
+      })();
+
+      if (!resolvedContent || resolvedContent.trim().length === 0)
+      {
+        if (typeof lectureContent === 'string')
+        {
+          resolvedContent = lectureContent;
+        }
+        else if (lectureContent)
+        {
+          try
+          {
+            resolvedContent = JSON.stringify(lectureContent, null, 2);
+          }
+          catch
+          {
+            resolvedContent = '';
+          }
+        }
+      }
+
+      const resolvedDuration = (() =>
+      {
+        if (lectureContent && typeof lectureContent === 'object')
+        {
+          const candidate = (lectureContent as any).duration ?? (lectureContent as any).estimatedDuration;
+          if (typeof candidate === 'string' && candidate.trim().length > 0)
+          {
+            return candidate;
+          }
+        }
+        return courseContext?.lectures?.[request.lectureIndex]?.duration;
+      })();
+
+      const quiz = this.normalizeQuizQuestions(
+        typeof lectureContent === 'object' && lectureContent ? (lectureContent as any).quiz : undefined
+      );
+
+      return {
+        id: typeof lectureContent === 'object' && lectureContent && 'id' in lectureContent && lectureContent.id
+          ? String((lectureContent as { id: unknown }).id)
+          : `${request.courseId}-lecture-${request.lectureIndex + 1}-${Date.now()}`,
+        title: resolvedTitle,
+        summary: lectureSummary,
+        status: 'unlocked',
+        content: resolvedContent,
+        duration: resolvedDuration || undefined,
+        quiz: quiz && quiz.length > 0 ? quiz : undefined,
+        quizAttempts: [],
+        chatHistory: [],
+        createdAt: now,
+        updatedAt: now
+      };
     } 
     catch (error) 
     {
@@ -414,21 +741,22 @@ class UniversityApiService
       // Return mock data for development
       const now = new Date().toISOString();
       
-      const lecture: CourseLecture = {
+      return this.coerceCourseLecture({
         id: `${request.courseId}-lecture-${request.lectureIndex + 1}`,
         title: request.lectureTitle,
         summary: `Generated lecture content for ${request.lectureTitle}`,
+        duration: courseContext?.lectures?.[request.lectureIndex]?.duration,
         status: 'unlocked',
         content: `# ${request.lectureTitle}\n\n## Learning Objectives\n- Understand key concepts\n- Apply knowledge practically\n- Evaluate different approaches\n\n## Content\nThis is a sample lecture content that would be generated by the AI agent based on the course context and processor file.\n\n### Key Points\n- Point 1: Important concept\n- Point 2: Another important concept\n- Point 3: Practical application\n\n## Summary\nThis lecture covers the fundamental concepts and prepares you for the next module.`,
         quiz: [
           {
-            question: "What is the main topic of this lecture?",
-            choices: ["Option A", "Option B", "Option C", "Option D"],
+            question: 'What is the main topic of this lecture?',
+            choices: ['Option A', 'Option B', 'Option C', 'Option D'],
             correctIndex: 0
           },
           {
-            question: "Which concept is most important?",
-            choices: ["Concept A", "Concept B", "Concept C", "Concept D"],
+            question: 'Which concept is most important?',
+            choices: ['Concept A', 'Concept B', 'Concept C', 'Concept D'],
             correctIndex: 1
           }
         ],
@@ -436,9 +764,7 @@ class UniversityApiService
         chatHistory: [],
         createdAt: now,
         updatedAt: now
-      };
-
-      return lecture;
+      }, request);
     }
   }
 
@@ -705,7 +1031,7 @@ class UniversityApiService
     {
       // Preview generation can take time in n8n; extend timeout
       const response = await this.axiosInstance.post(
-        '/generate-lecture',
+        N8N_ENDPOINTS.UNIVERSITY.GENERATE_LECTURE,
         { 
           steps,
           // Provide optional course context to improve generation quality

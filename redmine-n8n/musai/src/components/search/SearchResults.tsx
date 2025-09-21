@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Download, Plus, ArrowLeft, ExternalLink, Clock, Brain, Link, Cog, Globe, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Search, Download, Plus, ArrowLeft, ExternalLink, Clock, Brain, Link, Cog, Globe, ThumbsUp, ThumbsDown, ArrowUpRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
@@ -33,7 +33,7 @@ export const SearchResults = ({
   onRetryInitial
 }: SearchResultsProps) => {
   const [followUpQuery, setFollowUpQuery] = useState("");
-  const followUpInputRef = useRef<HTMLInputElement | null>(null);
+  const followUpInputRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll results container to bottom when results or follow-ups change
@@ -161,18 +161,44 @@ export const SearchResults = ({
     }
   };
 
+  const submitFollowUp = () => {
+    if (!followUpQuery.trim() || isInitialLoading || isFollowUpLoading)
+    {
+      return;
+    }
+    onFollowUp(followUpQuery.trim());
+    setFollowUpQuery('');
+    requestAnimationFrame(() => followUpInputRef.current?.focus());
+  };
+
   const handleFollowUpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (followUpQuery.trim()) {
-      onFollowUp(followUpQuery.trim());
-      setFollowUpQuery("");
+    submitFollowUp();
+  };
+
+  const handleFollowUpKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey)
+    {
+      e.preventDefault();
+      submitFollowUp();
     }
   };
 
-  // Print/export: use print media to show a simplified article layout
+  // Delegate export logic to parent so it can package HTML/downloads; fall back to print if it fails
   const handleExport = () =>
   {
-    window.print();
+    try
+    {
+      onExport();
+    }
+    catch (err)
+    {
+      console.error('Failed to export Musai research session; falling back to print', err);
+      if (typeof window !== 'undefined' && typeof window.print === 'function')
+      {
+        window.print();
+      }
+    }
   };
 
   return (
@@ -468,37 +494,58 @@ export const SearchResults = ({
       {/* Sticky Follow-up Input at Bottom */}
       <div className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 musai-print-hide">
         <div className="mx-auto max-w-5xl w-full p-4" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
-          <form onSubmit={handleFollowUpSubmit} className="w-full">
-            <div className="flex items-center gap-3 w-full">
-              <Plus className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
-              <span className="text-sm font-medium whitespace-nowrap text-muted-foreground" onClick={() => followUpInputRef.current?.focus()}>Ask a follow-up</span>
-              <Input
-                ref={followUpInputRef}
-                value={followUpQuery}
-                onChange={(e) => setFollowUpQuery(e.target.value)}
-                placeholder="What would you like to know more about?"
-                className="flex-1 min-w-0"
-                disabled={isInitialLoading || isFollowUpLoading}
-              />
-              <div className="flex items-center gap-2">
-                {isFollowUpLoading ? (
-                  <MysticalTypingIndicator 
-                    isDarkMode={isDark}
-                    label={session.mode === 'research' ? 'Musai is researching' : 'Musai is searching'}
-                    size="compact"
+          <div className="musai-copilot-dock musai-copilot-dock--inline">
+            <div className="musai-copilot-glow" aria-hidden />
+            <div className="musai-copilot-panel musai-copilot-panel--compact">
+              <header className="musai-copilot-header musai-copilot-header--compact">
+                <div className="flex items-center gap-2">
+                  <div className="musai-copilot-badge">Research</div>
+                  <div className="hidden sm:flex items-center gap-1 text-[11px] uppercase tracking-[0.24em] text-white/70">
+                    <Sparkles className="w-3 h-3" />
+                    Follow-up
+                  </div>
+                </div>
+                <div className="musai-copilot-status">
+                  {isFollowUpLoading ? (
+                    <MysticalTypingIndicator
+                      isDarkMode={isDark}
+                      label={session.mode === 'research' ? 'Musai is researching' : 'Musai is searching'}
+                      size="compact"
+                    />
+                  ) : (
+                    <span>Guide Musai</span>
+                  )}
+                </div>
+              </header>
+              <form onSubmit={handleFollowUpSubmit} className="musai-copilot-form musai-copilot-form--compact">
+                <div className="musai-copilot-input musai-copilot-input--single">
+                  <Textarea
+                    ref={followUpInputRef}
+                    value={followUpQuery}
+                    onChange={(e) => setFollowUpQuery(e.target.value)}
+                    onKeyDown={handleFollowUpKeyDown}
+                    placeholder="What should Musai explore next?"
+                    className="musai-copilot-textarea musai-copilot-textarea--single"
+                    disabled={isInitialLoading || isFollowUpLoading}
+                    rows={1}
+                    aria-label="Follow-up prompt"
                   />
-                ) : (
-                  <Button 
-                    type="submit" 
-                    disabled={isInitialLoading || !followUpQuery.trim()}
-                    className="px-5"
-                  >
-                    Ask
-                  </Button>
-                )}
-              </div>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isInitialLoading || isFollowUpLoading || !followUpQuery.trim()}
+                  className="musai-copilot-send musai-copilot-send--compact"
+                  aria-label="Ask follow-up"
+                >
+                  {isFollowUpLoading ? (
+                    <div className="w-4 h-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <ArrowUpRight className="h-4 w-4" />
+                  )}
+                </Button>
+              </form>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

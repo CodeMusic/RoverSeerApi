@@ -62,6 +62,11 @@ export interface UniversitySession extends BaseSession {
   courseId?: string;
   lectureId?: string;
   progress?: number;
+  scope: 'course' | 'standalone' | 'concept';
+  topic?: string;
+  summary?: string;
+  lastLectureTitle?: string;
+  archived?: boolean;
 }
 
 export interface TaskSession extends BaseSession {

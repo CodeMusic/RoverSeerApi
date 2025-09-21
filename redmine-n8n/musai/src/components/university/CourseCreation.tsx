@@ -203,11 +203,41 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
     
     try 
     {
+      const iconForCourse = (() =>
+      {
+        if (courseIconUrl)
+        {
+          return courseIconUrl;
+        }
+        if (currentCacheKey)
+        {
+          try
+          {
+            const stored = window.localStorage.getItem(`courseIcon::${currentCacheKey}`);
+            if (stored)
+            {
+              return stored;
+            }
+          }
+          catch {}
+        }
+        return undefined;
+      })();
+
       const request: CourseCreationRequest = {
         title: generatedData.title,
         description: generatedData.description,
         instructor: generatedData.instructor,
-        passThreshold: 70
+        passThreshold: 70,
+        difficulty: generatedData.difficulty,
+        estimatedDuration: generatedData.estimatedDuration,
+        tags: generatedData.tags,
+        imagePath: iconForCourse,
+        syllabus: generatedData.syllabus?.map(s => ({
+          title: s.title,
+          summary: s.summary,
+          duration: s.duration
+        }))
       };
 
       const course = await universityApi.createCourse(request);
@@ -220,8 +250,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
         navigate(`/university/course/${course.metadata.id}`, {
           state: { 
             course,
-            fromCreation: true,
-            generatedSyllabus: generatedData.syllabus
+            fromCreation: true
           }
         });
       }

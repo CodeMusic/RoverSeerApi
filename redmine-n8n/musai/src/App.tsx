@@ -188,6 +188,14 @@ function DevConsoleRoutingBridge()
 
       const navigateMain = (mode: string, tab: string, extraState: Record<string, unknown> = {}) =>
       {
+        try
+        {
+          if (extraState && (extraState as any).searchMode === 'research')
+          {
+            sessionStorage.setItem('musai-search-initial-mode', 'research');
+          }
+        }
+        catch {}
         navigate(RouteUtils.mainAppWithMode(mode), {
           state: { switchToTab: tab, initialQuery: query, newSession: true, initialMessage: query, ...extraState }
         });

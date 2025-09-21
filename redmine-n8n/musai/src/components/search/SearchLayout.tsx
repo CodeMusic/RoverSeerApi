@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useTheme } from "@/contexts/ThemeContext";
+import { format } from "date-fns";
 // Note: Do not show the global Musai Copilot Navigator on the Search screens
 
 interface SearchSession extends SearchSessionModel {}
@@ -43,7 +44,29 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
   const { preference } = useTheme();
 
   // MuseEyeSearch parameters
-  const [mode, setMode] = useState<SearchMode>(initialMode ?? 'standard');
+  const [mode, setMode] = useState<SearchMode>(() =>
+  {
+    // Prefer explicit prop
+    if (initialMode)
+    {
+      return initialMode;
+    }
+    // Synchronous fallback from sessionStorage to avoid post-mount flips
+    try
+    {
+      const persisted = sessionStorage.getItem('musai-search-initial-mode');
+      if (persisted === 'research')
+      {
+        sessionStorage.removeItem('musai-search-initial-mode');
+        return 'research';
+      }
+    }
+    catch
+    {
+      // ignore storage errors
+    }
+    return 'standard';
+  });
   const hasAppliedInitialMode = useRef(false);
   const [sources, setSources] = useState<SearchSource[]>(['web']);
 
@@ -58,6 +81,33 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
     }
     hasAppliedInitialMode.current = true;
     setMode(initialMode);
+  }, [initialMode]);
+
+  // Fallback: honor a persisted research intent from sessionStorage when navigation state is missing
+  useEffect(() =>
+  {
+    if (hasAppliedInitialMode.current || initialMode)
+    {
+      return;
+    }
+
+    try
+    {
+      const persisted = sessionStorage.getItem('musai-search-initial-mode');
+      if (persisted === 'research')
+      {
+        hasAppliedInitialMode.current = true;
+        setMode('research');
+      }
+      if (persisted)
+      {
+        sessionStorage.removeItem('musai-search-initial-mode');
+      }
+    }
+    catch
+    {
+      // ignore storage errors
+    }
   }, [initialMode]);
 
   const currentSession = searchSessions.find(s => s.id === currentSessionId);
@@ -365,12 +415,18 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
       clearTimeout(manualTimeoutId); // Ensure manual timeout is cleared
       setIsLoading(false);
     }
-  }, [clientIpHash]);
+  }, [clientIpHash, mode, sources]);
 
   // Handle initial query from navigation - placed after handleSearch declaration
   // On refresh, do NOT re-run if we already have a session for this query.
   useEffect(() => {
     if (!initialQuery || hasProcessedInitialQuery) {
+      return;
+    }
+
+    // Wait for initialMode application when provided, to avoid starting in standard mode
+    if (initialMode && !hasAppliedInitialMode.current)
+    {
       return;
     }
 
@@ -388,10 +444,10 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
       return;
     }
 
-    console.log('Auto-executing initial search query:', trimmed);
+    console.log('Auto-executing initial search query:', trimmed, `(mode=${mode})`);
     setHasProcessedInitialQuery(true);
     handleSearch(trimmed);
-  }, [initialQuery, hasProcessedInitialQuery, handleSearch, searchSessions]);
+  }, [initialQuery, initialMode, hasProcessedInitialQuery, handleSearch, searchSessions, mode]);
 
   const handleFollowUp = useCallback(async (followUpQuery: string) => {
     if (!currentSession || !followUpQuery.trim()) return;
@@ -518,7 +574,7 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
     } finally {
       setIsLoading(false);
     }
-  }, [currentSession, currentSessionId]);
+  }, [currentSession, currentSessionId, sources, mode]);
 
   // Retry the initial search in-place: clear previous error/results, show initial loader, and replace on success/fail
   const handleRetryInitial = useCallback(async () => {
@@ -763,10 +819,486 @@ export const SearchLayout = ({ onClose, initialQuery, initialMode }: SearchLayou
   }, []);
 
   const handleExportSession = useCallback(() => {
-    if (!currentSession) return;
+    if (!currentSession)
+    {
+      return;
+    }
 
-    // TODO: Implement HTML export functionality
-    console.log("Exporting session:", currentSession);
+    if (typeof window === 'undefined' || typeof document === 'undefined')
+    {
+      console.warn('Musai research export is only available in the browser runtime.');
+      return;
+    }
+
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const toBlockHtml = (value: string | undefined) => {
+      if (!value) return '';
+      if (/<article[\s>]/i.test(value.trim()))
+      {
+        return value;
+      }
+      const escaped = escapeHtml(value);
+      return escaped
+        .split(/\n{2,}/)
+        .map(block => `<p>${block.replace(/\n/g, '<br />')}</p>`)
+        .join('');
+    };
+
+    const renderBicameral = (bicameral: SearchResult['bicameral']) => {
+      if (!bicameral) return '';
+      const segments: string[] = [];
+      if (bicameral.creative?.summary)
+      {
+        segments.push(`<div class="bicameral-card"><h4>Creative</h4><p>${escapeHtml(bicameral.creative.summary)}</p></div>`);
+      }
+      if (bicameral.logical?.summary)
+      {
+        segments.push(`<div class="bicameral-card"><h4>Logical</h4><p>${escapeHtml(bicameral.logical.summary)}</p></div>`);
+      }
+      if (bicameral.fusion?.summary || typeof bicameral.fusion?.agreementScore === 'number')
+      {
+        const fusionPieces: string[] = [];
+        if (bicameral.fusion?.summary)
+        {
+          fusionPieces.push(`<p>${escapeHtml(bicameral.fusion.summary)}</p>`);
+        }
+        if (typeof bicameral.fusion?.agreementScore === 'number')
+        {
+          fusionPieces.push(`<p class="faint">Agreement score: ${(bicameral.fusion.agreementScore * 100).toFixed(0)}%</p>`);
+        }
+        segments.push(`<div class="bicameral-card"><h4>Fusion</h4>${fusionPieces.join('')}</div>`);
+      }
+      if (segments.length === 0)
+      {
+        return '';
+      }
+      return `<div class="result-bicameral">${segments.join('')}</div>`;
+    };
+
+    const renderConflicts = (conflicts?: SearchResult['conflicts']) => {
+      if (!conflicts || conflicts.length === 0) return '';
+      const cards = conflicts.map(conflict => {
+        const bodyParts: string[] = [];
+        if (conflict.description)
+        {
+          bodyParts.push(`<p>${escapeHtml(conflict.description)}</p>`);
+        }
+        const perspectives: string[] = [];
+        if (conflict.perspectiveA)
+        {
+          perspectives.push(`<div><strong>A</strong><span>${escapeHtml(conflict.perspectiveA)}</span></div>`);
+        }
+        if (conflict.perspectiveB)
+        {
+          perspectives.push(`<div><strong>B</strong><span>${escapeHtml(conflict.perspectiveB)}</span></div>`);
+        }
+        if (perspectives.length > 0)
+        {
+          bodyParts.push(`<div class="conflict-perspectives">${perspectives.join('')}</div>`);
+        }
+        if (conflict.resolutionHint)
+        {
+          bodyParts.push(`<p class="faint">Hint: ${escapeHtml(conflict.resolutionHint)}</p>`);
+        }
+        return `<article class="conflict-card"><h4>${escapeHtml(conflict.title || 'Perspective mismatch')}</h4>${bodyParts.join('')}</article>`;
+      });
+      return `<div class="result-conflicts">${cards.join('')}</div>`;
+    };
+
+    const renderPersonalization = (note?: SearchResult['personalization']) => {
+      if (!note?.summary) return '';
+      return `<div class="result-personalization"><h4>For you</h4><p>${escapeHtml(note.summary)}</p></div>`;
+    };
+
+    const resultHtml = currentSession.results.map((result, index) => {
+      const title = escapeHtml(result.title || `Result ${index + 1}`);
+      const url = result.url ? `<a class="result-link" href="${escapeHtml(result.url)}">${escapeHtml(result.url)}</a>` : '';
+      const snippet = result.snippet ? `<p class="result-snippet">${escapeHtml(result.snippet)}</p>` : '';
+      const sources = Array.isArray(result.sourcesUsed) && result.sourcesUsed.length > 0
+        ? `<ul class="result-sources">${result.sourcesUsed.map(src => `<li>${escapeHtml(src)}</li>`).join('')}</ul>`
+        : '';
+      const content = toBlockHtml(result.content);
+      return `<section class="result-card">
+  <header>
+    <div class="result-index">${index + 1}</div>
+    <div>
+      <h2>${title}</h2>
+      ${url}
+    </div>
+  </header>
+  <div class="result-content">${content}</div>
+  ${snippet}
+  ${sources}
+  ${renderBicameral(result.bicameral)}
+  ${renderConflicts(result.conflicts)}
+  ${renderPersonalization(result.personalization)}
+</section>`;
+    }).join('\n');
+
+    const followUpsHtml = currentSession.followUps.length > 0
+      ? `<section class="followups">
+  <h2>Follow-up explorations</h2>
+  ${currentSession.followUps.map(followUp => {
+        const content = toBlockHtml(followUp.result?.content);
+        const timestampLabel = (() => {
+          try { return format(followUp.timestamp, 'PPP p'); } catch { return new Date(followUp.timestamp).toLocaleString(); }
+        })();
+        return `<article class="followup-card">
+    <header>
+      <h3>${escapeHtml(followUp.query)}</h3>
+      <span>${escapeHtml(timestampLabel)}</span>
+    </header>
+    <div class="followup-content">${content}</div>
+  </article>`;
+      }).join('')}
+</section>`
+      : '';
+
+    const sessionTimestamp = (() => {
+      try { return format(currentSession.timestamp, 'PPP p'); } catch { return new Date(currentSession.timestamp).toLocaleString(); }
+    })();
+    const timestampSlug = (() => {
+      try { return format(currentSession.timestamp, 'yyyyMMdd-HHmm'); } catch { return String(currentSession.timestamp); }
+    })();
+    const querySlug = currentSession.query
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    const fileName = `musai-research-${querySlug || 'session'}-${timestampSlug}.html`;
+
+    const docTitle = `Musai Research • ${escapeHtml(currentSession.query)}`;
+    const sessionSources = Array.isArray(currentSession.sources) && currentSession.sources.length > 0
+      ? `<div class="session-sources">${currentSession.sources.map(src => `<span>${escapeHtml(src)}</span>`).join('')}</div>`
+      : '';
+    const modeBadge = currentSession.mode ? `<span class="session-mode">${escapeHtml(currentSession.mode)}</span>` : '';
+    const intentBadge = currentSession.intent ? `<span class="session-intent">${escapeHtml(currentSession.intent)}</span>` : '';
+
+    const htmlDocument = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>${docTitle}</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 48px 32px 64px;
+      background: radial-gradient(circle at top left, #1f1b3a, #0b0f1f 52%);
+      color: #f8fafc;
+    }
+    a {
+      color: inherit;
+    }
+    header.session-header {
+      max-width: 920px;
+      margin: 0 auto 32px;
+      padding: 28px 32px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 22px 60px rgba(15, 23, 42, 0.35);
+    }
+    header.session-header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    header.session-header p {
+      margin: 0;
+      color: rgba(241, 245, 249, 0.78);
+    }
+    .session-meta {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.58);
+    }
+    .session-meta span {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .session-sources {
+      margin-top: 16px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.75);
+    }
+    .session-sources span {
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      display: grid;
+      gap: 24px;
+    }
+    .result-card {
+      padding: 28px 32px;
+      border-radius: 24px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 24px 52px rgba(15, 23, 42, 0.30);
+    }
+    .result-card header {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .result-index {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(129, 140, 248, 0.75), rgba(236, 72, 153, 0.75));
+      font-weight: 600;
+      letter-spacing: 0.08em;
+    }
+    .result-card h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .result-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 14px;
+      color: rgba(148, 163, 184, 0.9);
+      text-decoration: none;
+    }
+    .result-content {
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    .result-content p {
+      margin: 0 0 12px;
+    }
+    .result-snippet {
+      margin: 18px 0 0;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+      font-style: italic;
+      color: rgba(226, 232, 240, 0.74);
+    }
+    .result-sources {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .result-sources li {
+      padding: 4px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .result-bicameral {
+      margin-top: 20px;
+      display: grid;
+      gap: 12px;
+    }
+    .bicameral-card {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(129, 140, 248, 0.22);
+    }
+    .bicameral-card h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: rgba(129, 140, 248, 0.85);
+    }
+    .result-conflicts {
+      margin-top: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .conflict-card {
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(120, 53, 15, 0.15);
+      border: 1px solid rgba(249, 115, 22, 0.35);
+    }
+    .conflict-card h4 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .conflict-perspectives {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .conflict-perspectives div {
+      display: grid;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(249, 115, 22, 0.28);
+    }
+    .conflict-perspectives strong {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .result-personalization {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(20, 184, 166, 0.12);
+      border: 1px solid rgba(45, 212, 191, 0.35);
+    }
+    .result-personalization h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .followups {
+      margin-top: 12px;
+    }
+    .followups > h2 {
+      margin-bottom: 12px;
+      font-size: 18px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(129, 140, 248, 0.9);
+    }
+    .followup-card {
+      padding: 20px 24px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(129, 140, 248, 0.18);
+      margin-bottom: 12px;
+    }
+    .followup-card header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .followup-card h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .followup-card span {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.75);
+    }
+    .followup-content {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .followup-content p {
+      margin: 0 0 12px;
+    }
+    .faint {
+      color: rgba(148, 163, 184, 0.7);
+      font-size: 12px;
+    }
+    footer {
+      margin: 48px auto 0;
+      max-width: 920px;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(148, 163, 184, 0.65);
+    }
+    @media print {
+      body {
+        background: white;
+        color: black;
+        padding: 24px;
+      }
+      header.session-header,
+      .result-card,
+      .followup-card {
+        background: white;
+        color: black;
+        border: 1px solid #cbd5f5;
+        box-shadow: none;
+      }
+      .result-index {
+        color: white;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="session-header">
+    <h1>${escapeHtml(currentSession.query)}</h1>
+    <p>Generated ${escapeHtml(sessionTimestamp)}</p>
+    <div class="session-meta">
+      ${intentBadge}
+      ${modeBadge}
+      <span>Results ${currentSession.results.length}</span>
+    </div>
+    ${sessionSources}
+  </header>
+  <main>
+    ${resultHtml}
+    ${followUpsHtml}
+  </main>
+  <footer>Musai Research Copilot</footer>
+</body>
+</html>`;
+
+    try
+    {
+      const blob = new Blob([htmlDocument], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+    catch (error)
+    {
+      console.error('Failed to generate Musai research export', error);
+    }
   }, [currentSession]);
 
   // Scroll container for keeping controls visible and scrolling results

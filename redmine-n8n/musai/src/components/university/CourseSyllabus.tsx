@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import ROUTES from '@/config/routes';
+import { RouteUtils } from '@/config/routes';
 import { 
   BookOpen, 
   Lock, 
@@ -14,44 +14,52 @@ import {
   Brain,
   Clock,
   User,
-  Settings,
-  FileText,
-  GraduationCap
+  Settings
 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { universityApi } from '@/lib/universityApi';
-import { NavigationBar } from '@/components/common/NavigationBar';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import type { Course, CourseLecture, QuizStatus } from '@/types/university';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { BaseLayout } from '@/components/common/BaseLayout';
+import { APP_TERMS } from '@/config/constants';
 
 const CourseSyllabus = () => 
 {
-  const [course, setCourse] = useState<Course | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
+  const initialCourse = (location.state as { course?: Course } | undefined)?.course;
+  const [course, setCourse] = useState<Course | null>(initialCourse ?? null);
+  const [isLoading, setIsLoading] = useState(!initialCourse);
   const [isGeneratingLecture, setIsGeneratingLecture] = useState<string | null>(null);
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const navigate = useNavigate();
   const { courseId } = useParams<{ courseId: string }>();
-  const isMobile = useIsMobile();
   const { recordLastSession } = useUserPreferences();
+  const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
 
-  useEffect(() => 
+  useEffect(() =>
   {
-    if (courseId) 
+    if (!courseId || !initialCourse)
     {
-      loadCourse();
+      return;
     }
-  }, [courseId]);
+    if (initialCourse.metadata.id !== courseId)
+    {
+      return;
+    }
+    setCourse(initialCourse);
+    setIsLoading(false);
+  }, [courseId, initialCourse]);
 
-  const loadCourse = async () => 
+  const loadCourse = useCallback(async () => 
   {
     if (!courseId) return;
     
     try 
     {
-      setIsLoading(true);
+      if (!initialCourse || initialCourse.metadata.id !== courseId)
+      {
+        setIsLoading(true);
+      }
       const courseData = await universityApi.getCourse(courseId);
       if (courseData) 
       {
@@ -71,7 +79,27 @@ const CourseSyllabus = () =>
     {
       setIsLoading(false);
     }
-  };
+  }, [courseId, navigate, initialCourse]);
+
+  useEffect(() => 
+  {
+    if (courseId) 
+    {
+      loadCourse();
+    }
+  }, [courseId, loadCourse]);
+
+  useEffect(() =>
+  {
+    if (!course)
+    {
+      return;
+    }
+    recordLastSession('university', {
+      courseId: course.metadata.id,
+      view: 'course'
+    });
+  }, [course, recordLastSession]);
 
   const getLectureStatusIcon = (lecture: CourseLecture) => 
   {
@@ -118,12 +146,16 @@ const CourseSyllabus = () =>
 
   const handleLectureClick = async (lecture: CourseLecture, index: number) => 
   {
+    if (!course)
+    {
+      return;
+    }
+
     if (lecture.status === 'locked') 
     {
-      // Check if previous lecture is completed
       if (index > 0) 
       {
-        const previousLecture = course?.lectures[index - 1];
+        const previousLecture = course.lectures[index - 1];
         if (previousLecture?.status !== 'completed') 
         {
           alert('Complete the previous lecture first');
@@ -132,128 +164,199 @@ const CourseSyllabus = () =>
       }
     }
 
+    if (lecture.status === 'in_progress')
+    {
+      alert('This lecture is still generating. We will load the content as soon as it is ready.');
+      return;
+    }
+
     if (!lecture.content) 
     {
-      // Generate lecture content
       setIsGeneratingLecture(lecture.id);
+
+      const courseSnapshot: Course = {
+        ...course,
+        lectures: [...course.lectures]
+      };
+
+      courseSnapshot.lectures[index] = {
+        ...courseSnapshot.lectures[index],
+        status: 'in_progress'
+      };
+
+      setCourse(courseSnapshot);
+      try { await universityApi.saveCourse(courseSnapshot); } catch {}
+
       try 
       {
         const generatedLecture = await universityApi.generateLecture({
-          courseId: course!.metadata.id,
+          courseId: courseSnapshot.metadata.id,
           lectureIndex: index,
           lectureTitle: lecture.title,
-          previousLectureContext: index > 0 ? course?.lectures[index - 1]?.content : undefined,
-          processorFile: course?.metadata.processorFile
+          lectureSummary: lecture.summary,
+          previousLectureContext: index > 0 ? courseSnapshot.lectures[index - 1]?.content : undefined,
+          processorFile: courseSnapshot.metadata.processorFile
         });
 
-        // Update course with generated lecture
-        const updatedCourse = { ...course! };
-        updatedCourse.lectures[index] = {
-          ...generatedLecture,
-          status: 'unlocked'
+        const updatedCourse: Course = {
+          ...courseSnapshot,
+          lectures: [...courseSnapshot.lectures]
         };
-        
+
+        const updatedLecture: CourseLecture = {
+          ...generatedLecture,
+          id: lecture.id,
+          status: 'unlocked',
+          duration: lecture.duration ?? generatedLecture.duration
+        };
+
+        updatedCourse.lectures[index] = updatedLecture;
+        updatedCourse.currentLectureIndex = index;
+
         await universityApi.saveCourse(updatedCourse);
-        setCourse(updatedCourse);
+        const persisted = await universityApi.getCourse(courseId!);
+        const finalCourse = persisted ?? updatedCourse;
+        const finalLecture = finalCourse.lectures[index];
+        setCourse(finalCourse);
+
+        recordLastSession('university', {
+          courseId: courseId!,
+          lectureId: finalLecture.id,
+          view: 'lecture'
+        });
+
+        navigate(`/university/course/${courseId}/lecture/${finalLecture.id}` , {
+          state: {
+            course: finalCourse,
+            lecture: finalLecture
+          }
+        });
+        return;
       } 
       catch (error) 
       {
         console.error('Error generating lecture:', error);
         alert('Failed to generate lecture. Please try again.');
+
+        try
+        {
+          const rollback = await universityApi.getCourse(courseId!);
+          if (rollback)
+          {
+            rollback.lectures = rollback.lectures.map((item, idx) => idx === index ? { ...item, status: 'unlocked' } : item);
+            await universityApi.saveCourse(rollback);
+            setCourse(rollback);
+          }
+          else
+          {
+            setCourse(prev =>
+            {
+              if (!prev)
+              {
+                return prev;
+              }
+              const next: Course = {
+                ...prev,
+                lectures: prev.lectures.map((item, idx) => idx === index ? { ...item, status: 'unlocked' } : item)
+              };
+              return next;
+            });
+          }
+        }
+        catch {}
       } 
       finally 
       {
-        setIsGeneratingLecture(null);
+        setIsGeneratingLecture(prev => prev === lecture.id ? null : prev);
       }
-    } 
-    else 
-    {
-      // Navigate to lecture view and record session
-      recordLastSession('university', {
-        courseId: courseId!,
-        lectureId: lecture.id,
-        view: 'lecture'
-      });
-      navigate(`/university/course/${courseId}/lecture/${lecture.id}`);
+      return;
     }
+
+    recordLastSession('university', {
+      courseId: courseId!,
+      lectureId: lecture.id,
+      view: 'lecture'
+    });
+    navigate(`/university/course/${courseId}/lecture/${lecture.id}`, {
+      state: {
+        course,
+        lecture
+      }
+    });
   };
 
-  const handleTabChange = (tab: string) => 
+  const handleTabChange = (tab: string) =>
   {
-    switch (tab) 
-    {
-      case "chat":
-        navigate(ROUTES.MAIN_APP);
-        break;
-      case "musai-search":
-        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "musai-search" } });
-        break;
-      case "code-musai":
-        navigate(ROUTES.MAIN_APP, { state: { switchToTab: "code-musai" } });
-        break;
-      case "musai-university":
-        navigate("/university");
-        break;
-      default:
-        break;
-    }
+    const map: Record<string, string> = {
+      [APP_TERMS.TAB_CHAT]: 'chat',
+      [APP_TERMS.TAB_SEARCH]: 'search',
+      [APP_TERMS.TAB_CODE]: 'code',
+      [APP_TERMS.TAB_UNIVERSITY]: 'university',
+      [APP_TERMS.TAB_NARRATIVE]: 'narrative',
+      [APP_TERMS.TAB_CAREER]: 'career',
+      [APP_TERMS.TAB_THERAPY]: 'therapy',
+      [APP_TERMS.TAB_MEDICAL]: 'medical',
+      [APP_TERMS.TAB_TASK]: 'task',
+      [APP_TERMS.TAB_EYE]: 'eye'
+    };
+    const mode = map[tab] || 'chat';
+    navigate(RouteUtils.mainAppWithMode(mode));
   };
 
-  if (isLoading) 
+  const renderMainContent = () =>
   {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 dark:text-gray-300">Loading course...</p>
+    if (isLoading)
+    {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+          <div className="container mx-auto px-4 py-8">
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-300">Loading course...</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (!course) 
-  {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Course not found
-            </h2>
-            <Button onClick={() => navigate('/university')}>
-              Back to University
-            </Button>
+    if (!course)
+    {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+          <div className="container mx-auto px-4 py-8">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                Course not found
+              </h2>
+              <Button onClick={() => navigate('/university')}>
+                Back to University
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
-      {/* Navigation Sidebar */}
-      <NavigationBar
-        currentTab="musai-university"
-        onTabChange={handleTabChange}
-        isExpanded={isSidebarExpanded}
-        onToggleExpanded={() => setIsSidebarExpanded(!isSidebarExpanded)}
-      />
-
-      <div className={cn(
-        "container mx-auto px-4 py-8 transition-all duration-300 max-w-7xl",
-        isMobile ? "ml-0" : isSidebarExpanded ? "ml-48" : "ml-16"
-      )}>
-        {/* Course Header */}
-        <div className="mb-8">
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          {/* Course Header */}
+          <div className="mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-white" />
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  {course.metadata.imagePath ? (
+                    <img
+                      src={course.metadata.imagePath}
+                      alt={`${course.metadata.title} cover`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <BookOpen className="h-6 w-6 text-white" />
+                  )}
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
@@ -308,44 +411,14 @@ const CourseSyllabus = () =>
           <Card className="lg:col-span-2">
             <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-purple-600" />
+                <Sparkles className="h-5 w-5 text-purple-600" />
                 <div>
                   <div className="font-semibold">Course Exams</div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Generate midterm or final covering prior material</div>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!course) return;
-                    const contents = course.lectures
-                      .filter((l) => l.content)
-                      .map((l) => l.content as string);
-                    const exam = await universityApi.generateCourseExam(course.metadata.id, 'midterm', contents.slice(0, Math.ceil(contents.length / 2)));
-                    const updatedCourse = { ...course, midtermExam: exam } as Course;
-                    await universityApi.saveCourse(updatedCourse);
-                    setCourse(updatedCourse);
-                    alert('Midterm generated');
-                  }}
-                >
-                  <FileText className="mr-2 h-4 w-4" /> Generate Midterm
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (!course) return;
-                    const contents = course.lectures
-                      .filter((l) => l.content)
-                      .map((l) => l.content as string);
-                    const exam = await universityApi.generateCourseExam(course.metadata.id, 'final', contents);
-                    const updatedCourse = { ...course, finalExam: exam } as Course;
-                    await universityApi.saveCourse(updatedCourse);
-                    setCourse(updatedCourse);
-                    alert('Final exam generated');
-                  }}
-                >
-                  <GraduationCap className="mr-2 h-4 w-4" /> Generate Final
-                </Button>
+              <div className="text-sm text-muted-foreground">
+                Exam generation will be wired up after lecture workflows stabilize. For now, continue through the syllabus and mark lectures complete to track progress.
               </div>
             </CardHeader>
           </Card>
@@ -372,6 +445,11 @@ const CourseSyllabus = () =>
                       <CardDescription className="line-clamp-2 text-sm">
                         {lecture.summary}
                       </CardDescription>
+                      {lecture.duration && (
+                        <div className="mt-1 text-xs font-medium text-muted-foreground">
+                          {lecture.duration}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -397,7 +475,7 @@ const CourseSyllabus = () =>
               <CardContent>
                 <div className="space-y-3">
                   {/* Generation Status */}
-                  {isGeneratingLecture === lecture.id && (
+                  {(isGeneratingLecture === lecture.id || lecture.status === 'in_progress') && (
                     <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       <span>🧑‍🏫 Professor is preparing your lecture...</span>
@@ -424,10 +502,15 @@ const CourseSyllabus = () =>
                   <Button
                     className="w-full"
                     variant={lecture.status === 'completed' ? 'outline' : 'default'}
-                    disabled={lecture.status === 'locked' || isGeneratingLecture === lecture.id}
+                    disabled={
+                      lecture.status === 'locked' ||
+                      lecture.status === 'in_progress' ||
+                      isGeneratingLecture === lecture.id
+                    }
                   >
-                    {lecture.status === 'completed' ? 'Review' : 
+                    {lecture.status === 'completed' ? 'Review' :
                      lecture.status === 'locked' ? 'Locked' :
+                     lecture.status === 'in_progress' ? 'Generating…' :
                      !lecture.content ? 'Generate Lecture' : 'Continue'}
                   </Button>
                 </div>
@@ -438,6 +521,25 @@ const CourseSyllabus = () =>
       </div>
     </div>
   );
+  };
+
+  return (
+    <BaseLayout
+      currentTab={APP_TERMS.TAB_UNIVERSITY}
+      sessions={[]}
+      currentSessionId=""
+      onNewSession={() => {}}
+      onSessionSelect={() => {}}
+      onDeleteSession={() => {}}
+      onRenameSession={() => {}}
+      onToggleFavorite={() => {}}
+      renderMainContent={renderMainContent}
+      onTabChange={handleTabChange}
+      isNavigationExpanded={isNavigationExpanded}
+      onToggleNavigation={() => setIsNavigationExpanded(prev => !prev)}
+      renderLeftSidebarOverride={() => null}
+    />
+  );
 };
 
-export default CourseSyllabus; 
+export default CourseSyllabus;

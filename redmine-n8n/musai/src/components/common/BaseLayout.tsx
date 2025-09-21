@@ -21,7 +21,7 @@ import { BaseSessionSidebar } from '@/components/common/BaseSessionSidebar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
-import { AllSessions, BaseSession, ChatSession, CareerSession, TherapySession, DevSession } from '@/types/chat';
+import { AllSessions, BaseSession } from '@/types/chat';
 import { APP_TERMS } from '@/config/constants';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { UI_STRINGS } from '@/config/uiStrings';
@@ -58,8 +58,9 @@ interface BaseLayoutProps {
   // Optional overrides to make the base session manager flexible per module
   leftSidebarTitle?: string;
   leftSidebarNewSessionText?: string;
-  leftSidebarGetSessionIcon?: (session: ChatSession | CareerSession | TherapySession | DevSession) => React.ReactNode;
-  leftSidebarGetSessionName?: (session: ChatSession | CareerSession | TherapySession | DevSession) => string;
+  leftSidebarGetSessionIcon?: (session: AllSessions) => React.ReactNode;
+  leftSidebarGetSessionName?: (session: AllSessions) => string;
+  leftSidebarGetSessionSubtitle?: (session: AllSessions) => string;
 }
 
 export const BaseLayout: React.FC<BaseLayoutProps> = ({
@@ -82,7 +83,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   leftSidebarTitle,
   leftSidebarNewSessionText,
   leftSidebarGetSessionIcon,
-  leftSidebarGetSessionName
+  leftSidebarGetSessionName,
+  leftSidebarGetSessionSubtitle
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -128,6 +130,9 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   const sidebarSessions: BaseSession[] = (() => {
     if (currentTab === APP_TERMS.TAB_CODE) {
       return filteredSessions.filter(s => s.type === 'dev');
+    }
+    if (currentTab === APP_TERMS.TAB_UNIVERSITY) {
+      return filteredSessions.filter(session => session.type === 'university');
     }
     return filteredSessions.filter((session) => 
       session.type === 'chat' || session.type === 'career' || session.type === 'therapy' || session.type === 'eye'
@@ -328,6 +333,55 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
     };
   }, []);
 
+  const defaultSidebarIcon = (session: AllSessions) => {
+    switch (session.type) {
+      case 'dev':
+        return <Code className="w-4 h-4" />;
+      case 'career':
+        return <TrendingUp className="w-4 h-4" />;
+      case 'therapy':
+        return <Heart className="w-4 h-4" />;
+      case 'eye':
+        return <Eye className="w-4 h-4" />;
+      case 'university':
+        return <GraduationCap className="w-4 h-4" />;
+      default:
+        return <MessageSquare className="w-4 h-4" />;
+    }
+  };
+
+  const defaultSidebarName = (session: AllSessions) => {
+    switch (session.type) {
+      case 'dev': {
+        const firstLine = String(session.code || '').split('\n')[0] || '';
+        return session.name || (firstLine.length > 30 ? `${firstLine.slice(0, 30)}…` : firstLine || 'Dev Session');
+      }
+      case 'career':
+      case 'therapy':
+      case 'chat': {
+        const message = (session as any).messages?.find?.((m: any) => m.role === 'user')?.content;
+        return session.name || message || (session.type === 'career' ? 'Career Session' : session.type === 'therapy' ? 'Therapy Session' : 'Chat Session');
+      }
+      case 'eye': {
+        const prompts = (session as any).prompts as string[] | undefined;
+        const last = prompts && prompts.length > 0 ? prompts[prompts.length - 1] : undefined;
+        return session.name || last || 'Eye Session';
+      }
+      case 'university':
+        return session.name || session.topic || (session.scope === 'standalone' ? 'Standalone Lecture' : 'Course Concept');
+      case 'task':
+        return session.name || 'Task Session';
+      case 'narrative':
+        return session.name || 'Narrative Session';
+      case 'medical':
+        return session.name || 'Medical Session';
+      default:
+        return session.name || 'Session';
+    }
+  };
+
+  const defaultSidebarSubtitle = (session: AllSessions) => format(session.lastUpdated, 'MMM d, h:mm a');
+
   return (
     <div className="h-full flex flex-col">
       <NavigationBar
@@ -366,24 +420,14 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
             )}>
               {leftOverride ?? (
                 <BaseSessionSidebar
-                  sessions={sidebarSessions}
+                  sessions={sidebarSessions as AllSessions[]}
                   currentSessionId={currentSessionId}
                   isSidebarOpen={isMobile ? isSidebarOpen : true}
                   title={resolvedSidebarTitle}
                   newSessionText={resolvedNewSessionText}
-                  getSessionIcon={leftSidebarGetSessionIcon ?? ((session) => (
-                    (session as any).code ? <Code className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />
-                  ))}
-                  getSessionName={leftSidebarGetSessionName ?? ((session) => {
-                    if ((session as any).code) {
-                      const code = String((session as any).code || '');
-                      const first = code.split('\n')[0] || '';
-                      return session.name || (first.length > 30 ? first.slice(0, 30) + '...' : (first || `${(session as any).language || 'code'} Session`));
-                    }
-                    const msg = (session as any).messages?.find?.((m: any) => m.role === 'user')?.content;
-                    return session.name || msg || 'New Chat';
-                  })}
-                  getSessionSubtitle={(session) => format(session.lastUpdated, 'MMM d, h:mm a')}
+                  getSessionIcon={leftSidebarGetSessionIcon ?? defaultSidebarIcon}
+                  getSessionName={leftSidebarGetSessionName ?? defaultSidebarName}
+                  getSessionSubtitle={leftSidebarGetSessionSubtitle ?? defaultSidebarSubtitle}
                   onNewSession={onNewSession}
                   onSessionSelect={onSessionSelect}
                   onDeleteSession={onDeleteSession}
