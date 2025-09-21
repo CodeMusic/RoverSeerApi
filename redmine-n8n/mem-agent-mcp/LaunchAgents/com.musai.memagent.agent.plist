@@ -14,8 +14,22 @@
 
   <key>EnvironmentVariables</key>
   <dict>
-    <key>HOME</key><string>$HOME</string>
-    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin</string>
+    <key>HOME</key>
+    <string>$HOME</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOME/.local/bin</string>
+
+    <!-- Structured logging for agent -->
+    <key>MEM_AGENT_LOG_EXTRACTS</key>
+    <string>1</string>
+    <key>MEM_AGENT_LOG_LEVEL</key>
+    <string>INFO</string>
+    <key>MEM_AGENT_VERBOSE_SDK</key>
+    <string>0</string>
+    <key>MEM_AGENT_SESSION_ID</key>
+    <string>agent</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
   </dict>
 
   <key>RunAtLoad</key><true/>

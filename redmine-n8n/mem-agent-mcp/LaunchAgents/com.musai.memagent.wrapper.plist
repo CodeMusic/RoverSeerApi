@@ -1,42 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key>
-  <string>com.musai.memagent.wrapper</string>
+  <key>Label</key><string>com.musai.memagent.wrapper</string>
 
   <key>ProgramArguments</key>
   <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
     <string>/Users/christopherhicks/redmine-n8n/mem-agent-mcp/bin/serve_mcp_wait.sh</string>
   </array>
-
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/christopherhicks/.local/bin:/Users/christopherhicks/.cache/lm-studio/bin</string>
-
-    <key>LMSTUDIO_BASE_URL</key>
-    <string>http://127.0.0.1:8000</string>
-
-    <key>MEMORY_DIR</key>
-    <string>/Users/christopherhicks/redmine-n8n/data/notes/MusaiMemory</string>
-    <key>MEMORY_PATH</key>
-    <string>/Users/christopherhicks/redmine-n8n/data/notes/MusaiMemory</string>
-    <key>MEM_AGENT_MEMORY_DIR</key>
-    <string>/Users/christopherhicks/redmine-n8n/data/notes/MusaiMemory</string>
-
-    <!-- lock the model id to the non-4bit name -->
-    <key>MEM_AGENT_MODEL</key>
-    <string>mem-agent-mlx</string>
-    <key>LMS_MODEL</key>
-    <string>mem-agent-mlx</string>
-    <key>LMSTUDIO_MODEL</key>
-    <string>mem-agent-mlx</string>
-
-    <!-- point to the actual lms binary LM Studio installed -->
-    <key>LMS_BIN</key>
-    <string>/Users/christopherhicks/.cache/lm-studio/bin/lms</string>
-  </dict>
 
   <key>WorkingDirectory</key>
   <string>/Users/christopherhicks/redmine-n8n/mem-agent-mcp</string>
@@ -44,6 +18,53 @@
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- LM Studio -->
+    <key>LMSTUDIO_BASE_URL</key><string>http://127.0.0.1:8000</string>
+    <key>MEM_AGENT_MODEL</key><string>mem-agent-mlx</string>
+
+    <!-- Memory roots -->
+    <key>MEMORY_DIR</key>
+    <string>/Users/christopherhicks/redmine-n8n/silverbullet/data/notes/MusaiMemory</string>
+    <key>MEMORY_PATH</key>
+    <string>/Users/christopherhicks/redmine-n8n/silverbullet/data/notes/MusaiMemory</string>
+    <key>MEM_AGENT_MEMORY_DIR</key>
+    <string>/Users/christopherhicks/redmine-n8n/silverbullet/data/notes/MusaiMemory</string>
+
+    <!-- Allow writes / disable sandbox assumptions -->
+    <key>MEM_AGENT_SANDBOX</key>
+    <string>0</string>
+    <key>MEM_AGENT_READONLY</key>
+    <string>0</string>
+    <key>ALLOW_FS_WRITES</key>
+    <string>1</string>
+    <key>ALLOW_FILESYSTEM_WRITES</key>
+    <string>1</string>
+    <key>SB_ALLOW_WRITE</key>
+    <string>1</string>
+
+    <!-- Temp directory (many libs write via tmp first) -->
+    <key>TMPDIR</key>
+    <string>/Users/christopherhicks/redmine-n8n/silverbullet/data/notes/MusaiMemory/.tmp/</string>
+    <key>MEM_AGENT_ALLOW_TMP</key>
+    <string>1</string>
+
+    <!-- Structured logging for MCP wrapper -->
+    <key>MEM_AGENT_LOG_EXTRACTS</key>
+    <string>1</string>
+    <key>MEM_AGENT_LOG_LEVEL</key>
+    <string>INFO</string>
+    <key>MEM_AGENT_VERBOSE_SDK</key>
+    <string>0</string>
+    <key>MEM_AGENT_SESSION_ID</key>
+    <string>wrapper</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+
+  </dict>
+
+  <!-- Logs must be absolute and writable -->
   <key>StandardOutPath</key>
   <string>/Users/christopherhicks/Library/Logs/memagent-mcp.out</string>
   <key>StandardErrorPath</key>
