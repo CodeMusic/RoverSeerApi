@@ -61,6 +61,7 @@ interface BaseLayoutProps {
   leftSidebarGetSessionIcon?: (session: AllSessions) => React.ReactNode;
   leftSidebarGetSessionName?: (session: AllSessions) => string;
   leftSidebarGetSessionSubtitle?: (session: AllSessions) => string;
+  hideLeftSidebar?: boolean;
 }
 
 export const BaseLayout: React.FC<BaseLayoutProps> = ({
@@ -84,7 +85,8 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
   leftSidebarNewSessionText,
   leftSidebarGetSessionIcon,
   leftSidebarGetSessionName,
-  leftSidebarGetSessionSubtitle
+  leftSidebarGetSessionSubtitle,
+  hideLeftSidebar
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -408,7 +410,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           "flex overflow-x-hidden musai-spa-surface"
         )}>
           {/* Left Sidebar (disabled for Search; Search manages its own sidebar) */}
-          {currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed && (
+          {!hideLeftSidebar && currentTab !== APP_TERMS.TAB_SEARCH && !isSidebarCollapsed && (
             <div className={cn(
               "w-96 border-r border-border bg-background h-full transition-all duration-300 ease-in-out relative",
               "magic-reactive magical-sidebar",
@@ -445,7 +447,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
           )}
 
           {/* Collapsed Sidebar Toggle; for Search show only when its own sidebar is hidden */}
-          {(
+          {!hideLeftSidebar && ((
             (currentTab !== APP_TERMS.TAB_SEARCH && isSidebarCollapsed) ||
             (currentTab === APP_TERMS.TAB_SEARCH && !isSearchSidebarVisible)
           ) && (
@@ -475,7 +477,7 @@ export const BaseLayout: React.FC<BaseLayoutProps> = ({
                 <span className="sr-only">{`Show ${effectiveCollapsedTitle}`}</span>
               </button>
             </div>
-          )}
+          ))}
 
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0">

@@ -322,8 +322,8 @@ const Landing = () => {
         return;
       case 'university':
         navigateAfterDelay(() => {
-          navigate(RouteUtils.mainAppWithMode('university'), {
-            state: { switchToTab: APP_TERMS.TAB_UNIVERSITY, initialQuery: trimmed },
+          navigate(ROUTES.UNIVERSITY, {
+            state: { initialQuery: trimmed },
           });
         });
         return;

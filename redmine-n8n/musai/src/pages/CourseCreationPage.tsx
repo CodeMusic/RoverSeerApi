@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import CourseCreation from '@/components/university/CourseCreation';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { APP_TERMS } from '@/config/constants';
-import { RouteUtils } from '@/config/routes';
+import ROUTES, { RouteUtils } from '@/config/routes';
 import type { AllSessions } from '@/types/chat';
 
 const CourseCreationPage = () => 
@@ -37,6 +37,11 @@ const CourseCreationPage = () =>
       [APP_TERMS.TAB_EYE]: 'eye'
     };
     const mode = map[tab] || 'chat';
+    if (tab === APP_TERMS.TAB_UNIVERSITY)
+    {
+      navigate(ROUTES.UNIVERSITY);
+      return;
+    }
     navigate(RouteUtils.mainAppWithMode(mode));
   };
 
@@ -55,6 +60,7 @@ const CourseCreationPage = () =>
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(prev => !prev)}
       renderLeftSidebarOverride={() => null}
+      hideLeftSidebar
     />
   );
 };

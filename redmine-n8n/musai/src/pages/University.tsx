@@ -462,11 +462,16 @@ const University = () =>
           [APP_TERMS.TAB_EYE]: 'eye'
         };
         const mode = map[tab] || 'chat';
+        if (tab === APP_TERMS.TAB_UNIVERSITY)
+        {
+          return;
+        }
         navigate(RouteUtils.mainAppWithMode(mode));
       }}
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(prev => !prev)}
       renderLeftSidebarOverride={() => null}
+      hideLeftSidebar
     />
   );
 };

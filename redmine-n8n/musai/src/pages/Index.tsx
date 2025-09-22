@@ -103,6 +103,18 @@ const Index = () => {
      searchParams.get('mode') === 'eye' ? APP_TERMS.TAB_EYE :
      APP_TERMS.TAB_CHAT)
   );
+
+  useEffect(() =>
+  {
+    if (location.pathname === ROUTES.MAIN_APP)
+    {
+      const mode = searchParams.get('mode');
+      if (mode === 'university')
+      {
+        navigate(ROUTES.UNIVERSITY, { replace: true });
+      }
+    }
+  }, [location.pathname, location.search, navigate, searchParams]);
 	// Keep currentTab in sync with navigation state and ?mode= when navigating from Topbar/DevConsole
 	useEffect(() => {
 		const stateAny = location.state as any;
@@ -131,6 +143,11 @@ const Index = () => {
 	}, [location.state, location.search]);
   // Animate leave/enter when tab changes and sync URL ?mode=...
   const handleTabChange = (nextTab: string) => {
+    if (nextTab === APP_TERMS.TAB_UNIVERSITY)
+    {
+      navigate(ROUTES.UNIVERSITY);
+      return;
+    }
     if (nextTab === currentTab) return setPortalPhase('none');
     // When navigating away from Eye, clear transient Eye prompts/payloads
     // to avoid auto-running Perceive/Reflect when returning later.

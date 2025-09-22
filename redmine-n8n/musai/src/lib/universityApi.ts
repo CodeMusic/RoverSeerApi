@@ -23,6 +23,11 @@ import { getRandomWittyError } from '@/config/messages';
 // Base URL for n8n endpoints - prefer Vite proxy in development to avoid CORS
 const N8N_BASE_URL = N8N_ENDPOINTS.BASE_URL;
 
+const inMemoryUniversityStore = {
+  courses: [] as Course[],
+  standaloneLectures: [] as StandaloneLecture[]
+};
+
 export interface LecturePlan 
 {
   steps: LectureStep[];
@@ -900,37 +905,53 @@ class UniversityApiService
   {
     try 
     {
-      const stored = localStorage.getItem('musai-university-courses');
-      return stored ? JSON.parse(stored) : [];
+      if (typeof window === 'undefined' || !window.localStorage)
+      {
+        return [...inMemoryUniversityStore.courses];
+      }
+      const stored = window.localStorage.getItem('musai-university-courses');
+      if (!stored)
+      {
+        return [...inMemoryUniversityStore.courses];
+      }
+      const parsed = JSON.parse(stored) as Course[];
+      inMemoryUniversityStore.courses = parsed;
+      return parsed;
     } 
     catch (error) 
     {
       console.error('Error loading courses:', error);
-      return [];
+      return [...inMemoryUniversityStore.courses];
     }
   }
 
   async saveCourse(course: Course): Promise<void> 
   {
+    const courses = await this.getCourses();
+    const existingIndex = courses.findIndex(c => c.metadata.id === course.metadata.id);
+
+    if (existingIndex >= 0) 
+    {
+      courses[existingIndex] = course;
+    } 
+    else 
+    {
+      courses.push(course);
+    }
+
+    inMemoryUniversityStore.courses = courses;
+
     try 
     {
-      const courses = await this.getCourses();
-      const existingIndex = courses.findIndex(c => c.metadata.id === course.metadata.id);
-      
-      if (existingIndex >= 0) 
+      if (typeof window !== 'undefined' && window.localStorage)
       {
-        courses[existingIndex] = course;
-      } 
-      else 
-      {
-        courses.push(course);
+        window.localStorage.setItem('musai-university-courses', JSON.stringify(courses));
       }
-      
-      localStorage.setItem('musai-university-courses', JSON.stringify(courses));
     } 
     catch (error) 
     {
       console.error('Error saving course:', error);
+      // fall back to in-memory store only
     }
   }
 
@@ -953,33 +974,48 @@ class UniversityApiService
   {
     try 
     {
-      const stored = localStorage.getItem('musai-university-standalone-lectures');
-      return stored ? JSON.parse(stored) : [];
+      if (typeof window === 'undefined' || !window.localStorage)
+      {
+        return [...inMemoryUniversityStore.standaloneLectures];
+      }
+      const stored = window.localStorage.getItem('musai-university-standalone-lectures');
+      if (!stored)
+      {
+        return [...inMemoryUniversityStore.standaloneLectures];
+      }
+      const parsed = JSON.parse(stored) as StandaloneLecture[];
+      inMemoryUniversityStore.standaloneLectures = parsed;
+      return parsed;
     } 
     catch (error) 
     {
       console.error('Error loading standalone lectures:', error);
-      return [];
+      return [...inMemoryUniversityStore.standaloneLectures];
     }
   }
 
   async saveStandaloneLecture(lecture: StandaloneLecture): Promise<void> 
   {
+    const lectures = await this.getStandaloneLectures();
+    const existingIndex = lectures.findIndex(l => l.id === lecture.id);
+    
+    if (existingIndex >= 0) 
+    {
+      lectures[existingIndex] = lecture;
+    } 
+    else 
+    {
+      lectures.push(lecture);
+    }
+
+    inMemoryUniversityStore.standaloneLectures = lectures;
+
     try 
     {
-      const lectures = await this.getStandaloneLectures();
-      const existingIndex = lectures.findIndex(l => l.id === lecture.id);
-      
-      if (existingIndex >= 0) 
+      if (typeof window !== 'undefined' && window.localStorage)
       {
-        lectures[existingIndex] = lecture;
-      } 
-      else 
-      {
-        lectures.push(lecture);
+        window.localStorage.setItem('musai-university-standalone-lectures', JSON.stringify(lectures));
       }
-      
-      localStorage.setItem('musai-university-standalone-lectures', JSON.stringify(lectures));
     } 
     catch (error) 
     {
@@ -1203,13 +1239,16 @@ class UniversityApiService
 
   async deleteCourse(courseId: string): Promise<void> 
   {
-    try 
+    const filtered = (await this.getCourses()).filter(c => c.metadata.id !== courseId);
+    inMemoryUniversityStore.courses = filtered;
+    try
     {
-      const courses = await this.getCourses();
-      const filtered = courses.filter(c => c.metadata.id !== courseId);
-      localStorage.setItem('musai-university-courses', JSON.stringify(filtered));
-    } 
-    catch (error) 
+      if (typeof window !== 'undefined' && window.localStorage)
+      {
+        window.localStorage.setItem('musai-university-courses', JSON.stringify(filtered));
+      }
+    }
+    catch (error)
     {
       console.error('Error deleting course:', error);
     }

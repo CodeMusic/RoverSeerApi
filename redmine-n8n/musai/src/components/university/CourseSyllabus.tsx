@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { RouteUtils } from '@/config/routes';
+import ROUTES, { RouteUtils } from '@/config/routes';
 import { 
   BookOpen, 
   Lock, 
@@ -164,9 +164,24 @@ const CourseSyllabus = () =>
       }
     }
 
+    const goToLecture = (courseState: Course, lectureState: CourseLecture, shouldGenerate?: boolean) =>
+    {
+      recordLastSession('university', {
+        courseId: courseId!,
+        lectureId: lectureState.id,
+        view: 'lecture'
+      });
+      navigate(`/university/course/${courseId}/lecture/${lectureState.id}`, {
+        state: shouldGenerate
+          ? { course: courseState, lecture: lectureState, shouldGenerate: true }
+          : { course: courseState, lecture: lectureState }
+      });
+    };
+
     if (lecture.status === 'in_progress')
     {
-      alert('This lecture is still generating. We will load the content as soon as it is ready.');
+      setIsGeneratingLecture(lecture.id);
+      goToLecture(course, lecture, true);
       return;
     }
 
@@ -174,101 +189,18 @@ const CourseSyllabus = () =>
     {
       setIsGeneratingLecture(lecture.id);
 
-      const courseSnapshot: Course = {
+      const nextCourse: Course = {
         ...course,
-        lectures: [...course.lectures]
+        lectures: course.lectures.map((item, idx) => idx === index
+          ? { ...item, status: 'in_progress' }
+          : item
+        )
       };
+      nextCourse.currentLectureIndex = index;
 
-      courseSnapshot.lectures[index] = {
-        ...courseSnapshot.lectures[index],
-        status: 'in_progress'
-      };
-
-      setCourse(courseSnapshot);
-      try { await universityApi.saveCourse(courseSnapshot); } catch {}
-
-      try 
-      {
-        const generatedLecture = await universityApi.generateLecture({
-          courseId: courseSnapshot.metadata.id,
-          lectureIndex: index,
-          lectureTitle: lecture.title,
-          lectureSummary: lecture.summary,
-          previousLectureContext: index > 0 ? courseSnapshot.lectures[index - 1]?.content : undefined,
-          processorFile: courseSnapshot.metadata.processorFile
-        });
-
-        const updatedCourse: Course = {
-          ...courseSnapshot,
-          lectures: [...courseSnapshot.lectures]
-        };
-
-        const updatedLecture: CourseLecture = {
-          ...generatedLecture,
-          id: lecture.id,
-          status: 'unlocked',
-          duration: lecture.duration ?? generatedLecture.duration
-        };
-
-        updatedCourse.lectures[index] = updatedLecture;
-        updatedCourse.currentLectureIndex = index;
-
-        await universityApi.saveCourse(updatedCourse);
-        const persisted = await universityApi.getCourse(courseId!);
-        const finalCourse = persisted ?? updatedCourse;
-        const finalLecture = finalCourse.lectures[index];
-        setCourse(finalCourse);
-
-        recordLastSession('university', {
-          courseId: courseId!,
-          lectureId: finalLecture.id,
-          view: 'lecture'
-        });
-
-        navigate(`/university/course/${courseId}/lecture/${finalLecture.id}` , {
-          state: {
-            course: finalCourse,
-            lecture: finalLecture
-          }
-        });
-        return;
-      } 
-      catch (error) 
-      {
-        console.error('Error generating lecture:', error);
-        alert('Failed to generate lecture. Please try again.');
-
-        try
-        {
-          const rollback = await universityApi.getCourse(courseId!);
-          if (rollback)
-          {
-            rollback.lectures = rollback.lectures.map((item, idx) => idx === index ? { ...item, status: 'unlocked' } : item);
-            await universityApi.saveCourse(rollback);
-            setCourse(rollback);
-          }
-          else
-          {
-            setCourse(prev =>
-            {
-              if (!prev)
-              {
-                return prev;
-              }
-              const next: Course = {
-                ...prev,
-                lectures: prev.lectures.map((item, idx) => idx === index ? { ...item, status: 'unlocked' } : item)
-              };
-              return next;
-            });
-          }
-        }
-        catch {}
-      } 
-      finally 
-      {
-        setIsGeneratingLecture(prev => prev === lecture.id ? null : prev);
-      }
+      setCourse(nextCourse);
+      goToLecture(nextCourse, nextCourse.lectures[index], true);
+      universityApi.saveCourse(nextCourse).catch(error => console.error('Failed to mark lecture in progress', error));
       return;
     }
 
@@ -300,6 +232,11 @@ const CourseSyllabus = () =>
       [APP_TERMS.TAB_EYE]: 'eye'
     };
     const mode = map[tab] || 'chat';
+    if (tab === APP_TERMS.TAB_UNIVERSITY)
+    {
+      navigate(ROUTES.UNIVERSITY);
+      return;
+    }
     navigate(RouteUtils.mainAppWithMode(mode));
   };
 
@@ -439,29 +376,35 @@ const CourseSyllabus = () =>
                       {getLectureStatusIcon(lecture)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg font-semibold mb-1 line-clamp-2">
-                        {lecture.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-2 text-sm">
-                        {lecture.summary}
-                      </CardDescription>
-                      {lecture.duration && (
-                        <div className="mt-1 text-xs font-medium text-muted-foreground">
-                          {lecture.duration}
-                        </div>
-                      )}
+                  <CardTitle className="text-lg font-semibold mb-1 line-clamp-2">
+                    {lecture.title}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2 text-sm">
+                    {lecture.summary}
+                  </CardDescription>
+                  {lecture.duration && (
+                    <div className="mt-1 text-xs font-medium text-muted-foreground">
+                      {lecture.duration}
                     </div>
-                  </div>
+                  )}
+                  {lecture.content && (
+                    <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-500 dark:text-emerald-300">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Lecture generated
+                    </div>
+                  )}
+                </div>
+              </div>
                   
                   <div className="flex flex-col items-end gap-2">
-                    <Badge 
+                    <Badge
                       variant={
-                        lecture.status === 'completed' ? 'default' :
+                        lecture.status === 'completed' || lecture.content ? 'default' :
                         lecture.status === 'in_progress' ? 'secondary' :
                         lecture.status === 'unlocked' ? 'outline' : 'secondary'
                       }
                     >
-                      {lecture.status.replace('_', ' ')}
+                      {lecture.content ? 'generated' : lecture.status.replace('_', ' ')}
                     </Badge>
                     
                     {/* Quiz Status */}
@@ -475,7 +418,7 @@ const CourseSyllabus = () =>
               <CardContent>
                 <div className="space-y-3">
                   {/* Generation Status */}
-                  {(isGeneratingLecture === lecture.id || lecture.status === 'in_progress') && (
+                  {isGeneratingLecture === lecture.id && (
                     <div className="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       <span>🧑‍🏫 Professor is preparing your lecture...</span>
@@ -502,15 +445,11 @@ const CourseSyllabus = () =>
                   <Button
                     className="w-full"
                     variant={lecture.status === 'completed' ? 'outline' : 'default'}
-                    disabled={
-                      lecture.status === 'locked' ||
-                      lecture.status === 'in_progress' ||
-                      isGeneratingLecture === lecture.id
-                    }
+                    disabled={lecture.status === 'locked' || isGeneratingLecture === lecture.id}
                   >
                     {lecture.status === 'completed' ? 'Review' :
                      lecture.status === 'locked' ? 'Locked' :
-                     lecture.status === 'in_progress' ? 'Generating…' :
+                     lecture.status === 'in_progress' ? 'Open Lecture' :
                      !lecture.content ? 'Generate Lecture' : 'Continue'}
                   </Button>
                 </div>
@@ -538,6 +477,7 @@ const CourseSyllabus = () =>
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(prev => !prev)}
       renderLeftSidebarOverride={() => null}
+      hideLeftSidebar
     />
   );
 };

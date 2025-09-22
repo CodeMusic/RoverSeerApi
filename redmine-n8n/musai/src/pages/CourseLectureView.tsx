@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,7 +11,7 @@ import type { Course, CourseLecture, UniversityTab } from '@/types/university';
 import CourseQuiz from '@/components/university/CourseQuiz';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { APP_TERMS } from '@/config/constants';
-import { RouteUtils } from '@/config/routes';
+import ROUTES, { RouteUtils } from '@/config/routes';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
 
 const CourseLectureView = () =>
@@ -25,6 +25,9 @@ const CourseLectureView = () =>
   const [activeTab, setActiveTab] = useState<UniversityTab>('lecture');
   const [isLoading, setIsLoading] = useState(!(locationState?.course && locationState?.lecture));
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const generationRequestedRef = useRef(false);
+  const shouldGenerateFromState = Boolean((locationState as { shouldGenerate?: boolean } | undefined)?.shouldGenerate);
   const { recordLastSession } = useUserPreferences();
 
   useEffect(() =>
@@ -114,7 +117,83 @@ const CourseLectureView = () =>
         window.clearInterval(intervalId);
       }
     };
-  }, [courseId, lectureId, lecture?.content]);
+  }, [courseId, lectureId, lecture]);
+
+  useEffect(() =>
+  {
+    if (!course || !lecture) return;
+    if (lecture.content && lecture.content.trim().length > 0) return;
+    if (generationRequestedRef.current) return;
+
+    const idx = course.lectures.findIndex(l => l.id === lecture.id);
+    if (idx === -1) return;
+
+    const shouldTrigger = shouldGenerateFromState || lecture.status === 'in_progress';
+    if (!shouldTrigger) return;
+
+    generationRequestedRef.current = true;
+    setIsGenerating(true);
+
+    const run = async () =>
+    {
+      try
+      {
+        const generatedLecture = await universityApi.generateLecture({
+          courseId: course.metadata.id,
+          lectureIndex: idx,
+          lectureTitle: lecture.title,
+          lectureSummary: lecture.summary,
+          previousLectureContext: idx > 0 ? course.lectures[idx - 1]?.content : undefined,
+          processorFile: course.metadata.processorFile
+        });
+
+        const updatedCourse: Course = {
+          ...course,
+          lectures: [...course.lectures]
+        };
+        updatedCourse.lectures[idx] = {
+          ...generatedLecture,
+          id: lecture.id,
+          duration: lecture.duration ?? generatedLecture.duration,
+          status: 'unlocked'
+        };
+        updatedCourse.currentLectureIndex = idx;
+        await universityApi.saveCourse(updatedCourse);
+        setCourse(updatedCourse);
+        setLecture(updatedCourse.lectures[idx]);
+      }
+      catch (error)
+      {
+        console.error('Error generating lecture content', error);
+        try
+        {
+          const rollback = await universityApi.getCourse(courseId!);
+          if (rollback)
+          {
+            const rollbackIdx = rollback.lectures.findIndex(l => l.id === lecture.id);
+            if (rollbackIdx >= 0)
+            {
+              rollback.lectures[rollbackIdx] = {
+                ...rollback.lectures[rollbackIdx],
+                status: 'unlocked'
+              };
+              await universityApi.saveCourse(rollback);
+              setCourse(rollback);
+              setLecture(rollback.lectures[rollbackIdx]);
+            }
+          }
+        }
+        catch {}
+      }
+      finally
+      {
+        setIsGenerating(false);
+      }
+    };
+
+    run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course, lecture, shouldGenerateFromState]);
 
   useEffect(() =>
   {
@@ -128,6 +207,11 @@ const CourseLectureView = () =>
       view: activeTab
     });
   }, [course, lecture, activeTab, recordLastSession]);
+
+  useEffect(() =>
+  {
+    generationRequestedRef.current = false;
+  }, [lectureId]);
 
   const updateLecture = async (updatedLectureLegacy: Partial<CourseLecture>) =>
   {
@@ -200,7 +284,23 @@ const CourseLectureView = () =>
       const styleDeclarations = Array.from(doc.head?.querySelectorAll('style') ?? [])
         .map(styleTag => styleTag.innerHTML)
         .join('\n');
-      const aggregatedStyles = styleDeclarations ? `<style>${styleDeclarations}</style>` : '';
+
+      // Remove rules that target global containers and can break layout/scroll (white pillars, scroll lock)
+      const sanitizedStyles = styleDeclarations
+        .replace(/(^|})\s*body\s*\{[\s\S]*?\}/gi, '$1')
+        .replace(/(^|})\s*html\s*\{[\s\S]*?\}/gi, '$1')
+        .replace(/(^|})\s*#root\s*\{[\s\S]*?\}/gi, '$1');
+
+      // Scoped safety fixes to keep content responsive inside our container
+      const scopedFixes = `
+        .musai-lecture-content { max-width: 100%; margin: 0; padding: 0; background: transparent; color: inherit; }
+        .musai-lecture-content img, .musai-lecture-content video, .musai-lecture-content canvas { max-width: 100%; height: auto; }
+        .musai-lecture-content table { width: 100%; border-collapse: collapse; }
+        .musai-lecture-content pre, .musai-lecture-content code { white-space: pre-wrap; word-wrap: break-word; }
+        .musai-lecture-content * { box-sizing: border-box; }
+      `;
+
+      const aggregatedStyles = `<style>${scopedFixes}${sanitizedStyles}</style>`;
       const bodyHtml = doc.body?.innerHTML ?? '';
       return `${aggregatedStyles}${bodyHtml}`.trim() || raw;
     }
@@ -236,9 +336,10 @@ const CourseLectureView = () =>
 
     return (
       <div className="relative flex h-full w-full overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          <div className="min-h-full w-full bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900 lg:-ml-20 lg:w-[calc(100%+5rem)]">
-            <div className="mx-auto w-full max-w-[1600px] px-6 py-8 lg:px-10 xl:px-16 space-y-6">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900" />
+        <div className="relative z-10 flex-1 overflow-y-auto">
+          <div className="w-full px-6 py-8 lg:px-10 xl:px-16">
+            <div className="mx-auto w-full max-w-[1440px] space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4 text-white">
                 <div className="flex items-center gap-4">
                   <Button variant="outline" className="bg-white/10 text-white hover:bg-white/20" onClick={() => navigate(`/university/course/${course!.metadata.id}`)}>
@@ -310,7 +411,7 @@ const CourseLectureView = () =>
                           <TabsContent value="lecture" className="mt-4 h-full">
                             {renderableLectureHtml ? (
                               <div className="h-full w-full overflow-auto">
-                                <div className="prose prose-invert max-w-full" dangerouslySetInnerHTML={{ __html: renderableLectureHtml }} />
+                                <div className="prose prose-invert max-w-full musai-lecture-content" dangerouslySetInnerHTML={{ __html: renderableLectureHtml }} />
                               </div>
                             ) : (
                               <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-white/70">
@@ -318,11 +419,11 @@ const CourseLectureView = () =>
                                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-transparent"></div>
                                 </div>
                                 <p>
-                                  {lecture.status === 'in_progress'
+                                  {(isGenerating || lecture.status === 'in_progress')
                                     ? 'Professor is preparing your lecture. This can take a couple of minutes.'
                                     : 'No content generated yet.'}
                                 </p>
-                                {lecture.status !== 'in_progress' && (
+                                {!(isGenerating || lecture.status === 'in_progress') && (
                                   <Button variant="outline" onClick={() => setActiveTab('quiz')}>
                                     Go to Quiz
                                   </Button>
@@ -440,11 +541,17 @@ const CourseLectureView = () =>
           [APP_TERMS.TAB_EYE]: 'eye'
         };
         const mode = map[tab] || 'chat';
+        if (tab === APP_TERMS.TAB_UNIVERSITY)
+        {
+          navigate(ROUTES.UNIVERSITY);
+          return;
+        }
         navigate(RouteUtils.mainAppWithMode(mode));
       }}
       isNavigationExpanded={isNavigationExpanded}
       onToggleNavigation={() => setIsNavigationExpanded(prev => !prev)}
       renderLeftSidebarOverride={() => null}
+      hideLeftSidebar
     />
   );
 };

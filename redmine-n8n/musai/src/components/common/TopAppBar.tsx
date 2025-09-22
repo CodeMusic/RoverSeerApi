@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Map, Waves } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { RouteUtils } from '@/config/routes';
+import ROUTES, { RouteUtils } from '@/config/routes';
 import { MusaiAlerts } from '@/components/alerts/MusaiAlerts';
 import { useMusaiAlerts } from '@/contexts/MusaiAlertsContext';
 import BetaRoadmapModal from './BetaRoadmapModal';
@@ -49,7 +49,7 @@ export function TopAppBar()
                   if (title.includes('university'))
                   {
                     closeAlerts();
-                    navigate(RouteUtils.mainAppWithMode('university'));
+                    navigate(ROUTES.UNIVERSITY);
                     return;
                   }
                   if (title.includes('eye of musai') || title.includes('perceive') || title.includes('recognize'))
