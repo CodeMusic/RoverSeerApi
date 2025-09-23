@@ -141,7 +141,7 @@ export const UniversityContent = () => {
   // Handle different views
   if (currentView === 'create-course') {
     return (
-      <div className="p-6 h-full overflow-auto">
+      <div className="p-4 sm:p-6 h-full overflow-auto">
         <div className="mb-6">
           <Button 
             onClick={() => setCurrentView('dashboard')}
@@ -156,9 +156,18 @@ export const UniversityContent = () => {
         </div>
         <CourseCreation 
           initialTopic={pendingTopic || searchParams.get('topic') || undefined}
-          onComplete={() => {
+          onComplete={(course) => {
+            setPendingTopic(null);
             setCurrentView('dashboard');
-            loadData(); // Refresh the data
+            recordLastSession('university', { courseId: course.metadata.id });
+            void loadData(); // Refresh the data asynchronously
+            navigate(`/university/course/${course.metadata.id}`, {
+              state: {
+                course,
+                fromCreation: true
+              },
+              replace: true
+            });
           }}
         />
       </div>
@@ -167,7 +176,7 @@ export const UniversityContent = () => {
 
   if (currentView === 'create-lecture') {
     return (
-      <div className="p-6 h-full overflow-auto">
+      <div className="p-4 sm:p-6 h-full overflow-auto">
         <div className="mb-6">
           <Button 
             onClick={() => setCurrentView('dashboard')}
@@ -192,7 +201,7 @@ export const UniversityContent = () => {
   }
 
   return (
-    <div className="p-6 h-full overflow-auto">
+    <div className="p-4 sm:p-6 h-full overflow-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-wrap">
@@ -346,7 +355,7 @@ export const UniversityContent = () => {
         <>
           {/* Content Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="courses" className="flex items-center gap-2">
                 <GraduationCap className="h-4 w-4" />
                 Courses
@@ -380,7 +389,7 @@ export const UniversityContent = () => {
                   {courses.map((course) => (
                     <Card key={course.metadata.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{course.metadata?.title || 'Untitled Course'}</CardTitle>
                             <Badge variant="secondary" className="mt-1">{course.lectures?.length || 0} lectures</Badge>
@@ -445,7 +454,7 @@ export const UniversityContent = () => {
                             />
                           </div>
                         </div>
-                        <div className="flex gap-2 mt-4">
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                           <Button 
                             onClick={() => {
                               recordLastSession('university', {
@@ -485,7 +494,7 @@ export const UniversityContent = () => {
                   {lectures.map((lecture) => (
                     <Card key={lecture.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{lecture.title}</CardTitle>
                             {getStatusBadge(lecture.status)}
@@ -574,7 +583,7 @@ export const UniversityContent = () => {
                   {standaloneLectures.map((lecture) => (
                     <Card key={lecture.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex-1">
                             <CardTitle className="text-lg">{lecture.title || 'Untitled Lecture'}</CardTitle>
                             <CardDescription>Standalone learning content</CardDescription>

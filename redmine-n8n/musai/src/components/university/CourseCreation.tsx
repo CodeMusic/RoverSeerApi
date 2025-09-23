@@ -15,7 +15,7 @@ import { eyeApi } from '@/lib/eyeApi';
 interface CourseCreationProps 
 {
   initialTopic?: string;
-  onComplete?: () => void;
+  onComplete?: (course: Course) => void;
 }
 
 interface GeneratedCourseData 
@@ -244,7 +244,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
       
       // Call completion callback to return to university dashboard
       if (onComplete) {
-        onComplete();
+        onComplete(course);
       } else {
         // Fallback: Navigate to the course syllabus view
         navigate(`/university/course/${course.metadata.id}`, {
@@ -462,19 +462,19 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="topic">What would you like to learn?</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Input
                   id="topic"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="e.g., Quantum Physics, Machine Learning, Ancient History..."
-                  className="flex-1"
+                  className="w-full flex-1"
                   onKeyDown={(e) => e.key === 'Enter' && handleGenerateCourseDraft()}
                 />
                 <Button
                   onClick={handleGenerateCourseDraft}
                   disabled={!topic.trim() || isGenerating}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white"
                 >
                   {isGenerating ? (
                     <>
@@ -507,18 +507,18 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
         {generatedData && (
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5" />
                   Generated Course
                 </CardTitle>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   {!isEditing ? (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleEdit}
-                      className="flex items-center gap-2"
+                      className="flex w-full items-center gap-2 sm:w-auto"
                     >
                       <Edit className="h-4 w-4" />
                       Edit
@@ -529,13 +529,14 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                         variant="outline"
                         size="sm"
                         onClick={handleCancelEdit}
+                        className="w-full sm:w-auto"
                       >
                         Cancel
                       </Button>
                       <Button
                         size="sm"
                         onClick={handleSaveEdit}
-                        className="flex items-center gap-2"
+                        className="flex w-full items-center gap-2 sm:w-auto"
                       >
                         <Check className="h-4 w-4" />
                         Save
@@ -547,7 +548,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                       variant="outline"
                       size="sm"
                       onClick={handleExportCourseHtml}
-                      className="flex items-center gap-2"
+                      className="flex w-full items-center gap-2 sm:w-auto"
                     >
                       <Download className="h-4 w-4" />
                       Export Course (HTML)
@@ -559,8 +560,8 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
             <CardContent className="space-y-6">
               {/* Course Overview */}
               <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-16 h-16 rounded-lg overflow-hidden border flex items-center justify-center bg-gradient-to-br from-purple-500 to-blue-600">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="w-16 h-16 rounded-lg overflow-hidden border flex items-center justify-center bg-gradient-to-br from-purple-500 to-blue-600 mx-auto sm:mx-0">
                     {courseIconUrl ? (
                       <img src={courseIconUrl} alt="Course icon" className="w-full h-full object-cover" />
                     ) : (
@@ -573,7 +574,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                       </>
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 text-center sm:text-left">
                     {isEditing ? (
                       <div className="space-y-2">
                         <Input
@@ -611,7 +612,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                   </p>
                 )}
                 
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-wrap gap-2">
                   <Badge className={getDifficultyColor(generatedData.difficulty)}>
                     {generatedData.difficulty}
                   </Badge>
@@ -635,7 +636,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                   {(isEditing ? (editedData?.syllabus || []) : generatedData.syllabus).map((lecture, index) => (
                     <div 
                       key={index} 
-                      className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-purple-50/40 dark:hover:bg-gray-800 cursor-pointer group"
+                      className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-purple-50/40 dark:hover:bg-gray-800 cursor-pointer group"
                       onClick={() => {
                         if (isEditing) return;
                         setPreviewTitle(lecture.title);
@@ -672,7 +673,7 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                               placeholder="Lecture summary"
                               rows={2}
                             />
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                               <Label className="text-xs text-muted-foreground">Duration</Label>
                               <Input
                                 value={lecture.duration}
@@ -683,10 +684,10 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                                   next.syllabus[index] = { ...next.syllabus[index], duration: e.target.value };
                                   return next;
                                 })}
-                                className="w-32"
+                                className="w-full sm:w-32"
                                 placeholder="e.g., 45m"
                               />
-                              <div className="ml-auto flex items-center gap-2">
+                              <div className="flex items-center gap-2 sm:ml-auto">
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -705,13 +706,13 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
                           </div>
                         ) : (
                           <>
-                            <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
                                 <h5 className="font-medium">{lecture.title}</h5>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                   {lecture.summary}
                                 </p>
-                                <div className="flex items-center gap-2 mt-2">
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
                                   <Badge variant="secondary" className="text-xs">
                                     {lecture.duration}
                                   </Badge>
@@ -758,18 +759,19 @@ const CourseCreation = ({ initialTopic, onComplete }: CourseCreationProps) =>
 
         {/* Action Buttons */}
         {generatedData && (
-          <div className="flex gap-4 justify-end mt-6">
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={() => navigate('/university')}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateCourse}
               disabled={isCreating}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white"
             >
               {isCreating ? (
                 <>

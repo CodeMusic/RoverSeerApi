@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,11 @@ import { BaseLayout } from '@/components/common/BaseLayout';
 import { APP_TERMS } from '@/config/constants';
 import ROUTES, { RouteUtils } from '@/config/routes';
 import { useUserPreferences } from '@/contexts/UserPreferencesContext';
+import { ChatInterface } from '@/components/common/ChatInterface';
+import { Message } from '@/types/chat';
+import { useMessageSender } from '@/hooks/useMessageSender';
+import { useQueryClient } from '@tanstack/react-query';
+import { v4 as uuidv4 } from 'uuid';
 
 const CourseLectureView = () =>
 {
@@ -29,6 +34,154 @@ const CourseLectureView = () =>
   const generationRequestedRef = useRef(false);
   const shouldGenerateFromState = Boolean((locationState as { shouldGenerate?: boolean } | undefined)?.shouldGenerate);
   const { recordLastSession } = useUserPreferences();
+  const queryClient = useQueryClient();
+  const chatSessionIdRef = useRef<string | null>(null);
+  const chatInitKeyRef = useRef<string | null>(null);
+  const chatSeededRef = useRef<boolean>(false);
+  const pendingChatDisplayRef = useRef<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+
+  const updateLectureChatSession = useCallback((sessionId: string, msgs: Message[]) =>
+  {
+    if (sessionId !== chatSessionIdRef.current)
+    {
+      return;
+    }
+    let nextMessages = msgs;
+    const displayOverride = pendingChatDisplayRef.current;
+    if (displayOverride && msgs.length > 0)
+    {
+      const lastIndex = msgs.length - 1;
+      const adjusted = msgs.map((message, idx) =>
+      {
+        if (idx === lastIndex && message.role === 'user')
+        {
+          return { ...message, content: displayOverride };
+        }
+        return message;
+      });
+      pendingChatDisplayRef.current = null;
+      nextMessages = adjusted;
+    }
+    setChatMessages(nextMessages);
+    queryClient.setQueryData(['lecture-chat', sessionId], nextMessages);
+  }, [queryClient]);
+
+  const { sendMessage: sendChatMessage, isTyping: isChatTyping, isLoading: isChatLoading } = useMessageSender(updateLectureChatSession, queryClient);
+
+  const chatStorageKey = useMemo(() =>
+  {
+    if (!courseId || !lectureId)
+    {
+      return null;
+    }
+    return `musai-lecture-chat:${courseId}:${lectureId}`;
+  }, [courseId, lectureId]);
+
+  const syllabusContext = useMemo(() =>
+  {
+    if (!course)
+    {
+      return '';
+    }
+    return course.lectures
+      .map((item, index) => `${index + 1}. ${item.title}${item.summary ? ` — ${item.summary}` : ''}`)
+      .join('\n')
+      .slice(0, 2000);
+  }, [course]);
+
+  const lecturePlainText = useMemo(() =>
+  {
+    const html = lecture?.content;
+    if (!html)
+    {
+      return '';
+    }
+    const withoutScripts = html
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '');
+    const stripped = withoutScripts.replace(/<[^>]+>/g, ' ');
+    return stripped.replace(/\s+/g, ' ').trim().slice(0, 5000);
+  }, [lecture?.content]);
+
+  useEffect(() =>
+  {
+    chatSessionIdRef.current = null;
+    chatSeededRef.current = false;
+    chatInitKeyRef.current = null;
+    setChatMessages([]);
+  }, [chatStorageKey]);
+
+  useEffect(() =>
+  {
+    if (!chatStorageKey)
+    {
+      return;
+    }
+    if (chatInitKeyRef.current === chatStorageKey)
+    {
+      return;
+    }
+
+    const saved = localStorage.getItem(chatStorageKey);
+    if (saved)
+    {
+      try
+      {
+        const parsed = JSON.parse(saved) as { id?: string; messages?: Message[]; seeded?: boolean };
+        chatSessionIdRef.current = parsed.id || `lecture-${courseId ?? 'unknown'}-${lectureId ?? 'unknown'}`;
+        setChatMessages(Array.isArray(parsed.messages) ? parsed.messages : []);
+        chatSeededRef.current = Boolean(parsed.seeded);
+        chatInitKeyRef.current = chatStorageKey;
+        return;
+      }
+      catch (error)
+      {
+        console.warn('Failed to load lecture chat history', error);
+      }
+    }
+
+    if (!course || !lecture)
+    {
+      return;
+    }
+
+    const sessionId = `lecture-${course.metadata.id}-${lecture.id}`;
+    chatSessionIdRef.current = sessionId;
+    chatSeededRef.current = false;
+    chatInitKeyRef.current = chatStorageKey;
+
+    const introContent = `### ${lecture.title}\n${lecture.summary ? `${lecture.summary}\n\n` : ''}Welcome to the chat companion for **${course.metadata.title}**. Ask for clarifications, examples, or study guidance.\n\n**Course Syllabus**\n${syllabusContext ? syllabusContext.split('\n').map(line => `- ${line}`).join('\n') : 'Syllabus not available yet.'}\n\n**Lecture Content Snapshot**\n${lecturePlainText || 'Lecture content will appear here once generated.'}`;
+
+    const introMessage: Message = {
+      id: uuidv4(),
+      role: 'assistant',
+      content: introContent,
+      timestamp: Date.now(),
+      bubbleColor: 'blue'
+    };
+    setChatMessages([introMessage]);
+  }, [chatStorageKey, course, lecture, courseId, lectureId, syllabusContext, lecturePlainText]);
+
+  useEffect(() =>
+  {
+    if (!chatStorageKey || !chatSessionIdRef.current)
+    {
+      return;
+    }
+    try
+    {
+      localStorage.setItem(chatStorageKey, JSON.stringify({
+        id: chatSessionIdRef.current,
+        messages: chatMessages,
+        seeded: chatSeededRef.current
+      }));
+    }
+    catch (error)
+    {
+      console.warn('Failed to persist lecture chat history', error);
+    }
+  }, [chatMessages, chatStorageKey]);
 
   useEffect(() =>
   {
@@ -289,7 +442,9 @@ const CourseLectureView = () =>
       const sanitizedStyles = styleDeclarations
         .replace(/(^|})\s*body\s*\{[\s\S]*?\}/gi, '$1')
         .replace(/(^|})\s*html\s*\{[\s\S]*?\}/gi, '$1')
-        .replace(/(^|})\s*#root\s*\{[\s\S]*?\}/gi, '$1');
+        .replace(/(^|})\s*#root\s*\{[\s\S]*?\}/gi, '$1')
+        .replace(/overflow(?:-x|-y)?\s*:\s*[^;]+;?/gi, '')
+        .replace(/height\s*:\s*100d?vh\s*;?/gi, '');
 
       // Scoped safety fixes to keep content responsive inside our container
       const scopedFixes = `
@@ -309,6 +464,49 @@ const CourseLectureView = () =>
       return raw;
     }
   }, [lecture?.content]);
+
+  const handleSendChat = useCallback(async (text: string, file?: File) =>
+  {
+    if (!chatSessionIdRef.current || !course || !lecture)
+    {
+      return;
+    }
+    const trimmed = text.trim();
+    if (!trimmed && !file)
+    {
+      return;
+    }
+
+    const contextHeader = chatSeededRef.current ? '' : [
+      `You are the Musai University teaching assistant for the course "${course.metadata.title}".`,
+      course.metadata.description ? `Course Description: ${course.metadata.description}` : null,
+      `Lecture Title: ${lecture.title}`,
+      lecture.summary ? `Lecture Summary: ${lecture.summary}` : null,
+      syllabusContext ? `Syllabus Outline:\n${syllabusContext}` : null,
+      lecturePlainText ? `Lecture Content:\n${lecturePlainText}` : null,
+      'Use the supplied context to answer learner questions, cite relevant sections, and offer supportive study guidance.'
+    ].filter(Boolean).join('\n');
+
+    const learnerText = trimmed || (file ? 'Please review the attached file and respond accordingly.' : '');
+    let outgoing = learnerText;
+    if (!chatSeededRef.current)
+    {
+      outgoing = `${contextHeader}\n\nLearner: ${learnerText}`;
+      pendingChatDisplayRef.current = learnerText;
+    }
+    else
+    {
+      pendingChatDisplayRef.current = null;
+    }
+
+    if (!chatSeededRef.current)
+    {
+      chatSeededRef.current = true;
+    }
+
+    await sendChatMessage(outgoing, chatSessionIdRef.current, chatMessages, file);
+    pendingChatDisplayRef.current = null;
+  }, [chatMessages, course, lecture, lecturePlainText, sendChatMessage, syllabusContext]);
 
   const renderMainContent = () => {
     if (isLoading)
@@ -335,179 +533,191 @@ const CourseLectureView = () =>
     }
 
     return (
-      <div className="relative flex h-full w-full overflow-hidden">
+      <div className="relative min-h-screen w-full overflow-x-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900" />
-        <div className="relative z-10 flex-1 overflow-y-auto">
-          <div className="w-full px-6 py-8 lg:px-10 xl:px-16">
-            <div className="mx-auto w-full max-w-[1440px] space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4 text-white">
-                <div className="flex items-center gap-4">
-                  <Button variant="outline" className="bg-white/10 text-white hover:bg-white/20" onClick={() => navigate(`/university/course/${course!.metadata.id}`)}>
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to Syllabus
-                  </Button>
-                  <div>
-                    <h1 className="text-2xl font-bold">{course!.metadata.title}</h1>
-                    <p className="text-sm text-white/70">{lecture!.title}</p>
-                  </div>
+        <div className="relative z-10 w-full px-6 py-8 lg:px-10 xl:px-16">
+          <div className="mx-auto w-full max-w-[1440px] space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4 text-white">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  className="bg-white/10 text-white hover:bg-white/20"
+                  onClick={() => navigate(`/university/course/${course!.metadata.id}`)}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to Syllabus
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold">{course!.metadata.title}</h1>
+                  <p className="text-sm text-white/70">{lecture!.title}</p>
                 </div>
-                <Badge variant={lecture!.status === 'completed' ? 'default' : 'secondary'} className="bg-white/20 text-white">
-                  {lecture!.status === 'completed' ? (
-                    <>
-                      <CheckCircle className="mr-1 h-3 w-3" /> Completed
-                    </>
-                  ) : (
-                    lecture!.status.replace('_', ' ')
-                  )}
-                </Badge>
+              </div>
+              <Badge variant={lecture!.status === 'completed' ? 'default' : 'secondary'} className="bg-white/20 text-white">
+                {lecture!.status === 'completed' ? (
+                  <>
+                    <CheckCircle className="mr-1 h-3 w-3" /> Completed
+                  </>
+                ) : (
+                  lecture!.status.replace('_', ' ')
+                )}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+              <div>
+                <Card className="bg-white/10 text-white">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-white/80">Course Progress</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-2 flex justify-between text-sm text-white/80">
+                      <span>{course!.completedLectures} of {course!.lectures.length} completed</span>
+                      <span>{getOverallProgress()}%</span>
+                    </div>
+                    <Progress value={getOverallProgress()} className="h-2" />
+                  </CardContent>
+                </Card>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-                <div>
-                  <Card className="bg-white/10 text-white">
-                    <CardHeader>
-                      <CardTitle className="text-sm text-white/80">Course Progress</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="mb-2 flex justify-between text-sm text-white/80">
-                        <span>{course!.completedLectures} of {course!.lectures.length} completed</span>
-                        <span>{getOverallProgress()}%</span>
-                      </div>
-                      <Progress value={getOverallProgress()} className="h-2" />
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div className="lg:col-span-1">
-                  <Card className="h-[calc(100dvh-220px)] overflow-hidden">
-                    <CardHeader className="bg-white/10">
-                      <CardTitle className="text-lg text-white">{lecture!.title}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex h-full flex-col bg-white/5 p-0">
-                      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UniversityTab)} className="flex h-full flex-col">
-                        <TabsList className="mx-6 mt-2 rounded-full bg-white/10 p-1">
-                          <TabsTrigger
-                            value="lecture"
-                            disabled={isTabLocked('lecture')}
-                            className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                          >
-                            <BookOpen className="h-4 w-4" /> Lecture
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="chat"
-                            disabled={isTabLocked('chat')}
-                            className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                          >
-                            <MessageCircle className="h-4 w-4" /> Chat
-                          </TabsTrigger>
-                          <TabsTrigger
-                            value="quiz"
-                            disabled={isTabLocked('quiz')}
-                            className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                          >
-                            {isTabLocked('quiz') ? <Lock className="h-4 w-4" /> : <Brain className="h-4 w-4" />} Quiz
-                          </TabsTrigger>
-                        </TabsList>
-                        <div className="flex-1 px-6 pb-6">
-                          <TabsContent value="lecture" className="mt-4 h-full">
-                            {renderableLectureHtml ? (
-                              <div className="h-full w-full overflow-auto">
-                                <div className="prose prose-invert max-w-full musai-lecture-content" dangerouslySetInnerHTML={{ __html: renderableLectureHtml }} />
+              <div className="lg:col-span-1">
+                <Card className="flex flex-col overflow-hidden">
+                  <CardHeader className="bg-white/10 shrink-0">
+                    <CardTitle className="text-lg text-white">{lecture!.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex flex-col bg-white/5 p-0">
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UniversityTab)} className="flex flex-col">
+                      <TabsList className="mx-6 mt-2 rounded-full bg-white/10 p-1">
+                        <TabsTrigger
+                          value="lecture"
+                          disabled={isTabLocked('lecture')}
+                          className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
+                        >
+                          <BookOpen className="h-4 w-4" /> Lecture
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="chat"
+                          disabled={isTabLocked('chat')}
+                          className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
+                        >
+                          <MessageCircle className="h-4 w-4" /> Chat
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="quiz"
+                          disabled={isTabLocked('quiz')}
+                          className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
+                        >
+                          {isTabLocked('quiz') ? <Lock className="h-4 w-4" /> : <Brain className="h-4 w-4" />} Quiz
+                        </TabsTrigger>
+                      </TabsList>
+                      <div className="px-6 pb-6">
+                        <TabsContent value="lecture" className="mt-4">
+                          {renderableLectureHtml ? (
+                            <div className="w-full overflow-x-hidden">
+                              <div className="prose prose-invert max-w-full musai-lecture-content" dangerouslySetInnerHTML={{ __html: renderableLectureHtml }} />
+                            </div>
+                          ) : (
+                            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-white/70">
+                              <div className="flex items-center justify-center">
+                                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-transparent"></div>
                               </div>
-                            ) : (
-                              <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-white/70">
-                                <div className="flex items-center justify-center">
-                                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-transparent"></div>
-                                </div>
-                                <p>
-                                  {(isGenerating || lecture.status === 'in_progress')
-                                    ? 'Professor is preparing your lecture. This can take a couple of minutes.'
-                                    : 'No content generated yet.'}
-                                </p>
-                                {!(isGenerating || lecture.status === 'in_progress') && (
-                                  <Button variant="outline" onClick={() => setActiveTab('quiz')}>
-                                    Go to Quiz
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </TabsContent>
-                          <TabsContent value="chat" className="mt-4 h-full">
-                            <div className="flex h-full items-center justify-center text-sm text-white/70">Chat coming soon</div>
-                          </TabsContent>
-                          <TabsContent value="quiz" className="mt-4 h-full">
-                            <CourseQuiz
-                              lecture={lecture!}
-                              onQuizCompleted={async (passed, attempt) => {
-                                if (!course) return;
-                                const updatedCourse: Course = { ...course };
-                                const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
-                                if (idx >= 0)
-                                {
-                                  const updatedLecture: CourseLecture = {
-                                    ...updatedCourse.lectures[idx],
-                                    quizAttempts: [...updatedCourse.lectures[idx].quizAttempts, attempt]
-                                  };
-                                  updatedCourse.lectures[idx] = updatedLecture;
-                                  if (passed)
-                                  {
-                                    updatedCourse.lectures[idx] = {
-                                      ...updatedCourse.lectures[idx],
-                                      status: 'completed'
-                                    };
-                                    if (idx + 1 < updatedCourse.lectures.length)
-                                    {
-                                      const next = updatedCourse.lectures[idx + 1];
-                                      if (next.status === 'locked')
-                                      {
-                                        updatedCourse.lectures[idx + 1] = {
-                                          ...next,
-                                          status: 'unlocked'
-                                        };
-                                      }
-                                    }
-                                    updatedCourse.completedLectures = Math.min(
-                                      updatedCourse.lectures.length,
-                                      (updatedCourse.lectures.filter(l => l.status === 'completed').length)
-                                    );
-                                    updatedCourse.overallProgress = Math.round(
-                                      (updatedCourse.lectures.filter(l => l.status === 'completed').length / updatedCourse.lectures.length) * 100
-                                    );
-                                  }
-                                  setLecture(updatedCourse.lectures[idx]);
-                                }
-                                await universityApi.saveCourse(updatedCourse);
+                              <p>
+                                {(isGenerating || lecture.status === 'in_progress')
+                                  ? 'Professor is preparing your lecture. This can take a couple of minutes.'
+                                  : 'No content generated yet.'}
+                              </p>
+                              {!(isGenerating || lecture.status === 'in_progress') && (
+                                <Button variant="outline" onClick={() => setActiveTab('quiz')}>
+                                  Go to Quiz
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </TabsContent>
+                        <TabsContent value="chat" className="mt-4">
+                          <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5" style={{ minHeight: '360px' }}>
+                            <ChatInterface
+                              messages={chatMessages}
+                              isTyping={isChatTyping}
+                              isLoading={isChatLoading}
+                              onSendMessage={handleSendChat}
+                              className="flex-1"
+                              placeholder="Ask about this lecture or the overall syllabus..."
+                              perspectiveEnabled={false}
+                            />
+                          </div>
+                        </TabsContent>
+                        <TabsContent value="quiz" className="mt-4">
+                          <CourseQuiz
+                            lecture={lecture!}
+                            onQuizCompleted={async (passed, attempt) => {
+                              if (!course) return;
+                              const updatedCourse: Course = { ...course };
+                              const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
+                              if (idx >= 0)
+                              {
+                                const updatedLecture: CourseLecture = {
+                                  ...updatedCourse.lectures[idx],
+                                  quizAttempts: [...updatedCourse.lectures[idx].quizAttempts, attempt]
+                                };
+                                updatedCourse.lectures[idx] = updatedLecture;
                                 if (passed)
-                                {
-                                  setActiveTab('lecture');
-                                }
-                              }}
-                              onGenerateMoreQuestions={async () => {
-                                if (!course) return;
-                                const more = await universityApi.generateQuiz({
-                                  courseId: course!.metadata.id,
-                                  lectureId: lecture!.id,
-                                  lectureContent: lecture!.content || ''
-                                });
-                                const updatedCourse: Course = { ...course! };
-                                const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
-                                if (idx >= 0)
                                 {
                                   updatedCourse.lectures[idx] = {
                                     ...updatedCourse.lectures[idx],
-                                    quiz: (updatedCourse.lectures[idx].quiz || []).concat(more)
+                                    status: 'completed'
                                   };
-                                  await universityApi.saveCourse(updatedCourse);
-                                  setCourse(updatedCourse);
-                                  setLecture(updatedCourse.lectures[idx]);
+                                  if (idx + 1 < updatedCourse.lectures.length)
+                                  {
+                                    const next = updatedCourse.lectures[idx + 1];
+                                    if (next.status === 'locked')
+                                    {
+                                      updatedCourse.lectures[idx + 1] = {
+                                        ...next,
+                                        status: 'unlocked'
+                                      };
+                                    }
+                                  }
+                                  updatedCourse.completedLectures = Math.min(
+                                    updatedCourse.lectures.length,
+                                    (updatedCourse.lectures.filter(l => l.status === 'completed').length)
+                                  );
+                                  updatedCourse.overallProgress = Math.round(
+                                    (updatedCourse.lectures.filter(l => l.status === 'completed').length / updatedCourse.lectures.length) * 100
+                                  );
                                 }
-                              }}
-                            />
-                          </TabsContent>
-                        </div>
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                </div>
+                                setLecture(updatedCourse.lectures[idx]);
+                              }
+                              await universityApi.saveCourse(updatedCourse);
+                              if (passed)
+                              {
+                                setActiveTab('lecture');
+                              }
+                            }}
+                            onGenerateMoreQuestions={async () => {
+                              if (!course) return;
+                              const more = await universityApi.generateQuiz({
+                                courseId: course!.metadata.id,
+                                lectureId: lecture!.id,
+                                lectureContent: lecture!.content || ''
+                              });
+                              const updatedCourse: Course = { ...course! };
+                              const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
+                              if (idx >= 0)
+                              {
+                                updatedCourse.lectures[idx] = {
+                                  ...updatedCourse.lectures[idx],
+                                  quiz: (updatedCourse.lectures[idx].quiz || []).concat(more)
+                                };
+                                await universityApi.saveCourse(updatedCourse);
+                                setCourse(updatedCourse);
+                                setLecture(updatedCourse.lectures[idx]);
+                              }
+                            }}
+                          />
+                        </TabsContent>
+                      </div>
+                    </Tabs>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>

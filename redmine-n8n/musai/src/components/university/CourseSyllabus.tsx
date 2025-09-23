@@ -52,28 +52,48 @@ const CourseSyllabus = () =>
 
   const loadCourse = useCallback(async () => 
   {
-    if (!courseId) return;
-    
+    if (!courseId)
+    {
+      return;
+    }
+
+    const hasInitial = Boolean(initialCourse && initialCourse.metadata.id === courseId);
+
     try 
     {
-      if (!initialCourse || initialCourse.metadata.id !== courseId)
+      if (!hasInitial)
       {
         setIsLoading(true);
       }
+
       const courseData = await universityApi.getCourse(courseId);
-      if (courseData) 
+
+      if (courseData)
       {
         setCourse(courseData);
-      } 
-      else 
-      {
-        navigate('/university');
+        return;
       }
-    } 
+
+      if (hasInitial && initialCourse)
+      {
+        // Fall back to the just-created course passed through navigation state
+        setCourse(initialCourse);
+        return;
+      }
+
+      navigate('/university', { replace: true, state: { missingCourseId: courseId } });
+    }
     catch (error) 
     {
       console.error('Failed to load course:', error);
-      navigate('/university');
+
+      if (hasInitial && initialCourse)
+      {
+        setCourse(initialCourse);
+        return;
+      }
+
+      navigate('/university', { replace: true, state: { missingCourseId: courseId, loadError: String(error) } });
     } 
     finally 
     {
@@ -310,22 +330,23 @@ const CourseSyllabus = () =>
               
               {/* Progress Bar */}
               <div className="space-y-2">
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between gap-2 text-sm">
                   <span className="text-gray-600 dark:text-gray-400">Course Progress</span>
                   <span className="font-medium">{course.overallProgress}%</span>
                 </div>
                 <Progress value={course.overallProgress} className="h-2" />
-                <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <span>{course.completedLectures} of {course.lectures.length} lectures completed</span>
                   <span>Pass threshold: {course.metadata.passThreshold}%</span>
                 </div>
               </div>
             </div>
             
-            <div className="flex gap-2">
+            <div className="mt-4 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row">
               <Button
                 variant="outline"
                 onClick={() => navigate('/university')}
+                className="w-full sm:w-auto"
               >
                 Back to Courses
               </Button>
@@ -333,6 +354,7 @@ const CourseSyllabus = () =>
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/university/course/${courseId}/settings`)}
+                  className="w-full sm:w-auto"
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
@@ -370,33 +392,33 @@ const CourseSyllabus = () =>
               onClick={() => handleLectureClick(lecture, index)}
             >
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="flex-shrink-0">
                       {getLectureStatusIcon(lecture)}
                     </div>
                     <div className="flex-1 min-w-0">
-                  <CardTitle className="text-lg font-semibold mb-1 line-clamp-2">
-                    {lecture.title}
-                  </CardTitle>
-                  <CardDescription className="line-clamp-2 text-sm">
-                    {lecture.summary}
-                  </CardDescription>
-                  {lecture.duration && (
-                    <div className="mt-1 text-xs font-medium text-muted-foreground">
-                      {lecture.duration}
+                      <CardTitle className="text-lg font-semibold mb-1 line-clamp-2">
+                        {lecture.title}
+                      </CardTitle>
+                      <CardDescription className="line-clamp-2 text-sm">
+                        {lecture.summary}
+                      </CardDescription>
+                      {lecture.duration && (
+                        <div className="mt-1 text-xs font-medium text-muted-foreground">
+                          {lecture.duration}
+                        </div>
+                      )}
+                      {lecture.content && (
+                        <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-500 dark:text-emerald-300">
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          Lecture generated
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {lecture.content && (
-                    <div className="mt-2 flex items-center gap-1 text-xs font-medium text-emerald-500 dark:text-emerald-300">
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      Lecture generated
-                    </div>
-                  )}
-                </div>
-              </div>
+                  </div>
                   
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2 sm:flex-col sm:items-end">
                     <Badge
                       variant={
                         lecture.status === 'completed' || lecture.content ? 'default' :

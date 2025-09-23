@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { BaseLayout } from '@/components/common/BaseLayout';
@@ -126,11 +126,14 @@ const University = () =>
     navigate(`/university/course/new${query}`);
   }, [navigate]);
 
+  const lastHandledInitialTopic = useRef<string | null>(null);
+
   useEffect(() =>
   {
     const initialTopic = location.state?.initialQuery || searchParams.get('topic');
-    if (initialTopic)
+    if (initialTopic && lastHandledInitialTopic.current !== initialTopic)
     {
+      lastHandledInitialTopic.current = initialTopic;
       startCourseConcept(initialTopic);
     }
   }, [location.state, searchParams, startCourseConcept]);
