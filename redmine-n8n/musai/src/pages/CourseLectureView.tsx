@@ -18,6 +18,7 @@ import { Message } from '@/types/chat';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
+import { PreMusaiPage } from '@/components/common/PreMusaiPage';
 
 const CourseLectureView = () =>
 {
@@ -40,6 +41,7 @@ const CourseLectureView = () =>
   const chatSeededRef = useRef<boolean>(false);
   const pendingChatDisplayRef = useRef<string | null>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [hasUserAsked, setHasUserAsked] = useState(false);
 
   const updateLectureChatSession = useCallback((sessionId: string, msgs: Message[]) =>
   {
@@ -64,6 +66,7 @@ const CourseLectureView = () =>
       nextMessages = adjusted;
     }
     setChatMessages(nextMessages);
+    setHasUserAsked(nextMessages.some(message => message.role === 'user'));
     queryClient.setQueryData(['lecture-chat', sessionId], nextMessages);
   }, [queryClient]);
 
@@ -110,6 +113,7 @@ const CourseLectureView = () =>
     chatSeededRef.current = false;
     chatInitKeyRef.current = null;
     setChatMessages([]);
+    setHasUserAsked(false);
   }, [chatStorageKey]);
 
   useEffect(() =>
@@ -133,6 +137,7 @@ const CourseLectureView = () =>
         setChatMessages(Array.isArray(parsed.messages) ? parsed.messages : []);
         chatSeededRef.current = Boolean(parsed.seeded);
         chatInitKeyRef.current = chatStorageKey;
+        setHasUserAsked(Array.isArray(parsed.messages) && parsed.messages.some(message => message.role === 'user'));
         return;
       }
       catch (error)
@@ -150,6 +155,7 @@ const CourseLectureView = () =>
     chatSessionIdRef.current = sessionId;
     chatSeededRef.current = false;
     chatInitKeyRef.current = chatStorageKey;
+    setHasUserAsked(false);
 
     const introContent = `### ${lecture.title}\n${lecture.summary ? `${lecture.summary}\n\n` : ''}Welcome to the chat companion for **${course.metadata.title}**. Ask for clarifications, examples, or study guidance.\n\n**Course Syllabus**\n${syllabusContext ? syllabusContext.split('\n').map(line => `- ${line}`).join('\n') : 'Syllabus not available yet.'}\n\n**Lecture Content Snapshot**\n${lecturePlainText || 'Lecture content will appear here once generated.'}`;
 
@@ -411,6 +417,23 @@ const CourseLectureView = () =>
     return Math.round((completed / course.lectures.length) * 100);
   };
 
+  const quizPassThreshold = useMemo(() =>
+  {
+    const raw = course?.metadata.passThreshold;
+    if (typeof raw === 'number')
+    {
+      if (raw > 1)
+      {
+        return Math.min(Math.max(raw / 100, 0), 1);
+      }
+      if (raw > 0)
+      {
+        return raw;
+      }
+    }
+    return 0.7;
+  }, [course?.metadata.passThreshold]);
+
   const renderableLectureHtml = useMemo(() =>
   {
     const raw = lecture?.content?.trim();
@@ -504,6 +527,7 @@ const CourseLectureView = () =>
       chatSeededRef.current = true;
     }
 
+    setHasUserAsked(true);
     await sendChatMessage(outgoing, chatSessionIdRef.current, chatMessages, file);
     pendingChatDisplayRef.current = null;
   }, [chatMessages, course, lecture, lecturePlainText, sendChatMessage, syllabusContext]);
@@ -633,30 +657,50 @@ const CourseLectureView = () =>
                           )}
                         </TabsContent>
                         <TabsContent value="chat" className="mt-4">
-                          <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5" style={{ minHeight: '360px' }}>
-                            <ChatInterface
-                              messages={chatMessages}
-                              isTyping={isChatTyping}
-                              isLoading={isChatLoading}
-                              onSendMessage={handleSendChat}
-                              className="flex-1"
-                              placeholder="Ask about this lecture or the overall syllabus..."
-                              perspectiveEnabled={false}
-                            />
+                          <div className="flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl">
+                            {!hasUserAsked && (
+                              <div className="max-h-[320px] overflow-y-auto border-b border-slate-200/60 px-6 py-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                <PreMusaiPage
+                                  type="university"
+                                  onSubmit={async (input) =>
+                                  {
+                                    await handleSendChat(input);
+                                    setActiveTab('chat');
+                                  }}
+                                  skipDynamicContent
+                                  isLoading={isChatLoading}
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-h-0 px-1 pb-1">
+                              <ChatInterface
+                                messages={chatMessages}
+                                isTyping={isChatTyping}
+                                isLoading={isChatLoading}
+                                onSendMessage={handleSendChat}
+                                className="flex-1 min-h-0"
+                                placeholder="Ask about this lecture or the overall syllabus..."
+                                perspectiveEnabled={false}
+                              />
+                            </div>
                           </div>
                         </TabsContent>
                         <TabsContent value="quiz" className="mt-4">
                           <CourseQuiz
                             lecture={lecture!}
-                            onQuizCompleted={async (passed, attempt) => {
+                            passThreshold={quizPassThreshold}
+                            onQuizCompleted={async (passed, attempt) =>
+                            {
                               if (!course) return;
-                              const updatedCourse: Course = { ...course };
+                              const updatedCourse: Course = { ...course, lectures: [...course.lectures] };
                               const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
                               if (idx >= 0)
                               {
+                                const existingLecture = updatedCourse.lectures[idx];
                                 const updatedLecture: CourseLecture = {
-                                  ...updatedCourse.lectures[idx],
-                                  quizAttempts: [...updatedCourse.lectures[idx].quizAttempts, attempt]
+                                  ...existingLecture,
+                                  quizAttempts: [...existingLecture.quizAttempts, attempt],
+                                  updatedAt: new Date().toISOString()
                                 };
                                 updatedCourse.lectures[idx] = updatedLecture;
                                 if (passed)
@@ -678,7 +722,7 @@ const CourseLectureView = () =>
                                   }
                                   updatedCourse.completedLectures = Math.min(
                                     updatedCourse.lectures.length,
-                                    (updatedCourse.lectures.filter(l => l.status === 'completed').length)
+                                    updatedCourse.lectures.filter(l => l.status === 'completed').length
                                   );
                                   updatedCourse.overallProgress = Math.round(
                                     (updatedCourse.lectures.filter(l => l.status === 'completed').length / updatedCourse.lectures.length) * 100
@@ -692,24 +736,47 @@ const CourseLectureView = () =>
                                 setActiveTab('lecture');
                               }
                             }}
-                            onGenerateMoreQuestions={async () => {
-                              if (!course) return;
-                              const more = await universityApi.generateQuiz({
-                                courseId: course!.metadata.id,
-                                lectureId: lecture!.id,
-                                lectureContent: lecture!.content || ''
+                            onGenerateMoreQuestions={async () =>
+                            {
+                              if (!course || !lecture)
+                              {
+                                throw new Error('Course context is not available.');
+                              }
+
+                              const contentPayload = lecture.content?.trim()?.length ? lecture.content : lecturePlainText;
+                              if (!contentPayload)
+                              {
+                                throw new Error('Lecture content is not available yet.');
+                              }
+
+                              const generatedQuiz = await universityApi.generateQuiz({
+                                courseId: course.metadata.id,
+                                courseTitle: course.metadata.title,
+                                lectureId: lecture.id,
+                                lectureTitle: lecture.title,
+                                lectureContent: contentPayload,
+                                lectureSummary: lecture.summary,
+                                processorFile: course.metadata.processorFile
                               });
-                              const updatedCourse: Course = { ...course! };
+
+                              const updatedCourse: Course = { ...course, lectures: [...course.lectures] };
                               const idx = updatedCourse.lectures.findIndex(l => l.id === lecture!.id);
                               if (idx >= 0)
                               {
+                                const now = new Date().toISOString();
                                 updatedCourse.lectures[idx] = {
                                   ...updatedCourse.lectures[idx],
-                                  quiz: (updatedCourse.lectures[idx].quiz || []).concat(more)
+                                  quiz: (updatedCourse.lectures[idx].quiz || []).concat(generatedQuiz),
+                                  quizAttempts: [],
+                                  updatedAt: now
                                 };
                                 await universityApi.saveCourse(updatedCourse);
                                 setCourse(updatedCourse);
                                 setLecture(updatedCourse.lectures[idx]);
+                              }
+                              else
+                              {
+                                throw new Error('Unable to locate lecture for quiz generation.');
                               }
                             }}
                           />

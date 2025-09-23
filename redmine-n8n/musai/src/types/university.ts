@@ -174,9 +174,12 @@ export interface LectureGenerationRequest
 
 export interface QuizGenerationRequest 
 {
-  courseId: string;
-  lectureId: string;
+  courseId?: string;
+  courseTitle: string;
+  lectureId?: string;
+  lectureTitle: string;
   lectureContent: string;
+  lectureSummary?: string;
   processorFile?: ProcessorFile;
 }
 

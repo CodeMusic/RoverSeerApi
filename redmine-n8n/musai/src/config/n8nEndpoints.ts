@@ -110,6 +110,7 @@ export const N8N_ENDPOINTS = {
     // Course and content generation (use only user-provided webhooks)
     GENERATE_COURSE_CONTENT: '/course/generate-from-topic',
     GENERATE_LECTURE: '/generate-lecture',
+    GENERATE_QUIZ: '/make-quiz',
     GET_LECTURE_TEMPLATES: '/university/lectures/templates',
     CREATE_ADAPTIVE_CURRICULUM: '/university/curriculum/adaptive',
     

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,31 +15,43 @@ import {
   Trophy,
   AlertCircle
 } from 'lucide-react';
-import { universityApi } from '@/lib/universityApi';
-import type { QuizQuestion, QuizAttempt, CourseLecture } from '@/types/university';
+import type { QuizAttempt, CourseLecture } from '@/types/university';
 import { cn } from '@/lib/utils';
 
 interface CourseQuizProps 
 {
   lecture: CourseLecture;
-  onQuizCompleted: (passed: boolean, attempt: QuizAttempt) => void;
-  onGenerateMoreQuestions: () => void;
+  passThreshold: number;
+  onQuizCompleted: (passed: boolean, attempt: QuizAttempt) => Promise<void> | void;
+  onGenerateMoreQuestions: () => Promise<void> | void;
 }
 
-const CourseQuiz = ({ lecture, onQuizCompleted, onGenerateMoreQuestions }: CourseQuizProps) => 
+const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQuestions }: CourseQuizProps) => 
 {
   const [currentAnswers, setCurrentAnswers] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentAttempt, setCurrentAttempt] = useState<QuizAttempt | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const autoRequestedRef = useRef(false);
 
   useEffect(() => 
   {
-    // Initialize answers array
-    if (lecture.quiz) 
+    if (lecture.quiz && lecture.quiz.length > 0)
     {
       setCurrentAnswers(new Array(lecture.quiz.length).fill(-1));
+      setCurrentAttempt(null);
+      setShowResults(false);
+      setGenerationError(null);
+      setIsGeneratingMore(false);
+      autoRequestedRef.current = false;
+    }
+    else
+    {
+      setCurrentAnswers([]);
+      setCurrentAttempt(null);
+      setShowResults(false);
     }
   }, [lecture.quiz]);
 
@@ -53,31 +65,40 @@ const CourseQuiz = ({ lecture, onQuizCompleted, onGenerateMoreQuestions }: Cours
   const handleSubmitQuiz = async () => 
   {
     if (!lecture.quiz) return;
-    
-    // Check if all questions are answered
-    if (currentAnswers.some(answer => answer === -1)) 
+
+    if (currentAnswers.length !== lecture.quiz.length || currentAnswers.some(answer => answer === -1))
     {
       alert('Please answer all questions before submitting.');
       return;
     }
 
     setIsSubmitting(true);
-    
-    try 
+
+    try
     {
-      const attempt = await universityApi.submitQuizAnswers(lecture.id, currentAnswers);
+      const totalQuestions = lecture.quiz.length || 1;
+      const correctCount = lecture.quiz.reduce((acc, question, index) =>
+      {
+        return acc + (currentAnswers[index] === question.correctIndex ? 1 : 0);
+      }, 0);
+      const score = correctCount / totalQuestions;
+      const attempt: QuizAttempt = {
+        id: `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        answers: [...currentAnswers],
+        score,
+        passed: score >= passThreshold,
+        timestamp: new Date().toISOString()
+      };
       setCurrentAttempt(attempt);
       setShowResults(true);
-      
-      // Call the completion callback
-      onQuizCompleted(attempt.passed, attempt);
-    } 
-    catch (error) 
+      await Promise.resolve(onQuizCompleted(attempt.passed, attempt));
+    }
+    catch (error)
     {
       console.error('Error submitting quiz:', error);
       alert('Failed to submit quiz. Please try again.');
-    } 
-    finally 
+    }
+    finally
     {
       setIsSubmitting(false);
     }
@@ -90,23 +111,46 @@ const CourseQuiz = ({ lecture, onQuizCompleted, onGenerateMoreQuestions }: Cours
     setShowResults(false);
   };
 
-  const handleGenerateMoreQuestions = async () => 
+  const handleGenerateMoreQuestions = useCallback(async () => 
   {
+    setGenerationError(null);
     setIsGeneratingMore(true);
-    try 
+    autoRequestedRef.current = true;
+    try
     {
-      await onGenerateMoreQuestions();
-    } 
-    catch (error) 
+      await Promise.resolve(onGenerateMoreQuestions());
+    }
+    catch (error)
     {
       console.error('Error generating more questions:', error);
-      alert('Failed to generate more questions. Please try again.');
-    } 
-    finally 
+      const message = error instanceof Error ? error.message : 'Failed to generate quiz. Please try again.';
+      setGenerationError(message);
+      autoRequestedRef.current = false;
+    }
+    finally
     {
       setIsGeneratingMore(false);
     }
-  };
+  }, [onGenerateMoreQuestions]);
+
+  useEffect(() =>
+  {
+    if (lecture.quiz && lecture.quiz.length > 0)
+    {
+      return;
+    }
+    if (!lecture.content)
+    {
+      return;
+    }
+    if (autoRequestedRef.current)
+    {
+      return;
+    }
+
+    autoRequestedRef.current = true;
+    void handleGenerateMoreQuestions();
+  }, [lecture.quiz, lecture.content, handleGenerateMoreQuestions]);
 
   const getScoreColor = (score: number) => 
   {
@@ -132,13 +176,35 @@ const CourseQuiz = ({ lecture, onQuizCompleted, onGenerateMoreQuestions }: Cours
             Quiz Not Available
           </CardTitle>
           <CardDescription>
-            This lecture doesn't have a quiz yet.
+            We'll generate an adaptive quiz from this lecture's content.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {generationError && (
+            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-200">
+              <AlertCircle className="mt-0.5 h-4 w-4" />
+              <span>{generationError}</span>
+            </div>
+          )}
+          {!generationError && !isGeneratingMore && (
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Start the quiz when you're ready—Musai will craft fresh questions from the lecture material.
+            </p>
+          )}
+          {isGeneratingMore && (
+            <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500/70 border-t-transparent"></div>
+              Generating quiz...
+            </div>
+          )}
+          {!lecture.content && (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Lecture content is still being prepared. The quiz will be available once the lecture is ready.
+            </p>
+          )}
           <Button
             onClick={handleGenerateMoreQuestions}
-            disabled={isGeneratingMore}
+            disabled={isGeneratingMore || !lecture.content}
             className="w-full"
           >
             {isGeneratingMore ? (
@@ -186,6 +252,9 @@ const CourseQuiz = ({ lecture, onQuizCompleted, onGenerateMoreQuestions }: Cours
             >
               {currentAttempt.passed ? 'Quiz Completed' : 'Retake Required'}
             </Badge>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Pass threshold: {Math.round(passThreshold * 100)}%
+            </p>
           </div>
 
           {/* Question Review */}

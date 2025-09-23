@@ -248,49 +248,455 @@ class UniversityApiService
 
   private normalizeQuizQuestions(raw: any): QuizQuestion[] | undefined
   {
-    const list = Array.isArray(raw) ? raw : Array.isArray(raw?.questions) ? raw.questions : undefined;
-    if (!list || list.length === 0)
+    if (raw === undefined || raw === null)
     {
       return undefined;
     }
-    const normalized = list.map((item: any, index: number): QuizQuestion =>
+
+    const parsed = this.parseN8nLikePayload(raw);
+    const visited = new Set<any>();
+    const queue: any[] = [parsed];
+    let questionList: any[] | undefined;
+    let answerKeySource: any;
+
+    const answerKeyFields = ['answerKey', 'answer_key', 'answers', 'correctAnswers', 'correct_answers', 'key', 'solutionKey', 'answerKeys'];
+    const pushCandidate = (candidate: any) =>
     {
-      const questionText = (item?.question || item?.prompt || `Question ${index + 1}`).toString();
-      const rawChoices = Array.isArray(item?.choices)
-        ? item.choices
-        : Array.isArray(item?.options)
-          ? item.options
-          : Array.isArray(item?.answers)
-            ? item.answers
-            : [];
-      const choices = rawChoices.length > 0
-        ? rawChoices.map((choice: any) => choice?.toString?.() ?? String(choice))
-        : ['True', 'False'];
-      const deriveIndex = (): number =>
+      if (!candidate)
       {
-        if (typeof item?.correctIndex === 'number') return item.correctIndex;
-        if (typeof item?.answerIndex === 'number') return item.answerIndex;
-        if (typeof item?.correct === 'number') return item.correct;
-        if (typeof item?.correct === 'string')
+        return;
+      }
+      if (typeof candidate !== 'object' && !Array.isArray(candidate))
+      {
+        return;
+      }
+      if (visited.has(candidate))
+      {
+        return;
+      }
+      queue.push(candidate);
+    };
+
+    const tryExtractAnswerKey = (source: any) =>
+    {
+      if (!source || typeof source !== 'object')
+      {
+        return;
+      }
+      for (const key of answerKeyFields)
+      {
+        if (source[key] !== undefined)
         {
-          const idx = choices.findIndex(choice => choice.toLowerCase() === item.correct.toLowerCase());
-          return idx >= 0 ? idx : 0;
+          if (answerKeySource === undefined)
+          {
+            answerKeySource = source[key];
+          }
+          break;
         }
-        if (typeof item?.answer === 'string')
+      }
+    };
+
+    while (queue.length > 0 && (!questionList || questionList.length === 0))
+    {
+      const current = queue.shift();
+      if (current === undefined || current === null)
+      {
+        continue;
+      }
+      if (visited.has(current))
+      {
+        continue;
+      }
+      visited.add(current);
+
+      if (Array.isArray(current))
+      {
+        if (current.length > 0 && typeof current[0] === 'object')
         {
-          const idx = choices.findIndex(choice => choice.toLowerCase() === item.answer.toLowerCase());
-          return idx >= 0 ? idx : 0;
+          questionList = current;
+          break;
         }
-        return 0;
-      };
-      const correctIndex = deriveIndex();
-      return {
+        continue;
+      }
+
+      if (typeof current !== 'object')
+      {
+        continue;
+      }
+
+      tryExtractAnswerKey(current);
+
+      const candidateKeys = ['questions', 'quiz', 'items', 'data', 'results', 'payload', 'entries'];
+      for (const key of candidateKeys)
+      {
+        const value = (current as any)[key];
+        if (value === undefined || value === null)
+        {
+          continue;
+        }
+
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object')
+        {
+          questionList = value;
+          tryExtractAnswerKey(current);
+          break;
+        }
+
+        pushCandidate(value);
+      }
+
+      if (!questionList)
+      {
+        for (const value of Object.values(current as Record<string, unknown>))
+        {
+          if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object')
+          {
+            questionList = value as any[];
+            break;
+          }
+          pushCandidate(value);
+        }
+      }
+    }
+
+    if (!questionList || questionList.length === 0)
+    {
+      return undefined;
+    }
+
+    const normalizeAnswerKey = (source: any): Array<number | string> | undefined =>
+    {
+      if (source === undefined || source === null)
+      {
+        return undefined;
+      }
+      if (Array.isArray(source))
+      {
+        return source;
+      }
+      if (typeof source === 'string')
+      {
+        const trimmed = source.trim();
+        if (!trimmed)
+        {
+          return undefined;
+        }
+        try
+        {
+          const parsedString = JSON.parse(trimmed);
+          return normalizeAnswerKey(parsedString);
+        }
+        catch
+        {
+          const parts = trimmed.split(/[\n,;]+/).map(part => part.trim()).filter(Boolean);
+          return parts.length > 0 ? parts : undefined;
+        }
+      }
+      if (typeof source === 'object')
+      {
+        const obj = source as Record<string, unknown>;
+        if (Array.isArray(obj.values))
+        {
+          return obj.values as Array<number | string>;
+        }
+        if (Array.isArray(obj.answerKey))
+        {
+          return obj.answerKey as Array<number | string>;
+        }
+        if (Array.isArray(obj.answer_key))
+        {
+          return obj.answer_key as Array<number | string>;
+        }
+        if (Array.isArray(obj.answers))
+        {
+          return obj.answers as Array<number | string>;
+        }
+        const entries = Object.entries(obj)
+          .map(([key, value]) => ({ key, value }))
+          .sort((a, b) =>
+          {
+            const aNum = Number(a.key);
+            const bNum = Number(b.key);
+            if (!Number.isNaN(aNum) && !Number.isNaN(bNum))
+            {
+              return aNum - bNum;
+            }
+            return a.key.localeCompare(b.key);
+          })
+          .map(entry => entry.value);
+        return entries.length > 0 ? entries as Array<number | string> : undefined;
+      }
+      return undefined;
+    };
+
+    const normalizedAnswerKey = normalizeAnswerKey(answerKeySource);
+
+    const parseCorrectIndexCandidate = (candidate: any, choices: string[]): number | undefined =>
+    {
+      if (candidate === undefined || candidate === null)
+      {
+        return undefined;
+      }
+
+      if (typeof candidate === 'number' && Number.isFinite(candidate))
+      {
+        const normalized = Math.trunc(candidate);
+        if (normalized >= 0 && normalized < choices.length)
+        {
+          return normalized;
+        }
+        if (normalized > 0 && normalized <= choices.length)
+        {
+          return normalized - 1;
+        }
+      }
+
+      if (typeof candidate === 'string')
+      {
+        const trimmed = candidate.trim();
+        if (!trimmed)
+        {
+          return undefined;
+        }
+
+        const numeric = Number(trimmed);
+        if (!Number.isNaN(numeric))
+        {
+          const normalized = Math.trunc(numeric);
+          if (normalized >= 0 && normalized < choices.length)
+          {
+            return normalized;
+          }
+          if (normalized > 0 && normalized <= choices.length)
+          {
+            return normalized - 1;
+          }
+        }
+
+        const upper = trimmed.toUpperCase();
+        if (/^[A-Z]$/.test(upper))
+        {
+          const idx = upper.charCodeAt(0) - 65;
+          if (idx >= 0 && idx < choices.length)
+          {
+            return idx;
+          }
+        }
+
+        const leadingLetter = upper.match(/^[A-Z](?=[).:-]?\s|[).:-]|$)/);
+        if (leadingLetter)
+        {
+          const idx = leadingLetter[0].charCodeAt(0) - 65;
+          if (idx >= 0 && idx < choices.length)
+          {
+            return idx;
+          }
+        }
+
+        const choiceIndex = choices.findIndex(choice => choice.toLowerCase() === trimmed.toLowerCase());
+        if (choiceIndex >= 0)
+        {
+          return choiceIndex;
+        }
+
+        const numberMatch = trimmed.match(/(\d+)/);
+        if (numberMatch)
+        {
+          const idx = parseInt(numberMatch[1], 10);
+          if (!Number.isNaN(idx))
+          {
+            if (idx >= 0 && idx < choices.length)
+            {
+              return idx;
+            }
+            if (idx > 0 && idx <= choices.length)
+            {
+              return idx - 1;
+            }
+          }
+        }
+      }
+
+      if (Array.isArray(candidate))
+      {
+        for (const value of candidate)
+        {
+          const parsedCandidate = parseCorrectIndexCandidate(value, choices);
+          if (parsedCandidate !== undefined)
+          {
+            return parsedCandidate;
+          }
+        }
+      }
+
+      if (typeof candidate === 'object')
+      {
+        const nested = (candidate as any)?.index
+          ?? (candidate as any)?.idx
+          ?? (candidate as any)?.value
+          ?? (candidate as any)?.answer
+          ?? (candidate as any)?.correct
+          ?? (candidate as any)?.choice;
+        if (nested !== undefined)
+        {
+          return parseCorrectIndexCandidate(nested, choices);
+        }
+      }
+
+      return undefined;
+    };
+
+    const normalizeChoices = (entry: any): string[] =>
+    {
+      const candidateArrays = [
+        entry?.choices,
+        entry?.options,
+        entry?.answers,
+        entry?.answerChoices,
+        entry?.variants,
+        entry?.choicesList,
+        entry?.choices_array
+      ];
+      let rawChoices: any;
+      for (const candidate of candidateArrays)
+      {
+        if (Array.isArray(candidate) && candidate.length > 0)
+        {
+          rawChoices = candidate;
+          break;
+        }
+      }
+
+      if (!rawChoices && entry && typeof entry === 'object' && entry?.choices && typeof entry.choices === 'object')
+      {
+        const entries = Object.entries(entry.choices as Record<string, unknown>)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([, value]) => value);
+        if (entries.length > 0)
+        {
+          rawChoices = entries;
+        }
+      }
+
+      if (!rawChoices && entry && typeof entry === 'object')
+      {
+        const optionKeys = Object.keys(entry).filter(key => /^option[A-Z0-9]/i.test(key));
+        if (optionKeys.length > 0)
+        {
+          optionKeys.sort();
+          rawChoices = optionKeys.map(key => (entry as any)[key]);
+        }
+      }
+
+      if (!rawChoices)
+      {
+        return [];
+      }
+
+      const normalized = (rawChoices as any[]).map(choice =>
+      {
+        if (choice === undefined || choice === null)
+        {
+          return null;
+        }
+        if (typeof choice === 'string')
+        {
+          return choice.trim();
+        }
+        if (typeof choice === 'object')
+        {
+          if (typeof (choice as any)?.text === 'string') return (choice as any).text.trim();
+          if (typeof (choice as any)?.label === 'string') return (choice as any).label.trim();
+          if (typeof (choice as any)?.value === 'string') return (choice as any).value.trim();
+        }
+        return (choice as any)?.toString?.().trim?.() ?? String(choice);
+      }).filter((value): value is string => Boolean(value));
+
+      const unique: string[] = [];
+      normalized.forEach(choice =>
+      {
+        if (!unique.some(existing => existing.toLowerCase() === choice.toLowerCase()))
+        {
+          unique.push(choice);
+        }
+      });
+
+      return unique;
+    };
+
+    const resolveCorrectIndex = (entry: any, choices: string[], answerKeyValue: any): number =>
+    {
+      const candidates = [
+        entry?.correctIndex,
+        entry?.correct_index,
+        entry?.answerIndex,
+        entry?.answer_index,
+        entry?.correct,
+        entry?.correctAnswer,
+        entry?.correct_answer,
+        entry?.answer,
+        entry?.correctOption,
+        entry?.correct_option,
+        entry?.solution,
+        entry?.key,
+        answerKeyValue
+      ];
+      for (const candidate of candidates)
+      {
+        const parsedCandidate = parseCorrectIndexCandidate(candidate, choices);
+        if (parsedCandidate !== undefined)
+        {
+          return Math.max(0, Math.min(choices.length - 1, parsedCandidate));
+        }
+      }
+      return 0;
+    };
+
+    const normalizedQuestions: QuizQuestion[] = [];
+    questionList.forEach((item, index) =>
+    {
+      const questionText = (() =>
+      {
+        if (typeof item === 'string')
+        {
+          return item.trim() || `Question ${index + 1}`;
+        }
+        if (typeof item?.question === 'string' && item.question.trim())
+        {
+          return item.question.trim();
+        }
+        if (typeof item?.prompt === 'string' && item.prompt.trim())
+        {
+          return item.prompt.trim();
+        }
+        if (typeof item?.text === 'string' && item.text.trim())
+        {
+          return item.text.trim();
+        }
+        if (typeof item?.title === 'string' && item.title.trim())
+        {
+          return item.title.trim();
+        }
+        return `Question ${index + 1}`;
+      })();
+
+      const choices = normalizeChoices(item);
+      if (choices.length === 0)
+      {
+        return;
+      }
+
+      const answerKeyValue = normalizedAnswerKey && normalizedAnswerKey[index];
+      const correctIndex = resolveCorrectIndex(item, choices, answerKeyValue);
+
+      normalizedQuestions.push({
         question: questionText,
         choices,
-        correctIndex: correctIndex >= 0 && correctIndex < choices.length ? correctIndex : 0
-      };
+        correctIndex
+      });
     });
-    return normalized;
+
+    return normalizedQuestions.length > 0 ? normalizedQuestions : undefined;
   }
 
   private normalizeQuizAttempts(raw: any): QuizAttempt[]
@@ -776,27 +1182,46 @@ class UniversityApiService
   // Automation C: Quiz Generation
   async generateQuiz(request: QuizGenerationRequest): Promise<QuizQuestion[]> 
   {
-    try 
+    const courseTitle = request.courseTitle?.toString().trim();
+    const lectureTitle = request.lectureTitle?.toString().trim();
+    const lectureContent = typeof request.lectureContent === 'string'
+      ? request.lectureContent
+      : request.lectureContent !== undefined
+        ? String(request.lectureContent)
+        : '';
+
+    if (!courseTitle || !lectureTitle || !lectureContent)
     {
-      const response = await this.axiosInstance.post('/quiz/generate', request);
-      return response.data;
-    } 
-    catch (error) 
+      throw new Error('Missing courseTitle, lectureTitle, or lectureContent for quiz generation');
+    }
+
+    const payload = {
+      courseTitle,
+      lectureTitle,
+      lectureContent: lectureContent.slice(0, 20000),
+      lectureSummary: request.lectureSummary,
+      courseId: request.courseId,
+      lectureId: request.lectureId
+    };
+
+    try
     {
-      console.error('Error generating quiz:', error);
-      // Return mock data for development
-      return [
-        {
-          question: "What is the primary focus of this lecture?",
-          choices: ["Theory", "Practice", "Both", "Neither"],
-          correctIndex: 2
-        },
-        {
-          question: "Which approach is recommended?",
-          choices: ["Approach A", "Approach B", "Approach C", "Approach D"],
-          correctIndex: 1
-        }
-      ];
+      const response = await this.axiosInstance.post(N8N_ENDPOINTS.UNIVERSITY.GENERATE_QUIZ ?? '/make-quiz', payload, { timeout: 180000 });
+      const quiz = this.normalizeQuizQuestions(response.data);
+      if (!quiz || quiz.length === 0)
+      {
+        throw new Error('Quiz generation webhook returned no questions');
+      }
+      return quiz;
+    }
+    catch (error)
+    {
+      console.error('Error generating quiz via make-quiz webhook:', error);
+      if (error instanceof Error)
+      {
+        throw error;
+      }
+      throw new Error('Failed to generate quiz');
     }
   }
 
