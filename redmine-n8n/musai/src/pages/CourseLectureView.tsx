@@ -18,7 +18,17 @@ import { Message } from '@/types/chat';
 import { useMessageSender } from '@/hooks/useMessageSender';
 import { useQueryClient } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
-import { PreMusaiPage } from '@/components/common/PreMusaiPage';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+interface CompletionModalState
+{
+  score: number;
+  grade: string;
+  correctCount: number;
+  totalQuestions: number;
+  nextLectureId?: string;
+  nextLectureTitle?: string;
+}
 
 const CourseLectureView = () =>
 {
@@ -32,7 +42,7 @@ const CourseLectureView = () =>
   const [isLoading, setIsLoading] = useState(!(locationState?.course && locationState?.lecture));
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const generationRequestedRef = useRef(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const shouldGenerateFromState = Boolean((locationState as { shouldGenerate?: boolean } | undefined)?.shouldGenerate);
   const { recordLastSession } = useUserPreferences();
   const queryClient = useQueryClient();
@@ -41,7 +51,32 @@ const CourseLectureView = () =>
   const chatSeededRef = useRef<boolean>(false);
   const pendingChatDisplayRef = useRef<string | null>(null);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
-  const [hasUserAsked, setHasUserAsked] = useState(false);
+  const [isQuizGenerating, setIsQuizGenerating] = useState(false);
+  const [completionModal, setCompletionModal] = useState<CompletionModalState | null>(null);
+  const [isPerspectiveEnabled, setIsPerspectiveEnabled] = useState<boolean>(() =>
+  {
+    try
+    {
+      return (window as any).__musai_perspective_enabled !== false;
+    }
+    catch
+    {
+      return true;
+    }
+  });
+
+  const deriveLetterGrade = useCallback((correct: number, total: number): string =>
+  {
+    if (total <= 0) return '—';
+    if (correct === total) return 'A+';
+    if (correct === total - 1) return 'A';
+    const ratio = correct / total;
+    if (ratio >= 0.9) return 'A-';
+    if (ratio >= 0.8) return 'B';
+    if (ratio >= 0.7) return 'C';
+    if (ratio >= 0.6) return 'D';
+    return 'F';
+  }, []);
 
   const updateLectureChatSession = useCallback((sessionId: string, msgs: Message[]) =>
   {
@@ -66,7 +101,6 @@ const CourseLectureView = () =>
       nextMessages = adjusted;
     }
     setChatMessages(nextMessages);
-    setHasUserAsked(nextMessages.some(message => message.role === 'user'));
     queryClient.setQueryData(['lecture-chat', sessionId], nextMessages);
   }, [queryClient]);
 
@@ -113,7 +147,6 @@ const CourseLectureView = () =>
     chatSeededRef.current = false;
     chatInitKeyRef.current = null;
     setChatMessages([]);
-    setHasUserAsked(false);
   }, [chatStorageKey]);
 
   useEffect(() =>
@@ -137,7 +170,6 @@ const CourseLectureView = () =>
         setChatMessages(Array.isArray(parsed.messages) ? parsed.messages : []);
         chatSeededRef.current = Boolean(parsed.seeded);
         chatInitKeyRef.current = chatStorageKey;
-        setHasUserAsked(Array.isArray(parsed.messages) && parsed.messages.some(message => message.role === 'user'));
         return;
       }
       catch (error)
@@ -155,9 +187,10 @@ const CourseLectureView = () =>
     chatSessionIdRef.current = sessionId;
     chatSeededRef.current = false;
     chatInitKeyRef.current = chatStorageKey;
-    setHasUserAsked(false);
 
-    const introContent = `### ${lecture.title}\n${lecture.summary ? `${lecture.summary}\n\n` : ''}Welcome to the chat companion for **${course.metadata.title}**. Ask for clarifications, examples, or study guidance.\n\n**Course Syllabus**\n${syllabusContext ? syllabusContext.split('\n').map(line => `- ${line}`).join('\n') : 'Syllabus not available yet.'}\n\n**Lecture Content Snapshot**\n${lecturePlainText || 'Lecture content will appear here once generated.'}`;
+    const instructorName = course.metadata.instructor?.trim();
+    const introSpeaker = instructorName ? `Professor ${instructorName}` : 'Your instructor';
+    const introContent = `Hello! I'm ${introSpeaker} for **${course.metadata.title}**. Ask me anything about "${lecture.title}" and I'll clarify concepts, offer examples, or help you review.`;
 
     const introMessage: Message = {
       id: uuidv4(),
@@ -280,82 +313,6 @@ const CourseLectureView = () =>
 
   useEffect(() =>
   {
-    if (!course || !lecture) return;
-    if (lecture.content && lecture.content.trim().length > 0) return;
-    if (generationRequestedRef.current) return;
-
-    const idx = course.lectures.findIndex(l => l.id === lecture.id);
-    if (idx === -1) return;
-
-    const shouldTrigger = shouldGenerateFromState || lecture.status === 'in_progress';
-    if (!shouldTrigger) return;
-
-    generationRequestedRef.current = true;
-    setIsGenerating(true);
-
-    const run = async () =>
-    {
-      try
-      {
-        const generatedLecture = await universityApi.generateLecture({
-          courseId: course.metadata.id,
-          lectureIndex: idx,
-          lectureTitle: lecture.title,
-          lectureSummary: lecture.summary,
-          previousLectureContext: idx > 0 ? course.lectures[idx - 1]?.content : undefined,
-          processorFile: course.metadata.processorFile
-        });
-
-        const updatedCourse: Course = {
-          ...course,
-          lectures: [...course.lectures]
-        };
-        updatedCourse.lectures[idx] = {
-          ...generatedLecture,
-          id: lecture.id,
-          duration: lecture.duration ?? generatedLecture.duration,
-          status: 'unlocked'
-        };
-        updatedCourse.currentLectureIndex = idx;
-        await universityApi.saveCourse(updatedCourse);
-        setCourse(updatedCourse);
-        setLecture(updatedCourse.lectures[idx]);
-      }
-      catch (error)
-      {
-        console.error('Error generating lecture content', error);
-        try
-        {
-          const rollback = await universityApi.getCourse(courseId!);
-          if (rollback)
-          {
-            const rollbackIdx = rollback.lectures.findIndex(l => l.id === lecture.id);
-            if (rollbackIdx >= 0)
-            {
-              rollback.lectures[rollbackIdx] = {
-                ...rollback.lectures[rollbackIdx],
-                status: 'unlocked'
-              };
-              await universityApi.saveCourse(rollback);
-              setCourse(rollback);
-              setLecture(rollback.lectures[rollbackIdx]);
-            }
-          }
-        }
-        catch {}
-      }
-      finally
-      {
-        setIsGenerating(false);
-      }
-    };
-
-    run();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [course, lecture, shouldGenerateFromState]);
-
-  useEffect(() =>
-  {
     if (!course || !lecture)
     {
       return;
@@ -366,11 +323,6 @@ const CourseLectureView = () =>
       view: activeTab
     });
   }, [course, lecture, activeTab, recordLastSession]);
-
-  useEffect(() =>
-  {
-    generationRequestedRef.current = false;
-  }, [lectureId]);
 
   const updateLecture = async (updatedLectureLegacy: Partial<CourseLecture>) =>
   {
@@ -434,6 +386,29 @@ const CourseLectureView = () =>
     return 0.7;
   }, [course?.metadata.passThreshold]);
 
+  const latestPassingAttempt = useMemo(() =>
+  {
+    if (!lecture?.quizAttempts || lecture.quizAttempts.length === 0)
+    {
+      return null;
+    }
+    const clone = [...lecture.quizAttempts].reverse();
+    return clone.find(attempt => attempt.passed) ?? null;
+  }, [lecture?.quizAttempts]);
+
+  const latestLetterGrade = useMemo(() =>
+  {
+    if (!latestPassingAttempt)
+    {
+      return null;
+    }
+    const total = latestPassingAttempt.totalQuestions ?? lecture?.quiz?.length ?? 0;
+    const correct = latestPassingAttempt.correctCount ?? Math.round(latestPassingAttempt.score * total);
+    return latestPassingAttempt.letterGrade ?? deriveLetterGrade(correct, total);
+  }, [latestPassingAttempt, lecture?.quiz?.length, deriveLetterGrade]);
+
+  const isInteractionLocked = isGenerating || isQuizGenerating;
+
   const renderableLectureHtml = useMemo(() =>
   {
     const raw = lecture?.content?.trim();
@@ -471,11 +446,11 @@ const CourseLectureView = () =>
 
       // Scoped safety fixes to keep content responsive inside our container
       const scopedFixes = `
-        .musai-lecture-content { max-width: 100%; margin: 0; padding: 0; background: transparent; color: inherit; }
+        .musai-lecture-content { max-width: 100%; margin: 0; padding: 0; color: #0f172a; line-height: 1.6; background: transparent; }
         .musai-lecture-content img, .musai-lecture-content video, .musai-lecture-content canvas { max-width: 100%; height: auto; }
         .musai-lecture-content table { width: 100%; border-collapse: collapse; }
         .musai-lecture-content pre, .musai-lecture-content code { white-space: pre-wrap; word-wrap: break-word; }
-        .musai-lecture-content * { box-sizing: border-box; }
+        .musai-lecture-content * { box-sizing: border-box; color: inherit; }
       `;
 
       const aggregatedStyles = `<style>${scopedFixes}${sanitizedStyles}</style>`;
@@ -500,8 +475,11 @@ const CourseLectureView = () =>
       return;
     }
 
+    const instructorName = course.metadata.instructor?.trim();
     const contextHeader = chatSeededRef.current ? '' : [
-      `You are the Musai University teaching assistant for the course "${course.metadata.title}".`,
+      instructorName
+        ? `You are Professor ${instructorName}, the instructor for the course "${course.metadata.title}".`
+        : `You are the Musai University teaching assistant for the course "${course.metadata.title}".`,
       course.metadata.description ? `Course Description: ${course.metadata.description}` : null,
       `Lecture Title: ${lecture.title}`,
       lecture.summary ? `Lecture Summary: ${lecture.summary}` : null,
@@ -514,7 +492,10 @@ const CourseLectureView = () =>
     let outgoing = learnerText;
     if (!chatSeededRef.current)
     {
-      outgoing = `${contextHeader}\n\nLearner: ${learnerText}`;
+      const contextPayload = contextHeader
+        ? `${contextHeader}\n\nLearner: ${learnerText}`
+        : learnerText;
+      outgoing = contextPayload;
       pendingChatDisplayRef.current = learnerText;
     }
     else
@@ -527,10 +508,143 @@ const CourseLectureView = () =>
       chatSeededRef.current = true;
     }
 
-    setHasUserAsked(true);
     await sendChatMessage(outgoing, chatSessionIdRef.current, chatMessages, file);
     pendingChatDisplayRef.current = null;
   }, [chatMessages, course, lecture, lecturePlainText, sendChatMessage, syllabusContext]);
+
+  const handleTogglePerspective = useCallback((enabled: boolean) =>
+  {
+    setIsPerspectiveEnabled(enabled);
+    try
+    {
+      (window as any).__musai_perspective_enabled = enabled;
+    }
+    catch
+    {
+      // no-op
+    }
+  }, []);
+
+  const startLectureGeneration = useCallback(async () =>
+  {
+    if (!course || !lecture) return;
+    if (isGenerating) return;
+
+    const idx = course.lectures.findIndex(l => l.id === lecture.id);
+    if (idx === -1)
+    {
+      setGenerationError('We could not locate this lecture in the course.');
+      return;
+    }
+
+    const lectureId = lecture.id;
+    const previousLectureContext = idx > 0 ? course.lectures[idx - 1]?.content : undefined;
+    const lectureDuration = lecture.duration;
+
+    setGenerationError(null);
+
+    const draftLectures = course.lectures.map((existing, index) =>
+      index === idx
+        ? { ...existing, status: 'in_progress' }
+        : existing
+    );
+
+    const draftCourse: Course = {
+      ...course,
+      lectures: draftLectures,
+      currentLectureIndex: idx
+    };
+
+    setCourse(draftCourse);
+    setLecture(draftCourse.lectures[idx]);
+
+    try
+    {
+      await universityApi.saveCourse(draftCourse);
+    }
+    catch (error)
+    {
+      console.warn('Failed to update lecture state before generation', error);
+    }
+
+    setIsGenerating(true);
+
+    try
+    {
+      const generatedLecture = await universityApi.generateLecture({
+        courseId: course.metadata.id,
+        lectureIndex: idx,
+        lectureTitle: lecture.title,
+        lectureSummary: lecture.summary,
+        previousLectureContext,
+        processorFile: course.metadata.processorFile
+      });
+
+      const resolvedLecture: CourseLecture = {
+        ...generatedLecture,
+        id: lectureId,
+        duration: lectureDuration ?? generatedLecture.duration,
+        status: 'unlocked'
+      };
+
+      const updatedCourse: Course = {
+        ...draftCourse,
+        lectures: draftCourse.lectures.map((existing, index) =>
+          index === idx ? resolvedLecture : existing
+        )
+      };
+      updatedCourse.currentLectureIndex = idx;
+
+      await universityApi.saveCourse(updatedCourse);
+      setCourse(updatedCourse);
+      setLecture(updatedCourse.lectures[idx]);
+    }
+    catch (error)
+    {
+      console.error('Error generating lecture content', error);
+      setGenerationError('We couldn’t generate this lecture. Please try again.');
+
+      const rollbackCourse: Course = {
+        ...draftCourse,
+        lectures: draftCourse.lectures.map((existing, index) =>
+          index === idx ? { ...existing, status: 'unlocked' } : existing
+        )
+      };
+
+      try
+      {
+        await universityApi.saveCourse(rollbackCourse);
+      }
+      catch (saveError)
+      {
+        console.error('Failed to reset lecture status after generation error', saveError);
+      }
+
+      setCourse(rollbackCourse);
+      setLecture(rollbackCourse.lectures[idx]);
+    }
+    finally
+    {
+      setIsGenerating(false);
+    }
+  }, [course, lecture, isGenerating]);
+
+  useEffect(() =>
+  {
+    setGenerationError(null);
+  }, [lectureId]);
+
+  useEffect(() =>
+  {
+    if (!course || !lecture) return;
+    if (lecture.content && lecture.content.trim().length > 0) return;
+    if (isGenerating) return;
+
+    const shouldTrigger = shouldGenerateFromState || lecture.status === 'in_progress';
+    if (!shouldTrigger) return;
+
+    startLectureGeneration();
+  }, [course, lecture, shouldGenerateFromState, isGenerating, startLectureGeneration]);
 
   const renderMainContent = () => {
     if (isLoading)
@@ -557,9 +671,13 @@ const CourseLectureView = () =>
     }
 
     return (
-      <div className="relative min-h-screen w-full overflow-x-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900" />
-        <div className="relative z-10 w-full px-6 py-8 lg:px-10 xl:px-16">
+      <div className="relative min-h-screen w-full overflow-x-hidden bg-slate-950">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute inset-0 scale-110 bg-[radial-gradient(circle_at_top,_rgba(129,140,248,0.35),_rgba(30,41,59,0.4)_55%,_rgba(15,23,42,0.95)_100%)] opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-indigo-950/80 to-purple-950" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(94,234,212,0.08),_transparent_55%)] opacity-80" />
+        </div>
+        <div className="relative z-10 w-full px-4 py-8 sm:px-6 lg:px-10 xl:px-16">
           <div className="mx-auto w-full max-w-[1440px] space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4 text-white">
               <div className="flex items-center gap-4">
@@ -575,15 +693,25 @@ const CourseLectureView = () =>
                   <p className="text-sm text-white/70">{lecture!.title}</p>
                 </div>
               </div>
-              <Badge variant={lecture!.status === 'completed' ? 'default' : 'secondary'} className="bg-white/20 text-white">
-                {lecture!.status === 'completed' ? (
-                  <>
-                    <CheckCircle className="mr-1 h-3 w-3" /> Completed
-                  </>
-                ) : (
-                  lecture!.status.replace('_', ' ')
+              <div className="flex items-center gap-2">
+                <Badge variant={lecture!.status === 'completed' ? 'default' : 'secondary'} className="bg-white/20 text-white">
+                  {lecture!.status === 'completed' ? (
+                    <>
+                      <CheckCircle className="mr-1 h-3 w-3" /> Completed
+                    </>
+                  ) : (
+                    lecture!.status.replace('_', ' ')
+                  )}
+                </Badge>
+                {latestLetterGrade && (
+                  <Badge
+                    key={latestLetterGrade}
+                    className="animate-in fade-in zoom-in bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                  >
+                    {latestLetterGrade}
+                  </Badge>
                 )}
-              </Badge>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -603,30 +731,41 @@ const CourseLectureView = () =>
               </div>
 
               <div className="lg:col-span-1">
-                <Card className="flex flex-col overflow-hidden">
+                <Card className="flex flex-col overflow-hidden border border-white/15 bg-slate-900/60 backdrop-blur-xl shadow-2xl">
                   <CardHeader className="bg-white/10 shrink-0">
                     <CardTitle className="text-lg text-white">{lecture!.title}</CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-col bg-white/5 p-0">
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UniversityTab)} className="flex flex-col">
+                  <CardContent className="flex flex-col bg-transparent p-0">
+                    <Tabs
+                      value={activeTab}
+                      onValueChange={(v) =>
+                      {
+                        if (isInteractionLocked)
+                        {
+                          return;
+                        }
+                        setActiveTab(v as UniversityTab);
+                      }}
+                      className="flex flex-col"
+                    >
                       <TabsList className="mx-6 mt-2 rounded-full bg-white/10 p-1">
                         <TabsTrigger
                           value="lecture"
-                          disabled={isTabLocked('lecture')}
+                          disabled={isTabLocked('lecture') || isInteractionLocked}
                           className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
                         >
                           <BookOpen className="h-4 w-4" /> Lecture
                         </TabsTrigger>
                         <TabsTrigger
                           value="chat"
-                          disabled={isTabLocked('chat')}
+                          disabled={isTabLocked('chat') || isInteractionLocked}
                           className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
                         >
                           <MessageCircle className="h-4 w-4" /> Chat
                         </TabsTrigger>
                         <TabsTrigger
                           value="quiz"
-                          disabled={isTabLocked('quiz')}
+                          disabled={isTabLocked('quiz') || isInteractionLocked}
                           className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
                         >
                           {isTabLocked('quiz') ? <Lock className="h-4 w-4" /> : <Brain className="h-4 w-4" />} Quiz
@@ -635,43 +774,59 @@ const CourseLectureView = () =>
                       <div className="px-6 pb-6">
                         <TabsContent value="lecture" className="mt-4">
                           {renderableLectureHtml ? (
-                            <div className="w-full overflow-x-hidden">
-                              <div className="prose prose-invert max-w-full musai-lecture-content" dangerouslySetInnerHTML={{ __html: renderableLectureHtml }} />
+                            <div className="flex h-full min-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white px-6 py-6 text-slate-900 shadow-2xl">
+                              <div className="flex-1 overflow-y-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                                <div className="prose max-w-full musai-lecture-content" dangerouslySetInnerHTML={{ __html: renderableLectureHtml }} />
+                              </div>
                             </div>
                           ) : (
-                            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-white/70">
-                              <div className="flex items-center justify-center">
-                                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-transparent"></div>
+                            <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 rounded-2xl border border-white/15 bg-slate-950/70 px-6 py-8 text-center text-slate-100 shadow-inner">
+                              <div className="flex flex-col items-center gap-3">
+                                {isGenerating ? (
+                                  <>
+                                    <div className="flex items-center justify-center">
+                                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/40 border-t-transparent"></div>
+                                    </div>
+                                    <p className="text-sm text-slate-200">
+                                      Professor is preparing your lecture. This can take a minute or two.
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <BookOpen className="h-8 w-8 text-slate-200" />
+                                    <p className="text-sm text-slate-200">
+                                      No content generated yet. Ask Musai to craft this lecture when you’re ready.
+                                    </p>
+                                  </>
+                                )}
                               </div>
-                              <p>
-                                {(isGenerating || lecture.status === 'in_progress')
-                                  ? 'Professor is preparing your lecture. This can take a couple of minutes.'
-                                  : 'No content generated yet.'}
-                              </p>
-                              {!(isGenerating || lecture.status === 'in_progress') && (
-                                <Button variant="outline" onClick={() => setActiveTab('quiz')}>
-                                  Go to Quiz
-                                </Button>
+                              {generationError && (
+                                <div className="w-full max-w-md rounded-lg border border-rose-400/40 bg-rose-500/20 px-4 py-3 text-sm text-rose-100">
+                                  {generationError}
+                                </div>
                               )}
+                              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-center">
+                                <Button
+                                  className="flex-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-400 hover:to-blue-400 sm:flex-none sm:px-6"
+                                  onClick={startLectureGeneration}
+                                  disabled={isInteractionLocked}
+                                >
+                                  {isGenerating ? 'Generating…' : 'Generate lecture content'}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="flex-1 border-white/40 text-white hover:bg-white/10 sm:flex-none sm:px-6"
+                                  onClick={() => setActiveTab('quiz')}
+                                  disabled={isInteractionLocked}
+                                >
+                                  Go to quiz
+                                </Button>
+                              </div>
                             </div>
                           )}
                         </TabsContent>
                         <TabsContent value="chat" className="mt-4">
                           <div className="flex h-full min-h-[360px] flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white/95 shadow-2xl">
-                            {!hasUserAsked && (
-                              <div className="max-h-[320px] overflow-y-auto border-b border-slate-200/60 px-6 py-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-                                <PreMusaiPage
-                                  type="university"
-                                  onSubmit={async (input) =>
-                                  {
-                                    await handleSendChat(input);
-                                    setActiveTab('chat');
-                                  }}
-                                  skipDynamicContent
-                                  isLoading={isChatLoading}
-                                />
-                              </div>
-                            )}
                             <div className="flex-1 min-h-0 px-1 pb-1">
                               <ChatInterface
                                 messages={chatMessages}
@@ -679,8 +834,9 @@ const CourseLectureView = () =>
                                 isLoading={isChatLoading}
                                 onSendMessage={handleSendChat}
                                 className="flex-1 min-h-0"
-                                placeholder="Ask about this lecture or the overall syllabus..."
-                                perspectiveEnabled={false}
+                                placeholder="Ask your professor anything about this lecture..."
+                                perspectiveEnabled={isPerspectiveEnabled}
+                                onTogglePerspective={handleTogglePerspective}
                               />
                             </div>
                           </div>
@@ -688,7 +844,8 @@ const CourseLectureView = () =>
                         <TabsContent value="quiz" className="mt-4">
                           <CourseQuiz
                             lecture={lecture!}
-                            passThreshold={quizPassThreshold}
+                            passThreshold={Math.max(quizPassThreshold, 0.8)}
+                            onGenerationStateChange={setIsQuizGenerating}
                             onQuizCompleted={async (passed, attempt) =>
                             {
                               if (!course) return;
@@ -697,29 +854,48 @@ const CourseLectureView = () =>
                               if (idx >= 0)
                               {
                                 const existingLecture = updatedCourse.lectures[idx];
+                                const totalQuestions = attempt.totalQuestions ?? existingLecture.quiz?.length ?? 0;
+                                const correctCount = attempt.correctCount ?? Math.round(attempt.score * totalQuestions);
+                                const grade = attempt.letterGrade ?? deriveLetterGrade(correctCount, totalQuestions);
+                                const augmentedAttempt: QuizAttempt = {
+                                  ...attempt,
+                                  letterGrade: grade,
+                                  correctCount,
+                                  totalQuestions
+                                };
+
                                 const updatedLecture: CourseLecture = {
                                   ...existingLecture,
-                                  quizAttempts: [...existingLecture.quizAttempts, attempt],
+                                  quizAttempts: [...existingLecture.quizAttempts, augmentedAttempt],
                                   updatedAt: new Date().toISOString()
                                 };
                                 updatedCourse.lectures[idx] = updatedLecture;
+
                                 if (passed)
                                 {
                                   updatedCourse.lectures[idx] = {
                                     ...updatedCourse.lectures[idx],
                                     status: 'completed'
                                   };
+
+                                  let nextUnlocked: CourseLecture | null = null;
                                   if (idx + 1 < updatedCourse.lectures.length)
                                   {
-                                    const next = updatedCourse.lectures[idx + 1];
-                                    if (next.status === 'locked')
+                                    const candidate = updatedCourse.lectures[idx + 1];
+                                    if (candidate.status === 'locked')
                                     {
                                       updatedCourse.lectures[idx + 1] = {
-                                        ...next,
+                                        ...candidate,
                                         status: 'unlocked'
                                       };
+                                      nextUnlocked = updatedCourse.lectures[idx + 1];
+                                    }
+                                    else
+                                    {
+                                      nextUnlocked = candidate;
                                     }
                                   }
+
                                   updatedCourse.completedLectures = Math.min(
                                     updatedCourse.lectures.length,
                                     updatedCourse.lectures.filter(l => l.status === 'completed').length
@@ -727,14 +903,22 @@ const CourseLectureView = () =>
                                   updatedCourse.overallProgress = Math.round(
                                     (updatedCourse.lectures.filter(l => l.status === 'completed').length / updatedCourse.lectures.length) * 100
                                   );
+
+                                  setCompletionModal({
+                                    score: attempt.score,
+                                    grade,
+                                    correctCount,
+                                    totalQuestions,
+                                    nextLectureId: nextUnlocked?.id,
+                                    nextLectureTitle: nextUnlocked?.title
+                                  });
                                 }
+
                                 setLecture(updatedCourse.lectures[idx]);
                               }
+
+                              setCourse(updatedCourse);
                               await universityApi.saveCourse(updatedCourse);
-                              if (passed)
-                              {
-                                setActiveTab('lecture');
-                              }
                             }}
                             onGenerateMoreQuestions={async () =>
                             {
@@ -793,8 +977,46 @@ const CourseLectureView = () =>
     );
   };
 
+  const handleCloseCompletionModal = useCallback(() => setCompletionModal(null), []);
+
+  const handleNavigateToNextLecture = useCallback(() =>
+  {
+    if (!completionModal || !completionModal.nextLectureId || !course)
+    {
+      setCompletionModal(null);
+      return;
+    }
+    const target = course.lectures.find(l => l.id === completionModal.nextLectureId);
+    if (target)
+    {
+      setCompletionModal(null);
+      navigate(`/university/course/${course.metadata.id}/lecture/${target.id}`, {
+        state: {
+          course,
+          lecture: target
+        }
+      });
+    }
+    else
+    {
+      setCompletionModal(null);
+    }
+  }, [completionModal, course, navigate]);
+
+  const handleReturnToSyllabus = useCallback(() =>
+  {
+    if (!course)
+    {
+      setCompletionModal(null);
+      return;
+    }
+    setCompletionModal(null);
+    navigate(`/university/course/${course.metadata.id}`);
+  }, [course, navigate]);
+
   return (
-    <BaseLayout
+    <>
+      <BaseLayout
       currentTab={APP_TERMS.TAB_UNIVERSITY}
       sessions={[]}
       currentSessionId=""
@@ -830,6 +1052,54 @@ const CourseLectureView = () =>
       renderLeftSidebarOverride={() => null}
       hideLeftSidebar
     />
+
+      <Dialog open={Boolean(completionModal)} onOpenChange={(open) => {
+        if (!open)
+        {
+          handleCloseCompletionModal();
+        }
+      }}>
+        <DialogContent className="bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 text-white">
+          {completionModal && (
+            <div className="space-y-6">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-semibold text-white">Lecture Mastery Unlocked</DialogTitle>
+                <DialogDescription className="text-slate-300">
+                  You scored {Math.round(completionModal.score * 100)}% ({completionModal.correctCount} of {completionModal.totalQuestions}).
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center justify-center gap-4">
+                <div className="rounded-full bg-emerald-500/20 px-6 py-4 text-center shadow-lg ring-2 ring-emerald-400/30">
+                  <span className="text-xs uppercase tracking-wide text-emerald-200">Badge</span>
+                  <div className="text-4xl font-bold text-emerald-100">{completionModal.grade}</div>
+                </div>
+                <div className="max-w-[60%] text-sm text-slate-200">
+                  {completionModal.grade === 'A+'
+                    ? 'Flawless performance! Every question was spot on.'
+                    : 'Fantastic work! Keep the momentum going as you move through the course.'}
+                </div>
+              </div>
+              <DialogFooter>
+                <div className="flex w-full flex-col gap-2 sm:flex-row">
+                  {completionModal.nextLectureId ? (
+                    <Button className="flex-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-400 hover:to-blue-400" onClick={handleNavigateToNextLecture}>
+                      Continue to {completionModal.nextLectureTitle ?? 'next lecture'}
+                    </Button>
+                  ) : (
+                    <Button className="flex-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-500 text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-400 hover:to-blue-400" onClick={handleCloseCompletionModal}>
+                      Stay in this lecture
+                    </Button>
+                  )}
+                  <Button variant="outline" className="flex-1 border-slate-500/40 text-slate-100 hover:border-slate-300/60" onClick={handleReturnToSyllabus}>
+                    Return to syllabus
+                  </Button>
+                </div>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

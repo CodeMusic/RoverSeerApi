@@ -5,6 +5,17 @@ import { BaseLayout } from '@/components/common/BaseLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 import { APP_TERMS } from '@/config/constants';
 import { RouteUtils } from '@/config/routes';
 import { universityApi } from '@/lib/universityApi';
@@ -20,7 +31,10 @@ import {
   BookmarkCheck,
   Target,
   RefreshCcw,
-  Calendar
+  Calendar,
+  Archive,
+  ArchiveRestore,
+  Trash2
 } from 'lucide-react';
 
 interface RecentLectureEntry {
@@ -87,6 +101,7 @@ const University = () =>
   const [standaloneLectures, setStandaloneLectures] = useState<StandaloneLecture[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
+  const [isArchiveView, setIsArchiveView] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -138,30 +153,42 @@ const University = () =>
     }
   }, [location.state, searchParams, startCourseConcept]);
 
+  const activeCourses = useMemo(() =>
+    courses
+      .filter(course => !course.metadata?.archived)
+      .slice()
+      .sort((a, b) => (b.metadata.updatedAt || b.metadata.createdAt).localeCompare(a.metadata.updatedAt || a.metadata.createdAt))
+  , [courses]);
+
+  const archivedCourses = useMemo(() =>
+    courses
+      .filter(course => course.metadata?.archived)
+      .slice()
+      .sort((a, b) =>
+      {
+        const bStamp = b.metadata.archivedAt || b.metadata.updatedAt || b.metadata.createdAt;
+        const aStamp = a.metadata.archivedAt || a.metadata.updatedAt || a.metadata.createdAt;
+        return bStamp.localeCompare(aStamp);
+      })
+  , [courses]);
+
   const stats = useMemo(() =>
   {
-    const totalCourseLectures = courses.reduce((acc, course) => acc + course.lectures.length, 0);
-    const totalCompletedLectures = courses.reduce((acc, course) => acc + course.completedLectures, 0);
+    const totalCourseLectures = activeCourses.reduce((acc, course) => acc + course.lectures.length, 0);
+    const totalCompletedLectures = activeCourses.reduce((acc, course) => acc + course.completedLectures, 0);
     return {
-      totalCourses: courses.length,
+      totalCourses: activeCourses.length,
       totalLectures: totalCourseLectures + legacyLectures.length + standaloneLectures.length,
-      completedCourses: courses.filter(course => course.overallProgress === 100).length,
-      inProgressCourses: courses.filter(course => course.overallProgress > 0 && course.overallProgress < 100).length,
+      completedCourses: activeCourses.filter(course => course.overallProgress === 100).length,
+      inProgressCourses: activeCourses.filter(course => course.overallProgress > 0 && course.overallProgress < 100).length,
       completedLectures: totalCompletedLectures + standaloneLectures.length
     };
-  }, [courses, legacyLectures.length, standaloneLectures.length]);
+  }, [activeCourses, legacyLectures.length, standaloneLectures.length]);
 
   const recentLectures = useMemo(
     () => buildRecentLectureEntries(courses, standaloneLectures, legacyLectures),
     [courses, standaloneLectures, legacyLectures]
   );
-
-  const activeCourses = useMemo(() =>
-    courses
-      .slice()
-      .sort((a, b) => (b.metadata.updatedAt || b.metadata.createdAt).localeCompare(a.metadata.updatedAt || a.metadata.createdAt))
-      .slice(0, 4)
-  , [courses]);
 
   const handleOpenCourse = useCallback((courseId: string) =>
   {
@@ -177,6 +204,41 @@ const University = () =>
   {
     navigate(`/university/standalone/${lectureId}`);
   }, [navigate]);
+
+  const handleArchiveCourse = useCallback(async (course: Course, shouldArchive: boolean) =>
+  {
+    try
+    {
+      const updatedCourse: Course = {
+        ...course,
+        metadata: {
+          ...course.metadata,
+          archived: shouldArchive,
+          archivedAt: shouldArchive ? new Date().toISOString() : undefined,
+          updatedAt: new Date().toISOString()
+        }
+      };
+      await universityApi.saveCourse(updatedCourse);
+      setCourses(prev => prev.map(item => item.metadata.id === updatedCourse.metadata.id ? updatedCourse : item));
+    }
+    catch (error)
+    {
+      console.error(`Failed to ${shouldArchive ? 'archive' : 'restore'} course`, error);
+    }
+  }, []);
+
+  const handleDeleteCourse = useCallback(async (courseId: string) =>
+  {
+    try
+    {
+      await universityApi.deleteCourse(courseId);
+      setCourses(prev => prev.filter(course => course.metadata.id !== courseId));
+    }
+    catch (error)
+    {
+      console.error('Failed to delete course', error);
+    }
+  }, []);
 
   const hero = (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-900 to-purple-900 text-white shadow-2xl">
@@ -247,6 +309,11 @@ const University = () =>
       );
     }
 
+    const coursesToRender = isArchiveView ? archivedCourses : activeCourses;
+    const emptyCoursesMessage = isArchiveView
+      ? 'No archived courses yet. Archive courses to keep your studio tidy.'
+      : 'No active courses yet. Draft a new journey with the planner or revisit a completed program.';
+
     return (
       <div className="relative h-full overflow-y-auto">
         <div className="space-y-10 px-6 py-10 pb-32 md:px-10 lg:px-12">
@@ -301,28 +368,61 @@ const University = () =>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-2 shadow-md">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle className="text-lg font-semibold">Active Courses</CardTitle>
-                  <CardDescription>Continue where you left off or review completed syllabi.</CardDescription>
+                  <CardTitle className="text-lg font-semibold">{isArchiveView ? 'Archived Courses' : 'Active Courses'}</CardTitle>
+                  <CardDescription>
+                    {isArchiveView
+                      ? 'Courses you have shelved. Restore them whenever you want to resume.'
+                      : 'Continue where you left off or review completed syllabi.'}
+                  </CardDescription>
                 </div>
-                <Button variant="ghost" size="sm" onClick={loadCatalogue} className="gap-2">
-                  <RefreshCcw className="h-4 w-4" /> Sync
-                </Button>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                  <div className="inline-flex w-full items-center justify-between rounded-full border border-slate-200 bg-slate-100 p-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 sm:w-auto">
+                    <Button
+                      variant={isArchiveView ? 'ghost' : 'default'}
+                      size="sm"
+                      className={`h-7 rounded-full px-3 text-xs ${isArchiveView ? 'bg-transparent text-slate-500 dark:text-slate-300' : 'shadow-sm'}`}
+                      onClick={() => setIsArchiveView(false)}
+                    >
+                      Active
+                    </Button>
+                    <Button
+                      variant={isArchiveView ? 'default' : 'ghost'}
+                      size="sm"
+                      className={`h-7 rounded-full px-3 text-xs ${isArchiveView ? 'shadow-sm' : 'bg-transparent text-slate-500 dark:text-slate-300'}`}
+                      onClick={() => setIsArchiveView(true)}
+                    >
+                      Archived
+                      {archivedCourses.length > 0 && (
+                        <span className="ml-1 inline-flex h-4 min-w-[1.25rem] items-center justify-center rounded-full bg-slate-900/80 px-1 text-[10px] text-white">
+                          {archivedCourses.length}
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={loadCatalogue} className="gap-2">
+                    <RefreshCcw className="h-4 w-4" /> Sync
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {activeCourses.length === 0 ? (
+              <CardContent className="flex flex-col space-y-4">
+                {coursesToRender.length === 0 ? (
                   <div className="rounded-xl border border-dashed px-6 py-10 text-center text-muted-foreground">
-                    No active courses yet. Draft a new journey with the planner or revisit a completed program.
+                    {emptyCoursesMessage}
                   </div>
                 ) : (
-                  activeCourses.map(course => (
-                    <div key={course.metadata.id} className="flex flex-col gap-4 rounded-2xl border bg-card/60 p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+                  <div className={`space-y-4 overflow-y-auto pr-2`} style={{ maxHeight: 'calc(85vh - 200px)' }}>
+                    {coursesToRender.map(course => (
+                      <div key={course.metadata.id} className="flex flex-col gap-4 rounded-2xl border bg-card/60 p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="uppercase tracking-[0.18em] text-xs">Course</Badge>
                           {course.overallProgress === 100 && (
                             <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-200">Completed</Badge>
+                          )}
+                          {course.metadata.archived && (
+                            <Badge className="bg-slate-700/40 text-slate-200">Archived</Badge>
                           )}
                         </div>
                         <h3 className="text-xl font-semibold leading-tight">{course.metadata.title}</h3>
@@ -344,13 +444,56 @@ const University = () =>
                             style={{ width: `${course.overallProgress}%` }}
                           />
                         </div>
-                        <Button className="w-full lg:w-auto" onClick={() => handleOpenCourse(course.metadata.id)}>
-                          Resume course
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <Button className="w-full lg:w-auto" onClick={() => handleOpenCourse(course.metadata.id)}>
+                            {isArchiveView ? 'Review course' : 'Resume course'}
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                            {isArchiveView ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 border-slate-500/40 text-slate-200 hover:border-slate-300/60"
+                                onClick={() => handleArchiveCourse(course, false)}
+                              >
+                                <ArchiveRestore className="mr-2 h-4 w-4" /> Restore
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 border-slate-500/40 text-slate-200 hover:border-slate-300/60"
+                                onClick={() => handleArchiveCourse(course, true)}
+                              >
+                                <Archive className="mr-2 h-4 w-4" /> Archive
+                              </Button>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="flex-1">
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete this course?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently remove <strong>{course.metadata.title}</strong> and all associated lectures.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteCourse(course.metadata.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>

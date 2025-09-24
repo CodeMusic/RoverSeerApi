@@ -811,6 +811,10 @@ class UniversityApiService
           ? raw.passThreshold
           : 50,
       processorFile: metadataSource?.processorFile || raw?.processorFile,
+      archived: typeof metadataSource?.archived === 'boolean'
+        ? metadataSource.archived
+        : Boolean((raw as any)?.archived),
+      archivedAt: metadataSource?.archivedAt || (raw as any)?.archivedAt,
       createdAt: metadataSource?.createdAt || now,
       updatedAt: metadataSource?.updatedAt || now
     };
@@ -898,15 +902,17 @@ class UniversityApiService
         id: courseId,
         title: request.title,
         description: request.description,
-        instructor: request.instructor,
-        imagePath: request.imagePath,
-        passThreshold: request.passThreshold || 50,
-        difficulty: request.difficulty,
-        estimatedDuration: request.estimatedDuration,
-        tags: request.tags,
-        createdAt: now,
-        updatedAt: now
-      },
+      instructor: request.instructor,
+      imagePath: request.imagePath,
+      passThreshold: request.passThreshold || 50,
+      difficulty: request.difficulty,
+      estimatedDuration: request.estimatedDuration,
+      tags: request.tags,
+      archived: false,
+      archivedAt: undefined,
+      createdAt: now,
+      updatedAt: now
+    },
       lectures,
       currentLectureIndex: 0,
       overallProgress: 0,

@@ -91,9 +91,13 @@ export const ChatMessages = ({ messages, isTyping = false, onSendMessage }: Chat
       >
         <div className="container max-w-3xl mx-auto p-4">
           <div className="max-w-[900px] mx-auto space-y-12">
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
+            {messages.map((message) => {
+              if (message.role === 'assistant' && (!message.content || message.content.trim().length === 0))
+              {
+                return null;
+              }
+              return <ChatMessage key={message.id} message={message} />;
+            })}
             {isTyping && (
               <MysticalTypingIndicator isDarkMode={isDarkMode} />
             )}

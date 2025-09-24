@@ -59,6 +59,8 @@ export interface CourseMetadata
   difficulty?: 'beginner' | 'intermediate' | 'advanced';
   estimatedDuration?: string;
   tags?: string[];
+  archived?: boolean;
+  archivedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,6 +87,9 @@ export interface QuizAttempt
   score: number;
   passed: boolean;
   timestamp: string;
+  letterGrade?: string;
+  correctCount?: number;
+  totalQuestions?: number;
 }
 
 export interface Course 
