@@ -1,0 +1,96 @@
+chatllmleoleexh:
+  openai_compatible:
+    # =======================
+    # DEFAULT: OLLAMA (local)
+    # =======================
+    default:
+      api_base: "http://127.0.0.1:11434/v1"
+      organisation: "NONE"
+      api_key: "ollama"     # any string works locally
+      model:
+        # If you imported your local GGUF with a Modelfile:
+        - "mistral:7b"                # <-- preferred name after `ollama create flux1-dev-srpo -f Modelfile`
+        # Otherwise, you can use your other local agent:
+        - "MeaTLoTioN/William_Riker:latest"
+
+    # ===================================
+    # LM STUDIO (Apple Silicon / MLX only)
+    # ===================================
+    lmstudio:
+      api_base: "http://127.0.0.1:1234/v1"    # LM Studio’s OpenAI-compatible server
+      organisation: "NONE"
+      api_key: "lmstudio"
+      model:
+        - "DeepSeek-R1-0528-Qwen3-8B-MLX-4bit"  # MLX logic/reasoning
+        # add any other MLX chat models here if you like
+
+    # ======================================
+    # OPENROUTER (cloud) — FREE MODELS ONLY
+    # ======================================
+    openrouter:
+      api_base: "https://openrouter.ai/api/v1"
+      organisation: "NONE"
+      api_key: "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"
+      model:
+        - "z-ai/glm-4.5-air:free"
+        - "nvidia/nemotron-nano-9b-v2:free"
+        - "openai/gpt-oss-120b:free"
+        - "openai/gpt-oss-20b:free"
+
+    # ======================================
+    # (Optional) LLAMA.CPP server profile
+    # Use if you choose to run: llama-server -m <your GGUF> --port 11435
+    # ======================================
+    # llamacpp:
+    #   api_base: "http://127.0.0.1:11435/v1"
+    #   organisation: "NONE"
+    #   api_key: "local"
+    #   model:
+    #     - "flux1-dev-srpo"
+
+  # =================
+  # Vision model list
+  # =================
+  vision_models:
+    # Prefer LM Studio Vision locally
+    lmstudio:
+      api_key: "lmstudio"
+      api_base: "http://127.0.0.1:1234/v1"
+      model_list:
+        - "Phi-3-Vision-128k-Instruct"     # ensure this matches LM Studio Server panel exactly
+
+    # (Optional) Ollama vision fallback if you add one later
+    # ollama:
+    #   api_key: "ollama"
+    #   api_base: "http://127.0.0.1:11434/v1"
+    #   model_list:
+    #     - "llava"
+
+  # ==================
+  # Prompt templates
+  # ==================
+  example_user_prompt: "a cinematic red fox in a foggy forest"
+
+  prompt_templates:
+    # Use this in the LLMs Chat node to generate SD1.5-friendly {pos,neg}
+    srpo_default:
+      system: >-
+        You are SRPO: a Structured Reasoning Prompt Optimizer for SD-1.5 DreamShaper.
+        Input: a user prompt.
+        Output JSON only: {"pos":"...","neg":"..."}.
+        - Expand key visuals (subject, composition, lighting, lens).
+        - Keep SD-1.5 friendly (512–768px), avoid SDXL/Flux-only terms.
+        - Add concise negatives for artifacts/nsfw/gore/watermarks/extra limbs/text/etc.
+        No commentary—JSON only.
+      prefix: ""
+      suffix: ""
+
+    # Minimal creative describer you can use separately if needed
+    describe_scene:
+      system: >-
+        You are deeply artistic, understanding of composition, palette, and color theory.
+      prefix: >-
+        describe a scene using the following list of objects: "
+      suffix: >-
+        " - max 25 words. clear and specific.
+        present tense, objective language: do not say "I see ..." rather say "there is ..."

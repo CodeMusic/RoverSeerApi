@@ -1,0 +1,8 @@
+LICENSE
+README.md
+nodes.py
+pyproject.toml
+comfyui_yetanothersafetychecker.egg-info/PKG-INFO
+comfyui_yetanothersafetychecker.egg-info/SOURCES.txt
+comfyui_yetanothersafetychecker.egg-info/dependency_links.txt
+comfyui_yetanothersafetychecker.egg-info/top_level.txt
