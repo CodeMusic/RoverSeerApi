@@ -824,9 +824,28 @@
         border-radius: 10px;
       }
     }
-    /* On mobile results pages, hide the top search field to avoid duplication with bottom bar */
     @media (max-width: 640px) {
-      #main_results #search_view { display: none; }
+      #main_search #search_header,
+      #main_results #search_header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      #main_search #search_logo,
+      #main_results #search_logo {
+        align-self: center;
+      }
+      #main_search #search_view,
+      #main_results #search_view {
+        width: 100%;
+      }
+      #main_search #search_view .search_box,
+      #main_results #search_view .search_box {
+        width: 100%;
+      }
+      #main_search #categories_mobile,
+      #main_results #categories_mobile {
+        width: 100%;
+      }
     }
     /* Keep categories/search types away from the top-right utility links
        (apply on search and results pages only; not on the home page) */
@@ -1168,10 +1187,26 @@
     @media (max-width: 1024px) {
       #ai_chat { width: calc(100% - 12px); }
     }
+    @media (prefers-reduced-motion: reduce) {
+      #ai_chat .ai-panel-shell {
+        transition: none;
+      }
+      #ai_chat .ai-panel-shell::before,
+      #ai_chat .ai-panel-shell::after {
+        animation: none;
+      }
+    }
     @media (max-width: 640px) {
       #ai_chat .ai-panel-shell {
         padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
         gap: 12px;
+        backdrop-filter: blur(14px) saturate(150%);
+        box-shadow: 0 -6px 30px rgba(18,16,36,0.55), 0 0 60px rgba(94,234,212,0.2);
+      }
+      #ai_chat .ai-panel-shell::before,
+      #ai_chat .ai-panel-shell::after {
+        opacity: .55;
+        animation-duration: 26s;
       }
       #ai_chat form {
         gap: 10px;
@@ -1202,6 +1237,23 @@
       color: rgba(100,116,139,0.85);
     }
     html.in-iframe #ai_chat { width: calc(100% - 12px); }
+    @media (prefers-reduced-transparency: reduce) {
+      #ai_chat .ai-panel-shell,
+      html.theme-light #ai_chat .ai-panel-shell,
+      html.theme-auto.est-light #ai_chat .ai-panel-shell {
+        backdrop-filter: none;
+        background: var(--musai-bg-2);
+        box-shadow: 0 -4px 24px rgba(18,16,36,0.45);
+      }
+    }
+    @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+      #ai_chat .ai-panel-shell,
+      html.theme-light #ai_chat .ai-panel-shell,
+      html.theme-auto.est-light #ai_chat .ai-panel-shell {
+        backdrop-filter: none;
+        background: var(--musai-bg-2);
+      }
+    }
     /* Typing indicator bubble (Musai-style) */
     .ai-typing-bubble {
       display: inline-flex;

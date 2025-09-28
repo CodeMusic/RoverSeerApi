@@ -279,9 +279,18 @@
           catch (_) { /* no-op */ }
         };
         var types = ['pointerdown', 'touchstart', 'mousedown', 'click'];
+        var listenerOptions;
+        try
+        {
+          listenerOptions = { capture: true, passive: true };
+        }
+        catch (_)
+        {
+          listenerOptions = true;
+        }
         for (var i = 0; i < types.length; i++)
         {
-          document.addEventListener(types[i], handler, true);
+          document.addEventListener(types[i], handler, listenerOptions);
         }
       }
       catch (_) { /* no-op */ }
@@ -1301,5 +1310,4 @@
   }
   catch (_) { /* no-op */ }
 })();
-
 
