@@ -453,6 +453,16 @@
   </script>
   <title>{% block title %}{% endblock %}{{ instance_name }}</title>
   {% block meta %}{% endblock %}
+  <!-- Social sharing defaults -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ instance_name }}">
+  <meta property="og:title" content="{{ instance_name }}">
+  <meta property="og:description" content="MusaiSearch — a privacy-respecting, purple-steel metasearch experience">
+  <meta property="og:image" content="{{ url_for('static', filename='img/musai_social.png', _external=True) }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ instance_name }}">
+  <meta name="twitter:description" content="MusaiSearch — a privacy-respecting, purple-steel metasearch experience">
+  <meta name="twitter:image" content="{{ url_for('static', filename='img/musai_social.png', _external=True) }}">
   {% if rtl %}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/searxng-rtl.min.css') }}" type="text/css" media="screen">
   {% else %}
