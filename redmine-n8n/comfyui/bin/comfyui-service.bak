@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+  <key>Label</key>
+  <string>com.codemusic.comfyui</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/christopherhicks/redmine-n8n/comfyui/src</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/christopherhicks/redmine-n8n/comfyui/src/.venv/bin/python</string>
+    <string>/Users/christopherhicks/redmine-n8n/comfyui/src/main.py</string>
+    <string>--listen</string><string>0.0.0.0</string>
+    <string>--port</string><string>8008</string>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/Users/christopherhicks/redmine-n8n/comfyui/src/user/comfyui.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/christopherhicks/redmine-n8n/comfyui/src/user/comfyui.err.log</string>
+
+</dict>
+</plist>

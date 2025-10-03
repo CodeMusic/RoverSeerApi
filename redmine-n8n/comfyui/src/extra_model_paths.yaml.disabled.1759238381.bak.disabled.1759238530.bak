@@ -1,0 +1,2 @@
+unet_gguf:
+  - "/Users/christopherhicks/redmine-n8n/comfyui/src/models/unet_gguf"

@@ -1,0 +1,139 @@
+#!/bin/zsh
+set -euo pipefail
+
+# ---- config ----
+APP_ROOT="$HOME/redmine-n8n/comfyui/src"
+PLIST="$HOME/Library/LaunchAgents/com.codemusic.comfyui.plist"
+LABEL="com.codemusic.comfyui"
+GUI_DOMAIN="gui/$(id -u)"
+STDOUT="$APP_ROOT/comfyui_stdout.log"
+STDERR="$APP_ROOT/comfyui_stderr.log"
+PORT="${PORT:-8008}"
+
+usage(){ echo "Usage: $0 {start|stop|restart|status|logs|doctor|free-port}"; exit 2; }
+
+say(){ print -P "%F{cyan}[$LABEL]%f $*"; }
+warn(){ print -P "%F{yellow}[$LABEL]%f $*" >&2; }
+err(){ print -P "%F{red}[$LABEL]%f $*" >&2; }
+
+ensure_plist(){
+  if [[ ! -f "$PLIST" ]]; then
+    err "Missing plist: $PLIST"
+    err "Create it, then run: launchctl bootstrap $GUI_DOMAIN $PLIST"
+    exit 1
+  fi
+  plutil -lint "$PLIST" >/dev/null || { err "Invalid plist (plutil failed)"; plutil -lint "$PLIST"; exit 1; }
+}
+
+free_port(){
+  local pids
+  pids=$(lsof -i :"$PORT" -sTCP:LISTEN -Pn 2>/dev/null | awk 'NR>1{print $2}' | sort -u) || true
+  if [[ -n "${pids:-}" ]]; then
+    warn "Port $PORT in use by PIDs: $pids — killing"
+    echo "$pids" | xargs -r kill -9 || true
+  else
+    say "Port $PORT is free"
+  fi
+}
+
+start(){
+  ensure_plist
+  # launchd sometimes has stale state: clear it first (ignore errors if not loaded)
+  launchctl bootout "$GUI_DOMAIN" "$LABEL" >/dev/null 2>&1 || true
+
+  # free port if a stray process is holding it
+  free_port
+
+  # (re)bootstrap & kickstart
+  if ! launchctl bootstrap "$GUI_DOMAIN" "$PLIST" 2>/_tmp_bootstrap_err; then
+    err "bootstrap failed"
+    tail -n +1 /_tmp_bootstrap_err 2>/dev/null | sed 's/^/  /' >&2 || true
+    rm -f /_tmp_bootstrap_err
+    exit 1
+  fi
+  rm -f /_tmp_bootstrap_err
+
+  launchctl enable "$GUI_DOMAIN/$LABEL" || true
+  if ! launchctl kickstart -k "$GUI_DOMAIN/$LABEL" 2>/_tmp_kick_err; then
+    err "kickstart failed"
+    tail -n +1 /_tmp_kick_err 2>/dev/null | sed 's/^/  /' >&2 || true
+    rm -f /_tmp_kick_err
+    exit 1
+  fi
+  rm -f /_tmp_kick_err
+
+  say "Started"
+}
+
+stop(){
+  if launchctl bootout "$GUI_DOMAIN" "$LABEL"; then
+    say "Stopped"
+  else
+    warn "Not loaded (nothing to stop)"
+    exit 0
+  fi
+}
+
+restart(){
+  ensure_plist
+  launchctl bootout "$GUI_DOMAIN" "$LABEL" >/dev/null 2>&1 || true
+  start
+  say "Restarted"
+}
+
+status(){
+  if ! launchctl print "$GUI_DOMAIN/$LABEL"; then
+    warn "Not loaded"
+    exit 1
+  fi
+}
+
+logs(){
+  local had=0
+  if [[ -f "$STDOUT" ]]; then
+    say "==> $STDOUT"
+    tail -n 200 -f "$STDOUT" &
+    had=1
+  fi
+  if [[ -f "$STDERR" ]]; then
+    say "==> $STDERR"
+    tail -n 200 -f "$STDERR"
+    had=1
+  fi
+  if [[ "$had" -eq 0 ]]; then
+    warn "No log files found yet; streaming unified system log (Ctrl-C to exit)…"
+    log stream --style compact --predicate "subsystem CONTAINS[c] \"$LABEL\" OR process CONTAINS[c] \"zsh\" OR eventMessage CONTAINS[c] \"comfyui\"" || true
+  fi
+}
+
+doctor(){
+  say "---- plist path ----"
+  echo "$PLIST"
+  say "---- plist lint ----"
+  plutil -lint "$PLIST" || true
+  say "---- job print ----"
+  launchctl print "$GUI_DOMAIN/$LABEL" || true
+  say "---- files ----"
+  ls -l "$APP_ROOT/run_comfy.sh" || true
+  ls -l "$APP_ROOT/.venv/bin/python" || true
+  say "---- last launchd lines ----"
+  log show --last 5m --predicate "process == \"launchd\" && eventMessage CONTAINS[c] \"$LABEL\"" --style compact || true
+  say "---- stderr tail ----"
+  [[ -f "$STDERR" ]] && tail -n 80 "$STDERR" || echo "(no stderr yet)"
+  say "---- stdout tail ----"
+  [[ -f "$STDOUT" ]] && tail -n 80 "$STDOUT" || echo "(no stdout yet)"
+  say "---- port $PORT ----"
+  lsof -i :"$PORT" -sTCP:LISTEN -Pn || echo "free"
+}
+
+cmd="${1:-}"; [[ -z "$cmd" ]] && usage
+case "$cmd" in
+  start)   start   ;;
+  stop)    stop    ;;
+  restart) restart ;;
+  status)  status  ;;
+  logs)    logs    ;;
+  doctor)  doctor  ;;
+  free-port) free_port ;;
+  *) usage ;;
+esac

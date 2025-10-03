@@ -1,0 +1,50 @@
+#!/bin/zsh
+set -euo pipefail
+PLIST="$HOME/Library/LaunchAgents/com.codemusic.comfyui.plist"
+LABEL="com.codemusic.comfyui"
+GUI="gui/$(id -u)"
+LOG="$HOME/redmine-n8n/comfyui/src/comfyui.log"
+
+usage(){ echo "Usage: $0 {start|stop|restart|status|logs|doctor}"; exit 2; }
+
+start(){
+  launchctl bootout "$GUI" "$LABEL" >/dev/null 2>&1 || true
+  launchctl bootstrap "$GUI" "$PLIST"
+  launchctl enable "$GUI/$LABEL"
+  launchctl kickstart -k "$GUI/$LABEL"
+  echo "Started $LABEL"
+}
+
+stop(){
+  if launchctl print "$GUI/$LABEL" >/dev/null 2>&1; then
+    launchctl bootout "$GUI" "$LABEL"
+    echo "Stopped $LABEL"
+  else
+    echo "$LABEL not loaded"
+  fi
+}
+
+restart(){ start; }
+
+status(){ launchctl print "$GUI/$LABEL" || echo "$LABEL not loaded"; }
+
+logs(){
+  [[ -f "$LOG" ]] || { echo "No log at $LOG yet."; exit 0; }
+  tail -n 200 -f "$LOG"
+}
+
+doctor(){
+  echo "== doctor =="
+  echo "plist:"; stat -f "%Su:%Sg %Sp %N" "$PLIST" 2>/dev/null || true
+  echo "lint:"; plutil -lint "$PLIST" || true
+  echo "agent:"; launchctl print "$GUI/$LABEL" || true
+  echo "run script perms:"; stat -f "%Su:%Sg %Sp %N" "$HOME/redmine-n8n/comfyui/src/run_comfy.sh" 2>/dev/null || true
+  echo "venv python:"; [[ -x "$HOME/redmine-n8n/comfyui/src/.venv/bin/python" ]] && echo ok || echo missing
+  echo "log head:"; [[ -f "$LOG" ]] && sed -n '1,40p' "$LOG" || echo "no log yet"
+}
+
+cmd="${1:-}"; [[ -z "$cmd" ]] && usage
+case "$cmd" in
+  start|stop|restart|status|logs|doctor) "$cmd" ;;
+  *) usage ;;
+esac
