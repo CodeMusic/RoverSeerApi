@@ -1,0 +1,18 @@
+2025-10-03 13:58:59 | INFO     | llm_api.py:list_models:36 | Received list_models request
+2025-10-03 13:59:35 | ERROR    | llm_api.py:verify_openai_key:126 | Error verifying API key/connection: HTTPSConnectionPool(host='localhost', port=1234): Max retries exceeded with url: /v1/models (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x151ea85d0>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-10-03 13:59:38 | ERROR    | llm_api.py:verify_openai_key:126 | Error verifying API key/connection: HTTPSConnectionPool(host='localhost', port=1235): Max retries exceeded with url: /v1/models (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x151efe510>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-10-03 13:59:42 | ERROR    | llm_api.py:verify_openai_key:126 | Error verifying API key/connection: HTTPConnectionPool(host='localhost', port=1235): Max retries exceeded with url: /v1/models (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x15207a990>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-10-03 13:59:44 | ERROR    | llm_api.py:verify_openai_key:126 | Error verifying API key/connection: HTTPConnectionPool(host='localhost', port=1234): Max retries exceeded with url: /v1/models (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x1520c4090>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-10-03 13:59:50 | ERROR    | llm_api.py:verify_openai_key:126 | Error verifying API key/connection: HTTPConnectionPool(host='localhost', port=1234): Max retries exceeded with url: /v1/models (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x152176610>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-10-03 14:02:40 | INFO     | llm_api.py:list_models:36 | Received list_models request
+2025-10-03 14:02:55 | INFO     | conversation_api.py:save_workflow_checkpoint:354 | Received save-workflow-checkpoint request
+2025-10-03 14:02:55 | INFO     | conversation_api.py:save_workflow_checkpoint:393 | Workflow checkpoint saved with version ID: 1
+2025-10-03 14:02:55 | INFO     | conversation_api.py:invoke_chat:206 | Received invoke_chat request
+2025-10-03 14:02:55 | ERROR    | auth_utils.py:extract_and_store_api_key:38 | No valid Authorization header found
+2025-10-03 14:02:55 | INFO     | conversation_api.py:invoke_chat:212 | Request JSON:
+2025-10-03 14:02:55 | INFO     | conversation_api.py:invoke_chat:255 | -- Received 1 historical messages
+2025-10-03 14:02:55 | INFO     | conversation_api.py:invoke_chat:259 | Using workflow checkpoint ID: 1 for session 8ed90d94-ff60-4758-82fd-c988f13b6f5f
+2025-10-03 14:02:55 | INFO     | conversation_api.py:invoke_chat:278 | config: {'session_id': '8ed90d94-ff60-4758-82fd-c988f13b6f5f', 'workflow_checkpoint_id': 1, 'openai_api_key': '.', 'openai_base_url': 'http://im1ac.local:11434/v1', 'model_select': 'mistral:7b'}
+2025-10-03 14:02:57 | INFO     | mcp_client.py:comfyui_agent_invoke:152 | -- Processing 1 messages
+2025-10-03 14:02:57 | INFO     | mcp_client.py:comfyui_agent_invoke:159 | === MCP Agent Run starting ===
+2025-10-03 14:02:57 | INFO     | mcp_client.py:process_stream_events:199 | Handoff to: ComfyUI-Copilot
