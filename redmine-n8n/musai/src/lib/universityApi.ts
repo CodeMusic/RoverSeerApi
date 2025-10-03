@@ -1645,8 +1645,24 @@ class UniversityApiService
       {
         lectures.push(toSave);
       }
-      
-      localStorage.setItem('musai-university-lectures', JSON.stringify(lectures));
+      try
+      {
+        localStorage.setItem('musai-university-lectures', JSON.stringify(lectures));
+      }
+      catch
+      {
+        // Quota safety: trim oldest 10% and retry once
+        try
+        {
+          const drop = Math.max(1, Math.floor(lectures.length * 0.1));
+          const trimmed = lectures.slice(drop);
+          localStorage.setItem('musai-university-lectures', JSON.stringify(trimmed));
+        }
+        catch
+        {
+          // swallow to avoid crashing UI
+        }
+      }
     } 
     catch (error) 
     {
@@ -1660,7 +1676,15 @@ class UniversityApiService
     {
       const lectures = await this.getLectures();
       const filtered = lectures.filter(l => l.id !== lectureId);
-      localStorage.setItem('musai-university-lectures', JSON.stringify(filtered));
+      try
+      {
+        localStorage.setItem('musai-university-lectures', JSON.stringify(filtered));
+      }
+      catch
+      {
+        // As a last resort, clear the key to free space
+        try { localStorage.removeItem('musai-university-lectures'); } catch {}
+      }
     } 
     catch (error) 
     {

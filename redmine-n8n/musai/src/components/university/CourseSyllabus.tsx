@@ -184,7 +184,7 @@ const CourseSyllabus = () =>
       }
     }
 
-    const goToLecture = (courseState: Course, lectureState: CourseLecture, shouldGenerate?: boolean) =>
+    const goToLecture = (_courseState: Course, lectureState: CourseLecture, shouldGenerate?: boolean) =>
     {
       recordLastSession('university', {
         courseId: courseId!,
@@ -192,9 +192,7 @@ const CourseSyllabus = () =>
         view: 'lecture'
       });
       navigate(`/university/course/${courseId}/lecture/${lectureState.id}`, {
-        state: shouldGenerate
-          ? { course: courseState, lecture: lectureState, shouldGenerate: true }
-          : { course: courseState, lecture: lectureState }
+        state: shouldGenerate ? { shouldGenerate: true } : undefined
       });
     };
 
@@ -229,12 +227,7 @@ const CourseSyllabus = () =>
       lectureId: lecture.id,
       view: 'lecture'
     });
-    navigate(`/university/course/${courseId}/lecture/${lecture.id}`, {
-      state: {
-        course,
-        lecture
-      }
-    });
+    navigate(`/university/course/${courseId}/lecture/${lecture.id}`);
   };
 
   const handleTabChange = (tab: string) =>

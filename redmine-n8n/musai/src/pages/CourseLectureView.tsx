@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, BookOpen, Brain, Lock, MessageCircle, CheckCircle } from 'lucide-react';
 import { universityApi } from '@/lib/universityApi';
-import type { Course, CourseLecture, UniversityTab } from '@/types/university';
+import type { Course, CourseLecture, UniversityTab, QuizAttempt } from '@/types/university';
 import CourseQuiz from '@/components/university/CourseQuiz';
 import { BaseLayout } from '@/components/common/BaseLayout';
 import { APP_TERMS } from '@/config/constants';
@@ -35,15 +35,15 @@ const CourseLectureView = () =>
   const { courseId, lectureId } = useParams<{ courseId: string; lectureId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = location.state as { course?: Course; lecture?: CourseLecture } | undefined;
-  const [course, setCourse] = useState<Course | null>(locationState?.course ?? null);
-  const [lecture, setLecture] = useState<CourseLecture | null>(locationState?.lecture ?? null);
+  const locationState = location.state as { shouldGenerate?: boolean } | undefined;
+  const [course, setCourse] = useState<Course | null>(null);
+  const [lecture, setLecture] = useState<CourseLecture | null>(null);
   const [activeTab, setActiveTab] = useState<UniversityTab>('lecture');
-  const [isLoading, setIsLoading] = useState(!(locationState?.course && locationState?.lecture));
+  const [isLoading, setIsLoading] = useState(true);
   const [isNavigationExpanded, setIsNavigationExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const shouldGenerateFromState = Boolean((locationState as { shouldGenerate?: boolean } | undefined)?.shouldGenerate);
+  const shouldGenerateFromState = Boolean(locationState?.shouldGenerate);
   const { recordLastSession } = useUserPreferences();
   const queryClient = useQueryClient();
   const chatSessionIdRef = useRef<string | null>(null);
@@ -121,10 +121,18 @@ const CourseLectureView = () =>
     {
       return '';
     }
-    return course.lectures
-      .map((item, index) => `${index + 1}. ${item.title}${item.summary ? ` — ${item.summary}` : ''}`)
-      .join('\n')
-      .slice(0, 2000);
+    try
+    {
+      return course.lectures
+        .slice(0, 50)
+        .map((item, index) => `${index + 1}. ${item.title}${item.summary ? ` — ${item.summary}` : ''}`)
+        .join('\n')
+        .slice(0, 2000);
+    }
+    catch
+    {
+      return '';
+    }
   }, [course]);
 
   const lecturePlainText = useMemo(() =>
@@ -134,11 +142,18 @@ const CourseLectureView = () =>
     {
       return '';
     }
-    const withoutScripts = html
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '');
-    const stripped = withoutScripts.replace(/<[^>]+>/g, ' ');
-    return stripped.replace(/\s+/g, ' ').trim().slice(0, 5000);
+    try
+    {
+      const withoutScripts = html
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, '');
+      const stripped = withoutScripts.replace(/<[^>]+>/g, ' ');
+      return stripped.replace(/\s+/g, ' ').trim().slice(0, 5000);
+    }
+    catch
+    {
+      return '';
+    }
   }, [lecture?.content]);
 
   useEffect(() =>
@@ -160,7 +175,15 @@ const CourseLectureView = () =>
       return;
     }
 
-    const saved = localStorage.getItem(chatStorageKey);
+    let saved: string | null = null;
+    try
+    {
+      saved = localStorage.getItem(chatStorageKey);
+    }
+    catch
+    {
+      saved = null;
+    }
     if (saved)
     {
       try
@@ -231,26 +254,16 @@ const CourseLectureView = () =>
         return;
       }
 
-      const hasLocationData = Boolean(
-        locationState?.course &&
-        locationState?.lecture &&
-        locationState.course.metadata.id === courseId &&
-        locationState.lecture.id === lectureId
-      );
-
-      if (!hasLocationData)
+      setIsLoading(true);
+      const loadedCourse = await universityApi.getCourse(courseId);
+      if (!loadedCourse)
       {
-        setIsLoading(true);
-        const loadedCourse = await universityApi.getCourse(courseId);
-        if (!loadedCourse)
-        {
-          navigate('/university');
-          return;
-        }
-        const foundLecture = loadedCourse.lectures.find(l => l.id === lectureId) || null;
-        setCourse(loadedCourse);
-        setLecture(foundLecture);
+        navigate('/university');
+        return;
       }
+      const foundLecture = loadedCourse.lectures.find(l => l.id === lectureId) || null;
+      setCourse(loadedCourse);
+      setLecture(foundLecture);
       setIsLoading(false);
     };
     load();
@@ -408,6 +421,7 @@ const CourseLectureView = () =>
   }, [latestPassingAttempt, lecture?.quiz?.length, deriveLetterGrade]);
 
   const isInteractionLocked = isGenerating || isQuizGenerating;
+  const [isQuizActive, setIsQuizActive] = useState<boolean>(false);
 
   const renderableLectureHtml = useMemo(() =>
   {
@@ -543,7 +557,7 @@ const CourseLectureView = () =>
 
     setGenerationError(null);
 
-    const draftLectures = course.lectures.map((existing, index) =>
+    const draftLectures: CourseLecture[] = course.lectures.map((existing, index): CourseLecture =>
       index === idx
         ? { ...existing, status: 'in_progress' }
         : existing
@@ -740,7 +754,7 @@ const CourseLectureView = () =>
                       value={activeTab}
                       onValueChange={(v) =>
                       {
-                        if (isInteractionLocked)
+                        if (isInteractionLocked || (isQuizActive && v !== 'quiz'))
                         {
                           return;
                         }
@@ -751,14 +765,14 @@ const CourseLectureView = () =>
                       <TabsList className="mx-6 mt-2 rounded-full bg-white/10 p-1">
                         <TabsTrigger
                           value="lecture"
-                          disabled={isTabLocked('lecture') || isInteractionLocked}
+                          disabled={isTabLocked('lecture') || isInteractionLocked || isQuizActive}
                           className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
                         >
                           <BookOpen className="h-4 w-4" /> Lecture
                         </TabsTrigger>
                         <TabsTrigger
                           value="chat"
-                          disabled={isTabLocked('chat') || isInteractionLocked}
+                          disabled={isTabLocked('chat') || isInteractionLocked || isQuizActive}
                           className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition data-[state=active]:bg-white data-[state=active]:text-slate-900"
                         >
                           <MessageCircle className="h-4 w-4" /> Chat
@@ -846,6 +860,8 @@ const CourseLectureView = () =>
                             lecture={lecture!}
                             passThreshold={Math.max(quizPassThreshold, 0.8)}
                             onGenerationStateChange={setIsQuizGenerating}
+                            onQuizStateChange={setIsQuizActive}
+                            onCancelRequested={() => setIsQuizActive(false)}
                             onQuizCompleted={async (passed, attempt) =>
                             {
                               if (!course) return;

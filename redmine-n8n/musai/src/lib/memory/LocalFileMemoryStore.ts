@@ -25,7 +25,24 @@ function readEvents(): MemoryEvent[]
 
 function writeEvents(all: MemoryEvent[]): void
 {
-  localStorage.setItem(LOCAL_KEY_EVENTS, JSON.stringify(all));
+  try
+  {
+    localStorage.setItem(LOCAL_KEY_EVENTS, JSON.stringify(all));
+  }
+  catch (error)
+  {
+    // Quota safety: prune oldest 10% and retry once
+    try
+    {
+      const prunedCount = Math.max(1, Math.floor(all.length * 0.1));
+      const trimmed = all.slice(prunedCount);
+      localStorage.setItem(LOCAL_KEY_EVENTS, JSON.stringify(trimmed));
+    }
+    catch
+    {
+      // Swallow to avoid hard-crashing the UI
+    }
+  }
 }
 
 function readParticipation(): Record<string, string[]>
@@ -47,7 +64,28 @@ function readParticipation(): Record<string, string[]>
 
 function writeParticipation(index: Record<string, string[]>): void
 {
-  localStorage.setItem(LOCAL_KEY_PARTICIPATION, JSON.stringify(index));
+  try
+  {
+    localStorage.setItem(LOCAL_KEY_PARTICIPATION, JSON.stringify(index));
+  }
+  catch
+  {
+    // If storage is full, drop oldest scene entries per agent to keep UI stable
+    try
+    {
+      const reduced: Record<string, string[]> = {};
+      for (const [agentId, scenes] of Object.entries(index))
+      {
+        const drop = Math.max(1, Math.floor(scenes.length * 0.2));
+        reduced[agentId] = scenes.slice(drop);
+      }
+      localStorage.setItem(LOCAL_KEY_PARTICIPATION, JSON.stringify(reduced));
+    }
+    catch
+    {
+      // Swallow as last resort
+    }
+  }
 }
 
 export class LocalFileMemoryStore implements MemoryStore

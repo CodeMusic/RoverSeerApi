@@ -25,9 +25,11 @@ interface CourseQuizProps
   onQuizCompleted: (passed: boolean, attempt: QuizAttempt) => Promise<void> | void;
   onGenerateMoreQuestions: () => Promise<void> | void;
   onGenerationStateChange?: (isGenerating: boolean) => void;
+  onQuizStateChange?: (isActive: boolean) => void;
+  onCancelRequested?: () => void;
 }
 
-const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQuestions, onGenerationStateChange }: CourseQuizProps) => 
+const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQuestions, onGenerationStateChange, onQuizStateChange, onCancelRequested }: CourseQuizProps) => 
 {
   const [currentAnswers, setCurrentAnswers] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,6 +38,10 @@ const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQue
   const [isGeneratingMore, setIsGeneratingMore] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const autoRequestedRef = useRef(false);
+  const [timeLeftSec, setTimeLeftSec] = useState<number>(600);
+  const timerRef = useRef<number | null>(null);
+  const warned3Ref = useRef<boolean>(false);
+  const warned1Ref = useRef<boolean>(false);
 
   const effectivePassThreshold = Math.max(0.8, passThreshold);
 
@@ -62,12 +68,31 @@ const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQue
       setGenerationError(null);
       setIsGeneratingMore(false);
       autoRequestedRef.current = false;
+      setTimeLeftSec(600);
+      if (timerRef.current)
+      {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      timerRef.current = window.setInterval(() =>
+      {
+        setTimeLeftSec(prev => Math.max(0, prev - 1));
+      }, 1000);
+      onQuizStateChange?.(true);
+      warned3Ref.current = false;
+      warned1Ref.current = false;
     }
     else
     {
       setCurrentAnswers([]);
       setCurrentAttempt(null);
       setShowResults(false);
+      if (timerRef.current)
+      {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      onQuizStateChange?.(false);
     }
   }, [lecture.quiz]);
 
@@ -129,6 +154,17 @@ const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQue
     setCurrentAnswers(new Array(lecture.quiz?.length || 0).fill(-1));
     setCurrentAttempt(null);
     setShowResults(false);
+    setTimeLeftSec(600);
+    if (timerRef.current)
+    {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    timerRef.current = window.setInterval(() =>
+    {
+      setTimeLeftSec(prev => Math.max(0, prev - 1));
+    }, 1000);
+    onQuizStateChange?.(true);
   };
 
   const handleGenerateMoreQuestions = useCallback(async () => 
@@ -182,8 +218,91 @@ const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQue
     return () =>
     {
       onGenerationStateChange?.(false);
+      if (timerRef.current)
+      {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      onQuizStateChange?.(false);
     };
   }, [onGenerationStateChange]);
+
+  const forceAutoSubmit = useCallback(async () =>
+  {
+    if (!lecture.quiz) return;
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try
+    {
+      const totalQuestions = lecture.quiz.length || 1;
+      const correctCount = lecture.quiz.reduce((acc, question, index) =>
+      {
+        return acc + (currentAnswers[index] === question.correctIndex ? 1 : 0);
+      }, 0);
+      const score = correctCount / totalQuestions;
+      const letterGrade = deriveLetterGrade(correctCount, totalQuestions);
+      const attempt: QuizAttempt = {
+        id: `attempt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        answers: [...currentAnswers],
+        score,
+        passed: score >= effectivePassThreshold,
+        timestamp: new Date().toISOString(),
+        letterGrade,
+        correctCount,
+        totalQuestions
+      };
+      setCurrentAttempt(attempt);
+      setShowResults(true);
+      await Promise.resolve(onQuizCompleted(attempt.passed, attempt));
+    }
+    catch (error)
+    {
+      console.error('Error auto-submitting quiz:', error);
+    }
+    finally
+    {
+      setIsSubmitting(false);
+      if (timerRef.current)
+      {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      onQuizStateChange?.(false);
+    }
+  }, [lecture.quiz, currentAnswers, deriveLetterGrade, effectivePassThreshold, isSubmitting, onQuizCompleted, onQuizStateChange]);
+
+  useEffect(() =>
+  {
+    if (!lecture.quiz || lecture.quiz.length === 0)
+    {
+      return;
+    }
+    if (showResults)
+    {
+      return;
+    }
+    if (timeLeftSec === 180 && !warned3Ref.current)
+    {
+      warned3Ref.current = true;
+      try { console.warn('3 minutes remaining for the quiz.'); } catch {}
+    }
+    if (timeLeftSec === 60 && !warned1Ref.current)
+    {
+      warned1Ref.current = true;
+      try { console.warn('1 minute remaining for the quiz.'); } catch {}
+    }
+    if (timeLeftSec === 0)
+    {
+      void forceAutoSubmit();
+    }
+  }, [timeLeftSec, lecture.quiz, showResults, forceAutoSubmit]);
+
+  const formatTime = (sec: number): string =>
+  {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
 
   const getScoreColor = (score: number) => 
   {
@@ -404,6 +523,24 @@ const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQue
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Timer & Controls */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            <Badge variant="outline" className="uppercase tracking-[0.18em]">Timed Quiz</Badge>
+          </div>
+          <div className={cn(
+            "text-lg font-semibold",
+            timeLeftSec <= 9 ? 'text-rose-600' : timeLeftSec <= 60 ? 'text-amber-600' : 'text-slate-700'
+          )}
+          >
+            Time Left: {formatTime(timeLeftSec)}
+          </div>
+        </div>
+        {timeLeftSec <= 60 && !showResults && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/30 dark:text-amber-200">
+            {timeLeftSec > 9 ? 'Warning: Less than 1 minute remaining.' : `Final seconds: ${timeLeftSec}s`}
+          </div>
+        )}
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
@@ -440,24 +577,49 @@ const CourseQuiz = ({ lecture, passThreshold, onQuizCompleted, onGenerateMoreQue
           ))}
         </div>
 
-        {/* Submit Button */}
-        <Button
-          onClick={handleSubmitQuiz}
-          disabled={isSubmitting || currentAnswers.some(answer => answer === -1)}
-          className="w-full"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Submitting...
-            </>
-          ) : (
-            <>
-              <Brain className="mr-2 h-4 w-4" />
-              Submit Quiz
-            </>
-          )}
-        </Button>
+        {/* Submit/Cancel Row */}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            onClick={handleSubmitQuiz}
+            disabled={isSubmitting || currentAnswers.some(answer => answer === -1)}
+            className="sm:flex-1"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Brain className="mr-2 h-4 w-4" />
+                Submit Quiz
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+            {
+              const ok = window.confirm('Cancel this quiz? Your current answers will be lost.');
+              if (!ok)
+              {
+                return;
+              }
+              if (timerRef.current)
+              {
+                window.clearInterval(timerRef.current);
+                timerRef.current = null;
+              }
+              setCurrentAnswers(new Array(lecture.quiz?.length || 0).fill(-1));
+              setCurrentAttempt(null);
+              setShowResults(false);
+              onQuizStateChange?.(false);
+              onCancelRequested?.();
+            }}
+          >
+            Cancel Quiz
+          </Button>
+        </div>
 
         {/* Previous Attempts */}
         {lecture.quizAttempts.length > 0 && (

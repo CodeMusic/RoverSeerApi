@@ -21,7 +21,7 @@ import { RouteUtils } from '@/config/routes';
 import { universityApi } from '@/lib/universityApi';
 import { MusaiCopilotSummon } from '@/components/common/MusaiCopilotSummon';
 import { PreMusaiPage } from '@/components/common/PreMusaiPage';
-import type { Course, Lecture, StandaloneLecture } from '@/types/university';
+import type { Course, Lecture, StandaloneLecture, CourseLecture, QuizAttempt } from '@/types/university';
 import {
   GraduationCap,
   Sparkles,
@@ -185,6 +185,178 @@ const University = () =>
     };
   }, [activeCourses, legacyLectures.length, standaloneLectures.length]);
 
+  // Cognition: assessment mapping helpers for GPA and badges
+  const computeLectureBestPercent = useCallback((lecture: CourseLecture): number =>
+  {
+    if (!Array.isArray(lecture.quizAttempts) || lecture.quizAttempts.length === 0)
+    {
+      return NaN;
+    }
+    const best = lecture.quizAttempts.reduce((max, attempt) =>
+    {
+      const pct = (() =>
+      {
+        if (typeof attempt.correctCount === 'number' && typeof attempt.totalQuestions === 'number' && attempt.totalQuestions > 0)
+        {
+          return (attempt.correctCount / attempt.totalQuestions) * 100;
+        }
+        if (typeof attempt.score === 'number' && Number.isFinite(attempt.score))
+        {
+          return Math.max(0, Math.min(100, attempt.score * 100));
+        }
+        return NaN;
+      })();
+      return Number.isNaN(pct) ? max : Math.max(max, pct);
+    }, 0);
+    return best;
+  }, []);
+
+  const computeCoursePercent = useCallback((course: Course): number =>
+  {
+    const percents: number[] = [];
+    for (const lecture of course.lectures)
+    {
+      const pct = computeLectureBestPercent(lecture);
+      if (!Number.isNaN(pct))
+      {
+        percents.push(pct);
+      }
+    }
+    if (percents.length === 0)
+    {
+      return NaN;
+    }
+    const sum = percents.reduce((a, b) => a + b, 0);
+    return sum / percents.length;
+  }, [computeLectureBestPercent]);
+
+  const percentToLetter = useCallback((percent: number): string =>
+  {
+    if (!Number.isFinite(percent))
+    {
+      return '—';
+    }
+    if (percent >= 100)
+    {
+      return 'A+';
+    }
+    if (percent >= 93)
+    {
+      return 'A';
+    }
+    if (percent >= 90)
+    {
+      return 'A-';
+    }
+    if (percent >= 87)
+    {
+      return 'B+';
+    }
+    if (percent >= 83)
+    {
+      return 'B';
+    }
+    if (percent >= 80)
+    {
+      return 'B-';
+    }
+    if (percent >= 77)
+    {
+      return 'C+';
+    }
+    if (percent >= 73)
+    {
+      return 'C';
+    }
+    if (percent >= 70)
+    {
+      return 'C-';
+    }
+    if (percent >= 67)
+    {
+      return 'D+';
+    }
+    if (percent >= 63)
+    {
+      return 'D';
+    }
+    if (percent >= 60)
+    {
+      return 'D-';
+    }
+    return 'F';
+  }, []);
+
+  const letterToGpa = useCallback((letter: string): number =>
+  {
+    switch (letter)
+    {
+      case 'A+':
+      case 'A':
+        return 4.0;
+      case 'A-':
+        return 3.7;
+      case 'B+':
+        return 3.3;
+      case 'B':
+        return 3.0;
+      case 'B-':
+        return 2.7;
+      case 'C+':
+        return 2.3;
+      case 'C':
+        return 2.0;
+      case 'C-':
+        return 1.7;
+      case 'D+':
+        return 1.3;
+      case 'D':
+        return 1.0;
+      case 'D-':
+        return 0.7;
+      default:
+        return 0.0;
+    }
+  }, []);
+
+  const gpaInsight = useMemo(() =>
+  {
+    const coursePercents: number[] = [];
+    for (const course of activeCourses)
+    {
+      const pct = computeCoursePercent(course);
+      if (!Number.isNaN(pct))
+      {
+        coursePercents.push(pct);
+      }
+    }
+    if (coursePercents.length === 0)
+    {
+      return { gpa: null as number | null, gradedCourses: 0 };
+    }
+    const gradePoints = coursePercents.map(p => letterToGpa(percentToLetter(p)));
+    const gpa = gradePoints.reduce((a, b) => a + b, 0) / gradePoints.length;
+    return { gpa, gradedCourses: gradePoints.length };
+  }, [activeCourses, computeCoursePercent, letterToGpa, percentToLetter]);
+
+  const hasAPlusBadge = useCallback((course: Course): boolean =>
+  {
+    for (const lecture of course.lectures)
+    {
+      for (const attempt of lecture.quizAttempts || [])
+      {
+        const perfect = (typeof attempt.correctCount === 'number' && typeof attempt.totalQuestions === 'number' && attempt.totalQuestions > 0 && attempt.correctCount === attempt.totalQuestions)
+          || attempt.letterGrade === 'A+'
+          || (typeof attempt.score === 'number' && Math.abs(attempt.score - 1) < 1e-9);
+        if (perfect)
+        {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, []);
+
   const recentLectures = useMemo(
     () => buildRecentLectureEntries(courses, standaloneLectures, legacyLectures),
     [courses, standaloneLectures, legacyLectures]
@@ -331,6 +503,17 @@ const University = () =>
                 Programmes generated in this studio
               </CardContent>
             </Card>
+            <Card className="shadow-sm border-none bg-gradient-to-br from-fuchsia-50 via-white to-white dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold text-fuchsia-600 dark:text-fuchsia-300 uppercase tracking-[0.18em]">Current GPA</CardTitle>
+                <CardDescription className="text-3xl font-bold text-slate-900 dark:text-white">
+                  {gpaInsight.gpa === null ? '—' : gpaInsight.gpa.toFixed(2)}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Based on {gpaInsight.gradedCourses} graded {gpaInsight.gradedCourses === 1 ? 'course' : 'courses'}
+              </CardContent>
+            </Card>
             <Card className="shadow-sm border-none bg-gradient-to-br from-emerald-50 via-white to-white dark:from-slate-900/50 dark:via-slate-950 dark:to-slate-950">
               <CardHeader>
                 <CardTitle className="text-sm font-semibold text-emerald-600 dark:text-emerald-300 uppercase tracking-[0.18em]">Courses Completed</CardTitle>
@@ -424,6 +607,9 @@ const University = () =>
                           {course.metadata.archived && (
                             <Badge className="bg-slate-700/40 text-slate-200">Archived</Badge>
                           )}
+                          {hasAPlusBadge(course) && (
+                            <Badge className="bg-fuchsia-500/20 text-fuchsia-700 dark:text-fuchsia-200">A+ Achieved</Badge>
+                          )}
                         </div>
                         <h3 className="text-xl font-semibold leading-tight">{course.metadata.title}</h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">{course.metadata.description}</p>
@@ -435,6 +621,17 @@ const University = () =>
                           <span>
                             {course.completedLectures} / {course.lectures.length} lectures complete
                           </span>
+                          {(() => {
+                            const pct = computeCoursePercent(course);
+                            const letter = percentToLetter(pct);
+                            return Number.isNaN(pct)
+                              ? null
+                              : (
+                                <span className="inline-flex items-center gap-1">
+                                  Grade: {letter} ({Math.round(pct)}%)
+                                </span>
+                              );
+                          })()}
                         </div>
                       </div>
                       <div className="w-full lg:w-auto">
